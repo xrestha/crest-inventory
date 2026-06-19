@@ -124,17 +124,19 @@ export default function AuditLog() {
       `Delete ${logs.length} audit log entries (${timeLabel}, ${clientLabel})?\n\nThis cannot be undone.`
     )) return
 
-    let q = supabase.from('audit_logs').delete().not('id', 'is', null)
-    if (filterClient !== 'all') q = q.eq('client_id', filterClient)
-    if (filterArea   !== 'all') q = q.eq('table_name', filterArea)
-    if (filterTime   !== 'all') {
+    let cutoff = null
+    if (filterTime !== 'all') {
       const start = new Date()
       if (filterTime === 'today') start.setHours(0, 0, 0, 0)
       else if (filterTime === '7d')  start.setDate(start.getDate() - 7)
       else if (filterTime === '30d') start.setDate(start.getDate() - 30)
-      q = q.gte('created_at', start.toISOString())
+      cutoff = start.toISOString()
     }
-    const { error } = await q
+    const { error } = await supabase.rpc('admin_clear_audit_logs', {
+      p_client_id:  filterClient !== 'all' ? filterClient : null,
+      p_table_name: filterArea   !== 'all' ? filterArea   : null,
+      p_cutoff:     cutoff,
+    })
     if (error) { alert('Error: ' + error.message); return }
     await fetchLogs(filterClient, filterArea, filterTime)
   }
