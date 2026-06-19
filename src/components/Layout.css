@@ -437,7 +437,7 @@ table.data-table {
 
 table.data-table th {
   text-align: left;
-  padding: 10px 14px;
+  padding: 10px 5px;
   color: var(--theme-text2);
   font-weight: 500;
   font-size: 11px;
@@ -448,7 +448,7 @@ table.data-table th {
 }
 
 table.data-table td {
-  padding: 11px 14px;
+  padding: 11px 5px;
   color: var(--theme-text1);
   border-bottom: 1px solid var(--theme-border-lt);
 }
