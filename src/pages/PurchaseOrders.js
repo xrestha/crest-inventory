@@ -26,7 +26,7 @@ function StatusBadge({ status }) {
 }
 
 export default function PurchaseOrders() {
-  const { clientId, profile, loading: authLoading } = useAuth()
+  const { clientId, profile, isAdmin, loading: authLoading } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
 
   const [periods,        setPeriods]        = useState([])
@@ -217,7 +217,12 @@ export default function PurchaseOrders() {
   }
 
   async function deletePo(po) {
-    if (!window.confirm(`Delete draft PO ${po.po_number}?`)) return
+    if (!isAdmin) return
+    const msg = po.status !== 'draft'
+      ? `Delete ${po.status.toUpperCase()} PO ${po.po_number}?\n\nThis permanently removes the PO and its line items. Purchase entries already created from receiving are NOT deleted — manage those in Purchases.\n\nThis cannot be undone.`
+      : `Delete draft PO ${po.po_number}? This cannot be undone.`
+    if (!window.confirm(msg)) return
+    await supabase.from('purchase_order_items').delete().eq('po_id', po.id)
     await supabase.from('purchase_orders').delete().eq('id', po.id)
     await loadPos(selectedPeriod.id)
   }
@@ -787,10 +792,10 @@ export default function PurchaseOrders() {
                             Edit
                           </button>
                         )}
-                        {po.status === 'draft' && (
+                        {isAdmin && (
                           <button className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 10px', color: '#f87171' }}
                             onClick={() => deletePo(po)}>
-                            <Tip width={200} text="Permanently delete this draft PO. Cannot be undone.">
+                            <Tip width={220} text="Admin only — permanently delete this PO and its line items. Purchase entries already created are not affected.">
                               Delete
                             </Tip>
                           </button>
