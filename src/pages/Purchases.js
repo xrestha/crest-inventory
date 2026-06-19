@@ -7,9 +7,11 @@ import Tip from '../components/Tip'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 
-const EMPTY_FORM = { item_id: '', vendor_id: '', bs_day: '', qty: '', rate: '', invoice_ref: '', expiry_date: '', payment_method: 'Cash', vat_inclusive: false }
+const EMPTY_FORM   = { item_id: '', vendor_id: '', bs_day: '', qty: '', rate: '', invoice_ref: '', expiry_date: '', payment_method: 'Cash', vat_inclusive: false }
+const EMPTY_HEADER = { vendor_id: '', bs_day: '', invoice_ref: '', payment_method: 'Cash' }
 const EMPTY_RETURN = { purchase_entry_id: '', qty: '', notes: '' }
 const PAYMENT_METHODS = ['Cash', 'Credit', 'FonePay']
+const newLine = () => ({ _key: Date.now() + Math.random(), item_id: '', qty: '', rate: '', expiry_date: '', shelf_life: '', vat_inclusive: false })
 
 export default function Purchases() {
   const { clientId, profile, loading: authLoading, isAdmin } = useAuth()
@@ -34,6 +36,9 @@ export default function Purchases() {
   const [editingId, setEditingId]           = useState(null)
   const [shelfLifeDays, setShelfLifeDays]   = useState('')
   const [rateUpdatePrompt, setRateUpdatePrompt] = useState(null)
+  // Bill (multi-row add) state
+  const [billHeader, setBillHeader]         = useState(EMPTY_HEADER)
+  const [billLines, setBillLines]           = useState([newLine()])
 
   // Returns tab
   const [returns, setReturns]               = useState([])
@@ -100,8 +105,8 @@ export default function Purchases() {
 
   function openNew() {
     setEditingId(null)
-    setForm({ ...EMPTY_FORM, rate: '', bs_day: '' })
-    setShelfLifeDays('')
+    setBillHeader({ ...EMPTY_HEADER })
+    setBillLines([newLine()])
     setError('')
     setShowForm(true)
   }
@@ -147,6 +152,86 @@ export default function Purchases() {
   function handleShelfLifeChange(days) {
     setShelfLifeDays(days)
     if (days && form.bs_day) recalcExpiry(form.bs_day, days)
+  }
+
+  // ─── BILL (multi-row add) ────────────────────────────────
+
+  function handleHeaderDayChange(day) {
+    setBillHeader(h => ({ ...h, bs_day: day }))
+    if (day && selectedPeriod) {
+      setBillLines(prev => prev.map(l => {
+        if (!l.shelf_life) return l
+        const ad = bsToAd(selectedPeriod.bs_year, selectedPeriod.bs_month, parseInt(day))
+        const exp = new Date(ad); exp.setDate(exp.getDate() + parseInt(l.shelf_life))
+        return { ...l, expiry_date: formatAd(exp) }
+      }))
+    }
+  }
+
+  function updateBillLine(key, field, val) {
+    setBillLines(prev => prev.map(l => {
+      if (l._key !== key) return l
+      const updated = { ...l, [field]: val }
+      if (field === 'item_id') {
+        const item = items.find(i => i.id === val)
+        if (item?.rate) updated.rate = String(item.rate)
+      }
+      if (field === 'shelf_life' && val && billHeader.bs_day && selectedPeriod) {
+        const ad = bsToAd(selectedPeriod.bs_year, selectedPeriod.bs_month, parseInt(billHeader.bs_day))
+        const exp = new Date(ad); exp.setDate(exp.getDate() + parseInt(val))
+        updated.expiry_date = formatAd(exp)
+      }
+      return updated
+    }))
+  }
+
+  function addBillLine() { setBillLines(prev => [...prev, newLine()]) }
+  function removeBillLine(key) { setBillLines(prev => prev.length > 1 ? prev.filter(l => l._key !== key) : prev) }
+
+  async function saveBill() {
+    const maxDay = selectedPeriod ? daysInBsMonth(selectedPeriod.bs_year, selectedPeriod.bs_month) : 32
+    if (!billHeader.bs_day || billHeader.bs_day < 1 || billHeader.bs_day > maxDay) {
+      setError(`Enter a valid BS day (1–${maxDay}).`); return
+    }
+    const valid = billLines.filter(l => l.item_id && parseFloat(l.qty) > 0 && parseFloat(l.rate) > 0)
+    if (valid.length === 0) { setError('Add at least one item with item, qty and rate filled.'); return }
+
+    setSaving(true); setError('')
+
+    const entries = valid.map(l => {
+      const item = items.find(i => i.id === l.item_id)
+      const cf = getCf(item)
+      const exVatRate = l.vat_inclusive ? parseFloat(l.rate) / 1.13 : parseFloat(l.rate)
+      return {
+        period_id:      selectedPeriod.id,
+        item_id:        l.item_id,
+        vendor_id:      billHeader.vendor_id || null,
+        bs_day:         parseInt(billHeader.bs_day),
+        qty:            parseFloat(l.qty) * cf,
+        rate:           exVatRate / cf,
+        invoice_ref:    billHeader.invoice_ref.trim() || null,
+        expiry_date:    l.expiry_date || null,
+        payment_method: billHeader.payment_method || 'Cash',
+        vat_inclusive:  l.vat_inclusive || false,
+      }
+    })
+
+    const { error: insErr } = await supabase.from('purchase_entries').insert(entries)
+    if (insErr) { setError(insErr.message); setSaving(false); return }
+
+    setSaving(false)
+    setShowForm(false)
+    loadPurchases(selectedPeriod.id)
+
+    // Rate update check — show prompt for first item with a changed rate
+    for (const l of valid) {
+      const capturedRate = l.vat_inclusive ? parseFloat(l.rate) / 1.13 : parseFloat(l.rate)
+      const { data: fi } = await supabase.from('items').select('id, name, rate, purchase_qty').eq('id', l.item_id).single()
+      if (fi && capturedRate !== parseFloat(fi.rate)) {
+        setRateUpdatePrompt({ itemId: fi.id, itemName: fi.name, oldRate: parseFloat(fi.rate), newRate: capturedRate, purchaseQty: parseFloat(fi.purchase_qty) })
+        break
+      }
+    }
   }
 
   async function save() {
@@ -445,12 +530,146 @@ export default function Purchases() {
       {/* ── PURCHASES TAB ── */}
       {activeTab === 'purchases' && (
         <>
-          {/* Add/Edit Form */}
-          {showForm && (
+          {/* ── NEW BILL FORM (multi-row) ── */}
+          {showForm && !editingId && (
             <div className="card" style={{ marginBottom: 24 }}>
-              <h3 style={{ margin: '0 0 20px', fontSize: 15, color: '#e8e0d0' }}>
-                {editingId ? 'Edit Purchase Entry' : 'Add Purchase Entry'}
-              </h3>
+              <h3 style={{ margin: '0 0 16px', fontSize: 15, color: '#e8e0d0' }}>Add Purchase Bill</h3>
+
+              {/* Header row */}
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 2fr 1fr', gap: 14, marginBottom: 20 }}>
+                <div className="form-field">
+                  <label>Vendor</label>
+                  <select className="form-select" value={billHeader.vendor_id} onChange={e => setBillHeader(h => ({ ...h, vendor_id: e.target.value }))}>
+                    <option value="">— None —</option>
+                    {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                  </select>
+                </div>
+                <div className="form-field">
+                  <label>Day (BS) *</label>
+                  <BsDatePicker bsYear={selectedPeriod?.bs_year} bsMonth={selectedPeriod?.bs_month} value={billHeader.bs_day} onChange={handleHeaderDayChange} />
+                </div>
+                <div className="form-field">
+                  <label><Tip text="Vendor's invoice or bill number. Shared across all items on this bill." width={240}>Invoice Ref</Tip></label>
+                  <input value={billHeader.invoice_ref} onChange={e => setBillHeader(h => ({ ...h, invoice_ref: e.target.value }))} placeholder="Optional" />
+                </div>
+                <div className="form-field">
+                  <label><Tip text="Cash: paid on delivery. Credit: pay later. FonePay: digital payment. Applied to all items on this bill.">Payment</Tip></label>
+                  <select className="form-select" value={billHeader.payment_method} onChange={e => setBillHeader(h => ({ ...h, payment_method: e.target.value }))}>
+                    {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ borderTop: '1px solid #2a2f3d', marginBottom: 16 }} />
+
+              {/* Line items table */}
+              <div className="table-wrap">
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: 'left', fontSize: 11, color: '#6b7280', padding: '0 8px 10px 0', textTransform: 'uppercase', letterSpacing: '0.07em', minWidth: 200 }}>Item *</th>
+                      <th style={{ textAlign: 'right', fontSize: 11, color: '#6b7280', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 110 }}>Qty *</th>
+                      <th style={{ textAlign: 'right', fontSize: 11, color: '#6b7280', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 130 }}>Rate (NPR) *</th>
+                      <th style={{ textAlign: 'left', fontSize: 11, color: '#6b7280', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 150 }}>
+                        <Tip text="Best-before or use-by date. Or enter shelf life days to auto-calculate." width={220}>Expiry Date</Tip>
+                      </th>
+                      <th style={{ textAlign: 'right', fontSize: 11, color: '#6b7280', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 90 }}>
+                        <Tip text="Days this item stays fresh from purchase date. Auto-fills Expiry Date." width={220}>Shelf Life</Tip>
+                      </th>
+                      <th style={{ textAlign: 'center', fontSize: 11, color: '#6b7280', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 50 }}>
+                        <Tip text="Tick if this item's rate includes 13% VAT. System stores ex-VAT rate for costing." width={230}>VAT</Tip>
+                      </th>
+                      <th style={{ width: 32 }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {billLines.map((line) => {
+                      const selItem = items.find(i => i.id === line.item_id)
+                      const cf = getCf(selItem)
+                      const inputUnit = cf > 1 ? selItem.purchase_unit : (selItem?.uom || '')
+                      const lineTotal = (parseFloat(line.qty) || 0) * (parseFloat(line.rate) || 0)
+                      return (
+                        <tr key={line._key} style={{ borderBottom: '1px solid #1a1f2e' }}>
+                          <td style={{ padding: '6px 8px 6px 0', verticalAlign: 'top' }}>
+                            <select className="form-select" style={{ width: '100%' }} value={line.item_id}
+                              onChange={e => updateBillLine(line._key, 'item_id', e.target.value)}>
+                              <option value="">— Select item —</option>
+                              {items.map(i => <option key={i.id} value={i.id}>{i.name}{i.categories?.name ? ` (${i.categories.name})` : ''}</option>)}
+                            </select>
+                          </td>
+                          <td style={{ padding: '6px 8px', verticalAlign: 'top' }}>
+                            <input type="number" min="0" step="any" value={line.qty} placeholder="0"
+                              onChange={e => updateBillLine(line._key, 'qty', e.target.value)}
+                              style={{ background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: '100%', textAlign: 'right' }} />
+                            {inputUnit && <div style={{ fontSize: 10, color: '#6b7280', textAlign: 'right', marginTop: 2 }}>{inputUnit}</div>}
+                            {cf > 1 && line.qty && <div style={{ fontSize: 10, color: '#9ca3af', textAlign: 'right' }}>= {(parseFloat(line.qty) * cf).toLocaleString()} {selItem?.uom}</div>}
+                          </td>
+                          <td style={{ padding: '6px 8px', verticalAlign: 'top' }}>
+                            <input type="number" min="0" step="any" value={line.rate} placeholder="0"
+                              onChange={e => updateBillLine(line._key, 'rate', e.target.value)}
+                              style={{ background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: '100%', textAlign: 'right' }} />
+                            {line.vat_inclusive && line.rate && (
+                              <div style={{ fontSize: 10, color: '#fbbf24', textAlign: 'right', marginTop: 2 }}>
+                                ex-VAT: {(parseFloat(line.rate) / 1.13).toFixed(2)}
+                              </div>
+                            )}
+                            {lineTotal > 0 && <div style={{ fontSize: 10, color: '#c9a84c', textAlign: 'right', marginTop: 1 }}>= NPR {lineTotal.toLocaleString('en-NP', { maximumFractionDigits: 0 })}</div>}
+                          </td>
+                          <td style={{ padding: '6px 8px', verticalAlign: 'top' }}>
+                            <input type="date" value={line.expiry_date}
+                              onChange={e => updateBillLine(line._key, 'expiry_date', e.target.value)}
+                              style={{ background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: '100%' }} />
+                          </td>
+                          <td style={{ padding: '6px 8px', verticalAlign: 'top' }}>
+                            <input type="number" min="0" value={line.shelf_life} placeholder="days"
+                              onChange={e => updateBillLine(line._key, 'shelf_life', e.target.value)}
+                              style={{ background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: '100%', textAlign: 'right' }} />
+                          </td>
+                          <td style={{ padding: '6px 8px', verticalAlign: 'top', textAlign: 'center' }}>
+                            <input type="checkbox" checked={line.vat_inclusive}
+                              onChange={e => updateBillLine(line._key, 'vat_inclusive', e.target.checked)}
+                              style={{ width: 16, height: 16, accentColor: '#c9a84c', cursor: 'pointer', marginTop: 10 }} />
+                          </td>
+                          <td style={{ padding: '6px 0', verticalAlign: 'top', textAlign: 'right' }}>
+                            <button onClick={() => removeBillLine(line._key)}
+                              style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: 18, padding: '4px', lineHeight: 1 }}>×</button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
+                <button className="btn btn-ghost" style={{ fontSize: 12, padding: '6px 14px' }} onClick={addBillLine}>+ Add Item</button>
+                {(() => {
+                  const billTotal = billLines.reduce((s, l) => s + (parseFloat(l.qty) || 0) * (parseFloat(l.rate) || 0), 0)
+                  const vatLines  = billLines.filter(l => l.vat_inclusive && parseFloat(l.qty) > 0 && parseFloat(l.rate) > 0)
+                  const vatTotal  = vatLines.reduce((s, l) => s + (parseFloat(l.qty) * parseFloat(l.rate)) - (parseFloat(l.qty) * parseFloat(l.rate)) / 1.13, 0)
+                  return billTotal > 0 ? (
+                    <div style={{ fontSize: 13, color: '#c9a84c', fontWeight: 700 }}>
+                      Bill Total: NPR {billTotal.toLocaleString('en-NP', { maximumFractionDigits: 0 })}
+                      {vatTotal > 0 && <span style={{ fontSize: 11, color: '#fbbf24', fontWeight: 400, marginLeft: 12 }}>incl. VAT: NPR {vatTotal.toLocaleString('en-NP', { maximumFractionDigits: 0 })}</span>}
+                    </div>
+                  ) : null
+                })()}
+              </div>
+
+              {error && <p style={{ color: '#f87171', fontSize: 13, margin: '12px 0 0' }}>{error}</p>}
+              <div className="form-actions">
+                <button className="btn btn-ghost" onClick={() => { setShowForm(false) }}>Cancel</button>
+                <button className="btn btn-primary" onClick={saveBill} disabled={saving}>
+                  {saving ? 'Saving…' : `Save ${billLines.filter(l => l.item_id && parseFloat(l.qty) > 0 && parseFloat(l.rate) > 0).length || ''} Entr${billLines.filter(l => l.item_id && parseFloat(l.qty) > 0 && parseFloat(l.rate) > 0).length === 1 ? 'y' : 'ies'}`}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── EDIT FORM (single row) ── */}
+          {showForm && editingId && (
+            <div className="card" style={{ marginBottom: 24 }}>
+              <h3 style={{ margin: '0 0 20px', fontSize: 15, color: '#e8e0d0' }}>Edit Purchase Entry</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr', gap: 14 }}>
                 <div className="form-field">
                   <label>Item *</label>
@@ -501,19 +720,19 @@ export default function Purchases() {
                   })()}
                 </div>
                 <div className="form-field">
-                  <label><Tip text="Optional reference to the vendor's bill or invoice number. Used in the FIFO report and for audit trail." width={240}>Invoice Ref</Tip></label>
+                  <label><Tip text="Optional reference to the vendor's bill or invoice number." width={240}>Invoice Ref</Tip></label>
                   <input value={form.invoice_ref} onChange={e => setForm(f => ({ ...f, invoice_ref: e.target.value }))} placeholder="Optional" />
                 </div>
                 <div className="form-field">
-                  <label><Tip text="Optional. Best-before or use-by date. Used in the FIFO / expiry tracking report." width={220}>Expiry Date</Tip></label>
+                  <label><Tip text="Optional. Best-before or use-by date." width={220}>Expiry Date</Tip></label>
                   <input type="date" value={form.expiry_date} onChange={e => setForm(f => ({ ...f, expiry_date: e.target.value }))} />
                 </div>
                 <div className="form-field">
-                  <label><Tip text="Enter how many days this item stays fresh — expiry date is auto-calculated from the purchase day." width={240}>Shelf Life (days)</Tip></label>
-                  <input type="number" min="0" value={shelfLifeDays} onChange={e => handleShelfLifeChange(e.target.value)} placeholder="Auto-fill" />
+                  <label><Tip text="Enter days fresh — expiry date is auto-calculated from the purchase day." width={240}>Shelf Life</Tip></label>
+                  <input type="number" min="0" value={shelfLifeDays} onChange={e => handleShelfLifeChange(e.target.value)} placeholder="days" />
                 </div>
                 <div className="form-field">
-                  <label><Tip text="Cash: paid on delivery. Credit: pay later (tracked in payables). FonePay: digital payment.">Payment</Tip></label>
+                  <label><Tip text="Cash: paid on delivery. Credit: pay later. FonePay: digital payment.">Payment</Tip></label>
                   <select value={form.payment_method} onChange={e => setForm(f => ({ ...f, payment_method: e.target.value }))}>
                     {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
@@ -523,7 +742,7 @@ export default function Purchases() {
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: form.vat_inclusive ? '#c9a84c' : '#9ca3af', userSelect: 'none' }}>
                     <input type="checkbox" checked={form.vat_inclusive} onChange={e => setForm(f => ({ ...f, vat_inclusive: e.target.checked }))}
                       style={{ width: 15, height: 15, accentColor: '#c9a84c', cursor: 'pointer' }} />
-                    <Tip text="Tick if the rate you entered includes 13% VAT. The system strips the VAT and stores the ex-VAT rate for accurate costing." width={240}>VAT Incl. (13%)</Tip>
+                    <Tip text="Tick if the rate includes 13% VAT. System stores ex-VAT rate." width={240}>VAT Incl. (13%)</Tip>
                   </label>
                 </div>
               </div>
@@ -541,36 +760,16 @@ export default function Purchases() {
                     const vatAmt  = form.vat_inclusive ? total - vatBase : null
                     return (
                       <>
-                        <span style={{ fontSize: 13, color: '#c9a84c' }}>
-                          Total: NPR {total.toLocaleString('en-NP', { maximumFractionDigits: 2 })}
-                        </span>
+                        <span style={{ fontSize: 13, color: '#c9a84c' }}>Total: NPR {total.toLocaleString('en-NP', { maximumFractionDigits: 2 })}</span>
                         {form.vat_inclusive && (
                           <>
-                            <span style={{ fontSize: 12, color: '#9ca3af' }}>
-                              Base (ex-VAT): NPR {vatBase.toLocaleString('en-NP', { maximumFractionDigits: 2 })}
-                            </span>
-                            <span style={{ fontSize: 12, color: '#fbbf24' }}>
-                              VAT (13%): NPR {vatAmt.toLocaleString('en-NP', { maximumFractionDigits: 2 })}
-                            </span>
+                            <span style={{ fontSize: 12, color: '#9ca3af' }}>Base (ex-VAT): NPR {vatBase.toLocaleString('en-NP', { maximumFractionDigits: 2 })}</span>
+                            <span style={{ fontSize: 12, color: '#fbbf24' }}>VAT (13%): NPR {vatAmt.toLocaleString('en-NP', { maximumFractionDigits: 2 })}</span>
                           </>
                         )}
-                        {cf > 1 && selItem && (
-                          <span style={{ fontSize: 13, color: '#6b7280' }}>
-                            {enteredQty} {selItem.purchase_unit} × NPR {enteredRate.toLocaleString()} = {(enteredQty * cf).toLocaleString()} {selItem.uom}
-                          </span>
-                        )}
-                        {perBase !== null && (
-                          <span style={{ fontSize: 12, color: '#9ca3af' }}>
-                            Per {selItem?.uom}: NPR {(form.vat_inclusive ? perBase / 1.13 : perBase).toFixed(4)}
-                            {form.vat_inclusive && <span style={{ color: '#6b7280' }}> (ex-VAT)</span>}
-                          </span>
-                        )}
-                        {cf === 1 && selItem?.purchase_qty && (
-                          <span style={{ fontSize: 12, color: '#9ca3af' }}>
-                            Per {selItem?.uom}: NPR {((form.vat_inclusive ? enteredRate / 1.13 : enteredRate) / parseFloat(selItem.purchase_qty)).toFixed(4)}
-                            {form.vat_inclusive && <span style={{ color: '#6b7280' }}> (ex-VAT)</span>}
-                          </span>
-                        )}
+                        {cf > 1 && selItem && <span style={{ fontSize: 13, color: '#6b7280' }}>{enteredQty} {selItem.purchase_unit} × NPR {enteredRate.toLocaleString()} = {(enteredQty * cf).toLocaleString()} {selItem.uom}</span>}
+                        {perBase !== null && <span style={{ fontSize: 12, color: '#9ca3af' }}>Per {selItem?.uom}: NPR {(form.vat_inclusive ? perBase / 1.13 : perBase).toFixed(4)}{form.vat_inclusive && <span style={{ color: '#6b7280' }}> (ex-VAT)</span>}</span>}
+                        {cf === 1 && selItem?.purchase_qty && <span style={{ fontSize: 12, color: '#9ca3af' }}>Per {selItem?.uom}: NPR {((form.vat_inclusive ? enteredRate / 1.13 : enteredRate) / parseFloat(selItem.purchase_qty)).toFixed(4)}{form.vat_inclusive && <span style={{ color: '#6b7280' }}> (ex-VAT)</span>}</span>}
                       </>
                     )
                   })()}
@@ -580,7 +779,7 @@ export default function Purchases() {
               {error && <p style={{ color: '#f87171', fontSize: 13, margin: '10px 0 0' }}>{error}</p>}
               <div className="form-actions">
                 <button className="btn btn-ghost" onClick={() => { setShowForm(false); setEditingId(null) }}>Cancel</button>
-                <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? 'Saving…' : editingId ? 'Update' : 'Add Entry'}</button>
+                <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Update'}</button>
               </div>
             </div>
           )}
