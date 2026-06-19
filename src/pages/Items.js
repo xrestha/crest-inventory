@@ -25,7 +25,7 @@ const EMPTY_FORM = {
 }
 
 export default function Items() {
-  const { clientId } = useAuth()
+  const { clientId, isAdmin } = useAuth()
   const { settings } = useSettings()
   const [items, setItems] = useState([])
   const [categories, setCategories] = useState([])
@@ -84,6 +84,19 @@ export default function Items() {
     if (error) { setError(error.message); return }
     loadItems()
     checkAllUsage()
+  }
+
+  async function clearAllConversions() {
+    const withConversion = items.filter(i => i.purchase_unit)
+    if (withConversion.length === 0) { alert('No items have a conversion set.'); return }
+    if (!window.confirm(`Clear conversions on ${withConversion.length} item${withConversion.length !== 1 ? 's' : ''}?\n\nThis resets Purchase Unit, Base Unit, Conversion Factor and Purchase Qty to 1 for each affected item. This cannot be undone.`)) return
+    const { error } = await supabase
+      .from('items')
+      .update({ purchase_unit: null, base_unit: null, conversion_factor: 1, purchase_qty: 1 })
+      .eq('client_id', effectiveClientId)
+      .not('purchase_unit', 'is', null)
+    if (error) { alert('Error: ' + error.message); return }
+    await loadItems()
   }
 
   async function loadCategories() {
@@ -244,10 +257,19 @@ export default function Items() {
           <h1 className="page-title">Item Master</h1>
           <p className="page-subtitle">{items.length} ingredients across {categories.length} categories</p>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           {categories.length === 0 && (
             <button className="btn btn-ghost" onClick={initDefaultCategories} disabled={initingCats}>
               {initingCats ? 'Setting up…' : '⚡ Load Default Categories'}
+            </button>
+          )}
+          {isAdmin && items.some(i => i.purchase_unit) && (
+            <button
+              className="btn btn-ghost"
+              style={{ fontSize: 12, color: '#f87171', borderColor: 'rgba(248,113,113,0.3)' }}
+              onClick={clearAllConversions}
+            >
+              ✕ Clear All Conversions
             </button>
           )}
           <button className="btn btn-primary" onClick={openNew}>+ Add Item</button>

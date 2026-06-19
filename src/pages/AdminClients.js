@@ -320,6 +320,26 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
   }
 
   // ── Danger Zone ──
+  async function handleClearConversions() {
+    const { data: withConv } = await supabase
+      .from('items').select('id').eq('client_id', client.id).not('purchase_unit', 'is', null)
+    const count = withConv?.length || 0
+    if (count === 0) { setDeleteMsg('ok:No items have a conversion set.'); return }
+    if (!window.confirm(
+      `Clear unit conversions on ${count} item${count !== 1 ? 's' : ''} for "${client.name}"?\n\n` +
+      `Purchase Unit, Base Unit, Conversion Factor and Purchase Qty will be reset to 1 for each affected item.\n\n` +
+      `This cannot be undone.`
+    )) return
+    setDeleting(true); setDeleteMsg('')
+    const { error } = await supabase
+      .from('items')
+      .update({ purchase_unit: null, base_unit: null, conversion_factor: 1, purchase_qty: 1 })
+      .eq('client_id', client.id)
+      .not('purchase_unit', 'is', null)
+    setDeleting(false)
+    setDeleteMsg(error ? 'error:' + error.message : `ok:Conversions cleared on ${count} item${count !== 1 ? 's' : ''}.`)
+  }
+
   async function handleDeleteClientData() {
     if (!window.confirm(
       `Clear ALL operational data for "${client.name}"?\n\n` +
@@ -887,6 +907,18 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
               )}
 
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <button
+                  onClick={handleClearConversions}
+                  disabled={deleting}
+                  style={{
+                    background: 'rgba(248,113,113,0.05)', border: '1px solid rgba(248,113,113,0.15)',
+                    color: '#f87171', borderRadius: 6, padding: '9px 18px',
+                    cursor: deleting ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600,
+                    opacity: deleting ? 0.6 : 1
+                  }}
+                >
+                  {deleting ? 'Working…' : 'Clear All Conversions'}
+                </button>
                 <button
                   onClick={handleDeleteClientData}
                   disabled={deleting}
