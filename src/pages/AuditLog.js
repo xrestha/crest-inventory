@@ -115,6 +115,30 @@ export default function AuditLog() {
     fetchLogs(client, area, time)
   }
 
+  async function clearLogs() {
+    const timeLabel = { today: 'today', '7d': 'the last 7 days', '30d': 'the last 30 days', all: 'all time' }[filterTime]
+    const clientLabel = filterClient !== 'all'
+      ? `for "${clients.find(c => c.id === filterClient)?.name}"`
+      : 'for all clients'
+    if (!window.confirm(
+      `Delete ${logs.length} audit log entries (${timeLabel}, ${clientLabel})?\n\nThis cannot be undone.`
+    )) return
+
+    let q = supabase.from('audit_logs').delete().not('id', 'is', null)
+    if (filterClient !== 'all') q = q.eq('client_id', filterClient)
+    if (filterArea   !== 'all') q = q.eq('table_name', filterArea)
+    if (filterTime   !== 'all') {
+      const start = new Date()
+      if (filterTime === 'today') start.setHours(0, 0, 0, 0)
+      else if (filterTime === '7d')  start.setDate(start.getDate() - 7)
+      else if (filterTime === '30d') start.setDate(start.getDate() - 30)
+      q = q.gte('created_at', start.toISOString())
+    }
+    const { error } = await q
+    if (error) { alert('Error: ' + error.message); return }
+    await fetchLogs(filterClient, filterArea, filterTime)
+  }
+
   return (
     <div>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -122,7 +146,18 @@ export default function AuditLog() {
           <h1 className="page-title">Audit Log</h1>
           <p className="page-subtitle">Track all data changes across clients</p>
         </div>
-        <button className="btn btn-ghost" onClick={() => fetchLogs(filterClient, filterArea, filterTime)}>↻ Refresh</button>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          {logs.length > 0 && (
+            <button
+              className="btn btn-ghost"
+              style={{ fontSize: 12, color: '#f87171', borderColor: 'rgba(248,113,113,0.3)' }}
+              onClick={clearLogs}
+            >
+              ✕ Clear Logs
+            </button>
+          )}
+          <button className="btn btn-ghost" onClick={() => fetchLogs(filterClient, filterArea, filterTime)}>↻ Refresh</button>
+        </div>
       </div>
 
       {/* Help panel */}
