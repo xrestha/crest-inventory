@@ -45,7 +45,7 @@ const PLANS = [
     name: 'Starter', icon: '◎', color: GOLD,
     tagline: 'Get your inventory under control',
     badge: '1 Month Free', badgeBg: GOLD,
-    monthly: 8000, annual: 5000,
+    monthly: 5000, annual: 3750,
     features: STARTER_FEATURES, highlight: false,
     cta: 'Start Free Trial',
   },
@@ -53,7 +53,7 @@ const PLANS = [
     name: 'Growth', icon: '◈', color: GREEN,
     tagline: 'Understand your food cost',
     badge: 'Most Popular', badgeBg: 'rgba(52,211,153,0.9)',
-    monthly: 18000, annual: 10000,
+    monthly: 8000, annual: 6000,
     features: GROWTH_EXTRAS, highlight: true,
     cta: 'Get Growth',
   },
@@ -61,7 +61,7 @@ const PLANS = [
     name: 'Pro', icon: '⬡', color: INDIGO,
     tagline: 'Run your kitchen like a business',
     badge: 'Full Suite', badgeBg: INDIGO,
-    monthly: 25000, annual: 15000,
+    monthly: 12000, annual: 9000,
     features: PRO_EXTRAS, highlight: false,
     cta: 'Get Pro',
   },
@@ -70,7 +70,7 @@ const PLANS = [
 const FAQS = [
   {
     q: 'Is the 1-month trial really free?',
-    a: 'Yes — the Starter plan is completely free for the first month with no credit card and no hidden fees. After 1 month it continues at NPR 8,000/mo, or you can upgrade to Growth or Pro at any time.',
+    a: 'Yes — the Starter plan is completely free for the first month with no credit card and no hidden fees. After 1 month it continues at NPR 5,000/mo, or you can upgrade to Growth or Pro at any time.',
   },
   {
     q: 'Can I negotiate the price?',
@@ -138,7 +138,7 @@ export default function Pricing() {
             style={{ background: annual ? 'rgba(201,168,76,0.15)' : 'none', border: annual ? `1px solid rgba(201,168,76,0.3)` : '1px solid transparent', color: annual ? GOLD : '#6b7280', padding: '8px 22px', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
             Annual
             <span style={{ background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.25)', color: GREEN, fontSize: 10, padding: '2px 8px', borderRadius: 10, fontWeight: 700, letterSpacing: '0.04em' }}>
-              Save up to 40%
+              Save 25%
             </span>
           </button>
         </div>
