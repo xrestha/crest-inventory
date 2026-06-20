@@ -3,50 +3,159 @@ import { useNavigate } from 'react-router-dom'
 import { useSettings } from '../context/SettingsContext'
 
 const MODULES = [
+  // === All Plans ===
   {
-    icon: '◷', name: 'Periods', color: '#c9a84c',
-    guide: 'Create one period per BS month. A period must be open before you can enter purchases, stock, or sales. Close a period at month end to lock the data. Archive old periods to keep dropdowns clean.',
-    tips: ['Always create a new period before the month starts', 'Close the period only after entering closing stock', 'You can reopen a closed period if you missed an entry']
+    icon: '◷', name: 'Periods', plan: null, color: '#c9a84c',
+    guide: 'Create one period per BS month. A period must be open before you can enter purchases, stock, or sales. Close a period at month end to lock the data. Closing stock auto-carries to next month opening. Periods older than 12 months are archived by default.',
+    tips: ['Always create a new period before the month starts', 'Close the period only after entering closing stock', 'Use "Show Archived" in Periods to access old months']
   },
   {
-    icon: '≡', name: 'Item Master', color: '#c9a84c',
-    guide: 'Your ingredient database. Every item needs a name, category, UOM (unit of measure), purchase quantity per pack, and rate per pack. The system calculates Per UOM Rate automatically. Set conversion factors if you buy in bulk packs but use in smaller units.',
-    tips: ['Use consistent UOMs — GM for solids, ML for liquids', 'Set conversion factor if 1 case = 24 bottles etc.', 'Hide items you no longer use instead of deleting them']
+    icon: '≡', name: 'Item Master', plan: null, color: '#c9a84c',
+    guide: 'Your ingredient database. Every item needs a name, category, UOM (unit of measure), and rate. The system calculates Per UOM Rate automatically. Set conversion factors if you buy in bulk packs but consume in smaller units (e.g. 1 CTN = 24 BTL).',
+    tips: ['Use consistent UOMs — GM for solids, ML for liquids', 'Set conversion factor if 1 case = 24 bottles etc.', 'Deactivate items you no longer use — do not delete them']
   },
   {
-    icon: '⊙', name: 'Vendors', color: '#c9a84c',
-    guide: 'Add all your suppliers here. Linking purchases to vendors lets you track spend per supplier and identify price trends over time.',
-    tips: ['Add all vendors before starting purchase entries', 'You can add a vendor mid-month without affecting past entries']
+    icon: '⊙', name: 'Vendors', plan: null, color: '#c9a84c',
+    guide: 'Add all your suppliers here. Linking purchases to vendors lets you track spend per supplier and identify price trends over time. Vendors can be set Active or Inactive.',
+    tips: ['Add all vendors before starting purchase entries', 'Inactive vendors are hidden from purchase dropdowns but their data is preserved']
   },
   {
-    icon: '↓', name: 'Purchases', color: '#c9a84c',
-    guide: 'Record every ingredient purchase here. Select the item, vendor, day of month, quantity, and rate. The rate auto-fills from the item master but can be overridden if the supplier charged a different price. Add expiry date for perishables and select payment method (Cash/Credit/FonePay).',
-    tips: ['Enter purchases daily or in batches — both work', 'Always enter the actual invoice rate, not the master rate, if they differ', 'Add invoice reference number for audit trail']
+    icon: '↓', name: 'Purchases', plan: null, color: '#c9a84c',
+    guide: 'Record every ingredient purchase here. Select the item, vendor, day of month, quantity, rate, and payment method (Cash/Credit/FonePay). The rate auto-fills from the item master but can be overridden. Use the Returns tab to log items sent back to suppliers. You can also apply a bill-level discount.',
+    tips: ['Enter purchases daily from the actual invoice — not from memory at month end', 'Always enter the actual invoice rate if it differs from the master rate', 'Add invoice reference number for audit trail', 'Returns auto-inherit rate and vendor from the original purchase']
   },
   {
-    icon: '⊞', name: 'Stock Count', color: '#c9a84c',
-    guide: 'Three tabs: Opening Stock (enter at start of month), Closing Stock (physical count at month end), Wastage (spoilage recorded during the month). The Summary tab shows actual used qty per item automatically.',
-    tips: ['Print the Stock Count Sheet and do a physical walk before entering closing stock', 'Enter opening stock before any purchases for accurate COGS', 'Wastage should be recorded as it happens, not estimated at month end']
+    icon: '⊞', name: 'Stock Count', plan: null, color: '#c9a84c',
+    guide: 'Four tabs: Opening Stock (start of month), Closing Stock (physical count at month end), Wastage (spoilage during the month), and Staff Meals (internal consumption by staff). The Summary tab computes Used = Opening + Net Purchases − Wastage − Staff Meals − Closing. Export the Summary to Excel.',
+    tips: ['Print the Stock Count Sheet and do a physical walk before entering closing stock', 'Enter opening stock before any purchases for accurate COGS', 'Wastage should be recorded as it happens, not estimated at month end', 'Use Staff Meals tab to track food consumed by staff — keeps it separate from wastage']
+  },
+  // === Starter+ ===
+  {
+    icon: '↑', name: 'Sales Entry', plan: 'Starter+', color: '#9ca3af',
+    guide: 'Record total qty sold per menu item for the period. Only items with a recipe appear here. Revenue is calculated automatically from selling price × qty sold. Use Bulk Entry for monthly POS totals.',
+    tips: ['Sales data is required for the Variance Report to calculate theoretical usage', 'Sub-recipes are excluded — only top-level recipes appear here', 'You can update sales entries any time while the period is open']
   },
   {
-    icon: '◈', name: 'Recipe Costing', color: '#c9a84c',
-    guide: 'Build your menu items here. Add ingredients with qty per portion — the system calculates food cost automatically using latest purchase rates. Enter your selling price to see food cost % and get a suggested price at 30% FC target.',
-    tips: ['Food cost % below 30% is excellent, 30-38% is acceptable, above 38% needs review', 'Update recipes when ingredient prices change significantly', 'Use the suggested price as a starting point for menu pricing decisions']
+    icon: '◎', name: 'Payment Summary', plan: 'Starter+', color: '#9ca3af',
+    guide: 'Breaks down total revenue by payment method — Cash, Credit, and FonePay. Shows gross sales, returns, and net per method with a daily breakdown for the selected period.',
+    tips: ['Match this against your POS or daily cash counts for reconciliation', 'Revenue here comes from Sales Entry — make sure sales are entered first']
   },
   {
-    icon: '↑', name: 'Sales Entry', color: '#c9a84c',
-    guide: 'Two modes: Daily Entry (enter qty sold per day) or Bulk Entry (enter total sold for the whole period). Only items with a recipe built appear here. Revenue is calculated automatically from selling price × qty sold.',
-    tips: ['Use Bulk Entry if you have a POS report with monthly totals', 'Use Daily Entry for manual tracking or granular reporting', 'Accurate sales data is critical for the Variance Report to work correctly']
-  },
-  {
-    icon: '△', name: 'Variance Report', color: '#c9a84c',
-    guide: 'The most important report. Compares theoretical usage (what should have been used based on sales × recipe) against actual usage (opening + purchases − closing − wastage). Positive variance means more was used than sold — pointing to waste, theft, or over-portioning.',
-    tips: ['Sort by NPR value to see biggest leaks first', 'Items with no recipe show no theoretical usage — variance equals actual used', 'A variance above 10% on a high-value item needs immediate investigation']
-  },
-  {
-    icon: '◻', name: 'Monthly Summary', color: '#c9a84c',
+    icon: '◻', name: 'Monthly Summary', plan: 'Starter+', color: '#9ca3af',
     guide: 'The month-end financial report. Shows opening stock, purchases, wastage, closing stock, and COGS by category. Food cost % is calculated against sales revenue. Export to Excel for your accountant or management review.',
-    tips: ['Food cost % benchmark for cafes is 28-35%', 'High purchase-based FC% vs actual FC% gap suggests closing stock errors', 'Share this report with ownership monthly']
+    tips: ['FC% benchmark for cafes: 28–35%', 'A high purchase-based FC% vs actual FC% gap often indicates closing stock errors', 'Share this report with ownership every month end']
+  },
+  {
+    icon: '⟳', name: 'Annual Summary', plan: 'Starter+', color: '#9ca3af',
+    guide: 'Rollup of all monthly periods in a BS fiscal year. See full-year COGS, purchases, wastage, and food cost % at a glance. Select any BS year from the dropdown.',
+    tips: ['Use this to identify which months consistently run high food cost', 'Compare annual FC% year-over-year to spot long-term trends']
+  },
+  {
+    icon: '⚑', name: 'Reorder Report', plan: 'Starter+', color: '#9ca3af',
+    guide: 'Flags items running below their par level. Theoretical stock = Opening + Net Purchases − Wastage − Usage. Set par levels inline on the report. "✕ Clear All Par" resets all par levels at once.',
+    tips: ['Set par levels based on supplier lead time × daily usage rate', 'Review the reorder report weekly, not just at month end']
+  },
+  {
+    icon: '⊛', name: 'VAT Report', plan: 'Starter+', color: '#9ca3af',
+    guide: 'Summarises input VAT on purchases. Toggle the VAT-inclusive flag per purchase entry in the Purchases page. Shows total VAT paid per period for use in your IRD VAT return.',
+    tips: ['Only purchases marked as VAT-inclusive are counted in the VAT total', 'Match this against your supplier VAT invoices before filing']
+  },
+  {
+    icon: '⊘', name: 'Non-VAT Report', plan: 'Starter+', color: '#9ca3af',
+    guide: 'Lists all purchases from non-VAT registered vendors. Useful for accounting and for separating VAT vs non-VAT purchase records.',
+    tips: ['Non-VAT purchases are those not marked as VAT-inclusive in the Purchases entry']
+  },
+  {
+    icon: '⚠', name: 'Wastage Report', plan: 'Starter+', color: '#9ca3af',
+    guide: 'Detailed breakdown of all wastage entered during the period. Shows total value, item count, and top category. Filter by category. Export to Excel or print for management review.',
+    tips: ['Sort by value to identify highest-cost wastage items', 'High wastage on the same item repeatedly signals a process or portioning problem']
+  },
+  // === Growth+ ===
+  {
+    icon: '◈', name: 'Recipe Costing', plan: 'Growth+', color: '#34d399',
+    guide: 'Build your menu items with ingredients and qty per portion. Food cost % is calculated live from latest purchase rates. Enter selling price (incl. VAT) to see margin and get a suggested price at your target FC%. Sub-recipes can be nested inside parent recipes.',
+    tips: ['FC% below 30% = excellent, 30–38% = acceptable, above 38% = needs review', 'Update recipes when ingredient prices change significantly', 'Use the overhead panel in each recipe\'s detail view to see true cost after fixed cost allocation']
+  },
+  {
+    icon: '△', name: 'Variance Report', plan: 'Growth+', color: '#34d399',
+    guide: 'Compares theoretical usage (sales × recipe qty) against actual usage (opening + purchases − closing − wastage). Positive variance means more was used than sold — indicating waste, theft, or over-portioning. Items with >10% variance are flagged.',
+    tips: ['Sort by NPR value to prioritise the biggest leaks', 'Items with no recipe show actual usage only — no theoretical comparison', 'Review this every month before closing the period']
+  },
+  {
+    icon: '₿', name: 'Outstanding Payables', plan: 'Growth+', color: '#34d399',
+    guide: 'Tracks all credit purchases that have not been paid. Groups payables by vendor with aging buckets: Current / 31–60 / 61–90 / 90+ days. Mark individual entries as paid directly from this report.',
+    tips: ['Anything in the 61–90 day bucket needs immediate follow-up with finance', 'Mark Paid once the vendor is settled — it removes the entry from the outstanding list']
+  },
+  {
+    icon: '◑', name: 'Budget vs Actual', plan: 'Growth+', color: '#34d399',
+    guide: 'Set monthly purchase budgets per category and compare against actual spend. Shows variance in NPR and % with status badges (On Track / Over / Under). Budgets are editable inline directly on the report.',
+    tips: ['Set budgets at the start of each month before purchases begin', 'Use last month\'s actuals as a baseline when setting new budgets']
+  },
+  {
+    icon: '⇄', name: 'Requisitions', plan: 'Growth+', color: '#34d399',
+    guide: 'Internal stock transfer from store to departments. Create a requisition with items and requested qty. Issue mode lets the store manager confirm actual qty issued. Issued requisitions appear as a "Requisitioned" column in the Stock Summary.',
+    tips: ['Save as Draft first, then Issue when stock is physically transferred', 'Requisitioned qty is tracked separately in the Stock Summary — keep it up to date']
+  },
+  {
+    icon: '◌', name: 'Dead Stock', plan: 'Growth+', color: '#34d399',
+    guide: 'Identifies items with zero usage (Dead) or usage below 20% of available stock (Slow Movers). Shows value at risk per item. Filter by status or category. Helps reduce over-purchasing and expiry losses.',
+    tips: ['Review dead stock monthly — items here repeatedly are candidates for removal', 'Value at Risk = closing stock qty × per UOM rate']
+  },
+  {
+    icon: '◇', name: 'Recipe Margin', plan: 'Growth+', color: '#34d399',
+    guide: 'Contribution margin report per menu item. Shows (Selling Price − Food Cost) × Qty Sold. Sort by Total Contribution, Margin per Portion, or FC%. Filter by category. "Only recipes with sales" toggle hides unordered items. Footer shows weighted average FC% across all sold items.',
+    tips: ['Focus on high-volume items with low contribution — they hurt profitability most', 'Weighted avg FC% at the bottom reflects your true blended food cost']
+  },
+  {
+    icon: '★', name: 'Best Sellers', plan: 'Growth+', color: '#34d399',
+    guide: 'Ranks menu items by revenue, volume, or margin. Shows Top 10 and Bottom 10 tables plus a bar chart. Filter by category. Helps identify what to promote and what to reconsider.',
+    tips: ['Use "By Margin" view to find items that sell well but contribute less profit', 'Bottom 10 by volume with high FC% = candidates for menu removal']
+  },
+  {
+    icon: '☑', name: 'Purchase Orders', plan: 'Growth+', color: '#34d399',
+    guide: 'Create and manage purchase orders to send to vendors before stock arrives. POs can be drafted, approved, and marked as received. Maintains a proper procurement trail ahead of Purchases entries.',
+    tips: ['Raise a PO before the vendor delivers to keep procurement organised', 'Match the received PO against the actual invoice when entering Purchases']
+  },
+  // === Pro ===
+  {
+    icon: '≋', name: 'Period Comparison', plan: 'Pro', color: '#818cf8',
+    guide: 'Compare key metrics across multiple periods. Shows Net Purchases, Wastage, COGS, Revenue, and FC% per period with vs-previous trend arrows (↑↓). Select last 6, 12, 24, or all periods.',
+    tips: ['Look for seasonal FC% spikes — often signals menu pricing hasn\'t kept up with ingredient costs', 'Use the 12-period view for annual budget planning']
+  },
+  {
+    icon: '⊕', name: 'Shrinkage Report', plan: 'Pro', color: '#818cf8',
+    guide: 'Multi-period analysis of actual vs theoretical usage per item. Flags items with consistent over-use across periods. Status: Consistent / Occasional / Once / Clear. Helps identify systematic waste or theft.',
+    tips: ['Consistent shrinkage on a high-value item over 3+ periods is a serious red flag', 'Use alongside the Variance Report for a complete picture of stock losses']
+  },
+  {
+    icon: '⬡', name: 'Menu Engineering', plan: 'Pro', color: '#818cf8',
+    guide: 'Classifies menu items into Star / Puzzle / Plowhouse / Dog based on profitability and popularity. FC% cutoff is 35%; volume cutoff is median qty sold. Sub-recipes are excluded from this analysis.',
+    tips: ['Stars = high margin + high volume → protect and promote', 'Dogs = low margin + low volume → consider removing from the menu']
+  },
+  {
+    icon: '⊗', name: 'FIFO / Expiry', plan: 'Pro', color: '#818cf8',
+    guide: 'Tracks stock on a first-in, first-out basis. Shows remaining qty per purchase batch, net of returns, with purchase date and expiry. Fully returned batches are hidden. Helps prioritise use of oldest stock to minimise expiry losses.',
+    tips: ['Check FIFO weekly for perishables — don\'t wait until month end', 'Set expiry dates in the Purchases entry for accurate FIFO tracking']
+  },
+  {
+    icon: '⊙', name: 'Vendor Report', plan: 'Pro', color: '#818cf8',
+    guide: 'Net spend per vendor with columns for Gross, Returns, Net, % of total, average per day, and payment method breakdown (Cash / Credit / FonePay). Search by vendor name or code.',
+    tips: ['Sort by Net to find your top suppliers — good candidates for negotiating credit terms', '% of Net shows vendor concentration risk']
+  },
+  {
+    icon: '◫', name: 'Supplier Price Tracker', plan: 'Pro', color: '#818cf8',
+    guide: 'Shows rate history per item per vendor with trend arrows (↑↓→). "Update Rate" syncs the item master to the latest purchase rate. Warns (⚠) if the master rate differs >5% from the last purchase.',
+    tips: ['Run this monthly after entering purchases — catch price creep early', '"Update Rate" overwrites the item master rate, which affects all future recipe costs']
+  },
+  {
+    icon: '⊞', name: 'Overheads', plan: 'Pro', color: '#818cf8',
+    guide: 'Three-tab entry: Fixed Overheads, Labor Costs, and Tax & Fees. Generates a P&L Summary, Break-Even analysis, and Cost per Cover. Overhead allocation appears in each recipe\'s detail view as True Cost and True Net Margin.',
+    tips: ['Update overheads monthly — fixed costs rarely change but labour does', 'Cost per Cover requires accurate cover count — enter it in the overhead form']
+  },
+  {
+    icon: '△', name: 'Theoretical Variance', plan: 'Pro', color: '#818cf8',
+    guide: 'Advanced variance analysis that isolates theoretical food cost vs actual, broken down by category. Deeper drill-down than the standard Variance Report. Compare against budget for a complete financial picture.',
+    tips: ['Items with both high theoretical and high actual usage → recipe portion sizes may need revision', 'Use alongside Budget vs Actual for the most complete picture']
   },
 ]
 
@@ -67,32 +176,46 @@ const GLOSSARY = [
 
 const STARTER_FEATURES = [
   'Dashboard & KPI overview',
+  'Periods (BS calendar)',
   'Item Master with unit conversion',
   'Vendor management',
-  'BS calendar periods',
-  'Purchases + vendor returns',
-  'Stock count (opening / closing / wastage)',
+  'Purchases & vendor returns',
+  'Stock count (opening / closing / wastage / staff meals)',
+  'Sales entry (bulk or daily)',
+  'Payment summary (Cash / Credit / FonePay)',
+  'Monthly summary & COGS by category',
+  'Annual summary (BS fiscal year rollup)',
+  'Reorder report & par levels',
+  'VAT & Non-VAT reports',
+  'Wastage report with Excel export',
+  'Settings & customisation',
 ]
 const GROWTH_EXTRAS = [
-  'Sales entry',
   'Recipe costing & live FC%',
-  'Variance report',
-  'Monthly summary (COGS)',
-  'Payment summary (Cash / Credit / FonePay)',
-  'Reorder report & par levels',
+  'Variance report (theoretical vs actual)',
+  'Outstanding payables with aging buckets',
+  'Budget vs Actual per category',
+  'Internal requisitions (store to department)',
+  'Dead stock & slow mover detection',
+  'Recipe contribution margin report',
+  'Best & worst sellers analysis',
+  'Purchase orders',
+  'Staff meals tracking',
 ]
 const PRO_EXTRAS = [
+  'Period comparison (6 / 12 / 24 / All periods)',
+  'Shrinkage report (multi-period consistency)',
   'Menu engineering (Star / Puzzle / Dog)',
-  'FIFO / expiry tracking',
+  'FIFO / expiry batch tracking',
   'Vendor spend report',
-  'Supplier price tracker',
-  'Overheads & true margin analysis',
-  'Custom branding & settings',
+  'Supplier price tracker & rate alerts',
+  'Overheads, P&L, and break-even analysis',
+  'Theoretical variance (advanced drill-down)',
 ]
 const PRICE_PLANS = [
-  { name: 'Starter', icon: '◎', color: '#c9a84c', badge: '1 Month Free', badgeBg: '#c9a84c',              monthly: 8000, annual: 5000, features: STARTER_FEATURES, highlight: false, cta: 'Start Free Trial' },
-  { name: 'Growth',  icon: '◈', color: '#34d399', badge: 'Most Popular',   badgeBg: 'rgba(52,211,153,0.9)', monthly: 18000, annual: 10000, features: GROWTH_EXTRAS,    highlight: true,  cta: 'Get Growth' },
-  { name: 'Pro',     icon: '⬡', color: '#818cf8', badge: 'Full Suite',     badgeBg: '#818cf8',              monthly: 25000, annual: 15000, features: PRO_EXTRAS,       highlight: false, cta: 'Get Pro' },
+  { name: 'Starter', icon: '◎', color: '#c9a84c', badge: '1 Month Free', badgeBg: '#c9a84c',               monthly: 5000,  annual: 3750, features: STARTER_FEATURES, highlight: false, cta: 'Start Free Trial' },
+  { name: 'Growth',  icon: '◈', color: '#34d399', badge: 'Most Popular',   badgeBg: 'rgba(52,211,153,0.9)', monthly: 8000,  annual: 6000, features: GROWTH_EXTRAS,   highlight: true,  cta: 'Get Growth' },
+  { name: 'Pro',     icon: '⬡', color: '#818cf8', badge: 'Full Suite',     badgeBg: '#818cf8',               monthly: 12000, annual: 9000, features: PRO_EXTRAS,      highlight: false, cta: 'Get Pro' },
 ]
 
 const FAQ = [
@@ -222,7 +345,7 @@ export default function Help() {
               { step: 2, title: 'Enter Opening Stock',           desc: 'Stock Count → Opening Stock tab → enter qty for each item. For month 2 onward, this auto-carries from last month\'s closing.' },
               { step: 3, title: 'Record Purchases as they arrive', desc: 'Purchases → Add Purchase → enter vendor, item, qty, rate, payment method. Enter each bill on the day it arrives.' },
               { step: 4, title: 'Record Wastage as it happens',  desc: 'Stock Count → Wastage tab → log any spoilage or discards on the day.' },
-              { step: 5, title: 'Enter Sales', plan: 'Growth+',  desc: 'Sales Entry → enter qty sold per menu item. Use Bulk Entry if you have a POS or month-end tally.' },
+              { step: 5, title: 'Enter Sales', plan: 'Starter+',  desc: 'Sales Entry → enter qty sold per menu item. Use Bulk Entry if you have a POS or month-end tally.' },
               { step: 6, title: 'Physical Stock Count',           desc: 'On the last day: print the Stock Count Sheet (Stock → Print Sheet), do a physical walk of your storeroom, enter counts in Stock Count → Closing Stock.' },
               { step: 7, title: 'Review Monthly Summary',        desc: 'Monthly Summary → check food cost %, COGS per category, and revenue. Export to Excel for management.' },
               { step: 8, title: 'Review Variance Report', plan: 'Growth+', desc: 'Variance → sort by NPR value → investigate any item with >10% variance. High variance = waste, theft, or over-portioning.' },
@@ -270,9 +393,17 @@ export default function Help() {
                 onClick={() => setExpandedModule(expandedModule === mod.name ? null : mod.name)}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px' }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontSize: 16, color: mod.color }}>{mod.icon}</span>
                   <span style={{ fontSize: 14, fontWeight: 600, color: '#e8e0d0' }}>{mod.name}</span>
+                  {mod.plan && (
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 8,
+                      color: mod.plan === 'Pro' ? '#818cf8' : mod.plan === 'Growth+' ? '#34d399' : '#9ca3af',
+                      background: mod.plan === 'Pro' ? 'rgba(129,140,248,0.1)' : mod.plan === 'Growth+' ? 'rgba(52,211,153,0.1)' : 'rgba(156,163,175,0.1)',
+                      border: `1px solid ${mod.plan === 'Pro' ? 'rgba(129,140,248,0.25)' : mod.plan === 'Growth+' ? 'rgba(52,211,153,0.25)' : 'rgba(156,163,175,0.25)'}`,
+                    }}>{mod.plan}</span>
+                  )}
                 </div>
                 <span style={{ color: '#9ca3af', fontSize: 16 }}>{expandedModule === mod.name ? '▲' : '▼'}</span>
               </div>
@@ -328,7 +459,7 @@ export default function Help() {
             <div style={{ display: 'inline-flex', background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 8, padding: 3, gap: 2 }}>
               <button onClick={() => setPricingAnnual(false)} style={{ background: !pricingAnnual ? 'rgba(201,168,76,0.15)' : 'none', border: !pricingAnnual ? '1px solid rgba(201,168,76,0.3)' : '1px solid transparent', color: !pricingAnnual ? '#c9a84c' : '#6b7280', padding: '6px 18px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>Monthly</button>
               <button onClick={() => setPricingAnnual(true)}  style={{ background:  pricingAnnual ? 'rgba(201,168,76,0.15)' : 'none', border:  pricingAnnual ? '1px solid rgba(201,168,76,0.3)' : '1px solid transparent', color:  pricingAnnual ? '#c9a84c' : '#6b7280', padding: '6px 18px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                Annual <span style={{ background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.25)', color: '#34d399', fontSize: 9, padding: '2px 7px', borderRadius: 8, fontWeight: 700 }}>Save 40%</span>
+                Annual <span style={{ background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.25)', color: '#34d399', fontSize: 9, padding: '2px 7px', borderRadius: 8, fontWeight: 700 }}>Save 25%</span>
               </button>
             </div>
           </div>
