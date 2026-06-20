@@ -432,10 +432,6 @@ export default function Purchases() {
               <option key={p.id} value={p.id}>{BS_MONTHS[p.bs_month - 1]} {p.bs_year} {p.status === 'open' ? '(open)' : '(closed)'}</option>
             ))}
           </select>
-          {activeTab === 'purchases'
-            ? <button className="btn btn-primary" onClick={openNew} disabled={!selectedPeriod || isLocked}>+ Add Purchase</button>
-            : <button className="btn btn-primary" onClick={openNewReturn} disabled={!selectedPeriod || isLocked || purchases.length === 0}>+ Add Return</button>
-          }
         </div>
       </div>
 
@@ -690,6 +686,9 @@ export default function Purchases() {
               <button className="btn btn-ghost" style={{ fontSize: 12, padding: '6px 12px' }} onClick={() => { setFilterDay('all'); setFilterItem('all') }}>Clear Filters</button>
             )}
             <span style={{ fontSize: 13, color: '#6b7280' }}>{filtered.length} entr{filtered.length !== 1 ? 'ies' : 'y'}</span>
+            {!isLocked && (
+              <button className="btn btn-primary" style={{ marginLeft: 'auto', fontSize: 12, padding: '5px 14px' }} onClick={openNew} disabled={!selectedPeriod}>+ Add Purchase</button>
+            )}
           </div>
 
           {/* Purchases table */}
