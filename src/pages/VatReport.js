@@ -59,7 +59,8 @@ export default function VatReport() {
     setLoading(false)
   }
 
-  const vatEntries   = entries.filter(e => e.vat_inclusive)
+  const allEntries    = entries
+  const vatEntries    = entries.filter(e => e.vat_inclusive)
   const nonVatEntries = entries.filter(e => !e.vat_inclusive)
 
   // Stored rates are ex-VAT bases (NetRate on receipt). VAT is additive (13% on top).
