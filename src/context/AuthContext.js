@@ -6,12 +6,14 @@ const AuthContext = createContext({})
 // Included on all plans (Starter and above)
 const STARTER_KEYS = new Set([
   'monthly_summary', 'annual_summary', 'reorder_report', 'vat_report', 'non_vat_report', 'wastage_report', 'settings',
+  'sales_entry', 'payment_summary',
 ])
 // Requires Growth plan or above
 const GROWTH_KEYS = new Set([
-  'sales_entry', 'recipe_costing', 'variance_report',
-  'payment_summary', 'budget_vs_actual', 'best_sellers', 'purchase_orders',
+  'recipe_costing', 'variance_report',
+  'budget_vs_actual', 'best_sellers', 'purchase_orders',
   'dead_stock', 'recipe_margin', 'outstanding_payables',
+  'requisitions',
 ])
 // Requires Pro plan
 const PRO_KEYS = new Set([
@@ -153,10 +155,13 @@ export function AuthProvider({ children }) {
 
   function hasFeature(featureKey) {
     if (isAdmin) return true
+    const flagVal = featureFlags[featureKey]
+    if (flagVal === true) return true  // explicit admin grant for features above plan tier
+    // null / undefined / false → fall back to plan
     if (STARTER_KEYS.has(featureKey)) return true
     if (GROWTH_KEYS.has(featureKey) && (plan === 'growth' || plan === 'pro')) return true
     if (PRO_KEYS.has(featureKey)    && plan === 'pro') return true
-    return featureFlags[featureKey] === true
+    return false
   }
 
   return (

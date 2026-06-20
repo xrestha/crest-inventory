@@ -17,50 +17,75 @@ async function adminOp(action, params = {}) {
 
 const EMPTY_USER = { email: '', password: '', full_name: '' }
 
+// null = no override (plan decides), true = explicit grant, false = explicit revoke
 const DEFAULT_FLAGS = {
-  sales_entry: false, monthly_summary: false, payment_summary: false,
-  vendor_report: false, variance_report: false, fifo_report: false,
-  reorder_report: false, price_tracker: false, recipe_costing: false,
-  menu_engineering: false, overheads: false, budget_vs_actual: false,
-  best_sellers: false,
-  vat_report: false,
-  non_vat_report: false,
-  purchase_orders: false,
-  requisitions: false,
-  wastage_report: false,
-  dead_stock: false,
-  recipe_margin: false,
-  period_comparison: false,
-  theoretical_variance: false,
+  sales_entry: null, monthly_summary: null, payment_summary: null,
+  vendor_report: null, variance_report: null, fifo_report: null,
+  reorder_report: null, price_tracker: null, recipe_costing: null,
+  menu_engineering: null, overheads: null, budget_vs_actual: null,
+  best_sellers: null, vat_report: null, non_vat_report: null,
+  purchase_orders: null, requisitions: null, wastage_report: null,
+  dead_stock: null, recipe_margin: null, period_comparison: null,
+  theoretical_variance: null, annual_summary: null,
+  outstanding_payables: null, shrinkage_report: null,
 }
 
-const FLAG_LABELS = {
-  // Main workflow features
-  sales_entry:      { label: 'Sales Entry',      section: 'Main' },
-  recipe_costing:   { label: 'Recipe Costing',   section: 'Main' },
-  menu_engineering: { label: 'Menu Engineering', section: 'Main' },
-  overheads:        { label: 'Overheads',        section: 'Main' },
-  purchase_orders:  { label: 'Purchase Orders',  section: 'Main' },
-  requisitions:     { label: 'Requisitions',     section: 'Main' },
-  // Starter reports — all plans
-  monthly_summary:  { label: 'Monthly Summary',  section: 'Starter' },
-  reorder_report:   { label: 'Reorder Report',   section: 'Starter' },
-  vat_report:       { label: 'VAT Report',       section: 'Starter' },
-  non_vat_report:   { label: 'Non-VAT Report',   section: 'Starter' },
-  wastage_report:   { label: 'Wastage Report',   section: 'Starter' },
-  // Growth reports
-  payment_summary:  { label: 'Payment Summary',      section: 'Reports' },
-  variance_report:  { label: 'Variance Report',      section: 'Reports' },
-  budget_vs_actual: { label: 'Budget vs Actual',     section: 'Reports' },
-  best_sellers:     { label: 'Best & Worst Sellers', section: 'Reports' },
-  dead_stock:       { label: 'Dead Stock',           section: 'Reports' },
-  recipe_margin:    { label: 'Recipe Margin',        section: 'Reports' },
-  // Pro reports
-  vendor_report:        { label: 'Vendor Report',        section: 'Pro' },
-  fifo_report:          { label: 'FIFO / Expiry',        section: 'Pro' },
-  price_tracker:        { label: 'Price Tracker',        section: 'Pro' },
-  theoretical_variance: { label: 'Theoretical Variance', section: 'Pro' },
-  period_comparison:    { label: 'Period Comparison',    section: 'Pro' },
+// Mirrors AuthContext plan key sets
+const PLAN_FEATURE_KEYS = {
+  starter: new Set(['monthly_summary', 'annual_summary', 'reorder_report', 'vat_report', 'non_vat_report', 'wastage_report', 'sales_entry', 'payment_summary']),
+  growth:  new Set(['recipe_costing', 'variance_report', 'budget_vs_actual', 'best_sellers', 'purchase_orders', 'dead_stock', 'recipe_margin', 'outstanding_payables', 'requisitions']),
+  pro:     new Set(['menu_engineering', 'fifo_report', 'vendor_report', 'price_tracker', 'overheads', 'theoretical_variance', 'period_comparison', 'shrinkage_report']),
+}
+
+const FEATURE_GROUPS = [
+  { tier: 'core',    label: 'Core — All Plans', color: '#6b7280', features: [
+    { key: null, label: 'Dashboard' },
+    { key: null, label: 'Periods' },
+    { key: null, label: 'Item Master' },
+    { key: null, label: 'Vendors' },
+    { key: null, label: 'Purchases' },
+    { key: null, label: 'Stock Count' },
+  ]},
+  { tier: 'starter', label: 'Starter Plan',     color: '#9ca3af', features: [
+    { key: 'sales_entry',     label: 'Sales Entry' },
+    { key: 'payment_summary', label: 'Payment Summary' },
+    { key: 'monthly_summary', label: 'Monthly Summary' },
+    { key: 'annual_summary',  label: 'Annual Summary' },
+    { key: 'reorder_report',  label: 'Reorder Report' },
+    { key: 'vat_report',      label: 'VAT Report' },
+    { key: 'non_vat_report',  label: 'Non-VAT Report' },
+    { key: 'wastage_report',  label: 'Wastage Report' },
+  ]},
+  { tier: 'growth',  label: 'Growth Plan',      color: '#34d399', features: [
+    { key: 'recipe_costing',       label: 'Recipe Costing' },
+    { key: 'purchase_orders',      label: 'Purchase Orders' },
+    { key: 'requisitions',         label: 'Requisitions' },
+    { key: 'variance_report',      label: 'Variance Report' },
+    { key: 'budget_vs_actual',     label: 'Budget vs Actual' },
+    { key: 'best_sellers',         label: 'Best & Worst Sellers' },
+    { key: 'dead_stock',           label: 'Dead Stock' },
+    { key: 'recipe_margin',        label: 'Recipe Margin' },
+    { key: 'outstanding_payables', label: 'Outstanding Payables' },
+  ]},
+  { tier: 'pro',     label: 'Pro Plan',         color: '#c9a84c', features: [
+    { key: 'menu_engineering',     label: 'Menu Engineering' },
+    { key: 'overheads',            label: 'Overheads' },
+    { key: 'vendor_report',        label: 'Vendor Report' },
+    { key: 'fifo_report',          label: 'FIFO / Expiry' },
+    { key: 'price_tracker',        label: 'Price Tracker' },
+    { key: 'theoretical_variance', label: 'Theoretical Variance' },
+    { key: 'period_comparison',    label: 'Period Comparison' },
+    { key: 'shrinkage_report',     label: 'Shrinkage Report' },
+  ]},
+]
+
+// Returns true if the plan naturally includes this tier's features
+function isPlanIncluded(tier, clientPlan) {
+  if (tier === 'core') return true
+  if (tier === 'starter') return true
+  if (tier === 'growth') return clientPlan === 'growth' || clientPlan === 'pro'
+  if (tier === 'pro') return clientPlan === 'pro'
+  return false
 }
 
 const SETTINGS_DEFAULTS = {
@@ -87,7 +112,7 @@ function SubBadge({ client }) {
 
 // ── Drawer ───────────────────────────────────────────────────────────────────
 function ClientDrawer({ client, onClose, onClientUpdated }) {
-  const { loadClientSettings, saveClientSettings, loadClientFeatureFlags, saveFeatureFlags } = useSettings()
+  const { loadClientSettings, saveClientSettings } = useSettings()
   const [activeTab, setActiveTab] = useState('users')
 
   // Users tab state
@@ -103,12 +128,6 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
   const [loadingSettings, setLoadingSettings] = useState(false)
   const [savingSettings, setSavingSettings]   = useState(false)
   const [settingsMsg, setSettingsMsg]         = useState('')
-
-  // Feature Access tab state
-  const [flags, setFlags]             = useState(DEFAULT_FLAGS)
-  const [loadingFlags, setLoadingFlags] = useState(false)
-  const [savingFlags, setSavingFlags] = useState(false)
-  const [flagsMsg, setFlagsMsg]       = useState('')
 
   // Billing tab state
   const [trialEndsAt, setTrialEndsAt] = useState(client.trial_ends_at || '')
@@ -150,7 +169,6 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
 
   useEffect(() => {
     if (activeTab === 'settings' || activeTab === 'thresholds') fetchClientSettings()
-    if (activeTab === 'features') fetchFlags()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab])
 
@@ -264,31 +282,6 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
       setSettingsMsg('error:' + e.message)
     }
     setSavingSettings(false)
-  }
-
-  // ── Feature flags ──
-  async function fetchFlags() {
-    setLoadingFlags(true)
-    const data = await loadClientFeatureFlags(client.id)
-    setFlags({ ...DEFAULT_FLAGS, ...data })
-    setLoadingFlags(false)
-  }
-
-  async function handleSaveFlags() {
-    setSavingFlags(true); setFlagsMsg('')
-    try {
-      await saveFeatureFlags(client.id, flags)
-      setFlagsMsg('ok:Feature access saved.')
-    } catch (e) {
-      setFlagsMsg('error:' + e.message)
-    }
-    setSavingFlags(false)
-  }
-
-  function toggleAllFlags(val) {
-    const updated = {}
-    Object.keys(DEFAULT_FLAGS).forEach(k => { updated[k] = val })
-    setFlags(updated)
   }
 
   // ── Billing ──
@@ -407,18 +400,12 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
     setLogoMsg('ok:Logo removed.')
   }
 
-  const mainFlags    = Object.entries(FLAG_LABELS).filter(([, v]) => v.section === 'Main')
-  const starterFlags = Object.entries(FLAG_LABELS).filter(([, v]) => v.section === 'Starter')
-  const reportFlags  = Object.entries(FLAG_LABELS).filter(([, v]) => v.section === 'Reports')
-  const proFlags     = Object.entries(FLAG_LABELS).filter(([, v]) => v.section === 'Pro')
-
   const tabs = [
-    { key: 'users',       label: 'Users' },
-    { key: 'billing',     label: 'Billing' },
-    { key: 'settings',    label: 'Settings' },
-    { key: 'thresholds',  label: 'Thresholds' },
-    { key: 'features',    label: 'Feature Access' },
-    { key: 'danger',      label: '⚠ Danger' },
+    { key: 'users',      label: 'Users' },
+    { key: 'billing',    label: 'Billing' },
+    { key: 'settings',   label: 'Settings' },
+    { key: 'thresholds', label: 'Thresholds' },
+    { key: 'danger',     label: '⚠ Danger' },
   ]
 
   return (
@@ -947,106 +934,160 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
             </div>
           )}
 
-          {/* ── FEATURE ACCESS TAB ── */}
-          {activeTab === 'features' && (
-            <div>
-              {loadingFlags ? (
-                <p style={{ color: '#6b7280', fontSize: 13 }}>Loading…</p>
-              ) : (
-                <>
-                  {/* Plan selector */}
-                  <div style={{ marginBottom: 20, padding: '12px 16px', background: '#0f1117', borderRadius: 8, border: '1px solid #2a2f3d' }}>
-                    <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px' }}>Client Plan</p>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      {['starter', 'growth', 'pro'].map(p => (
-                        <button key={p} onClick={() => handleChangePlan(p)} style={{
-                          flex: 1, padding: '7px 0', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 700,
-                          border: currentPlan === p
-                            ? `1px solid ${p === 'pro' ? '#c9a84c' : p === 'growth' ? '#34d399' : '#6b7280'}`
-                            : '1px solid #2a2f3d',
-                          background: currentPlan === p
-                            ? p === 'pro' ? 'rgba(201,168,76,0.12)' : p === 'growth' ? 'rgba(52,211,153,0.10)' : 'rgba(120,113,108,0.10)'
-                            : 'none',
-                          color: currentPlan === p
-                            ? p === 'pro' ? '#c9a84c' : p === 'growth' ? '#34d399' : '#6b7280'
-                            : '#9ca3af',
-                        }}>
-                          {p.charAt(0).toUpperCase() + p.slice(1)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {(currentPlan === 'growth' || currentPlan === 'pro') && (
-                    <div style={{
-                      background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.2)',
-                      borderRadius: 8, padding: '10px 14px', marginBottom: 20
-                    }}>
-                      <p style={{ fontSize: 12, color: '#c9a84c', margin: 0 }}>
-                        {currentPlan === 'pro'
-                          ? 'Pro client — all features unlocked. Feature flags only apply to Starter clients.'
-                          : 'Growth client — Growth features unlocked. Flag individual Pro features below if needed.'}
-                      </p>
-                    </div>
-                  )}
-
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-                    <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => toggleAllFlags(true)}>Enable All</button>
-                    <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => toggleAllFlags(false)}>Disable All</button>
-                  </div>
-
-                  {/* Main workflow features */}
-                  <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 12px' }}>
-                    Main Features
-                  </p>
-                  {mainFlags.map(([key, meta]) => (
-                    <FeatureToggle key={key} featureKey={key} label={meta.label} flags={flags} setFlags={setFlags} disabled={client.is_premium} />
-                  ))}
-
-                  {/* Starter reports — included on all plans */}
-                  <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '20px 0 4px', borderTop: '1px solid #2a2f3d', paddingTop: 16 }}>
-                    Starter Reports
-                  </p>
-                  <p style={{ fontSize: 11, color: '#4b5563', margin: '0 0 12px' }}>Included on all plans — toggle to grant/revoke individually</p>
-                  {starterFlags.map(([key, meta]) => (
-                    <FeatureToggle key={key} featureKey={key} label={meta.label} flags={flags} setFlags={setFlags} disabled={client.is_premium} />
-                  ))}
-
-                  {/* Growth reports */}
-                  <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '20px 0 4px', borderTop: '1px solid #2a2f3d', paddingTop: 16 }}>
-                    Growth Reports
-                  </p>
-                  <p style={{ fontSize: 11, color: '#4b5563', margin: '0 0 12px' }}>Auto-unlocked on Growth + Pro plans</p>
-                  {reportFlags.map(([key, meta]) => (
-                    <FeatureToggle key={key} featureKey={key} label={meta.label} flags={flags} setFlags={setFlags} disabled={client.is_premium} />
-                  ))}
-
-                  {/* Pro reports */}
-                  <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '20px 0 4px', borderTop: '1px solid #2a2f3d', paddingTop: 16 }}>
-                    Pro Reports
-                  </p>
-                  <p style={{ fontSize: 11, color: '#4b5563', margin: '0 0 12px' }}>Auto-unlocked on Pro plan only</p>
-                  {proFlags.map(([key, meta]) => (
-                    <FeatureToggle key={key} featureKey={key} label={meta.label} flags={flags} setFlags={setFlags} disabled={client.is_premium} />
-                  ))}
-
-                  {flagsMsg && (
-                    <p style={{ fontSize: 12, margin: '16px 0 8px', color: flagsMsg.startsWith('ok:') ? '#34d399' : '#f87171' }}>
-                      {flagsMsg.replace(/^(ok|error):/, '')}
-                    </p>
-                  )}
-                  <div style={{ marginTop: 20 }}>
-                    <button className="btn btn-primary" style={{ fontSize: 13 }} onClick={handleSaveFlags} disabled={savingFlags || client.is_premium}>
-                      {savingFlags ? 'Saving…' : 'Save Feature Access'}
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </>
+  )
+}
+
+// ── Feature Access Modal ──────────────────────────────────────────────────────
+function FeatureAccessModal({ client, onClose }) {
+  const { loadClientFeatureFlags, saveFeatureFlags } = useSettings()
+  const [flags, setFlags] = useState(DEFAULT_FLAGS)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  const clientPlan = client.plan || 'starter'
+  const planColor  = clientPlan === 'pro' ? '#c9a84c' : clientPlan === 'growth' ? '#34d399' : '#9ca3af'
+  const planLabel  = clientPlan.charAt(0).toUpperCase() + clientPlan.slice(1)
+
+  useEffect(() => {
+    loadClientFeatureFlags(client.id).then(data => {
+      setFlags({ ...DEFAULT_FLAGS, ...data })
+      setLoading(false)
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [client.id])
+
+  async function handleSave() {
+    setSaving(true); setMsg('')
+    try {
+      await saveFeatureFlags(client.id, flags)
+      setMsg('ok:Saved.')
+    } catch (e) {
+      setMsg('error:' + e.message)
+    }
+    setSaving(false)
+  }
+
+  function toggleFeat(key, currentIsOn) {
+    // Plan features are not toggleable — only non-plan grants use true/null
+    setFlags(f => ({ ...f, [key]: currentIsOn ? null : true }))
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={{ background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 12, width: 'min(1120px, 96vw)', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.4)' }}>
+
+        {/* Header */}
+        <div style={{ padding: '18px 24px 14px', borderBottom: '1px solid #2a2f3d', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 15, color: '#e8e0d0', fontFamily: 'Georgia, serif' }}>Feature Access</h3>
+            <p style={{ margin: '3px 0 0', fontSize: 12, color: '#6b7280' }}>
+              {client.name} ·{' '}
+              <span style={{ fontWeight: 700, color: planColor }}>{planLabel} Plan</span>
+              <span style={{ marginLeft: 10, fontSize: 11, color: '#4b5563' }}>Checkboxes override plan — check to grant, uncheck to revoke</span>
+            </p>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: '2px 6px' }}>✕</button>
+        </div>
+
+        {/* Body — 4-column layout, one plan tier per column, no scroll */}
+        <div style={{ padding: '16px 24px 8px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0 14px', alignItems: 'start' }}>
+          {loading ? <p style={{ color: '#6b7280', fontSize: 13, gridColumn: '1/-1' }}>Loading…</p> : FEATURE_GROUPS.map(group => {
+            const planIncluded = isPlanIncluded(group.tier, clientPlan)
+            return (
+              <div key={group.tier} style={{ marginBottom: 16 }}>
+                {/* Group header */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: group.color, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{group.label}</span>
+                  {planIncluded && group.tier !== 'core' && (
+                    <span style={{ fontSize: 10, color: group.color, background: group.color + '15', border: `1px solid ${group.color}30`, borderRadius: 3, padding: '1px 6px' }}>
+                      Included in {planLabel}
+                    </span>
+                  )}
+                  {!planIncluded && (
+                    <span style={{ fontSize: 10, color: '#4b5563', background: '#1f2937', border: '1px solid #374151', borderRadius: 3, padding: '1px 6px' }}>
+                      Not in plan — check to override
+                    </span>
+                  )}
+                </div>
+
+                {/* Feature list — single column, one per plan group column */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  {group.features.map(feat => {
+                    const isCore = feat.key === null
+                    const locked = isCore || planIncluded  // plan features are always on, non-clickable
+                    const isAdminGranted = !locked && flags[feat.key] === true
+                    const isOn = locked || isAdminGranted
+
+                    return (
+                      <div
+                        key={feat.key || feat.label}
+                        onClick={() => !locked && feat.key && toggleFeat(feat.key, isAdminGranted)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          background: '#0f1117', borderRadius: 6, padding: '6px 8px',
+                          border: `1px solid ${locked ? group.color + '22' : isAdminGranted ? '#c9a84c50' : '#2a2f3d'}`,
+                          cursor: locked ? 'default' : 'pointer',
+                          transition: 'border-color 0.15s',
+                        }}
+                      >
+                        {/* Checkbox */}
+                        <div style={{
+                          width: 16, height: 16, borderRadius: 3, flexShrink: 0,
+                          background: isOn ? (locked ? group.color : '#c9a84c') : 'transparent',
+                          border: `2px solid ${isOn ? (locked ? group.color : '#c9a84c') : '#4b5563'}`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          transition: 'all 0.15s',
+                          opacity: isCore ? 0.45 : 1,
+                        }}>
+                          {isOn && <span style={{ color: '#000', fontSize: 10, fontWeight: 900, lineHeight: 1 }}>✓</span>}
+                        </div>
+
+                        {/* Label + badge */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ fontSize: 12, color: isOn ? '#e8e0d0' : '#6b7280' }}>{feat.label}</span>
+                          {locked && !isCore && (
+                            <span style={{
+                              marginLeft: 6, fontSize: 9, fontWeight: 700, color: group.color,
+                              background: group.color + '18', border: `1px solid ${group.color}35`,
+                              borderRadius: 3, padding: '1px 4px', verticalAlign: 'middle',
+                            }}>Plan</span>
+                          )}
+                          {isAdminGranted && (
+                            <span style={{
+                              marginLeft: 6, fontSize: 9, fontWeight: 700, color: '#c9a84c',
+                              background: '#c9a84c18', border: '1px solid #c9a84c35',
+                              borderRadius: 3, padding: '1px 4px', verticalAlign: 'middle',
+                            }}>Override</span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: '12px 24px', borderTop: '1px solid #2a2f3d', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 12, color: msg.startsWith('ok:') ? '#34d399' : msg.startsWith('error:') ? '#f87171' : 'transparent' }}>
+            {msg.replace(/^(ok|error):/, '') || '·'}
+          </span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 14px' }} onClick={onClose}>Close</button>
+            <button className="btn btn-primary" style={{ fontSize: 12, padding: '5px 14px' }} onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -1097,8 +1138,9 @@ export default function AdminClients() {
   const [newForm, setNewForm]         = useState(EMPTY_CLIENT_FORM)
   const [saving, setSaving]           = useState(false)
   const [formError, setFormError]     = useState('')
-  const [activeDrawer, setActiveDrawer] = useState(null) // client object
-  const [lastSeenMap, setLastSeenMap] = useState({}) // { clientId: isoString }
+  const [activeDrawer, setActiveDrawer] = useState(null)
+  const [featureModalClient, setFeatureModalClient] = useState(null)
+  const [lastSeenMap, setLastSeenMap] = useState({})
 
   useEffect(() => { loadClients(); loadLastSeen() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1247,6 +1289,7 @@ export default function AdminClients() {
                   <th>Last Seen</th>
                   <th>Plan</th>
                   <th>Expires</th>
+                  <th>Features</th>
                   <th></th>
                 </tr>
               </thead>
@@ -1294,6 +1337,15 @@ export default function AdminClients() {
                     <td onClick={e => e.stopPropagation()}>
                       <SubBadge client={c} />
                     </td>
+                    <td onClick={e => e.stopPropagation()}>
+                      <button
+                        className="btn btn-ghost"
+                        style={{ fontSize: 11, padding: '4px 10px', color: '#818cf8', borderColor: 'rgba(129,140,248,0.3)' }}
+                        onClick={e => { e.stopPropagation(); setFeatureModalClient(c) }}
+                      >
+                        Features ⊞
+                      </button>
+                    </td>
                     <td style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                         <button className="btn btn-ghost" style={{ fontSize: 11, padding: '4px 10px' }}
@@ -1320,6 +1372,14 @@ export default function AdminClients() {
           client={activeDrawer}
           onClose={() => setActiveDrawer(null)}
           onClientUpdated={() => { loadClients() }}
+        />
+      )}
+
+      {/* Feature Access modal */}
+      {featureModalClient && (
+        <FeatureAccessModal
+          client={featureModalClient}
+          onClose={() => setFeatureModalClient(null)}
         />
       )}
     </div>
