@@ -184,7 +184,7 @@ export default function Purchases() {
     const entries = valid.map(l => {
       const item = items.find(i => i.id === l.item_id)
       const cf = getCf(item)
-      const exVatRate = l.vat_inclusive ? parseFloat(l.rate) / 1.13 : parseFloat(l.rate)
+      const exVatRate = parseFloat(l.rate)  // entered rate is always ex-VAT (NetRate on bill)
       return {
         period_id:      selectedPeriod.id,
         item_id:        l.item_id,
@@ -217,7 +217,7 @@ export default function Purchases() {
 
     // Rate update check — show prompt for first item with a changed rate
     for (const l of valid) {
-      const capturedRate = l.vat_inclusive ? parseFloat(l.rate) / 1.13 : parseFloat(l.rate)
+      const capturedRate = parseFloat(l.rate)
       const { data: fi } = await supabase.from('items').select('id, name, rate, purchase_qty').eq('id', l.item_id).single()
       if (fi && capturedRate !== parseFloat(fi.rate)) {
         setRateUpdatePrompt({ itemId: fi.id, itemName: fi.name, oldRate: parseFloat(fi.rate), newRate: capturedRate, purchaseQty: parseFloat(fi.purchase_qty) })
@@ -510,22 +510,23 @@ export default function Purchases() {
 
               <div style={{ borderTop: '1px solid #2a2f3d', marginBottom: 16 }} />
 
-              {/* Line items table */}
+              {/* Line items table — mirrors vendor bill: Item | Qty | NetRate | NetAmt | VAT */}
               <div className="table-wrap">
-                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
                   <thead>
                     <tr>
-                      <th style={{ textAlign: 'left', fontSize: 11, color: '#6b7280', padding: '0 8px 10px 0', textTransform: 'uppercase', letterSpacing: '0.07em', minWidth: 200 }}>Item *</th>
-                      <th style={{ textAlign: 'right', fontSize: 11, color: '#6b7280', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 110 }}>Qty *</th>
-                      <th style={{ textAlign: 'right', fontSize: 11, color: '#6b7280', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 130 }}>Rate (NPR) *</th>
-                      <th style={{ textAlign: 'left', fontSize: 11, color: '#6b7280', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 150 }}>
-                        <Tip text="Best-before or use-by date. Or enter shelf life days to auto-calculate." width={220}>Expiry Date</Tip>
+                      <th style={{ textAlign: 'left', fontSize: 11, color: '#6b7280', padding: '0 8px 10px 0', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                        <Tip text="Select the item. Expiry date and shelf-life days appear below the dropdown." width={230}>Item *</Tip>
                       </th>
-                      <th style={{ textAlign: 'right', fontSize: 11, color: '#6b7280', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 90 }}>
-                        <Tip text="Days this item stays fresh from purchase date. Auto-fills Expiry Date." width={220}>Shelf Life</Tip>
+                      <th style={{ textAlign: 'right', fontSize: 11, color: '#6b7280', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 100 }}>Qty *</th>
+                      <th style={{ textAlign: 'right', fontSize: 11, color: '#6b7280', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 120 }}>
+                        <Tip text="Enter the ex-VAT rate per unit (NetRate on the vendor bill). For VAT items the amount column will show the VAT-inclusive total." width={260}>Rate (NPR) *</Tip>
+                      </th>
+                      <th style={{ textAlign: 'right', fontSize: 11, color: '#6b7280', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 120 }}>
+                        <Tip text="Amount = Qty × Rate. For VAT items: Qty × Rate × 1.13 (what you actually pay)." width={240}>Amount</Tip>
                       </th>
                       <th style={{ textAlign: 'center', fontSize: 11, color: '#6b7280', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 50 }}>
-                        <Tip text="Tick if this item's rate includes 13% VAT. System stores ex-VAT rate for costing." width={230}>VAT</Tip>
+                        <Tip text="Tick if this item attracts 13% VAT. Enter the ex-VAT NetRate — the Amount column will show what you pay including VAT." width={250}>VAT</Tip>
                       </th>
                       <th style={{ width: 32 }}></th>
                     </tr>
@@ -535,7 +536,8 @@ export default function Purchases() {
                       const selItem = items.find(i => i.id === line.item_id)
                       const cf = getCf(selItem)
                       const inputUnit = cf > 1 ? selItem.purchase_unit : (selItem?.uom || '')
-                      const lineTotal = (parseFloat(line.qty) || 0) * (parseFloat(line.rate) || 0)
+                      const lineBase = (parseFloat(line.qty) || 0) * (parseFloat(line.rate) || 0)
+                      const lineAmount = line.vat_inclusive ? lineBase * 1.13 : lineBase
                       return (
                         <tr key={line._key} style={{ borderBottom: '1px solid #1a1f2e' }}>
                           <td style={{ padding: '6px 8px 6px 0', verticalAlign: 'top' }}>
@@ -544,6 +546,16 @@ export default function Purchases() {
                               <option value="">— Select item —</option>
                               {items.map(i => <option key={i.id} value={i.id}>{i.name}{i.categories?.name ? ` (${i.categories.name})` : ''}</option>)}
                             </select>
+                            <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                              <input type="date" value={line.expiry_date}
+                                onChange={e => updateBillLine(line._key, 'expiry_date', e.target.value)}
+                                title="Expiry date"
+                                style={{ background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 4, padding: '3px 6px', fontSize: 11, color: line.expiry_date ? '#9ca3af' : '#4b5563', outline: 'none', flex: 1 }} />
+                              <input type="number" min="0" value={line.shelf_life} placeholder="days"
+                                onChange={e => updateBillLine(line._key, 'shelf_life', e.target.value)}
+                                title="Shelf life (days) — auto-fills expiry"
+                                style={{ background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 4, padding: '3px 6px', fontSize: 11, color: '#9ca3af', outline: 'none', width: 52, textAlign: 'right' }} />
+                            </div>
                           </td>
                           <td style={{ padding: '6px 8px', verticalAlign: 'top' }}>
                             <input type="number" min="0" step="any" value={line.qty} placeholder="0"
@@ -556,22 +568,21 @@ export default function Purchases() {
                             <input type="number" min="0" step="any" value={line.rate} placeholder="0"
                               onChange={e => updateBillLine(line._key, 'rate', e.target.value)}
                               style={{ background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: '100%', textAlign: 'right' }} />
-                            {line.vat_inclusive && line.rate && (
+                            {line.vat_inclusive && parseFloat(line.rate) > 0 && (
                               <div style={{ fontSize: 10, color: '#fbbf24', textAlign: 'right', marginTop: 2 }}>
-                                ex-VAT: {(parseFloat(line.rate) / 1.13).toFixed(2)}
+                                +VAT: {(parseFloat(line.rate) * 0.13).toFixed(2)} → {(parseFloat(line.rate) * 1.13).toFixed(2)}
                               </div>
                             )}
-                            {lineTotal > 0 && <div style={{ fontSize: 10, color: '#c9a84c', textAlign: 'right', marginTop: 1 }}>= NPR {lineTotal.toLocaleString('en-NP', { maximumFractionDigits: 0 })}</div>}
                           </td>
-                          <td style={{ padding: '6px 8px', verticalAlign: 'top' }}>
-                            <input type="date" value={line.expiry_date}
-                              onChange={e => updateBillLine(line._key, 'expiry_date', e.target.value)}
-                              style={{ background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: '100%' }} />
-                          </td>
-                          <td style={{ padding: '6px 8px', verticalAlign: 'top' }}>
-                            <input type="number" min="0" value={line.shelf_life} placeholder="days"
-                              onChange={e => updateBillLine(line._key, 'shelf_life', e.target.value)}
-                              style={{ background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: '100%', textAlign: 'right' }} />
+                          <td style={{ padding: '6px 8px', verticalAlign: 'top', textAlign: 'right' }}>
+                            {lineAmount > 0 && (
+                              <>
+                                <div style={{ fontSize: 13, color: '#c9a84c', fontWeight: 600 }}>
+                                  {lineAmount.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </div>
+                                {line.vat_inclusive && <div style={{ fontSize: 10, color: '#fbbf24', marginTop: 1 }}>incl. VAT</div>}
+                              </>
+                            )}
                           </td>
                           <td style={{ padding: '6px 8px', verticalAlign: 'top', textAlign: 'center' }}>
                             <input type="checkbox" checked={line.vat_inclusive}
@@ -589,18 +600,28 @@ export default function Purchases() {
                 </table>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 14, gap: 16 }}>
                 <button className="btn btn-ghost" style={{ fontSize: 12, padding: '6px 14px' }} onClick={addBillLine}>+ Add Item</button>
                 {(() => {
-                  const billTotal = billLines.reduce((s, l) => s + (parseFloat(l.qty) || 0) * (parseFloat(l.rate) || 0), 0)
-                  const vatLines  = billLines.filter(l => l.vat_inclusive && parseFloat(l.qty) > 0 && parseFloat(l.rate) > 0)
-                  const vatTotal  = vatLines.reduce((s, l) => s + (parseFloat(l.qty) * parseFloat(l.rate)) - (parseFloat(l.qty) * parseFloat(l.rate)) / 1.13, 0)
-                  return billTotal > 0 ? (
-                    <div style={{ fontSize: 13, color: '#c9a84c', fontWeight: 700 }}>
-                      Bill Total: NPR {billTotal.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      {vatTotal > 0 && <span style={{ fontSize: 11, color: '#fbbf24', fontWeight: 400, marginLeft: 12 }}>incl. VAT: NPR {vatTotal.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>}
+                  const subTotal   = billLines.reduce((s, l) => s + (parseFloat(l.qty) || 0) * (parseFloat(l.rate) || 0), 0)
+                  const vatTotal   = billLines.filter(l => l.vat_inclusive).reduce((s, l) => s + (parseFloat(l.qty) || 0) * (parseFloat(l.rate) || 0) * 0.13, 0)
+                  const grandTotal = subTotal + vatTotal
+                  if (subTotal === 0) return null
+                  return (
+                    <div style={{ textAlign: 'right', fontSize: 13 }}>
+                      <div style={{ color: '#9ca3af', marginBottom: 2 }}>
+                        Subtotal (ex-VAT): <span style={{ color: '#e8e0d0', fontWeight: 600, marginLeft: 8 }}>NPR {subTotal.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                      {vatTotal > 0 && (
+                        <div style={{ color: '#9ca3af', marginBottom: 2 }}>
+                          VAT (13%): <span style={{ color: '#fbbf24', fontWeight: 600, marginLeft: 8 }}>NPR {vatTotal.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                      )}
+                      <div style={{ color: '#c9a84c', fontWeight: 700, fontSize: 14, borderTop: '1px solid #2a2f3d', paddingTop: 4, marginTop: 2 }}>
+                        Grand Total: NPR {grandTotal.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
                     </div>
-                  ) : null
+                  )
                 })()}
               </div>
 
