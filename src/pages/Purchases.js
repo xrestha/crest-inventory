@@ -7,7 +7,6 @@ import Tip from '../components/Tip'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 
-const EMPTY_FORM   = { item_id: '', vendor_id: '', bs_day: '', qty: '', rate: '', invoice_ref: '', expiry_date: '', payment_method: 'Cash', vat_inclusive: false }
 const EMPTY_HEADER = { vendor_id: '', bs_day: '', invoice_ref: '', payment_method: 'Cash' }
 const EMPTY_RETURN = { purchase_entry_id: '', qty: '', notes: '' }
 const PAYMENT_METHODS = ['Cash', 'Credit', 'FonePay']
@@ -28,13 +27,11 @@ export default function Purchases() {
   // Purchases tab
   const [purchases, setPurchases]           = useState([])
   const [showForm, setShowForm]             = useState(false)
-  const [form, setForm]                     = useState(EMPTY_FORM)
   const [saving, setSaving]                 = useState(false)
   const [error, setError]                   = useState('')
   const [filterDay, setFilterDay]           = useState('all')
   const [filterItem, setFilterItem]         = useState('all')
-  const [editingId, setEditingId]           = useState(null)
-  const [shelfLifeDays, setShelfLifeDays]   = useState('')
+  const [editingGroupId, setEditingGroupId] = useState(null)
   const [rateUpdatePrompt, setRateUpdatePrompt] = useState(null)
   // Bill (multi-row add) state
   const [billHeader, setBillHeader]         = useState(EMPTY_HEADER)
@@ -104,54 +101,40 @@ export default function Purchases() {
   // ─── PURCHASES ───────────────────────────────────────────
 
   function openNew() {
-    setEditingId(null)
+    setEditingGroupId(null)
     setBillHeader({ ...EMPTY_HEADER })
     setBillLines([newLine()])
     setError('')
     setShowForm(true)
   }
 
-  function openEdit(entry) {
-    setEditingId(entry.id)
-    const cf = getCf(entry.items)
-    setForm({
-      item_id: entry.item_id,
-      vendor_id: entry.vendor_id || '',
-      bs_day: entry.bs_day,
-      qty:  cf > 1 ? entry.qty / cf  : entry.qty,
-      rate: cf > 1 ? entry.rate * cf : entry.rate,
-      invoice_ref: entry.invoice_ref || '',
-      expiry_date: entry.expiry_date || '',
-      payment_method: entry.payment_method || 'Cash',
-      vat_inclusive: entry.vat_inclusive || false
+  function openEditGroup(groupId) {
+    const groupEntries = purchases.filter(p => (p.purchase_group_id || p.id) === groupId)
+    if (groupEntries.length === 0) return
+    const first = groupEntries[0]
+    setEditingGroupId(groupId)
+    setBillHeader({
+      vendor_id: first.vendor_id || '',
+      bs_day: String(first.bs_day),
+      invoice_ref: first.invoice_ref || '',
+      payment_method: first.payment_method || 'Cash'
     })
-    setShelfLifeDays('')
+    setBillLines(groupEntries.map(e => {
+      const item = items.find(i => i.id === e.item_id)
+      const cf = getCf(item)
+      return {
+        _key: Date.now() + Math.random(),
+        item_id: e.item_id,
+        qty: String(cf > 1 ? e.qty / cf : e.qty),
+        rate: String(cf > 1 ? e.rate * cf : e.rate),
+        expiry_date: e.expiry_date || '',
+        shelf_life: '',
+        vat_inclusive: e.vat_inclusive || false,
+      }
+    }))
     setError('')
     setShowForm(true)
     window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
-  function handleItemChange(itemId) {
-    const item = items.find(i => i.id === itemId)
-    setForm(f => ({ ...f, item_id: itemId, rate: item ? item.rate : '' }))
-  }
-
-  function handleBsDayChange(day) {
-    setForm(f => ({ ...f, bs_day: day }))
-    if (shelfLifeDays && day && selectedPeriod) recalcExpiry(day, shelfLifeDays)
-  }
-
-  function recalcExpiry(bsDay, days) {
-    if (!bsDay || !days || !selectedPeriod) return
-    const purchaseAd = bsToAd(selectedPeriod.bs_year, selectedPeriod.bs_month, parseInt(bsDay))
-    const expiry = new Date(purchaseAd)
-    expiry.setDate(expiry.getDate() + parseInt(days))
-    setForm(f => ({ ...f, expiry_date: formatAd(expiry) }))
-  }
-
-  function handleShelfLifeChange(days) {
-    setShelfLifeDays(days)
-    if (days && form.bs_day) recalcExpiry(form.bs_day, days)
   }
 
   // ─── BILL (multi-row add) ────────────────────────────────
@@ -216,11 +199,20 @@ export default function Purchases() {
       }
     })
 
-    const { error: insErr } = await supabase.from('purchase_entries').insert(entries)
-    if (insErr) { setError(insErr.message); setSaving(false); return }
+    if (editingGroupId) {
+      const { error: delErr } = await supabase.from('purchase_entries').delete().eq('purchase_group_id', editingGroupId)
+      if (delErr) { setError(delErr.message); setSaving(false); return }
+      const { error: insErr } = await supabase.from('purchase_entries').insert(entries.map(e => ({ ...e, purchase_group_id: editingGroupId })))
+      if (insErr) { setError(insErr.message); setSaving(false); return }
+    } else {
+      const groupId = crypto.randomUUID()
+      const { error: insErr } = await supabase.from('purchase_entries').insert(entries.map(e => ({ ...e, purchase_group_id: groupId })))
+      if (insErr) { setError(insErr.message); setSaving(false); return }
+    }
 
     setSaving(false)
     setShowForm(false)
+    setEditingGroupId(null)
     loadPurchases(selectedPeriod.id)
 
     // Rate update check — show prompt for first item with a changed rate
@@ -234,62 +226,6 @@ export default function Purchases() {
     }
   }
 
-  async function save() {
-    if (!form.item_id) { setError('Select an item.'); return }
-    const maxDay = selectedPeriod ? daysInBsMonth(selectedPeriod.bs_year, selectedPeriod.bs_month) : 32
-    if (!form.bs_day || form.bs_day < 1 || form.bs_day > maxDay) { setError(`Select a valid day (1–${maxDay}).`); return }
-    if (!form.qty || parseFloat(form.qty) <= 0) { setError('Enter a valid quantity.'); return }
-    if (!form.rate || parseFloat(form.rate) <= 0) { setError('Enter a valid rate.'); return }
-
-    const capturedItemId = form.item_id
-    const capturedRate = form.vat_inclusive ? parseFloat(form.rate) / 1.13 : parseFloat(form.rate)
-
-    setSaving(true)
-    setError('')
-
-    const selectedItem = items.find(i => i.id === form.item_id)
-    const cf = getCf(selectedItem)
-    const baseQty     = parseFloat(form.qty) * cf
-    const enteredRate = parseFloat(form.rate)
-    const exVatRate   = form.vat_inclusive ? enteredRate / 1.13 : enteredRate
-    const baseRate    = exVatRate / cf
-
-    const payload = {
-      period_id: selectedPeriod.id,
-      item_id: form.item_id,
-      vendor_id: form.vendor_id || null,
-      bs_day: parseInt(form.bs_day),
-      qty: baseQty,
-      rate: baseRate,
-      invoice_ref: form.invoice_ref.trim() || null,
-      expiry_date: form.expiry_date || null,
-      payment_method: form.payment_method || 'Cash',
-      vat_inclusive: form.vat_inclusive || false,
-    }
-
-    if (editingId) {
-      const { error } = await supabase.from('purchase_entries').update(payload).eq('id', editingId)
-      if (error) { setError(error.message); setSaving(false); return }
-    } else {
-      const { error } = await supabase.from('purchase_entries').insert(payload)
-      if (error) { setError(error.message); setSaving(false); return }
-    }
-
-    setSaving(false)
-    setShowForm(false)
-    setEditingId(null)
-    loadPurchases(selectedPeriod.id)
-
-    const { data: freshItem } = await supabase
-      .from('items').select('id, name, rate, purchase_qty').eq('id', capturedItemId).single()
-    if (freshItem) {
-      const oldRate = parseFloat(freshItem.rate)
-      if (capturedRate !== oldRate) {
-        setRateUpdatePrompt({ itemId: freshItem.id, itemName: freshItem.name, oldRate, newRate: capturedRate, purchaseQty: parseFloat(freshItem.purchase_qty) })
-      }
-    }
-  }
-
   async function applyRateUpdate() {
     if (!rateUpdatePrompt) return
     const { itemId, newRate } = rateUpdatePrompt
@@ -298,9 +234,19 @@ export default function Purchases() {
     setRateUpdatePrompt(null)
   }
 
-  async function deleteEntry(id) {
-    if (!window.confirm('Delete this purchase entry? Any returns linked to it will be unlinked.')) return
-    await supabase.from('purchase_entries').delete().eq('id', id)
+  async function deleteGroup(groupId) {
+    const groupEntries = purchases.filter(p => (p.purchase_group_id || p.id) === groupId)
+    const n = groupEntries.length
+    const groupTotal = groupEntries.reduce((s, e) => s + e.qty * e.rate, 0)
+    if (!window.confirm(`Delete this bill (${n} item${n !== 1 ? 's' : ''}, NPR ${Math.round(groupTotal).toLocaleString('en-NP')})? Any returns linked to these entries will be unlinked. This cannot be undone.`)) return
+    const hasGroupId = groupEntries[0]?.purchase_group_id
+    if (hasGroupId) {
+      await supabase.from('purchase_entries').delete().eq('purchase_group_id', groupId)
+    } else {
+      for (const e of groupEntries) {
+        await supabase.from('purchase_entries').delete().eq('id', e.id)
+      }
+    }
     loadPurchases(selectedPeriod.id)
     loadReturns(selectedPeriod.id)
   }
@@ -412,8 +358,10 @@ export default function Purchases() {
 
   const byDay = filtered.reduce((acc, p) => {
     const day = p.bs_day
-    if (!acc[day]) acc[day] = []
-    acc[day].push(p)
+    if (!acc[day]) acc[day] = {}
+    const gid = p.purchase_group_id || p.id
+    if (!acc[day][gid]) acc[day][gid] = []
+    acc[day][gid].push(p)
     return acc
   }, {})
 
@@ -530,10 +478,10 @@ export default function Purchases() {
       {/* ── PURCHASES TAB ── */}
       {activeTab === 'purchases' && (
         <>
-          {/* ── NEW BILL FORM (multi-row) ── */}
-          {showForm && !editingId && (
+          {/* ── BILL FORM (new or edit) ── */}
+          {showForm && (
             <div className="card" style={{ marginBottom: 24 }}>
-              <h3 style={{ margin: '0 0 16px', fontSize: 15, color: '#e8e0d0' }}>Add Purchase Bill</h3>
+              <h3 style={{ margin: '0 0 16px', fontSize: 15, color: '#e8e0d0' }}>{editingGroupId ? 'Edit Purchase Bill' : 'Add Purchase Bill'}</h3>
 
               {/* Header row */}
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 2fr 1fr', gap: 14, marginBottom: 20 }}>
@@ -649,8 +597,8 @@ export default function Purchases() {
                   const vatTotal  = vatLines.reduce((s, l) => s + (parseFloat(l.qty) * parseFloat(l.rate)) - (parseFloat(l.qty) * parseFloat(l.rate)) / 1.13, 0)
                   return billTotal > 0 ? (
                     <div style={{ fontSize: 13, color: '#c9a84c', fontWeight: 700 }}>
-                      Bill Total: NPR {billTotal.toLocaleString('en-NP', { maximumFractionDigits: 0 })}
-                      {vatTotal > 0 && <span style={{ fontSize: 11, color: '#fbbf24', fontWeight: 400, marginLeft: 12 }}>incl. VAT: NPR {vatTotal.toLocaleString('en-NP', { maximumFractionDigits: 0 })}</span>}
+                      Bill Total: NPR {billTotal.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {vatTotal > 0 && <span style={{ fontSize: 11, color: '#fbbf24', fontWeight: 400, marginLeft: 12 }}>incl. VAT: NPR {vatTotal.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>}
                     </div>
                   ) : null
                 })()}
@@ -658,128 +606,10 @@ export default function Purchases() {
 
               {error && <p style={{ color: '#f87171', fontSize: 13, margin: '12px 0 0' }}>{error}</p>}
               <div className="form-actions">
-                <button className="btn btn-ghost" onClick={() => { setShowForm(false) }}>Cancel</button>
+                <button className="btn btn-ghost" onClick={() => { setShowForm(false); setEditingGroupId(null) }}>Cancel</button>
                 <button className="btn btn-primary" onClick={saveBill} disabled={saving}>
-                  {saving ? 'Saving…' : `Save ${billLines.filter(l => l.item_id && parseFloat(l.qty) > 0 && parseFloat(l.rate) > 0).length || ''} Entr${billLines.filter(l => l.item_id && parseFloat(l.qty) > 0 && parseFloat(l.rate) > 0).length === 1 ? 'y' : 'ies'}`}
+                  {saving ? 'Saving…' : editingGroupId ? 'Update Bill' : `Save ${billLines.filter(l => l.item_id && parseFloat(l.qty) > 0 && parseFloat(l.rate) > 0).length || ''} Entr${billLines.filter(l => l.item_id && parseFloat(l.qty) > 0 && parseFloat(l.rate) > 0).length === 1 ? 'y' : 'ies'}`}
                 </button>
-              </div>
-            </div>
-          )}
-
-          {/* ── EDIT FORM (single row) ── */}
-          {showForm && editingId && (
-            <div className="card" style={{ marginBottom: 24 }}>
-              <h3 style={{ margin: '0 0 20px', fontSize: 15, color: '#e8e0d0' }}>Edit Purchase Entry</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr', gap: 14 }}>
-                <div className="form-field">
-                  <label>Item *</label>
-                  <select value={form.item_id} onChange={e => handleItemChange(e.target.value)}>
-                    <option value="">— Select item —</option>
-                    {items.map(i => <option key={i.id} value={i.id}>{i.name} ({i.categories?.name || 'Uncategorised'})</option>)}
-                  </select>
-                </div>
-                <div className="form-field">
-                  <label>Vendor</label>
-                  <select value={form.vendor_id} onChange={e => setForm(f => ({ ...f, vendor_id: e.target.value }))}>
-                    <option value="">— None —</option>
-                    {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-                  </select>
-                </div>
-                <div className="form-field">
-                  <label>Day (BS) *</label>
-                  <BsDatePicker bsYear={selectedPeriod?.bs_year} bsMonth={selectedPeriod?.bs_month} value={form.bs_day} onChange={handleBsDayChange} />
-                </div>
-                <div className="form-field">
-                  {(() => {
-                    const selItem = items.find(i => i.id === form.item_id)
-                    const cf = getCf(selItem)
-                    const inputUnit = cf > 1 ? selItem.purchase_unit : (selItem?.uom || '')
-                    return (
-                      <>
-                        <label>Qty {inputUnit ? `(${inputUnit})` : ''} *</label>
-                        <input type="number" value={form.qty} onChange={e => setForm(f => ({ ...f, qty: e.target.value }))} placeholder="0" />
-                        {cf > 1 && form.qty && (
-                          <div style={{ fontSize: 11, color: '#6b7280', marginTop: 3 }}>
-                            = {(parseFloat(form.qty) * cf).toLocaleString()} {selItem?.uom}
-                          </div>
-                        )}
-                      </>
-                    )
-                  })()}
-                </div>
-                <div className="form-field">
-                  {(() => {
-                    const selItem = items.find(i => i.id === form.item_id)
-                    const cf = getCf(selItem)
-                    return (
-                      <>
-                        <label>Rate{cf > 1 ? ` /${selItem.purchase_unit}` : ''} (NPR) *</label>
-                        <input type="number" value={form.rate} onChange={e => setForm(f => ({ ...f, rate: e.target.value }))} placeholder="0" />
-                      </>
-                    )
-                  })()}
-                </div>
-                <div className="form-field">
-                  <label><Tip text="Optional reference to the vendor's bill or invoice number." width={240}>Invoice Ref</Tip></label>
-                  <input value={form.invoice_ref} onChange={e => setForm(f => ({ ...f, invoice_ref: e.target.value }))} placeholder="Optional" />
-                </div>
-                <div className="form-field">
-                  <label><Tip text="Optional. Best-before or use-by date." width={220}>Expiry Date</Tip></label>
-                  <input type="date" value={form.expiry_date} onChange={e => setForm(f => ({ ...f, expiry_date: e.target.value }))} />
-                </div>
-                <div className="form-field">
-                  <label><Tip text="Enter days fresh — expiry date is auto-calculated from the purchase day." width={240}>Shelf Life</Tip></label>
-                  <input type="number" min="0" value={shelfLifeDays} onChange={e => handleShelfLifeChange(e.target.value)} placeholder="days" />
-                </div>
-                <div className="form-field">
-                  <label><Tip text="Cash: paid on delivery. Credit: pay later. FonePay: digital payment.">Payment</Tip></label>
-                  <select value={form.payment_method} onChange={e => setForm(f => ({ ...f, payment_method: e.target.value }))}>
-                    {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                </div>
-                <div className="form-field" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-                  <label style={{ visibility: 'hidden' }}>VAT</label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: form.vat_inclusive ? '#c9a84c' : '#9ca3af', userSelect: 'none' }}>
-                    <input type="checkbox" checked={form.vat_inclusive} onChange={e => setForm(f => ({ ...f, vat_inclusive: e.target.checked }))}
-                      style={{ width: 15, height: 15, accentColor: '#c9a84c', cursor: 'pointer' }} />
-                    <Tip text="Tick if the rate includes 13% VAT. System stores ex-VAT rate." width={240}>VAT Incl. (13%)</Tip>
-                  </label>
-                </div>
-              </div>
-
-              {form.qty && form.rate && (
-                <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(201,168,76,0.08)', borderRadius: 6, display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'center' }}>
-                  {(() => {
-                    const selItem = items.find(i => i.id === form.item_id)
-                    const cf = getCf(selItem)
-                    const enteredQty = parseFloat(form.qty)
-                    const enteredRate = parseFloat(form.rate)
-                    const total = enteredQty * enteredRate
-                    const perBase = cf > 1 ? enteredRate / cf : null
-                    const vatBase = form.vat_inclusive ? total / 1.13 : null
-                    const vatAmt  = form.vat_inclusive ? total - vatBase : null
-                    return (
-                      <>
-                        <span style={{ fontSize: 13, color: '#c9a84c' }}>Total: NPR {total.toLocaleString('en-NP', { maximumFractionDigits: 2 })}</span>
-                        {form.vat_inclusive && (
-                          <>
-                            <span style={{ fontSize: 12, color: '#9ca3af' }}>Base (ex-VAT): NPR {vatBase.toLocaleString('en-NP', { maximumFractionDigits: 2 })}</span>
-                            <span style={{ fontSize: 12, color: '#fbbf24' }}>VAT (13%): NPR {vatAmt.toLocaleString('en-NP', { maximumFractionDigits: 2 })}</span>
-                          </>
-                        )}
-                        {cf > 1 && selItem && <span style={{ fontSize: 13, color: '#6b7280' }}>{enteredQty} {selItem.purchase_unit} × NPR {enteredRate.toLocaleString()} = {(enteredQty * cf).toLocaleString()} {selItem.uom}</span>}
-                        {perBase !== null && <span style={{ fontSize: 12, color: '#9ca3af' }}>Per {selItem?.uom}: NPR {(form.vat_inclusive ? perBase / 1.13 : perBase).toFixed(4)}{form.vat_inclusive && <span style={{ color: '#6b7280' }}> (ex-VAT)</span>}</span>}
-                        {cf === 1 && selItem?.purchase_qty && <span style={{ fontSize: 12, color: '#9ca3af' }}>Per {selItem?.uom}: NPR {((form.vat_inclusive ? enteredRate / 1.13 : enteredRate) / parseFloat(selItem.purchase_qty)).toFixed(4)}{form.vat_inclusive && <span style={{ color: '#6b7280' }}> (ex-VAT)</span>}</span>}
-                      </>
-                    )
-                  })()}
-                </div>
-              )}
-
-              {error && <p style={{ color: '#f87171', fontSize: 13, margin: '10px 0 0' }}>{error}</p>}
-              <div className="form-actions">
-                <button className="btn btn-ghost" onClick={() => { setShowForm(false); setEditingId(null) }}>Cancel</button>
-                <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Update'}</button>
               </div>
             </div>
           )}
@@ -820,72 +650,94 @@ export default function Purchases() {
                       <th style={{ textAlign: 'right' }}>Qty</th><th>UOM</th>
                       <th style={{ textAlign: 'right' }}>Rate</th>
                       <th style={{ textAlign: 'right' }}>Total</th>
-                      <th>Invoice / Expiry</th><th>Payment</th><th></th>
+                      <th>Invoice / Expiry</th><th></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {Object.keys(byDay).sort((a, b) => a - b).map(day =>
-                      byDay[day].map((entry, idx) => (
-                        <tr key={entry.id}>
-                          {idx === 0 && (
-                            <td rowSpan={byDay[day].length} style={{ fontWeight: 700, color: '#c9a84c', fontSize: 14, borderRight: '1px solid #2a2f3d', verticalAlign: 'top', paddingTop: 14 }}>
-                              {day}
-                              {selectedPeriod && (
-                                <div style={{ fontSize: 10, fontWeight: 400, color: '#9ca3af', marginTop: 2 }}>
-                                  {formatAd(bsToAd(selectedPeriod.bs_year, selectedPeriod.bs_month, parseInt(day)))}
-                                </div>
-                              )}
+                    {Object.keys(byDay).sort((a, b) => a - b).flatMap(day => {
+                      const dayGroupsObj = byDay[day]
+                      const groupIds = Object.keys(dayGroupsObj)
+                      return groupIds.flatMap((gid, gIdx) => {
+                        const groupEntries = dayGroupsObj[gid]
+                        const first = groupEntries[0]
+                        const groupTotal = groupEntries.reduce((s, e) => s + e.qty * e.rate, 0)
+                        const vatAmount  = groupEntries.filter(e => e.vat_inclusive).reduce((s, e) => s + e.qty * e.rate * 0.13, 0)
+                        return [
+                          // Group header row
+                          <tr key={`gh-${gid}`} style={{ background: 'rgba(201,168,76,0.04)', borderTop: gIdx > 0 ? '2px solid #1a1f2e' : undefined }}>
+                            <td style={{ fontWeight: 700, color: '#c9a84c', fontSize: 14, borderRight: '1px solid #2a2f3d', verticalAlign: 'middle', paddingTop: 10, paddingBottom: 10 }}>
+                              {gIdx === 0 ? (
+                                <>
+                                  {day}
+                                  {selectedPeriod && (
+                                    <div style={{ fontSize: 10, fontWeight: 400, color: '#9ca3af', marginTop: 2 }}>
+                                      {formatAd(bsToAd(selectedPeriod.bs_year, selectedPeriod.bs_month, parseInt(day)))}
+                                    </div>
+                                  )}
+                                </>
+                              ) : null}
                             </td>
-                          )}
-                          <td style={{ fontWeight: 600, color: '#e8e0d0' }}>{entry.items?.name}</td>
-                          <td>{entry.items?.categories?.name ? <span className="badge badge-yellow">{entry.items.categories.name}</span> : <span style={{ color: '#9ca3af' }}>—</span>}</td>
-                          <td style={{ color: '#6b7280' }}>{entry.vendors?.name || <span style={{ color: '#9ca3af' }}>—</span>}</td>
-                          {(() => {
-                            const cf = getCf(entry.items)
-                            const displayQty  = cf > 1 ? entry.qty / cf : entry.qty
-                            const displayUnit = cf > 1 ? entry.items.purchase_unit : entry.items?.uom
-                            const displayRate = cf > 1 ? entry.rate * cf : entry.rate
-                            return (
-                              <>
-                                <td style={{ textAlign: 'right' }}>
-                                  {Number(displayQty).toLocaleString(undefined, { maximumFractionDigits: 3 })}
-                                  {cf > 1 && <div style={{ fontSize: 10, color: '#6b7280' }}>{Number(entry.qty).toLocaleString()} {entry.items?.uom}</div>}
-                                </td>
-                                <td style={{ color: '#6b7280' }}>{displayUnit}</td>
-                                <td style={{ textAlign: 'right' }}>
-                                  {Number(displayRate).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                                  {cf > 1 && <div style={{ fontSize: 10, color: '#6b7280' }}>NPR {Number(entry.rate).toFixed(4)}/{entry.items?.uom}</div>}
-                                </td>
-                              </>
-                            )
-                          })()}
-                          <td style={{ textAlign: 'right', color: '#c9a84c', fontWeight: 600 }}>
-                            {(entry.qty * entry.rate).toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </td>
-                          <td style={{ fontSize: 12, color: '#6b7280' }}>
-                            {entry.invoice_ref && <div>{entry.invoice_ref}</div>}
-                            {entry.expiry_date && <div style={{ color: '#c9a84c', fontSize: 11 }}>{entry.expiry_date}</div>}
-                            {!entry.invoice_ref && !entry.expiry_date && '—'}
-                          </td>
-                          <td>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-start' }}>
-                              <span className={`badge ${entry.payment_method === 'Cash' ? 'badge-green' : entry.payment_method === 'Credit' ? 'badge-red' : 'badge-yellow'}`}>
-                                {entry.payment_method || 'Cash'}
-                              </span>
-                              {entry.vat_inclusive && <span style={{ color: '#fbbf24', fontWeight: 700, fontSize: 10 }}>+VAT</span>}
-                            </div>
-                          </td>
-                          <td style={{ textAlign: 'right' }}>
-                            {!isLocked && (
-                              <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                                <button className="btn btn-ghost" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => openEdit(entry)}>Edit</button>
-                                <button className="btn btn-danger" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => deleteEntry(entry.id)}>Del</button>
+                            <td colSpan={3} style={{ verticalAlign: 'middle' }}>
+                              <span style={{ fontWeight: 600, color: '#e8e0d0' }}>{first.vendors?.name || <span style={{ color: '#6b7280' }}>No Vendor</span>}</span>
+                              {first.invoice_ref && <span style={{ color: '#6b7280', fontSize: 12, marginLeft: 10 }}>#{first.invoice_ref}</span>}
+                              <span style={{ color: '#4b5563', fontSize: 11, marginLeft: 10 }}>{groupEntries.length} item{groupEntries.length !== 1 ? 's' : ''}</span>
+                            </td>
+                            <td colSpan={3}></td>
+                            <td style={{ textAlign: 'right', fontWeight: 700, color: '#c9a84c', fontSize: 13, verticalAlign: 'middle' }}>
+                              {groupTotal.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              {vatAmount > 0 && <div style={{ fontSize: 10, color: '#fbbf24', fontWeight: 400 }}>+VAT: {vatAmount.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>}
+                            </td>
+                            <td></td>
+                            <td style={{ textAlign: 'right', verticalAlign: 'middle' }}>
+                              <div style={{ display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'flex-end' }}>
+                                <span className={`badge ${first.payment_method === 'Cash' ? 'badge-green' : first.payment_method === 'Credit' ? 'badge-red' : 'badge-yellow'}`}>
+                                  {first.payment_method || 'Cash'}
+                                </span>
+                                {!isLocked && <>
+                                  <button className="btn btn-ghost" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => openEditGroup(gid)}>Edit</button>
+                                  <button className="btn btn-danger" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => deleteGroup(gid)}>Del</button>
+                                </>}
                               </div>
-                            )}
-                          </td>
-                        </tr>
-                      ))
-                    )}
+                            </td>
+                          </tr>,
+                          // Item sub-rows
+                          ...groupEntries.map(entry => (
+                            <tr key={entry.id} style={{ background: 'rgba(0,0,0,0.12)', borderBottom: '1px solid #1a1f2e' }}>
+                              <td></td>
+                              <td style={{ fontWeight: 500, color: '#b8b0a0', paddingLeft: 20, fontSize: 13 }}>{entry.items?.name}</td>
+                              <td>{entry.items?.categories?.name ? <span className="badge badge-yellow">{entry.items.categories.name}</span> : <span style={{ color: '#9ca3af' }}>—</span>}</td>
+                              <td></td>
+                              {(() => {
+                                const cf = getCf(entry.items)
+                                const displayQty  = cf > 1 ? entry.qty / cf : entry.qty
+                                const displayUnit = cf > 1 ? entry.items.purchase_unit : entry.items?.uom
+                                const displayRate = cf > 1 ? entry.rate * cf : entry.rate
+                                return (
+                                  <>
+                                    <td style={{ textAlign: 'right' }}>
+                                      {Number(displayQty).toLocaleString(undefined, { maximumFractionDigits: 3 })}
+                                      {cf > 1 && <div style={{ fontSize: 10, color: '#6b7280' }}>{Number(entry.qty).toLocaleString()} {entry.items?.uom}</div>}
+                                    </td>
+                                    <td style={{ color: '#6b7280' }}>{displayUnit}</td>
+                                    <td style={{ textAlign: 'right' }}>
+                                      {Number(displayRate).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                      {cf > 1 && <div style={{ fontSize: 10, color: '#6b7280' }}>NPR {Number(entry.rate).toFixed(4)}/{entry.items?.uom}</div>}
+                                    </td>
+                                  </>
+                                )
+                              })()}
+                              <td style={{ textAlign: 'right', color: '#c9a84c' }}>
+                                {(entry.qty * entry.rate).toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
+                              <td style={{ fontSize: 12, color: '#6b7280' }}>
+                                {entry.expiry_date ? <span style={{ color: '#c9a84c', fontSize: 11 }}>{entry.expiry_date}</span> : '—'}
+                              </td>
+                              <td></td>
+                            </tr>
+                          ))
+                        ]
+                      })
+                    })}
                     <tr style={{ borderTop: '2px solid #2a2f3d' }}>
                       <td colSpan={7} style={{ fontWeight: 700, color: '#6b7280', paddingTop: 12 }}>Total</td>
                       <td style={{ textAlign: 'right', fontWeight: 700, color: '#c9a84c', fontSize: 15, paddingTop: 12 }}>

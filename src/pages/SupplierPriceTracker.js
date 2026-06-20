@@ -126,7 +126,7 @@ export default function SupplierPriceTracker() {
     setSavingPrice(p => ({ ...p, [item.id]: true }))
     const purchaseQty = parseFloat(item.purchase_qty) || 1
     const newPackRate = newPerUomRate * purchaseQty
-    const { error } = await supabase.from('items').update({ rate: newPackRate, per_uom_rate: newPerUomRate }).eq('id', item.id)
+    const { error } = await supabase.from('items').update({ rate: newPackRate }).eq('id', item.id)
     if (!error) {
       setItems(prev => prev.map(i => i.id === item.id ? { ...i, rate: newPackRate, per_uom_rate: newPerUomRate } : i))
       if (affected.length > 0) setAffectedRecipes({ itemName: item.name, recipes: affected, newRate: newPerUomRate, uom: item.uom })

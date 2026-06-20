@@ -72,7 +72,7 @@ export default function AnnualSummary() {
       { data: purchases }, { data: returns }, { data: wastages },
       { data: sales }, { data: recipes }
     ] = await Promise.all([
-      supabase.from('items').select('id, per_uom_rate').eq('client_id', effectiveClientId).eq('is_active', true),
+      supabase.from('items').select('id, per_uom_rate').eq('client_id', effectiveClientId).eq('is_active', true).eq('is_sub_recipe', false),
       supabase.from('opening_stock').select('period_id, item_id, qty').in('period_id', periodIds),
       supabase.from('closing_stock').select('period_id, item_id, physical_qty').in('period_id', periodIds),
       supabase.from('purchase_entries').select('period_id, item_id, qty, rate').in('period_id', periodIds),

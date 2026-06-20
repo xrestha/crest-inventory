@@ -49,7 +49,7 @@ export default function MonthlySummary() {
       { data: recipes }
     ] = await Promise.all([
       supabase.from('categories').select('*').eq('client_id', effectiveClientId).order('sort_order'),
-      supabase.from('items').select('*, categories(id, name)').eq('client_id', effectiveClientId).eq('is_active', true),
+      supabase.from('items').select('*, categories(id, name)').eq('client_id', effectiveClientId).eq('is_active', true).eq('is_sub_recipe', false),
       supabase.from('opening_stock').select('*').eq('period_id', periodId),
       supabase.from('closing_stock').select('*').eq('period_id', periodId),
       supabase.from('purchase_entries').select('item_id, qty, rate').eq('period_id', periodId),
