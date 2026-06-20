@@ -327,13 +327,24 @@ export default function Items() {
                   </select>
                 </div>
                 <div className="form-field">
-                  <label>Purchase Qty</label>
+                  <label>
+                    <Tip text={form.conversion_factor ? `Locked — derived from conversion factor (${form.conversion_factor}). Set on the Conversion tab.` : 'How many base units you typically buy at once. e.g. 1000 if you buy 1 KG bag = 1000 GM.'} width={240}>
+                      Purchase Qty
+                    </Tip>
+                  </label>
                   <input
                     type="number"
-                    value={form.purchase_qty}
-                    onChange={e => setForm(f({ purchase_qty: e.target.value }))}
+                    value={form.conversion_factor ? form.conversion_factor : form.purchase_qty}
+                    onChange={e => { if (!form.conversion_factor) setForm(f({ purchase_qty: e.target.value })) }}
                     placeholder="1000"
+                    readOnly={!!form.conversion_factor}
+                    style={form.conversion_factor ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
                   />
+                  {form.conversion_factor && (
+                    <span style={{ fontSize: 11, color: '#6b7280', marginTop: 4, display: 'block' }}>
+                      Auto-set from conversion factor
+                    </span>
+                  )}
                 </div>
                 <div className="form-field">
                   <label>Rate (NPR)</label>

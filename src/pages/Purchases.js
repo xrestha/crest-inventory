@@ -860,7 +860,7 @@ export default function Purchases() {
                             )
                           })()}
                           <td style={{ textAlign: 'right', color: '#c9a84c', fontWeight: 600 }}>
-                            {(entry.qty * entry.rate).toLocaleString('en-NP', { maximumFractionDigits: 0 })}
+                            {(entry.qty * entry.rate).toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
                           <td style={{ fontSize: 12, color: '#6b7280' }}>
                             {entry.invoice_ref && <div>{entry.invoice_ref}</div>}
@@ -889,7 +889,7 @@ export default function Purchases() {
                     <tr style={{ borderTop: '2px solid #2a2f3d' }}>
                       <td colSpan={7} style={{ fontWeight: 700, color: '#6b7280', paddingTop: 12 }}>Total</td>
                       <td style={{ textAlign: 'right', fontWeight: 700, color: '#c9a84c', fontSize: 15, paddingTop: 12 }}>
-                        NPR {filteredValue.toLocaleString('en-NP', { maximumFractionDigits: 0 })}
+                        NPR {filteredValue.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td colSpan={2}></td>
                     </tr>
@@ -1053,7 +1053,7 @@ export default function Purchases() {
                           )
                         })()}
                         <td style={{ textAlign: 'right', color: '#f87171', fontWeight: 700 }}>
-                          −NPR {(ret.qty * ret.rate).toLocaleString('en-NP', { maximumFractionDigits: 0 })}
+                          −NPR {(ret.qty * ret.rate).toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                         <td>
                           <span className={`badge ${ret.payment_method === 'Cash' ? 'badge-green' : ret.payment_method === 'Credit' ? 'badge-red' : 'badge-yellow'}`}>
@@ -1074,7 +1074,7 @@ export default function Purchases() {
                     <tr style={{ borderTop: '2px solid #2a2f3d' }}>
                       <td colSpan={6} style={{ fontWeight: 700, color: '#6b7280', paddingTop: 12 }}>Total Returns</td>
                       <td style={{ textAlign: 'right', fontWeight: 700, color: '#f87171', fontSize: 15, paddingTop: 12 }}>
-                        −NPR {returnTotal.toLocaleString('en-NP', { maximumFractionDigits: 0 })}
+                        −NPR {returnTotal.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td colSpan={3}></td>
                     </tr>
