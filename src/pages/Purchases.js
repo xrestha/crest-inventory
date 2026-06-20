@@ -546,14 +546,15 @@ export default function Purchases() {
                               <option value="">— Select item —</option>
                               {items.map(i => <option key={i.id} value={i.id}>{i.name}{i.categories?.name ? ` (${i.categories.name})` : ''}</option>)}
                             </select>
-                            <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                            <div style={{ display: 'flex', gap: 6, marginTop: 5, alignItems: 'center' }}>
+                              <span style={{ fontSize: 10, color: '#4b5563', whiteSpace: 'nowrap' }}>Expiry</span>
                               <input type="date" value={line.expiry_date}
                                 onChange={e => updateBillLine(line._key, 'expiry_date', e.target.value)}
-                                title="Expiry date"
                                 style={{ background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 4, padding: '3px 6px', fontSize: 11, color: line.expiry_date ? '#9ca3af' : '#4b5563', outline: 'none', flex: 1 }} />
+                              <span style={{ fontSize: 10, color: '#4b5563', whiteSpace: 'nowrap' }}>Shelf life</span>
                               <input type="number" min="0" value={line.shelf_life} placeholder="days"
                                 onChange={e => updateBillLine(line._key, 'shelf_life', e.target.value)}
-                                title="Shelf life (days) — auto-fills expiry"
+                                title="Enter days to auto-fill expiry date"
                                 style={{ background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 4, padding: '3px 6px', fontSize: 11, color: '#9ca3af', outline: 'none', width: 52, textAlign: 'right' }} />
                             </div>
                           </td>
