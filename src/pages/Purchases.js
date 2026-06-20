@@ -38,8 +38,6 @@ export default function Purchases() {
   const [billHeader, setBillHeader]         = useState(EMPTY_HEADER)
   const [billLines, setBillLines]           = useState([newLine()])
 
-  // Register tab
-  const [registerOpening, setRegisterOpening] = useState({})
 
   // Returns tab
   const [returns, setReturns]               = useState([])
@@ -88,18 +86,7 @@ export default function Purchases() {
     setReturns(data || [])
   }
 
-  async function loadRegisterOpening(periodId) {
-    const { data } = await supabase
-      .from('stock_counts')
-      .select('item_id, qty')
-      .eq('period_id', periodId)
-      .eq('count_type', 'opening')
-    const map = {}
-    ;(data || []).forEach(r => { map[r.item_id] = parseFloat(r.qty || 0) })
-    setRegisterOpening(map)
-  }
-
-  // Returns the effective conversion factor (>1) for an item, or 1 if no conversion set
+// Returns the effective conversion factor (>1) for an item, or 1 if no conversion set
   function getCf(item) {
     const cf = parseFloat(item?.conversion_factor)
     return (cf > 1 && item?.purchase_unit) ? cf : 1
@@ -110,9 +97,7 @@ export default function Purchases() {
     setSelectedPeriod(p)
     setFilterDay('all')
     setFilterItem('all')
-    const loaders = [loadPurchases(periodId), loadReturns(periodId)]
-    if (activeTab === 'register') loaders.push(loadRegisterOpening(periodId))
-    await Promise.all(loaders)
+    await Promise.all([loadPurchases(periodId), loadReturns(periodId)])
   }
 
   // ─── PURCHASES ───────────────────────────────────────────
@@ -474,7 +459,6 @@ export default function Purchases() {
           ].map(tab => (
             <button key={tab.id} onClick={() => {
               setActiveTab(tab.id); setShowForm(false); setShowReturnForm(false)
-              if (tab.id === 'register' && selectedPeriod) loadRegisterOpening(selectedPeriod.id)
             }} style={{
               background: 'none', border: 'none', cursor: 'pointer', padding: '10px 20px', fontSize: 13, fontWeight: 500,
               color: activeTab === tab.id ? '#c9a84c' : '#6b7280',
@@ -819,6 +803,12 @@ export default function Purchases() {
       {/* ── RETURNS TAB ── */}
       {activeTab === 'returns' && (
         <>
+          {!isLocked && purchases.length > 0 && !showReturnForm && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+              <button className="btn btn-primary" style={{ fontSize: 12, padding: '5px 14px', background: '#7f1d1d', borderColor: '#f87171' }}
+                onClick={openNewReturn}>+ Add Return</button>
+            </div>
+          )}
           {purchases.length === 0 && (
             <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: '#c9a84c' }}>
               No purchases exist for this period yet. Add purchases first before recording returns.

@@ -30,13 +30,6 @@ const DEFAULT_FLAGS = {
   outstanding_payables: null, shrinkage_report: null,
 }
 
-// Mirrors AuthContext plan key sets
-const PLAN_FEATURE_KEYS = {
-  starter: new Set(['monthly_summary', 'annual_summary', 'reorder_report', 'vat_report', 'non_vat_report', 'wastage_report', 'sales_entry', 'payment_summary']),
-  growth:  new Set(['recipe_costing', 'variance_report', 'budget_vs_actual', 'best_sellers', 'purchase_orders', 'dead_stock', 'recipe_margin', 'outstanding_payables', 'requisitions']),
-  pro:     new Set(['menu_engineering', 'fifo_report', 'vendor_report', 'price_tracker', 'overheads', 'theoretical_variance', 'period_comparison', 'shrinkage_report']),
-}
-
 const FEATURE_GROUPS = [
   { tier: 'core',    label: 'Core — All Plans', color: '#6b7280', features: [
     { key: null, label: 'Dashboard' },
@@ -154,13 +147,6 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
   const [savingClient, setSavingClient] = useState(false)
   const [clientMsg, setClientMsg]       = useState('')
   const [currentPlan, setCurrentPlan]   = useState(client.plan || 'starter')
-
-  async function handleChangePlan(newPlan) {
-    const { error } = await supabase.from('clients').update({ plan: newPlan }).eq('id', client.id)
-    if (error) { alert('Update failed: ' + error.message); return }
-    setCurrentPlan(newPlan)
-    onClientUpdated()
-  }
 
   useEffect(() => {
     loadUsers()
@@ -1087,31 +1073,6 @@ function FeatureAccessModal({ client, onClose }) {
           </div>
         </div>
       </div>
-    </div>
-  )
-}
-
-function FeatureToggle({ featureKey, label, flags, setFlags, disabled }) {
-  return (
-    <div style={{
-      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      padding: '10px 0', borderBottom: '1px solid #2a2f3d'
-    }}>
-      <span style={{ fontSize: 13, color: disabled ? '#9ca3af' : '#e8e0d0' }}>{label}</span>
-      <button
-        onClick={() => !disabled && setFlags(prev => ({ ...prev, [featureKey]: !prev[featureKey] }))}
-        style={{
-          width: 42, height: 22, borderRadius: 11, border: 'none', cursor: disabled ? 'not-allowed' : 'pointer',
-          background: flags[featureKey] ? '#c9a84c' : '#2a2f3d',
-          position: 'relative', transition: 'background 0.2s', flexShrink: 0
-        }}
-      >
-        <span style={{
-          position: 'absolute', top: 3, left: flags[featureKey] ? 22 : 3,
-          width: 16, height: 16, borderRadius: '50%', background: '#fff',
-          transition: 'left 0.2s', display: 'block'
-        }} />
-      </button>
     </div>
   )
 }
