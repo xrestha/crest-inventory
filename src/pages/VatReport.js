@@ -60,13 +60,14 @@ export default function VatReport() {
   }
 
   const vatEntries   = entries.filter(e => e.vat_inclusive)
-  const allEntries   = entries
+  const nonVatEntries = entries.filter(e => !e.vat_inclusive)
 
-  const totalPurchases = allEntries.reduce((s, e) => s + e.qty * e.rate, 0)
-  const vatableTotal   = vatEntries.reduce((s, e) => s + e.qty * e.rate, 0)
-  const vatBaseTotal   = vatableTotal / (1 + VAT_RATE)
-  const vatAmountTotal = vatableTotal - vatBaseTotal
-  const nonVatTotal    = totalPurchases - vatableTotal
+  // Stored rates are ex-VAT bases (NetRate on receipt). VAT is additive (13% on top).
+  const nonVatTotal    = nonVatEntries.reduce((s, e) => s + e.qty * e.rate, 0)
+  const vatBaseTotal   = vatEntries.reduce((s, e) => s + e.qty * e.rate, 0)
+  const vatAmountTotal = vatBaseTotal * VAT_RATE
+  const vatableTotal   = vatBaseTotal * (1 + VAT_RATE)  // actual amount paid incl. VAT
+  const totalPurchases = nonVatTotal + vatableTotal
 
   const vendorRows = buildVendorSummary(vatEntries)
 
@@ -77,8 +78,9 @@ export default function VatReport() {
 
     // Entries sheet
     const entryRows = vatEntries.map(e => {
-      const total = e.qty * e.rate
-      const base  = total / (1 + VAT_RATE)
+      const base  = e.qty * e.rate
+      const vat   = base * VAT_RATE
+      const total = base + vat
       return {
         'Day':            e.bs_day,
         'Item':           e.items?.name || '',
@@ -87,23 +89,27 @@ export default function VatReport() {
         'PAN/VAT No.':    e.vendors?.pan_vat_no || '',
         'Qty':            Number(e.qty),
         'UOM':            e.items?.uom || '',
-        'Total (incl. VAT)': Number(total.toFixed(2)),
         'Base (ex-VAT)':     Number(base.toFixed(2)),
-        'VAT (13%)':         Number((total - base).toFixed(2)),
+        'VAT (13%)':         Number(vat.toFixed(2)),
+        'Total (incl. VAT)': Number(total.toFixed(2)),
         'Invoice Ref':    e.invoice_ref || '',
       }
     })
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(entryRows), 'VAT Entries')
 
     // CA Summary sheet
-    const caRows = vendorRows.map(v => ({
-      'Vendor':          v.name,
-      'PAN/VAT No.':     v.pan,
-      '# Bills':         v.count,
-      'Total (incl. VAT)': Number(v.total.toFixed(2)),
-      'Base (ex-VAT)':     Number((v.total / (1 + VAT_RATE)).toFixed(2)),
-      'Input VAT (13%)':   Number((v.total - v.total / (1 + VAT_RATE)).toFixed(2)),
-    }))
+    const caRows = vendorRows.map(v => {
+      const base  = v.total
+      const vat   = base * VAT_RATE
+      return {
+        'Vendor':            v.name,
+        'PAN/VAT No.':       v.pan,
+        '# Bills':           v.count,
+        'Base (ex-VAT)':     Number(base.toFixed(2)),
+        'Input VAT (13%)':   Number(vat.toFixed(2)),
+        'Total (incl. VAT)': Number((base + vat).toFixed(2)),
+      }
+    })
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(caRows), 'CA Summary')
 
     XLSX.writeFile(wb, `VAT-Report-${selectedPeriod?.bs_year}-${selectedPeriod?.bs_month}.xlsx`)
@@ -185,17 +191,17 @@ export default function VatReport() {
                     <th>Vendor</th>
                     <th style={{ textAlign: 'right' }}>Qty</th>
                     <th>UOM</th>
-                    <th style={{ textAlign: 'right' }}><Tip text="Total amount as entered — including the 13% VAT amount.">Total (incl. VAT)</Tip></th>
-                    <th style={{ textAlign: 'right' }}><Tip text="Net cost before VAT = Total ÷ 1.13. This is your actual expense for accounting.">Base (ex-VAT)</Tip></th>
-                    <th style={{ textAlign: 'right', color: 'var(--theme-amber)' }}><Tip text="Input VAT = Total − Base. Claimable as input tax credit from IRD." width={220}>VAT (13%)</Tip></th>
+                    <th style={{ textAlign: 'right' }}><Tip text="Net cost before VAT — the rate you entered × qty. VAT is added on top.">Base (ex-VAT)</Tip></th>
+                    <th style={{ textAlign: 'right', color: 'var(--theme-amber)' }}><Tip text="Input VAT = Base × 13%. Claimable as input tax credit from IRD." width={220}>VAT (13%)</Tip></th>
+                    <th style={{ textAlign: 'right' }}><Tip text="Actual amount paid = Base + VAT (Base × 1.13).">Total (incl. VAT)</Tip></th>
                     <th>Invoice</th>
                   </tr>
                 </thead>
                 <tbody>
                   {vatEntries.map(e => {
-                    const total = e.qty * e.rate
-                    const base  = total / (1 + VAT_RATE)
-                    const vat   = total - base
+                    const base  = e.qty * e.rate
+                    const vat   = base * VAT_RATE
+                    const total = base + vat
                     return (
                       <tr key={e.id}>
                         <td style={{ color: 'var(--theme-accent)', fontWeight: 700 }}>{e.bs_day}</td>
@@ -208,18 +214,18 @@ export default function VatReport() {
                         <td style={{ color: 'var(--theme-text2)' }}>{e.vendors?.name || '—'}</td>
                         <td style={{ textAlign: 'right', color: 'var(--theme-text3)' }}>{Number(e.qty).toLocaleString(undefined, { maximumFractionDigits: 3 })}</td>
                         <td style={{ color: 'var(--theme-text2)' }}>{e.items?.uom}</td>
-                        <td style={{ textAlign: 'right', color: 'var(--theme-accent)', fontWeight: 600 }}>{fmtNPR(total)}</td>
                         <td style={{ textAlign: 'right', color: 'var(--theme-text1)' }}>{fmtNPR(base)}</td>
                         <td style={{ textAlign: 'right', color: 'var(--theme-amber)', fontWeight: 600 }}>{fmtNPR(vat)}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--theme-accent)', fontWeight: 600 }}>{fmtNPR(total)}</td>
                         <td style={{ color: 'var(--theme-text2)', fontSize: 12 }}>{e.invoice_ref || '—'}</td>
                       </tr>
                     )
                   })}
                   <tr style={{ borderTop: '2px solid var(--theme-border)', fontWeight: 700 }}>
                     <td colSpan={6} style={{ color: 'var(--theme-text2)', fontSize: 12 }}>TOTALS</td>
-                    <td style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>{fmtNPR(vatableTotal)}</td>
                     <td style={{ textAlign: 'right', color: 'var(--theme-text1)' }}>{fmtNPR(vatBaseTotal)}</td>
                     <td style={{ textAlign: 'right', color: 'var(--theme-amber)' }}>{fmtNPR(vatAmountTotal)}</td>
+                    <td style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>{fmtNPR(vatableTotal)}</td>
                     <td></td>
                   </tr>
                 </tbody>
@@ -259,15 +265,16 @@ export default function VatReport() {
                     <th>Vendor</th>
                     <th><Tip text="PAN or VAT registration number of the supplier — add it in Vendors if missing.">PAN / VAT No.</Tip></th>
                     <th style={{ textAlign: 'right' }}><Tip text="Number of VAT-inclusive purchase entries from this vendor this period."># Bills</Tip></th>
-                    <th style={{ textAlign: 'right' }}><Tip text="Total purchase amount including 13% VAT as entered.">Total (incl. VAT)</Tip></th>
-                    <th style={{ textAlign: 'right' }}><Tip text="Net cost before VAT = Total ÷ 1.13.">Base (ex-VAT)</Tip></th>
-                    <th style={{ textAlign: 'right', color: 'var(--theme-amber)' }}><Tip text="Input VAT claimable = Total − Base. Use this figure for your IRD VAT return." width={220}>Input VAT (13%)</Tip></th>
+                    <th style={{ textAlign: 'right' }}><Tip text="Net cost before VAT — sum of entered rates × qty for this vendor.">Base (ex-VAT)</Tip></th>
+                    <th style={{ textAlign: 'right', color: 'var(--theme-amber)' }}><Tip text="Input VAT claimable = Base × 13%. Use this figure for your IRD VAT return." width={220}>Input VAT (13%)</Tip></th>
+                    <th style={{ textAlign: 'right' }}><Tip text="Actual amount paid = Base + VAT (Base × 1.13).">Total (incl. VAT)</Tip></th>
                   </tr>
                 </thead>
                 <tbody>
                   {vendorRows.map((v, i) => {
-                    const base = v.total / (1 + VAT_RATE)
-                    const vat  = v.total - base
+                    const base  = v.total  // v.total = sum of qty × rate (ex-VAT)
+                    const vat   = base * VAT_RATE
+                    const total = base + vat
                     return (
                       <tr key={i}>
                         <td style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{v.name}</td>
@@ -275,17 +282,17 @@ export default function VatReport() {
                           {v.pan || <span style={{ fontStyle: 'italic' }}>Missing — add in Vendors</span>}
                         </td>
                         <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>{v.count}</td>
-                        <td style={{ textAlign: 'right', color: 'var(--theme-accent)', fontWeight: 600 }}>{fmtNPR(v.total)}</td>
                         <td style={{ textAlign: 'right', color: 'var(--theme-text1)' }}>{fmtNPR(base)}</td>
                         <td style={{ textAlign: 'right', color: 'var(--theme-amber)', fontWeight: 600 }}>{fmtNPR(vat)}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--theme-accent)', fontWeight: 600 }}>{fmtNPR(total)}</td>
                       </tr>
                     )
                   })}
                   <tr style={{ borderTop: '2px solid var(--theme-border)', fontWeight: 700 }}>
                     <td colSpan={3} style={{ color: 'var(--theme-text2)', fontSize: 12 }}>PERIOD TOTAL</td>
-                    <td style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>{fmtNPR(vatableTotal)}</td>
                     <td style={{ textAlign: 'right', color: 'var(--theme-text1)' }}>{fmtNPR(vatBaseTotal)}</td>
                     <td style={{ textAlign: 'right', color: 'var(--theme-amber)' }}>{fmtNPR(vatAmountTotal)}</td>
+                    <td style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>{fmtNPR(vatableTotal)}</td>
                   </tr>
                 </tbody>
               </table>
