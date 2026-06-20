@@ -71,9 +71,10 @@ export default function Dashboard() {
       { data: closing },
       { data: items },
       { data: parLevels },
-      { data: overheadsData }
+      { data: overheadsData },
+      { data: wastagesData }
     ] = await Promise.all([
-      supabase.from('items').select('*', { count: 'exact', head: true }).eq('client_id', effectiveClientId).eq('is_active', true),
+      supabase.from('items').select('*', { count: 'exact', head: true }).eq('client_id', effectiveClientId).eq('is_active', true).eq('is_sub_recipe', false),
       supabase.from('vendors').select('*', { count: 'exact', head: true }).eq('client_id', effectiveClientId).eq('is_active', true),
       supabase.from('recipes').select('*', { count: 'exact', head: true }).eq('client_id', effectiveClientId).eq('is_active', true).neq('category', 'Sub-Recipe'),
       supabase.from('recipes').select('*', { count: 'exact', head: true }).eq('client_id', effectiveClientId).eq('is_active', true).eq('category', 'Sub-Recipe'),
@@ -84,9 +85,10 @@ export default function Dashboard() {
       supabase.from('recipe_ingredients').select('recipe_id, item_id, qty_per_portion'),
       period ? supabase.from('opening_stock').select('item_id, qty').eq('period_id', period.id) : { data: [] },
       period ? supabase.from('closing_stock').select('item_id, physical_qty').eq('period_id', period.id) : { data: [] },
-      supabase.from('items').select('id, name, uom, per_uom_rate, yield_pct, categories(name)').eq('client_id', effectiveClientId).eq('is_active', true),
+      supabase.from('items').select('id, name, uom, per_uom_rate, yield_pct, categories(name)').eq('client_id', effectiveClientId).eq('is_active', true).eq('is_sub_recipe', false),
       supabase.from('par_levels').select('item_id, par_qty').eq('client_id', effectiveClientId),
-      period ? supabase.from('overheads').select('amount').eq('period_id', period.id) : { data: [] }
+      period ? supabase.from('overheads').select('amount').eq('period_id', period.id) : { data: [] },
+      period ? supabase.from('wastages').select('item_id, qty').eq('period_id', period.id) : { data: [] }
     ])
 
     // PATCHED: purchaseTotal = gross − returns
@@ -198,7 +200,12 @@ export default function Dashboard() {
     setReorderItems(reorderRows)
 
     const overheadTotal = (overheadsData || []).reduce((s, o) => s + parseFloat(o.amount || 0), 0)
-    setStats({ itemCount, vendorCount, recipeCount, subRecipeCount, purchaseTotal, revenueTotal, overheadTotal })
+
+    const itemRateMap = {}
+    ;(items || []).forEach(i => { itemRateMap[i.id] = parseFloat(i.per_uom_rate || 0) })
+    const wastageValueTotal = (wastagesData || []).reduce((s, w) => s + parseFloat(w.qty || 0) * (itemRateMap[w.item_id] || 0), 0)
+
+    setStats({ itemCount, vendorCount, recipeCount, subRecipeCount, purchaseTotal, revenueTotal, overheadTotal, wastageValueTotal })
     setLoading(false)
     const fcPctNow = revenueTotal > 0 ? (purchaseTotal / revenueTotal) * 100 : null
     loadFcTrend(period, fcPctNow)
@@ -302,6 +309,9 @@ export default function Dashboard() {
   const periodLabel = activePeriod ? `${BS_MONTHS[activePeriod.bs_month - 1]} ${activePeriod.bs_year}` : '—'
   const fcPct = stats?.revenueTotal > 0 ? (stats.purchaseTotal / stats.revenueTotal) * 100 : null
   const ohPct = stats?.revenueTotal > 0 && stats?.overheadTotal > 0 ? (stats.overheadTotal / stats.revenueTotal) * 100 : null
+  const netMarginPct = stats?.revenueTotal > 0
+    ? ((stats.revenueTotal - stats.purchaseTotal - (stats.overheadTotal || 0)) / stats.revenueTotal) * 100
+    : null
 
   // ── Admin platform overview ───────────────────────────────────────────────
   if (showAdminDash) {
@@ -658,7 +668,7 @@ export default function Dashboard() {
       )}
 
       {/* ── Row 1: Primary KPIs ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 14 }}>
 
         {/* Net Purchases */}
         <div style={kpiCard(() => navigate('/purchases'))} onClick={() => navigate('/purchases')}>
@@ -713,10 +723,26 @@ export default function Dashboard() {
             {stats?.overheadTotal ? `NPR ${stats.overheadTotal.toLocaleString('en-NP', { maximumFractionDigits: 0 })} total →` : 'No overhead data'}
           </div>
         </div>
+
+        {/* Est. Net Margin % */}
+        {canSales && (
+          <div style={kpiCard(null)}>
+            <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
+              <Tip text="Revenue minus food cost and overheads, as a % of revenue. This is what the business keeps after ingredient and fixed costs. Healthy Nepal F&B target: ≥20%." width={260}>Est. Net Margin %</Tip>
+            </div>
+            <div style={{
+              fontSize: 28, fontWeight: 800, lineHeight: 1.1,
+              color: netMarginPct == null ? '#6b7280' : netMarginPct >= 20 ? '#34d399' : netMarginPct >= 10 ? '#c9a84c' : '#f87171'
+            }}>
+              {loading ? '—' : netMarginPct != null ? `${netMarginPct.toFixed(1)}%` : '—'}
+            </div>
+            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 5 }}>After food & overheads · target ≥20%</div>
+          </div>
+        )}
       </div>
 
       {/* ── Row 2: Secondary KPIs ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 20 }}>
 
         <div style={kpiCard(null)}>
           <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 4 }}>Active Period</div>
@@ -747,6 +773,16 @@ export default function Dashboard() {
             </div>
           </div>
         ) : null}
+
+        <div style={kpiCard(() => navigate('/wastage'))} onClick={() => navigate('/wastage')}>
+          <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 4 }}>
+            <Tip text="Total NPR value of wastage recorded this period — qty wasted × unit rate per item." width={220}>Wastage Value</Tip>
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: stats?.wastageValueTotal > 0 ? '#f87171' : '#e8e0d0' }}>
+            {loading ? '—' : `NPR ${Math.round(stats?.wastageValueTotal || 0).toLocaleString('en-NP')}`}
+          </div>
+          <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>This period →</div>
+        </div>
       </div>
 
       {/* ── Charts Row ── */}
