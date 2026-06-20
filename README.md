@@ -85,21 +85,56 @@ Starter: 3-month free trial. Prices listed with bargaining headroom (~35–40%).
 - **Done (S62):** Dead Stock / Slow Movers — `/dead-stock`, Growth, Dead=Used=0 / Slow=Used<20% of available; Value at Risk
 - **Done (S63):** Recipe Contribution Margin — `/recipe-margin`, Growth, (Selling Price − Food Cost) × Qty Sold; sort by contribution/margin/FC%
 - **Done (S63):** Period-over-Period Comparison — `/period-comparison`, Pro, FC%/COGS/Revenue side-by-side; ↑↓ pp trend vs prev period
-- **Later:** Shrinkage Report — items with consistent negative variance across multiple periods (multi-period query, loss-prevention tool). Different from Wastage: wastage is logged, shrinkage is unexplained.
-- **Later:** Annual Summary — rollup of all monthly_periods in a BS fiscal year
-- **Later:** Outstanding Payables — Credit purchases by vendor with aging (needs `paid_at` column on `purchase_entries`)
+- **Done:** Annual Summary — `/annual-summary`, Starter+, rollup of all monthly_periods in a BS fiscal year
+- **Done:** Outstanding Payables — `/payables`, Growth, aging buckets (Current/31–60/61–90/90+), grouped by vendor, Mark Paid button. DB migration run ✓ (`paid_at date` column added to `purchase_entries`)
+- **Done:** Shrinkage Report — `/shrinkage`, Pro, last 3/6/12 closed periods selector, actual vs theoretical usage, Consistent/Occasional/Once/Clear status badges. No DB change needed.
 
 ### Features Backlog
 - **Done (S61):** PWA — installable shell. `manifest.json` updated (name, colors, scope), `public/service-worker.js` added (cache-first for assets, network-first for navigation, never caches Supabase calls), registered in `src/index.js`. Icons: replace `public/logo192.png` + `public/logo512.png` with actual Crest logo at those sizes.
-- **Later:** PWA offline stock count entry — IndexedDB + background sync for counts with no signal
-- **Later:** Staff meal & complimentary tracking (separate consumption category)
-- **Later:** Mobile-first stock count UX (dedicated counting flow)
-- **Later:** Owner Dashboard (mobile-first single-page P&L view — deferred)
-- **Later:** Role-based users Owner/Manager (deferred)
+- **Not built:** PWA offline stock count — IndexedDB + background sync for closing stock counts with no signal
+- **Done (S93):** Staff meal & complimentary tracking — `staff_meals` table, new tab in Stock Count, deducted from Used/COGS separately from wastage. Staff Meals column added to Stock Summary and Monthly Summary. Variance updated. Growth plan, `staff_meals` flag. DB migration run ✓
+- **Not built:** Mobile-first stock count UX — dedicated counting flow optimised for phone
+- **Deferred (client):** Owner Dashboard — mobile-first single-page P&L view
+- **Deferred (client):** Role-based users Owner/Manager
+
+### Future Products (separate apps — not in this codebase)
+- **Crest HR** — payroll (SSF/EPF 11%+20%), Dashain bonus, advance/loan ledger, gratuity accrual, leave balance, TDS, service charge distribution
+- **Crest POS** — point-of-sale; closes the loop by auto-populating Sales Entry in Crest Inventory
 
 ---
 
 ## Session Log
+
+### S93 — 2026-06-20 — Staff Meals Tracking + Purchase Rate Modal Fix
+
+**Staff Meals tracking (new feature):**
+- New `Staff Meals` tab in Stock Count alongside Wastage — enter qty consumed by staff/comps per item per period
+- New DB table `staff_meals` (period_id, item_id, qty, type CHECK IN ('staff','comp'))
+- Formula change across Stock, Variance, Monthly Summary: Used = Opening + Net Purchases − Wastage − **Staff Meals** − Closing
+- Stock Summary: Staff Meals column (purple) in both category table and per-item table + two new Excel export columns
+- Monthly Summary: Staff Meals column added to category breakdown; COGS tooltip updated
+- Variance: staff meals subtracted from actualUsed so recipe-based variance is more accurate
+- Feature flag: `staff_meals` (Growth plan) — added to GROWTH_KEYS, DEFAULT_FLAGS, FEATURE_GROUPS
+
+**DB migration run ✓** (`CREATE TABLE staff_meals` + RLS + GRANT + feature_flags column — run S93)
+
+**Files:** `src/pages/Stock.js`, `src/pages/Variance.js`, `src/pages/MonthlySummary.js`, `src/context/AuthContext.js`, `src/pages/AdminClients.js`  
+**Commit:** `74a5afb`
+
+---
+
+**Purchase Rate Update — Multi-Item Modal:**
+
+**Rate change detection now covers all items in a bill:**
+- Previously: after saving a bill, only the first item with a changed rate triggered a toast prompt; the rest were silently skipped
+- Now: all changed items are collected, then shown in a centered checkbox modal — all pre-checked (opt-out model)
+- "Update N items" applies only checked items; "Skip all" dismisses without changes
+- `applyRateUpdates()` batches all selected updates in parallel via `Promise.all`
+
+**Files:** `src/pages/Purchases.js`  
+**Commit:** `94da53b`
+
+---
 
 ### S92 — 2026-06-20 — Feature Access Modal Redesign + Feature Flag Fixes
 

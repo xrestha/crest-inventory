@@ -67,45 +67,49 @@ export default function App() {
               <Route path="/stock"      element={<Stock />} />
               <Route path="/help"       element={<Help />} />
 
-              {/* Growth plan — Sales, Recipes, core reports */}
+              {/* Starter plan — reports & entry modules */}
               <Route path="/sales"
-                element={<PremiumGate featureKey="sales_entry" minPlan="growth"><Sales /></PremiumGate>} />
-              <Route path="/recipes"
-                element={<PremiumGate featureKey="recipe_costing" minPlan="growth"><Recipes /></PremiumGate>} />
-              <Route path="/variance"
-                element={<PremiumGate featureKey="variance_report" minPlan="growth"><Variance /></PremiumGate>} />
+                element={<PremiumGate featureKey="sales_entry" minPlan="starter"><Sales /></PremiumGate>} />
+              <Route path="/payments"
+                element={<PremiumGate featureKey="payment_summary" minPlan="starter"><PaymentReport /></PremiumGate>} />
               <Route path="/summary"
                 element={<PremiumGate featureKey="monthly_summary" minPlan="starter"><MonthlySummary /></PremiumGate>} />
               <Route path="/annual-summary"
                 element={<PremiumGate featureKey="annual_summary" minPlan="starter"><AnnualSummary /></PremiumGate>} />
-              <Route path="/payables"
-                element={<PremiumGate featureKey="outstanding_payables" minPlan="growth"><OutstandingPayables /></PremiumGate>} />
-              <Route path="/payments"
-                element={<PremiumGate featureKey="payment_summary" minPlan="growth"><PaymentReport /></PremiumGate>} />
               <Route path="/reorder"
                 element={<PremiumGate featureKey="reorder_report" minPlan="starter"><ReorderReport /></PremiumGate>} />
-              <Route path="/budget"
-                element={<PremiumGate featureKey="budget_vs_actual" minPlan="growth"><BudgetVsActual /></PremiumGate>} />
-              <Route path="/requisitions"
-                element={<PremiumGate featureKey="requisitions" minPlan="growth"><Requisitions /></PremiumGate>} />
-              <Route path="/wastage-report"
-                element={<PremiumGate featureKey="wastage_report" minPlan="starter"><WastageReport /></PremiumGate>} />
-              <Route path="/dead-stock"
-                element={<PremiumGate featureKey="dead_stock" minPlan="growth"><DeadStock /></PremiumGate>} />
-              <Route path="/recipe-margin"
-                element={<PremiumGate featureKey="recipe_margin" minPlan="growth"><RecipeMargin /></PremiumGate>} />
-              <Route path="/period-comparison"
-                element={<PremiumGate featureKey="period_comparison" minPlan="pro"><PeriodComparison /></PremiumGate>} />
-              <Route path="/shrinkage"
-                element={<PremiumGate featureKey="shrinkage_report" minPlan="pro"><ShrinkageReport /></PremiumGate>} />
-              <Route path="/best-sellers"
-                element={<PremiumGate featureKey="best_sellers" minPlan="growth"><BestSellers /></PremiumGate>} />
               <Route path="/vat-report"
                 element={<PremiumGate featureKey="vat_report" minPlan="starter"><VatReport /></PremiumGate>} />
               <Route path="/non-vat-report"
                 element={<PremiumGate featureKey="non_vat_report" minPlan="starter"><NonVatReport /></PremiumGate>} />
+              <Route path="/wastage-report"
+                element={<PremiumGate featureKey="wastage_report" minPlan="starter"><WastageReport /></PremiumGate>} />
+              <Route path="/settings"
+                element={<PremiumGate featureKey="settings" minPlan="starter"><Settings /></PremiumGate>} />
 
-              {/* Pro plan — Advanced analytics, engineering, settings */}
+              {/* Growth plan — recipes, analytics, operations */}
+              <Route path="/recipes"
+                element={<PremiumGate featureKey="recipe_costing" minPlan="growth"><Recipes /></PremiumGate>} />
+              <Route path="/variance"
+                element={<PremiumGate featureKey="variance_report" minPlan="growth"><Variance /></PremiumGate>} />
+              <Route path="/payables"
+                element={<PremiumGate featureKey="outstanding_payables" minPlan="growth"><OutstandingPayables /></PremiumGate>} />
+              <Route path="/budget"
+                element={<PremiumGate featureKey="budget_vs_actual" minPlan="growth"><BudgetVsActual /></PremiumGate>} />
+              <Route path="/requisitions"
+                element={<PremiumGate featureKey="requisitions" minPlan="growth"><Requisitions /></PremiumGate>} />
+              <Route path="/dead-stock"
+                element={<PremiumGate featureKey="dead_stock" minPlan="growth"><DeadStock /></PremiumGate>} />
+              <Route path="/recipe-margin"
+                element={<PremiumGate featureKey="recipe_margin" minPlan="growth"><RecipeMargin /></PremiumGate>} />
+              <Route path="/best-sellers"
+                element={<PremiumGate featureKey="best_sellers" minPlan="growth"><BestSellers /></PremiumGate>} />
+
+              {/* Pro plan — advanced analytics */}
+              <Route path="/period-comparison"
+                element={<PremiumGate featureKey="period_comparison" minPlan="pro"><PeriodComparison /></PremiumGate>} />
+              <Route path="/shrinkage"
+                element={<PremiumGate featureKey="shrinkage_report" minPlan="pro"><ShrinkageReport /></PremiumGate>} />
               <Route path="/menu-engineering"
                 element={<PremiumGate featureKey="menu_engineering" minPlan="pro"><MenuEngineering /></PremiumGate>} />
               <Route path="/fifo"
@@ -118,8 +122,6 @@ export default function App() {
                 element={<PremiumGate featureKey="overheads" minPlan="pro"><Overheads /></PremiumGate>} />
               <Route path="/theoretical-variance"
                 element={<PremiumGate featureKey="theoretical_variance" minPlan="pro"><TheoreticalVariance /></PremiumGate>} />
-              <Route path="/settings"
-                element={<PremiumGate featureKey="settings" minPlan="pro"><Settings /></PremiumGate>} />
 
               {/* Admin only */}
               <Route path="/admin/clients"
