@@ -774,7 +774,7 @@ export default function Dashboard() {
           </div>
         ) : null}
 
-        <div style={kpiCard(() => navigate('/wastage'))} onClick={() => navigate('/wastage')}>
+        <div style={kpiCard(() => navigate('/wastage-report'))} onClick={() => navigate('/wastage-report')}>
           <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 4 }}>
             <Tip text="Total NPR value of wastage recorded this period — qty wasted × unit rate per item." width={220}>Wastage Value</Tip>
           </div>

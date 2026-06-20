@@ -30,8 +30,8 @@ Works natively in Bikram Sambat (BS) calendar · NPR currency · FonePay payment
 ### Plans
 | Plan | List Price | Annual Price | Includes |
 |---|---|---|---|
-| Starter | NPR 8,000/mo | NPR 5,000/mo | Dashboard, Items, Vendors, Periods, Purchases, Stock + Monthly Summary, Reorder, VAT Report, Wastage Report |
-| Growth | NPR 18,000/mo | NPR 10,000/mo | + Sales, Recipes, Variance, Payments, Budget vs Actual, Best Sellers, Purchase Orders, Dead Stock, Recipe Margin |
+| Starter | NPR 8,000/mo | NPR 5,000/mo | Dashboard, Items, Vendors, Periods, Purchases, Stock + Sales Entry, Payment Summary, Monthly Summary, Annual Summary, Reorder, VAT Report, Non-VAT Report, Wastage Report |
+| Growth | NPR 18,000/mo | NPR 10,000/mo | + Recipes, Variance, Budget vs Actual, Best Sellers, Purchase Orders, Requisitions, Dead Stock, Recipe Margin, Outstanding Payables |
 | Pro | NPR 25,000/mo | NPR 15,000/mo | + Menu Engineering, FIFO, Vendor Report, Overheads, Period Comparison, Theoretical Variance, Settings |
 
 Starter: 3-month free trial. Prices listed with bargaining headroom (~35–40%).
@@ -64,7 +64,7 @@ Starter: 3-month free trial. Prices listed with bargaining headroom (~35–40%).
 | `/purchase-orders` | Growth+ | `purchase_orders` |
 | `/dead-stock` | Growth+ | `dead_stock` |
 | `/recipe-margin` | Growth+ | `recipe_margin` |
-| `/requisitions` | Flag-only | `requisitions` |
+| `/requisitions` | **Growth+** | `requisitions` |
 | `/menu-engineering` | Pro | `menu_engineering` |
 | `/fifo` | Pro | `fifo_report` |
 | `/vendors-report` | Pro | `vendor_report` |
@@ -100,6 +100,60 @@ Starter: 3-month free trial. Prices listed with bargaining headroom (~35–40%).
 ---
 
 ## Session Log
+
+### S92 — 2026-06-20 — Feature Access Modal Redesign + Feature Flag Fixes
+
+**Feature Access modal (standalone, per-client):**
+- Removed Feature Access tab from ClientDrawer; replaced with "Features ⊞" button per client row in the clients table
+- Modal opens standalone at `min(1120px, 96vw)` with 4-column CSS grid layout (Core / Starter / Growth / Pro) — no vertical scroll
+- Plan-included features locked ON (non-clickable, cursor: default) with a "Plan" badge in tier color
+- Admin can only GRANT features above the plan tier — toggle cycles `null ↔ true`, never stores `false`
+- Feature rows above plan tier show "Override" badge (gold) when explicitly granted by admin
+
+**Plan tier reorganization:**
+- `sales_entry` and `payment_summary` moved from Growth to Starter tier
+- `requisitions` moved from add-on to Growth tier (alongside `purchase_orders`)
+- Add-on tier eliminated entirely
+- `AuthContext.js` `STARTER_KEYS` / `GROWTH_KEYS` updated to match
+
+**Feature flag bug fixes:**
+- `SettingsContext.js` `saveFeatureFlags`: added explicit `{ error }` check on both update and insert paths — Supabase-js v2 never rejects promises, errors were swallowed silently
+- `hasFeature` in `AuthContext.js`: removed `flagVal === false` revoke check — plan-granted features can no longer be revoked by admin flag
+- `DEFAULT_FLAGS` in `AdminClients.js`: all values changed from `false` to `null` (no override by default)
+
+**Add Purchase button relocated:**
+- Moved from page header to same row as "All Days / All Items" filters, right-aligned
+
+**DB migration required (run in Supabase SQL Editor if not already done):**
+```sql
+ALTER TABLE feature_flags ADD COLUMN IF NOT EXISTS annual_summary boolean;
+ALTER TABLE feature_flags ADD COLUMN IF NOT EXISTS outstanding_payables boolean;
+ALTER TABLE feature_flags ADD COLUMN IF NOT EXISTS shrinkage_report boolean;
+ALTER TABLE feature_flags ADD COLUMN IF NOT EXISTS best_sellers boolean;
+ALTER TABLE feature_flags ADD COLUMN IF NOT EXISTS vat_report boolean;
+ALTER TABLE feature_flags ADD COLUMN IF NOT EXISTS non_vat_report boolean;
+ALTER TABLE feature_flags ADD COLUMN IF NOT EXISTS purchase_orders boolean;
+ALTER TABLE feature_flags ADD COLUMN IF NOT EXISTS theoretical_variance boolean;
+ALTER TABLE feature_flags ADD COLUMN IF NOT EXISTS requisitions boolean;
+ALTER TABLE feature_flags ADD COLUMN IF NOT EXISTS wastage_report boolean;
+ALTER TABLE feature_flags ADD COLUMN IF NOT EXISTS dead_stock boolean;
+ALTER TABLE feature_flags ADD COLUMN IF NOT EXISTS recipe_margin boolean;
+ALTER TABLE feature_flags ADD COLUMN IF NOT EXISTS period_comparison boolean;
+ALTER TABLE feature_flags ADD COLUMN IF NOT EXISTS budget_vs_actual boolean;
+
+DO $$ DECLARE cols text[] := ARRAY['sales_entry','monthly_summary','payment_summary','vendor_report','variance_report','fifo_report','reorder_report','price_tracker','recipe_costing','menu_engineering','overheads','budget_vs_actual','best_sellers','vat_report','non_vat_report','purchase_orders','requisitions','wastage_report','dead_stock','recipe_margin','period_comparison','theoretical_variance','annual_summary','outstanding_payables','shrinkage_report']; col text;
+BEGIN FOREACH col IN ARRAY cols LOOP EXECUTE format('ALTER TABLE feature_flags ALTER COLUMN %I SET DEFAULT NULL', col); EXECUTE format('UPDATE feature_flags SET %I = NULL WHERE %I = false', col, col); END LOOP; END $$;
+```
+
+**Files:** `src/pages/AdminClients.js`, `src/context/AuthContext.js`, `src/context/SettingsContext.js`, `src/pages/Purchases.js`  
+**Commits:** `0cca7b7`, `9610d21`, `f9f4896`
+
+**S92 cross-check (same date):**
+- Full page-by-page audit of all 37 pages and route/navigate calls
+- Fixed `Dashboard.js`: Wastage Value KPI card navigated to `/wastage` (404) → corrected to `/wastage-report`
+- Noted `is_sub_recipe` and `yield_pct` as undocumented columns on `items` table (DB schema memory updated)
+
+---
 
 ### S91 — 2026-06-20 — Purchases: Bill-Form Redesign, VAT Fix, Daily Register + Items Filter
 
