@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient'
 import { bsToAd, formatAd, daysInBsMonth } from '../utils/bsCalendar'
 import BsDatePicker from '../components/BsDatePicker'
 import Tip from '../components/Tip'
+import * as XLSX from 'xlsx'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 
@@ -36,6 +37,9 @@ export default function Purchases() {
   // Bill (multi-row add) state
   const [billHeader, setBillHeader]         = useState(EMPTY_HEADER)
   const [billLines, setBillLines]           = useState([newLine()])
+
+  // Register tab
+  const [registerOpening, setRegisterOpening] = useState({})
 
   // Returns tab
   const [returns, setReturns]               = useState([])
@@ -84,6 +88,17 @@ export default function Purchases() {
     setReturns(data || [])
   }
 
+  async function loadRegisterOpening(periodId) {
+    const { data } = await supabase
+      .from('stock_counts')
+      .select('item_id, qty')
+      .eq('period_id', periodId)
+      .eq('count_type', 'opening')
+    const map = {}
+    ;(data || []).forEach(r => { map[r.item_id] = parseFloat(r.qty || 0) })
+    setRegisterOpening(map)
+  }
+
   // Returns the effective conversion factor (>1) for an item, or 1 if no conversion set
   function getCf(item) {
     const cf = parseFloat(item?.conversion_factor)
@@ -95,7 +110,9 @@ export default function Purchases() {
     setSelectedPeriod(p)
     setFilterDay('all')
     setFilterItem('all')
-    await Promise.all([loadPurchases(periodId), loadReturns(periodId)])
+    const loaders = [loadPurchases(periodId), loadReturns(periodId)]
+    if (activeTab === 'register') loaders.push(loadRegisterOpening(periodId))
+    await Promise.all(loaders)
   }
 
   // ─── PURCHASES ───────────────────────────────────────────
@@ -456,9 +473,13 @@ export default function Purchases() {
         <div style={{ display: 'flex', gap: 4 }}>
           {[
             { id: 'purchases', label: `Purchases (${purchases.length})` },
-            { id: 'returns',   label: `Returns (${returns.length})` }
+            { id: 'returns',   label: `Returns (${returns.length})` },
+            { id: 'register',  label: 'Daily Register' },
           ].map(tab => (
-            <button key={tab.id} onClick={() => { setActiveTab(tab.id); setShowForm(false); setShowReturnForm(false) }} style={{
+            <button key={tab.id} onClick={() => {
+              setActiveTab(tab.id); setShowForm(false); setShowReturnForm(false)
+              if (tab.id === 'register' && selectedPeriod) loadRegisterOpening(selectedPeriod.id)
+            }} style={{
               background: 'none', border: 'none', cursor: 'pointer', padding: '10px 20px', fontSize: 13, fontWeight: 500,
               color: activeTab === tab.id ? '#c9a84c' : '#6b7280',
               borderBottom: activeTab === tab.id ? '2px solid #c9a84c' : '2px solid transparent',
@@ -466,7 +487,7 @@ export default function Purchases() {
             }}>{tab.label}</button>
           ))}
         </div>
-        {!isLocked && (
+        {!isLocked && activeTab !== 'register' && (
           <button
             className="btn btn-ghost"
             style={{ fontSize: 12, padding: '5px 12px', marginBottom: 4, color: '#f87171', borderColor: 'rgba(248,113,113,0.35)', background: 'rgba(248,113,113,0.07)' }}
@@ -980,6 +1001,136 @@ export default function Purchases() {
           </div>
         </>
       )}
+
+      {/* ── DAILY REGISTER TAB ── */}
+      {activeTab === 'register' && (() => {
+        if (!selectedPeriod) return null
+        const numDays = daysInBsMonth(selectedPeriod.bs_year, selectedPeriod.bs_month)
+        const days = Array.from({ length: numDays }, (_, i) => i + 1)
+
+        // day matrix: item_id → { day → base qty }
+        const dayMatrix = {}
+        purchases.forEach(p => {
+          if (!dayMatrix[p.item_id]) dayMatrix[p.item_id] = {}
+          dayMatrix[p.item_id][p.bs_day] = (dayMatrix[p.item_id][p.bs_day] || 0) + parseFloat(p.qty || 0)
+        })
+
+        // items with at least one purchase, grouped by category
+        const purchasedIds = new Set(purchases.map(p => p.item_id))
+        const byCategory = {}
+        items.filter(i => purchasedIds.has(i.id)).forEach(item => {
+          const cat = item.categories?.name || 'Uncategorized'
+          if (!byCategory[cat]) byCategory[cat] = []
+          byCategory[cat].push(item)
+        })
+        const sortedCats = Object.keys(byCategory).sort()
+
+        function exportRegisterExcel() {
+          const wb = XLSX.utils.book_new()
+          const rows = []
+          sortedCats.forEach(cat => {
+            rows.push({ 'S.No': '', 'Item Name': cat.toUpperCase(), UOM: '', 'P.Qty': '', Rate: '', 'Per UOM': '', Opening: '' })
+            byCategory[cat].forEach((item, idx) => {
+              const row = {
+                'S.No': idx + 1,
+                'Item Name': item.name,
+                'UOM': item.uom,
+                'P.Qty': parseFloat(item.purchase_qty || item.conversion_factor || 1),
+                'Rate': parseFloat(item.rate || 0),
+                'Per UOM': parseFloat(item.per_uom_rate || 0),
+                'Opening': registerOpening[item.id] || '',
+              }
+              days.forEach(d => {
+                const qty = dayMatrix[item.id]?.[d]
+                row[String(d)] = qty ? parseFloat(qty.toFixed(3)) : ''
+              })
+              rows.push(row)
+            })
+          })
+          const ws = XLSX.utils.json_to_sheet(rows)
+          XLSX.utils.book_append_sheet(wb, ws, 'Daily Register')
+          XLSX.writeFile(wb, `Purchase-Register-${BS_MONTHS[selectedPeriod.bs_month - 1]}-${selectedPeriod.bs_year}.xlsx`)
+        }
+
+        const thStyle = { fontSize: 11, color: '#6b7280', padding: '6px 8px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#13172100', borderBottom: '2px solid #2a2f3d', whiteSpace: 'nowrap', textAlign: 'right' }
+        const tdStyle = { padding: '5px 8px', fontSize: 12, borderBottom: '1px solid #1a1f2e', textAlign: 'right', whiteSpace: 'nowrap' }
+
+        return (
+          <div className="card" style={{ padding: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px 10px' }}>
+              <div>
+                <span style={{ fontWeight: 700, fontSize: 14, color: '#e8e0d0' }}>Daily Purchase Register</span>
+                <span style={{ fontSize: 12, color: '#6b7280', marginLeft: 12 }}>{BS_MONTHS[selectedPeriod.bs_month - 1]} {selectedPeriod.bs_year} · {purchases.length} entries</span>
+              </div>
+              <button className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 14px' }} onClick={exportRegisterExcel} disabled={purchases.length === 0}>
+                Export Excel
+              </button>
+            </div>
+            {purchases.length === 0 ? (
+              <div className="empty-state" style={{ padding: '40px 0' }}>
+                <div className="empty-state-icon">📋</div>
+                <p className="empty-state-text">No purchases recorded this period.</p>
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ ...thStyle, textAlign: 'center', width: 36 }}>S.No</th>
+                      <th style={{ ...thStyle, textAlign: 'left', minWidth: 160 }}>Item Name</th>
+                      <th style={{ ...thStyle, width: 48 }}>UOM</th>
+                      <th style={{ ...thStyle, width: 60 }}><Tip text="Pack size — how many base units per purchase pack.">P.Qty</Tip></th>
+                      <th style={{ ...thStyle, width: 70 }}>Rate</th>
+                      <th style={{ ...thStyle, width: 70 }}><Tip text="Cost per base unit = Rate ÷ P.Qty.">Per UOM</Tip></th>
+                      <th style={{ ...thStyle, width: 80, color: '#c9a84c' }}><Tip text="Opening stock in base units at the start of this period.">Opening</Tip></th>
+                      {days.map(d => (
+                        <th key={d} style={{ ...thStyle, width: 52, color: d % 2 === 0 ? '#6b7280' : '#9ca3af' }}>{d}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedCats.map(cat => (
+                      <>
+                        {/* Category header */}
+                        <tr key={`cat-${cat}`} style={{ background: 'rgba(201,168,76,0.06)' }}>
+                          <td colSpan={7 + numDays} style={{ padding: '6px 10px', fontWeight: 700, fontSize: 11, color: '#c9a84c', letterSpacing: '0.08em', textTransform: 'uppercase', borderBottom: '1px solid #2a2f3d' }}>
+                            {cat}
+                          </td>
+                        </tr>
+                        {byCategory[cat].map((item, idx) => {
+                          const pQty = parseFloat(item.purchase_qty || item.conversion_factor || 1)
+                          const opening = registerOpening[item.id]
+                          return (
+                            <tr key={item.id} style={{ background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
+                              <td style={{ ...tdStyle, textAlign: 'center', color: '#4b5563' }}>{idx + 1}</td>
+                              <td style={{ ...tdStyle, textAlign: 'left', color: '#e8e0d0', fontWeight: 500 }}>{item.name}</td>
+                              <td style={{ ...tdStyle, color: '#6b7280' }}>{item.uom}</td>
+                              <td style={{ ...tdStyle, color: '#9ca3af' }}>{pQty > 1 ? pQty.toLocaleString('en-NP') : '—'}</td>
+                              <td style={{ ...tdStyle, color: '#9ca3af' }}>{parseFloat(item.rate || 0).toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td style={{ ...tdStyle, color: '#6b7280', fontSize: 11 }}>{parseFloat(item.per_uom_rate || 0).toFixed(2)}</td>
+                              <td style={{ ...tdStyle, color: '#c9a84c', fontWeight: 600 }}>
+                                {opening != null && opening > 0 ? opening.toLocaleString('en-NP', { maximumFractionDigits: 2 }) : '—'}
+                              </td>
+                              {days.map(d => {
+                                const qty = dayMatrix[item.id]?.[d]
+                                return (
+                                  <td key={d} style={{ ...tdStyle, color: qty ? '#e8e0d0' : '#2a2f3d', background: qty ? 'rgba(201,168,76,0.06)' : undefined, fontWeight: qty ? 600 : 400 }}>
+                                    {qty ? qty.toLocaleString('en-NP', { maximumFractionDigits: 2 }) : '·'}
+                                  </td>
+                                )
+                              })}
+                            </tr>
+                          )
+                        })}
+                      </>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
     </div>
   )
