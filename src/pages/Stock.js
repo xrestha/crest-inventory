@@ -563,6 +563,9 @@ export default function Stock() {
                       </th>
                       <th style={{ textAlign: 'right' }}>Purchased</th>
                       <th style={{ textAlign: 'right', color: '#f87171' }}>Returned</th>
+                      <th style={{ textAlign: 'right', color: '#c9a84c' }}>
+                        <Tip text="Qty entered × unit rate (per_uom_rate). Gives the NPR value of this item's stock entry." width={220}>Value (NPR)</Tip>
+                      </th>
                       <th></th>
                     </tr>
                   </thead>
@@ -573,6 +576,9 @@ export default function Stock() {
                       const val = row[fieldKey]
                       const isSaving = saving[item.id]
                       const returned = returns[item.id] || 0
+                      const rate = parseFloat(item.per_uom_rate || 0)
+                      const qty = parseFloat(val || 0)
+                      const lineValue = rate > 0 && qty > 0 ? Math.round(qty * rate) : null
                       return (
                         <tr key={item.id}>
                           <td style={{ fontWeight: 600, color: '#e8e0d0' }}>{item.name}</td>
@@ -600,6 +606,9 @@ export default function Stock() {
                           </td>
                           <td style={{ textAlign: 'right', color: returned > 0 ? '#f87171' : '#9ca3af', fontSize: 13 }}>
                             {returned > 0 ? `−${Number(returned).toLocaleString()} ${item.uom}` : '—'}
+                          </td>
+                          <td style={{ textAlign: 'right', color: '#c9a84c', fontSize: 13, fontWeight: lineValue ? 600 : 400 }}>
+                            {lineValue != null ? `NPR ${lineValue.toLocaleString('en-NP')}` : '—'}
                           </td>
                           <td style={{ width: 40, textAlign: 'center' }}>
                             {isSaving && <span style={{ fontSize: 11, color: '#6b7280' }}>…</span>}
