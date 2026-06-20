@@ -263,7 +263,6 @@ export default function Recipes() {
     if (isSubRecipe) {
       const cpu = liveCost / (parseFloat(recipeForm.yield_qty) || 1)
       const uom = recipeForm.yield_uom || 'portion'
-
       // Ensure "Sub-Recipes" category exists
       let srCategoryId = null
       const { data: existingCat } = await supabase
@@ -271,8 +270,9 @@ export default function Recipes() {
       if (existingCat) {
         srCategoryId = existingCat.id
       } else {
-        const { data: newCat } = await supabase
+        const { data: newCat, error: catErr } = await supabase
           .from('categories').insert({ client_id: clientId, name: 'Sub-Recipes', sort_order: 999 }).select().single()
+        if (catErr) { setError('SR sync — category create failed: ' + catErr.message); setSaving(false); return }
         srCategoryId = newCat?.id || null
       }
 
@@ -283,7 +283,6 @@ export default function Recipes() {
         category_id: srCategoryId,
         purchase_qty: 1,
         rate: parseFloat(cpu.toFixed(4)),
-        per_uom_rate: parseFloat(cpu.toFixed(4)),
         is_active: true,
         is_sub_recipe: true,
       }
@@ -291,10 +290,12 @@ export default function Recipes() {
       const existingLinkedId = selectedRecipe?.linked_item_id
       let linkedItemId = existingLinkedId
       if (existingLinkedId) {
-        await supabase.from('items').update(itemPayload).eq('id', existingLinkedId)
+        const { error: updateErr } = await supabase.from('items').update(itemPayload).eq('id', existingLinkedId)
+        if (updateErr) { setError('SR sync — item update failed: ' + updateErr.message); setSaving(false); return }
       } else {
         itemPayload.item_code = payload.recipe_code || selectedRecipe?.recipe_code || null
-        const { data: newItem } = await supabase.from('items').insert(itemPayload).select().single()
+        const { data: newItem, error: insertErr } = await supabase.from('items').insert(itemPayload).select().single()
+        if (insertErr) { setError('SR sync — item insert failed: ' + insertErr.message); setSaving(false); return }
         linkedItemId = newItem?.id
       }
       if (linkedItemId) {
