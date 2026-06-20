@@ -101,6 +101,39 @@ Starter: 3-month free trial. Prices listed with bargaining headroom (~35–40%).
 
 ## Session Log
 
+### S89 — 2026-06-20 — Dashboard Rework: Net Margin, Wastage KPI, SR Count Fix
+
+**Three targeted improvements to the client dashboard:**
+
+- **Est. Net Margin %** card added to Row 1 KPIs — `(Revenue − Food Cost − Overheads) / Revenue × 100`. Green ≥20%, yellow 10–20%, red <10%. Only shows when revenue data exists. This is the "money the business keeps" number.
+- **Wastage Value** card added to Row 2 KPIs — total NPR value of wastage recorded this period (`qty × per_uom_rate` per item). Shows red when >0, links to Wastage Report.
+- **Items in Master count fixed** — dashboard was counting SR mirror items (`is_sub_recipe = true`) inflating the item count. Now correctly excludes them.
+- **Items data fetch fixed** — spend/variance/reorder calculations now exclude SR mirror items (they have no purchase history so were producing noise).
+- Grid columns tightened from `minmax(200px,1fr)` to `minmax(160px,1fr)` to fit 5 primary KPI cards.
+
+**Files:** `src/pages/Dashboard.js`  
+**Commit:** `0424401`
+
+---
+
+### S88 — 2026-06-20 — Stock Count: Value (NPR) Column on Entry Tabs
+
+Added a **Value (NPR)** column after the Returned column on the Opening Stock, Closing Stock, and Wastage tabs. Shows `qty entered × per_uom_rate` rounded to nearest rupee. Displays bold gold when there is a value, `—` when qty or rate is zero. Includes a Tip tooltip.
+
+**Files:** `src/pages/Stock.js`  
+**Commit:** `d92b63e`
+
+---
+
+### S87 — 2026-06-20 — Fix SR Sync: per_uom_rate is a Generated Column
+
+Sub-recipe → item auto-sync (S86) was silently failing on save. Added error surfacing to the sync block to expose the Supabase 400 error: `Column "per_uom_rate" is a generated column — cannot insert a non-DEFAULT value`. Removed `per_uom_rate` from the `itemPayload`; Supabase auto-computes it from `rate`. Also added error handling to category create and item update paths so future failures surface as red text in the UI rather than failing silently.
+
+**Files:** `src/pages/Recipes.js`  
+**Commit:** `0d23676`
+
+---
+
 ### S86 — 2026-06-20 — Sub-Recipe → Item Auto-Sync for Stock Tracking
 
 **Sub-recipes now appear in Stock Count (Opening/Closing/Wastage) automatically.**
