@@ -101,6 +101,46 @@ Starter: 3-month free trial. Prices listed with bargaining headroom (~35–40%).
 
 ## Session Log
 
+### S90 — 2026-06-20 — Purchases: Grouped Bill View + Cross-Page Bug Fixes
+
+**Purchases page reworked from per-item rows to per-bill groups:**
+
+- Added `purchase_group_id UUID` column to `purchase_entries`. All items saved in one bill session share a UUID; existing rows backfilled via smart SQL grouping by `(period_id, vendor_id, bs_day, invoice_ref, payment_method)`.
+- Table now renders a **group header row** per bill (vendor, invoice ref, item count, group total + VAT amount, payment badge, Edit/Del) followed by **item sub-rows** (name, category, qty, uom, rate, item total, expiry). No per-item Edit/Del buttons.
+- Edit button pre-fills the multi-item bill form with all entries in the group; Save = delete old entries + re-insert with same UUID.
+- Delete button removes the entire bill group with confirmation showing item count + total.
+- Removed the Payment column from the table header; payment badge now lives inline in the group header next to Edit/Del.
+- Bill Total + incl. VAT both show 2 decimal places.
+- `+VAT: NPR X.XX` shown below group total when any item in the group has VAT.
+
+**SQL required (run once in Supabase SQL Editor):**
+```sql
+ALTER TABLE purchase_entries ADD COLUMN IF NOT EXISTS purchase_group_id UUID;
+DO $$
+DECLARE r RECORD; new_uuid UUID;
+BEGIN
+  FOR r IN (SELECT DISTINCT period_id, vendor_id, bs_day, invoice_ref, payment_method FROM purchase_entries WHERE purchase_group_id IS NULL) LOOP
+    new_uuid := gen_random_uuid();
+    UPDATE purchase_entries SET purchase_group_id = new_uuid
+    WHERE purchase_group_id IS NULL AND period_id = r.period_id
+      AND (vendor_id = r.vendor_id OR (vendor_id IS NULL AND r.vendor_id IS NULL))
+      AND bs_day = r.bs_day
+      AND (invoice_ref = r.invoice_ref OR (invoice_ref IS NULL AND r.invoice_ref IS NULL))
+      AND (payment_method = r.payment_method OR (payment_method IS NULL AND r.payment_method IS NULL));
+  END LOOP;
+END $$;
+ALTER TABLE purchase_entries ALTER COLUMN purchase_group_id SET DEFAULT gen_random_uuid();
+```
+
+**Cross-page bug fixes (caught via audit):**
+- `SupplierPriceTracker.js`: removed `per_uom_rate` from `.update()` payload — it's a generated column, the write was silently failing.
+- `ShrinkageReport.js`, `Variance.js`, `TheoreticalVariance.js`, `MonthlySummary.js`, `AnnualSummary.js`: added `.eq('is_sub_recipe', false)` to items fetch — sub-recipe mirror items were leaking into cost calculations.
+
+**Files:** `src/pages/Purchases.js`, `src/pages/SupplierPriceTracker.js`, `src/pages/ShrinkageReport.js`, `src/pages/Variance.js`, `src/pages/TheoreticalVariance.js`, `src/pages/MonthlySummary.js`, `src/pages/AnnualSummary.js`  
+**Commit:** `829d86c`
+
+---
+
 ### S89 — 2026-06-20 — Dashboard Rework: Net Margin, Wastage KPI, SR Count Fix
 
 **Three targeted improvements to the client dashboard:**
