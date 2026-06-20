@@ -57,7 +57,7 @@ export default function ReorderReport() {
       { data: sales },
       { data: pars }
     ] = await Promise.all([
-      supabase.from('items').select('*, categories(name)').eq('client_id', effectiveClientId).eq('is_active', true).order('name'),
+      supabase.from('items').select('*, categories(name)').eq('client_id', effectiveClientId).eq('is_active', true).eq('is_sub_recipe', false).order('name'),
       supabase.from('opening_stock').select('item_id, qty').eq('period_id', periodId),
       supabase.from('closing_stock').select('item_id, physical_qty').eq('period_id', periodId),
       supabase.from('purchase_entries').select('item_id, qty').eq('period_id', periodId),

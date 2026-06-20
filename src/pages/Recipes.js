@@ -29,7 +29,7 @@ export default function Recipes() {
     setLoading(true)
     const [{ data: r }, { data: i }] = await Promise.all([
       supabase.from('recipes').select('*').eq('client_id', clientId).order('name'),
-      supabase.from('items').select('*').eq('client_id', clientId).eq('is_active', true).order('name')
+      supabase.from('items').select('*').eq('client_id', clientId).eq('is_active', true).eq('is_sub_recipe', false).order('name')
     ])
 
     // Fetch ingredients separately
@@ -260,6 +260,48 @@ export default function Recipes() {
     const { error: ingError } = await supabase.from('recipe_ingredients').insert(ingPayload)
     if (ingError) { setError(ingError.message); setSaving(false); return }
 
+    if (isSubRecipe) {
+      const cpu = liveCost / (parseFloat(recipeForm.yield_qty) || 1)
+      const uom = recipeForm.yield_uom || 'portion'
+
+      // Ensure "Sub-Recipes" category exists
+      let srCategoryId = null
+      const { data: existingCat } = await supabase
+        .from('categories').select('id').eq('client_id', clientId).eq('name', 'Sub-Recipes').maybeSingle()
+      if (existingCat) {
+        srCategoryId = existingCat.id
+      } else {
+        const { data: newCat } = await supabase
+          .from('categories').insert({ client_id: clientId, name: 'Sub-Recipes', sort_order: 999 }).select().single()
+        srCategoryId = newCat?.id || null
+      }
+
+      const itemPayload = {
+        client_id: clientId,
+        name: recipeForm.name.trim().toUpperCase(),
+        uom,
+        category_id: srCategoryId,
+        purchase_qty: 1,
+        rate: parseFloat(cpu.toFixed(4)),
+        per_uom_rate: parseFloat(cpu.toFixed(4)),
+        is_active: true,
+        is_sub_recipe: true,
+      }
+
+      const existingLinkedId = selectedRecipe?.linked_item_id
+      let linkedItemId = existingLinkedId
+      if (existingLinkedId) {
+        await supabase.from('items').update(itemPayload).eq('id', existingLinkedId)
+      } else {
+        itemPayload.item_code = payload.recipe_code || selectedRecipe?.recipe_code || null
+        const { data: newItem } = await supabase.from('items').insert(itemPayload).select().single()
+        linkedItemId = newItem?.id
+      }
+      if (linkedItemId) {
+        await supabase.from('recipes').update({ linked_item_id: linkedItemId }).eq('id', recipeId)
+      }
+    }
+
     setSaving(false)
     setView('list')
     init()
@@ -268,6 +310,9 @@ export default function Recipes() {
   async function deleteRecipe(recipe) {
     if (!window.confirm(`Delete "${recipe.name}"?`)) return
     await supabase.from('recipe_ingredients').delete().eq('recipe_id', recipe.id)
+    if (recipe.linked_item_id) {
+      await supabase.from('items').update({ is_active: false }).eq('id', recipe.linked_item_id)
+    }
     await supabase.from('recipes').delete().eq('id', recipe.id)
     init()
   }

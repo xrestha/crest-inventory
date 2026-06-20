@@ -31,7 +31,7 @@ export default function SupplierPriceTracker() {
     setLoading(true)
     const [{ data: v }, { data: i }, { data: p }, { data: pu }] = await Promise.all([
       supabase.from('vendors').select('id, name').eq('client_id', effectiveClientId).eq('is_active', true).order('name'),
-      supabase.from('items').select('id, name, item_code, uom, rate, per_uom_rate, purchase_qty, categories(name)').eq('client_id', effectiveClientId).eq('is_active', true).order('name'),
+      supabase.from('items').select('id, name, item_code, uom, rate, per_uom_rate, purchase_qty, categories(name)').eq('client_id', effectiveClientId).eq('is_active', true).eq('is_sub_recipe', false).order('name'),
       supabase.from('monthly_periods').select('*').eq('client_id', effectiveClientId).order('bs_year').order('bs_month'),
       supabase.from('purchase_entries').select('id, item_id, vendor_id, period_id, rate, qty, bs_day, items(purchase_qty), monthly_periods!inner(client_id)')
         .eq('monthly_periods.client_id', effectiveClientId)

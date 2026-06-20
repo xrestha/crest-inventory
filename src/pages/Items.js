@@ -5,7 +5,6 @@ import { supabase } from '../supabaseClient'
 import Tip from '../components/Tip'
 
 const DEFAULT_CATEGORIES = [
-  'Kitchen Production',
   'Dairy & Bakery',
   'Meats & Poultry',
   'Groceries',
@@ -102,8 +101,9 @@ export default function Items() {
   async function loadCategories() {
     const { data } = await supabase
       .from('categories').select('*').eq('client_id', effectiveClientId).order('sort_order')
-    setCategories(data || [])
-    return data || []
+    const filtered = (data || []).filter(c => c.name !== 'Sub-Recipes')
+    setCategories(filtered)
+    return filtered
   }
 
   async function loadItems() {
@@ -111,6 +111,7 @@ export default function Items() {
       .from('items')
       .select('*, categories(name)')
       .eq('client_id', effectiveClientId)
+      .eq('is_sub_recipe', false)
       .order('name')
     setItems(data || [])
   }

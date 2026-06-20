@@ -63,7 +63,7 @@ export default function Requisitions() {
     setLoading(true)
     const [{ data: p }, { data: i }] = await Promise.all([
       supabase.from('monthly_periods').select('*').eq('client_id', effectiveClientId).order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
-      supabase.from('items').select('id, name, uom, per_uom_rate, categories(name)').eq('client_id', effectiveClientId).eq('is_active', true).order('name')
+      supabase.from('items').select('id, name, uom, per_uom_rate, categories(name)').eq('client_id', effectiveClientId).eq('is_active', true).eq('is_sub_recipe', false).order('name')
     ])
     setPeriods(p || [])
     setItems(i || [])

@@ -69,7 +69,7 @@ export default function PurchaseOrders() {
     const [{ data: p }, { data: v }, { data: i }] = await Promise.all([
       supabase.from('monthly_periods').select('*').eq('client_id', effectiveClientId).order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
       supabase.from('vendors').select('*').eq('client_id', effectiveClientId).eq('is_active', true).order('name'),
-      supabase.from('items').select('*, categories(name)').eq('client_id', effectiveClientId).eq('is_active', true).order('name'),
+      supabase.from('items').select('*, categories(name)').eq('client_id', effectiveClientId).eq('is_active', true).eq('is_sub_recipe', false).order('name'),
     ])
     setPeriods(p || [])
     setVendors(v || [])

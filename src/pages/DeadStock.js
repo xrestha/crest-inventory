@@ -43,7 +43,7 @@ export default function DeadStock() {
       { data: wastes },
       { data: closings },
     ] = await Promise.all([
-      supabase.from('items').select('id, name, uom, per_uom_rate, categories(name)').eq('client_id', clientId).eq('is_active', true),
+      supabase.from('items').select('id, name, uom, per_uom_rate, categories(name)').eq('client_id', clientId).eq('is_active', true).eq('is_sub_recipe', false),
       supabase.from('opening_stock').select('item_id, qty').eq('period_id', periodId),
       supabase.from('purchase_entries').select('item_id, qty').eq('period_id', periodId),
       supabase.from('vendor_returns').select('item_id, qty').eq('period_id', periodId),
