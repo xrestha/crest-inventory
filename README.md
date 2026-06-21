@@ -123,8 +123,17 @@ Starter: 1-month free trial. Annual = 25% off monthly.
 
 **Monthly Workflow — Sales Entry plan badge corrected:** Growth+ → Starter+
 
-**Files:** `src/pages/Help.js`  
-**Commit:** `5c8e97b`
+**Outstanding Payables — Partial Payment Ledger:**
+- Added `payable_payments` table: one row per payment installment, FK to `purchase_entries(id) ON DELETE CASCADE`
+- RLS policy joins through `purchase_entries → monthly_periods → client_id`
+- New `Paid History` tab added to Outstanding Payables page
+- Row expand panel: shows full payment ledger for that invoice + Add Payment form (amount, date, note)
+- `paid_at` on `purchase_entries` is now set automatically when cumulative payments reach the invoice total
+- Partial badge (purple) shown when some payment made but balance remaining; aging badge otherwise
+- **DB migration run ✓** (`payable_payments` table + RLS + GRANT — run S94)
+
+**Files:** `src/pages/Help.js`, `src/pages/OutstandingPayables.js`  
+**Commits:** `5c8e97b`, `1671522`
 
 ---
 

@@ -35,6 +35,7 @@ export default function OutstandingPayables() {
   const [expandedEntry, setExpandedEntry] = useState(null)
   const [payForm, setPayForm]           = useState({ amount: '', paid_at: TODAY, note: '' })
   const [savingPayment, setSavingPayment] = useState(false)
+  const [payError, setPayError]           = useState('')
 
   useEffect(() => { if (!authLoading && effectiveClientId) load(activeTab) }, [clientId]) // eslint-disable-line
 
@@ -99,19 +100,28 @@ export default function OutstandingPayables() {
   function toggleExpand(id) {
     setExpandedEntry(prev => prev === id ? null : id)
     setPayForm({ amount: '', paid_at: TODAY, note: '' })
+    setPayError('')
   }
 
   async function addPayment(entry) {
     const amount = parseFloat(payForm.amount)
     if (!amount || amount <= 0) return
     setSavingPayment(true)
+    setPayError('')
 
-    await supabase.from('payable_payments').insert({
+    const { error: insertErr } = await supabase.from('payable_payments').insert({
       purchase_entry_id: entry.id,
+      client_id: effectiveClientId,
       amount,
       paid_at: payForm.paid_at || TODAY,
       note: payForm.note || null,
     })
+
+    if (insertErr) {
+      setPayError(insertErr.message || 'Failed to save payment.')
+      setSavingPayment(false)
+      return
+    }
 
     // Fully settled — stamp paid_at on the entry
     if (entry.paidTotal + amount >= entry.value) {
@@ -402,7 +412,10 @@ export default function OutstandingPayables() {
                                             {savingPayment ? '…' : 'Save'}
                                           </button>
                                         </div>
-                                        {willSettle && (
+                                        {payError && (
+                                          <div style={{ marginTop: 8, fontSize: 12, color: '#f87171' }}>⚠ {payError}</div>
+                                        )}
+                                        {willSettle && !payError && (
                                           <div style={{ marginTop: 8, fontSize: 12, color: '#34d399' }}>✓ This will fully settle the invoice</div>
                                         )}
                                       </div>
