@@ -28,13 +28,13 @@ Hospitality inventory & food cost management SaaS for Nepal's F&B industry.
 Works natively in Bikram Sambat (BS) calendar · NPR currency · FonePay payment tracking.
 
 ### Plans
-| Plan | List Price | Annual Price | Includes |
+| Plan | Monthly | Annual /mo | Includes |
 |---|---|---|---|
-| Starter | NPR 8,000/mo | NPR 5,000/mo | Dashboard, Items, Vendors, Periods, Purchases, Stock + Sales Entry, Payment Summary, Monthly Summary, Annual Summary, Reorder, VAT Report, Non-VAT Report, Wastage Report |
-| Growth | NPR 18,000/mo | NPR 10,000/mo | + Recipes, Variance, Budget vs Actual, Best Sellers, Purchase Orders, Requisitions, Dead Stock, Recipe Margin, Outstanding Payables |
-| Pro | NPR 25,000/mo | NPR 15,000/mo | + Menu Engineering, FIFO, Vendor Report, Overheads, Period Comparison, Theoretical Variance, Settings |
+| Starter | NPR 5,000 | NPR 3,750 | Dashboard, Items, Vendors, Periods, Purchases, Stock, Help + Sales Entry, Payment Summary, Monthly Summary, Annual Summary, Reorder Report, VAT Report, Non-VAT Report, Wastage Report, Settings |
+| Growth | NPR 8,000 | NPR 6,000 | + Recipes, Variance, Budget vs Actual, Best Sellers, Purchase Orders, Requisitions, Dead Stock, Recipe Margin, Outstanding Payables, Staff Meals |
+| Pro | NPR 12,000 | NPR 9,000 | + Menu Engineering, FIFO, Vendor Report, Supplier Price Tracker, Overheads, Period Comparison, Theoretical Variance, Shrinkage Report |
 
-Starter: 3-month free trial. Prices listed with bargaining headroom (~35–40%).
+Starter: 1-month free trial. Annual = 25% off monthly.
 
 ---
 
@@ -50,29 +50,32 @@ Starter: 3-month free trial. Prices listed with bargaining headroom (~35–40%).
 | `/stock` | All | — |
 | `/help` | All | — |
 | `/pricing` | Public (no auth) | — |
+| `/sales` | **Starter+** | `sales_entry` |
+| `/payments` | **Starter+** | `payment_summary` |
 | `/summary` | **Starter+** | `monthly_summary` |
+| `/annual-summary` | **Starter+** | `annual_summary` |
 | `/reorder` | **Starter+** | `reorder_report` |
 | `/vat-report` | **Starter+** | `vat_report` |
 | `/non-vat-report` | **Starter+** | `non_vat_report` |
 | `/wastage-report` | **Starter+** | `wastage_report` |
-| `/sales` | Growth+ | `sales_entry` |
+| `/settings` | **Starter+** | `settings` |
 | `/recipes` | Growth+ | `recipe_costing` |
 | `/variance` | Growth+ | `variance_report` |
-| `/payments` | Growth+ | `payment_summary` |
+| `/payables` | Growth+ | `outstanding_payables` |
 | `/budget` | Growth+ | `budget_vs_actual` |
-| `/best-sellers` | Growth+ | `best_sellers` |
-| `/purchase-orders` | Growth+ | `purchase_orders` |
+| `/requisitions` | Growth+ | `requisitions` |
 | `/dead-stock` | Growth+ | `dead_stock` |
 | `/recipe-margin` | Growth+ | `recipe_margin` |
-| `/requisitions` | **Growth+** | `requisitions` |
+| `/best-sellers` | Growth+ | `best_sellers` |
+| `/purchase-orders` | Growth+ | `purchase_orders` |
+| `/period-comparison` | Pro | `period_comparison` |
+| `/shrinkage` | Pro | `shrinkage_report` |
 | `/menu-engineering` | Pro | `menu_engineering` |
 | `/fifo` | Pro | `fifo_report` |
 | `/vendors-report` | Pro | `vendor_report` |
 | `/supplier-prices` | Pro | `price_tracker` |
 | `/overheads` | Pro | `overheads` |
 | `/theoretical-variance` | Pro | `theoretical_variance` |
-| `/period-comparison` | Pro | `period_comparison` |
-| `/settings` | **Starter+** | `settings` |
 | `/admin/clients` | Admin only | — |
 | `/admin/audit` | Admin only | — |
 
@@ -105,6 +108,26 @@ Starter: 3-month free trial. Prices listed with bargaining headroom (~35–40%).
 
 ## Session Log
 
+### S94 — 2026-06-20 — Help Page: All 28 Modules + Corrected Pricing
+
+**Module Guide expanded from 9 to 28 modules (`src/pages/Help.js`):**
+- Every page in the app now has a full entry with guide text, tips, and a colour-coded plan badge: no badge = All plans; grey `Starter+`; green `Growth+`; purple `Pro`
+- Newly documented: Payment Summary, Annual Summary, Reorder Report, VAT Report, Non-VAT Report, Wastage Report, Outstanding Payables, Budget vs Actual, Requisitions, Dead Stock, Recipe Margin, Best Sellers, Purchase Orders, Period Comparison, Shrinkage Report, Menu Engineering, FIFO, Vendor Report, Supplier Price Tracker, Overheads, Theoretical Variance
+- Updated existing: Stock Count now describes all 4 tabs (Opening / Closing / Wastage / Staff Meals); Purchases notes bill-level discount
+
+**Pricing tab corrections:**
+- Prices fixed: Starter NPR 5,000 / Growth 8,000 / Pro 12,000 (monthly); 3,750 / 6,000 / 9,000 (annual)
+- "Save 40%" → "Save 25%" on annual billing toggle
+- Starter feature list expanded to 14 items (was 6 — was only listing Basic-tier features)
+- Growth extras (10 items) and Pro extras (8 items) now match actual gate config
+
+**Monthly Workflow — Sales Entry plan badge corrected:** Growth+ → Starter+
+
+**Files:** `src/pages/Help.js`  
+**Commit:** `5c8e97b`
+
+---
+
 ### S93 — 2026-06-20 — Staff Meals Tracking + Purchase Rate Modal Fix
 
 **Staff Meals tracking (new feature):**
@@ -133,6 +156,27 @@ Starter: 3-month free trial. Prices listed with bargaining headroom (~35–40%).
 
 **Files:** `src/pages/Purchases.js`  
 **Commit:** `94da53b`
+
+---
+
+**Plan structure alignment (S93 continuation):**
+- Audited all three sources of plan gating (AuthContext.js STARTER/GROWTH/PRO_KEYS, App.js PremiumGate minPlan, AdminClients.js FEATURE_GROUPS + DEFAULT_FLAGS) against canonical Feature Access modal screenshot
+- Fixed `minPlan` in App.js: `/sales` and `/payments` corrected from Growth → Starter; `/settings` confirmed Starter
+- Moved `/purchase-orders` route from the "Basic — all users" comment block to the Growth section in App.js (was gated correctly but visually misplaced)
+- Added `settings` to `DEFAULT_FLAGS` and to the Starter tier in `FEATURE_GROUPS` in AdminClients.js — was in STARTER_KEYS but admin couldn't grant it as an individual override
+
+**Files:** `src/App.js`, `src/pages/AdminClients.js`  
+**Commits:** `4a4c29a`, `781f683`
+
+---
+
+**Settings — Sub-Recipe Codes tab hidden for Starter clients:**
+- Sub-Recipe Codes tab was visible to all clients even though sub-recipes require `recipe_costing` (Growth+)
+- Added `hasFeature('recipe_costing')` check to the TABS filter
+- Starter clients now see: Thresholds | Item Codes | Vendor Codes | Theme
+
+**Files:** `src/pages/Settings.js`  
+**Commit:** `2068bca`
 
 ---
 
