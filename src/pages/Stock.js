@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as XLSX from 'xlsx'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabaseClient'
 import Tip from '../components/Tip'
 import './Stock.css'
+import { cacheItems, getCachedItems, cacheCategories, getCachedCategories, cachePeriods, getCachedPeriods, cacheStockData, getCachedStockData, enqueue, getQueue, dequeue } from '../utils/offlineQueue'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 
@@ -27,6 +28,11 @@ export default function Stock() {
   const [saveAllLoading, setSaveAllLoading] = useState(false)
   const [saved, setSaved] = useState(false)
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine)
+  const [pendingSync, setPendingSync] = useState(0)
+  const [syncing, setSyncing] = useState(false)
+  const [pendingItems, setPendingItems] = useState(new Set())
+  const flushRef = useRef(null)
 
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 768)
@@ -34,10 +40,60 @@ export default function Stock() {
     return () => window.removeEventListener('resize', handler)
   }, [])
 
-  useEffect(() => { if (!authLoading && effectiveClientId) init() }, [clientId]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const up   = () => { setIsOnline(true);  flushRef.current?.() }
+    const down = () => setIsOnline(false)
+    window.addEventListener('online',  up)
+    window.addEventListener('offline', down)
+    return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down) }
+  }, [])
+
+  useEffect(() => {
+    if (!authLoading && effectiveClientId) {
+      init()
+      if (navigator.onLine) flushRef.current?.()
+    }
+  }, [clientId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function init() {
     setLoading(true)
+
+    if (!navigator.onLine) {
+      const [cachedItems, cachedCats, cachedPeriods] = await Promise.all([
+        getCachedItems(effectiveClientId),
+        getCachedCategories(effectiveClientId),
+        getCachedPeriods(effectiveClientId),
+      ])
+      if (cachedItems)   setItems(cachedItems)
+      if (cachedCats)    setCategories(cachedCats)
+      if (cachedPeriods) {
+        setPeriods(cachedPeriods)
+        const open = cachedPeriods.find(x => x.status === 'open')
+        if (open) {
+          setSelectedPeriod(open)
+          const cached = await getCachedStockData(open.id)
+          if (cached) {
+            const pending = await getQueue()
+            const sd = { ...(cached.stockData || {}) }
+            pending.forEach(op => {
+              if (op.periodId === open.id) {
+                if (!sd[op.itemId]) sd[op.itemId] = {}
+                sd[op.itemId] = { ...sd[op.itemId], [op.fieldKey]: op.qty }
+              }
+            })
+            setStockData(sd)
+            setPurchases(cached.purchases    || {})
+            setReturns(cached.returns        || {})
+            setRequisitioned(cached.requisitioned || {})
+            setPendingSync(pending.filter(op => op.periodId === open.id).length)
+            setPendingItems(new Set(pending.filter(op => op.periodId === open.id).map(op => op.itemId)))
+          }
+        }
+      }
+      setLoading(false)
+      return
+    }
+
     const [{ data: p }, { data: i }, { data: c }] = await Promise.all([
       supabase.from('monthly_periods').select('*').eq('client_id', effectiveClientId).order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
       supabase.from('items').select('*, categories(name)').eq('client_id', effectiveClientId).eq('is_active', true).order('name'),
@@ -46,6 +102,11 @@ export default function Stock() {
     setPeriods(p || [])
     setItems(i || [])
     setCategories(c || [])
+    await Promise.all([
+      cachePeriods(effectiveClientId, p || []),
+      cacheItems(effectiveClientId, i || []),
+      cacheCategories(effectiveClientId, c || []),
+    ])
     const open = (p || []).find(x => x.status === 'open')
     if (open) {
       setSelectedPeriod(open)
@@ -95,23 +156,37 @@ export default function Stock() {
     setReturns(retMap)
 
     // Requisitioned map — qty issued via store requisitions
+    let reqMap = {}
     try {
       const { data: reqLines } = await supabase
         .from('requisition_lines')
         .select('item_id, qty_issued, requisitions!inner(client_id, period_id, status)')
         .eq('requisitions.period_id', periodId)
         .eq('requisitions.status', 'issued')
-      const reqMap = {}
       ;(reqLines || []).forEach(r => { reqMap[r.item_id] = (reqMap[r.item_id] || 0) + parseFloat(r.qty_issued || 0) })
       setRequisitioned(reqMap)
     } catch (_) {
       setRequisitioned({})
     }
+
+    try {
+      await cacheStockData(periodId, { stockData: data, purchases: purchMap, returns: retMap, requisitioned: reqMap })
+    } catch (_) {}
   }
 
   async function handlePeriodChange(periodId) {
     const p = periods.find(x => x.id === periodId)
     setSelectedPeriod(p)
+    if (!navigator.onLine) {
+      const cached = await getCachedStockData(periodId)
+      if (cached) {
+        setStockData(cached.stockData    || {})
+        setPurchases(cached.purchases    || {})
+        setReturns(cached.returns        || {})
+        setRequisitioned(cached.requisitioned || {})
+      }
+      return
+    }
     await loadStockData(periodId, items)
   }
 
@@ -119,34 +194,59 @@ export default function Stock() {
     setStockData(prev => ({ ...prev, [itemId]: { ...prev[itemId], [field]: value } }))
   }
 
-  async function persistValue(itemId, fieldKey, qty) {
+  async function persistValueDirect(periodId, itemId, fieldKey, qty) {
     if (fieldKey === 'opening') {
       if (qty <= 0) {
-        await supabase.from('opening_stock').delete().eq('period_id', selectedPeriod.id).eq('item_id', itemId)
+        await supabase.from('opening_stock').delete().eq('period_id', periodId).eq('item_id', itemId)
       } else {
-        await supabase.from('opening_stock').upsert({ period_id: selectedPeriod.id, item_id: itemId, qty }, { onConflict: 'period_id,item_id' })
+        await supabase.from('opening_stock').upsert({ period_id: periodId, item_id: itemId, qty }, { onConflict: 'period_id,item_id' })
       }
     }
     if (fieldKey === 'closing') {
       if (qty <= 0) {
-        await supabase.from('closing_stock').delete().eq('period_id', selectedPeriod.id).eq('item_id', itemId)
+        await supabase.from('closing_stock').delete().eq('period_id', periodId).eq('item_id', itemId)
       } else {
-        await supabase.from('closing_stock').upsert({ period_id: selectedPeriod.id, item_id: itemId, physical_qty: qty, counted_at: new Date().toISOString() }, { onConflict: 'period_id,item_id' })
+        await supabase.from('closing_stock').upsert({ period_id: periodId, item_id: itemId, physical_qty: qty, counted_at: new Date().toISOString() }, { onConflict: 'period_id,item_id' })
       }
     }
     if (fieldKey === 'wastage') {
-      await supabase.from('wastages').delete().eq('period_id', selectedPeriod.id).eq('item_id', itemId)
-      if (qty > 0) {
-        await supabase.from('wastages').insert({ period_id: selectedPeriod.id, item_id: itemId, qty })
-      }
+      await supabase.from('wastages').delete().eq('period_id', periodId).eq('item_id', itemId)
+      if (qty > 0) await supabase.from('wastages').insert({ period_id: periodId, item_id: itemId, qty })
     }
     if (fieldKey === 'staff_meal') {
-      await supabase.from('staff_meals').delete().eq('period_id', selectedPeriod.id).eq('item_id', itemId)
-      if (qty > 0) {
-        await supabase.from('staff_meals').insert({ period_id: selectedPeriod.id, item_id: itemId, qty, type: 'staff' })
-      }
+      await supabase.from('staff_meals').delete().eq('period_id', periodId).eq('item_id', itemId)
+      if (qty > 0) await supabase.from('staff_meals').insert({ period_id: periodId, item_id: itemId, qty, type: 'staff' })
     }
   }
+
+  async function persistValue(itemId, fieldKey, qty) {
+    if (!navigator.onLine) {
+      await enqueue({ periodId: selectedPeriod.id, itemId, fieldKey, qty })
+      setPendingSync(prev => prev + 1)
+      setPendingItems(prev => new Set([...prev, itemId]))
+      return
+    }
+    await persistValueDirect(selectedPeriod.id, itemId, fieldKey, qty)
+  }
+
+  async function flushQueue() {
+    const queue = await getQueue()
+    if (queue.length === 0) return
+    setSyncing(true)
+    let remaining = queue.length
+    for (const item of queue) {
+      try {
+        await persistValueDirect(item.periodId, item.itemId, item.fieldKey, item.qty)
+        await dequeue(item.id)
+        remaining--
+        setPendingSync(remaining)
+        setPendingItems(prev => { const next = new Set(prev); next.delete(item.itemId); return next })
+      } catch (_) {}
+    }
+    setSyncing(false)
+  }
+
+  flushRef.current = flushQueue
 
   async function saveRow(itemId) {
     setSaving(prev => ({ ...prev, [itemId]: true }))
@@ -329,6 +429,19 @@ export default function Stock() {
       {isLocked && (
         <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#f87171' }}>
           🔒 <strong>This period is closed.</strong> Data is read-only. Contact your admin to re-open if needed.
+        </div>
+      )}
+
+      {!isOnline && (
+        <div style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.25)', borderRadius: 8, padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#fbbf24' }}>
+          <span>📵</span>
+          <span><strong>Offline</strong> — entries are saved locally and will sync when you reconnect.</span>
+          {pendingSync > 0 && <span style={{ marginLeft: 'auto', background: 'rgba(251,191,36,0.15)', borderRadius: 20, padding: '2px 10px', fontWeight: 600 }}>{pendingSync} pending</span>}
+        </div>
+      )}
+      {syncing && (
+        <div style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.2)', borderRadius: 8, padding: '10px 16px', marginBottom: 16, fontSize: 13, color: '#34d399' }}>
+          ⟳ Syncing {pendingSync} {pendingSync === 1 ? 'entry' : 'entries'}…
         </div>
       )}
 
@@ -625,7 +738,7 @@ export default function Stock() {
                   const qty = parseFloat(val || 0)
                   const lineValue = rate > 0 && qty > 0 ? Math.round(qty * rate) : null
                   return (
-                    <div key={item.id} className={`mobile-stock-card${val > 0 ? ' has-value' : ''}`}>
+                    <div key={item.id} className={`mobile-stock-card${val > 0 ? ' has-value' : ''}${pendingItems.has(item.id) ? ' pending' : ''}`}>
                       <div className="mobile-stock-card-header">
                         <span className="mobile-stock-item-name">{item.name}</span>
                         <span className="badge badge-yellow">{item.categories?.name}</span>

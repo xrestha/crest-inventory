@@ -94,7 +94,7 @@ Starter: 1-month free trial. Annual = 25% off monthly.
 
 ### Features Backlog
 - **Done (S61):** PWA — installable shell. `manifest.json` updated (name, colors, scope), `public/service-worker.js` added (cache-first for assets, network-first for navigation, never caches Supabase calls), registered in `src/index.js`. Icons: replace `public/logo192.png` + `public/logo512.png` with actual Crest logo at those sizes.
-- **Not built:** PWA offline stock count — IndexedDB + background sync for closing stock counts with no signal
+- **Done (S97):** PWA offline stock count — IndexedDB cache + sync queue; counts entered offline are queued and flushed automatically on reconnect
 - **Done (S93):** Staff meal & complimentary tracking — `staff_meals` table, new tab in Stock Count, deducted from Used/COGS separately from wastage. Staff Meals column added to Stock Summary and Monthly Summary. Variance updated. Growth plan, `staff_meals` flag. DB migration run ✓
 - **Done (S96):** Mobile-first stock count UX — responsive sidebar (hamburger + overlay), card list, category pill strip, progress bar, fixed Save All bar on mobile
 - **Deferred (client):** Owner Dashboard — mobile-first single-page P&L view
@@ -134,6 +134,32 @@ Starter: 1-month free trial. Annual = 25% off monthly.
 
 **Files:** `src/pages/Help.js`, `src/pages/OutstandingPayables.js`  
 **Commits:** `5c8e97b`, `1671522`
+
+---
+
+### S97 — 2026-06-21 — PWA Offline Stock Count (IndexedDB + Sync Queue)
+
+**Offline-first stock counting (no DB change):**
+- `src/utils/offlineQueue.js` (new): IndexedDB wrapper (`crest-offline` DB, 5 object stores)
+  - `items_cache`, `categories_cache`, `periods_cache` — full list cache, keyed by `client_id`
+  - `stock_cache` — full stock data snapshot (stockData + purchases + returns + requisitioned), keyed by `period_id`
+  - `sync_queue` — pending write operations (periodId, itemId, fieldKey, qty), auto-increment id
+- `Stock.js`:
+  - On every successful online load: caches all items, categories, periods, and stock data to IndexedDB
+  - On page load when offline: reads from cache; applies any pending queue entries on top so in-progress offline counts are reflected immediately
+  - `persistValue()` → if offline: enqueues to IndexedDB instead of calling Supabase
+  - `persistValueDirect()` extracted: takes `periodId` as param; used by both online save and queue flush
+  - `flushQueue()`: drains IndexedDB queue to Supabase on reconnect; counts down `pendingSync`; uses `flushRef` to avoid stale closure in online event handler
+  - `online` / `offline` event listeners: set `isOnline` state; flush queue on reconnect
+  - First load while online also flushes any queue left from a prior offline session
+  - Period change while offline: loads cached stock data for selected period
+- UX:
+  - Amber offline banner: "📵 Offline — entries saved locally, will sync on reconnect" + pending count pill
+  - Green syncing banner while flush is in progress
+  - Mobile cards: dashed amber border (`mobile-stock-card.pending`) for items with queued offline entries
+
+**Files:** `src/utils/offlineQueue.js` (new), `src/pages/Stock.js`, `src/pages/Stock.css`  
+**Commit:** (this session)
 
 ---
 

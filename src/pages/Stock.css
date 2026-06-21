@@ -70,6 +70,10 @@
 .mobile-stock-card.has-value {
   border-color: rgba(201,168,76,0.35);
 }
+.mobile-stock-card.pending {
+  border-color: rgba(251,191,36,0.5);
+  border-style: dashed;
+}
 .mobile-stock-card-header {
   display: flex;
   justify-content: space-between;
