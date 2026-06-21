@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useSettings } from '../context/SettingsContext'
 import { supabase } from '../supabaseClient'
 import { getSubStatus } from '../utils/subscription'
+import logo from '../assets/logo.png'
 import './Layout.css'
 
 // minPlan: 'growth' | 'pro' — used for lock icon and tier badge
@@ -148,7 +149,7 @@ export default function Layout() {
         <div className="sidebar-brand">
           {settings?.logo_url
             ? <img src={settings.logo_url} alt="logo" style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: 4, flexShrink: 0 }} />
-            : <span className="sidebar-logo">⬡</span>
+            : <img src={logo} alt="Crest" style={{ width: 32, height: 32, objectFit: 'contain', flexShrink: 0 }} />
           }
           {!collapsed && (
             <div style={{ flex: 1 }}>
