@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabaseClient'
 import Tip from '../components/Tip'
+import './Stock.css'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 
@@ -25,6 +26,13 @@ export default function Stock() {
   const [search, setSearch] = useState('')
   const [saveAllLoading, setSaveAllLoading] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
+
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
 
   useEffect(() => { if (!authLoading && effectiveClientId) init() }, [clientId]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -181,6 +189,13 @@ export default function Stock() {
       const matchSearch = item.name.toLowerCase().includes(search.toLowerCase())
       return matchCat && matchSearch
     })
+  }
+
+  function countedItems(fk) {
+    return filteredItems().filter(item => {
+      const v = stockData[item.id]?.[fk]
+      return v !== '' && parseFloat(v) > 0
+    }).length
   }
 
   // PATCHED: subtract returns from used calculation
@@ -546,110 +561,190 @@ export default function Stock() {
         </div>
       )}
 
-      {activeTab !== 'summary' && activeTab !== 'print' && (
-        <>
-          <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: '#c9a84c' }}>
-            {TABS.find(t => t.id === activeTab)?.desc} — enter quantities in the item's UOM, then click Save All.
-          </div>
-
-          <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <input
-                style={{ background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: 200 }}
-                placeholder="Search items…" value={search} onChange={e => setSearch(e.target.value)}
-              />
-              <select
-                style={{ background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: '#e8e0d0', outline: 'none' }}
-                value={filterCat} onChange={e => setFilterCat(e.target.value)}
-              >
-                <option value="all">All Categories</option>
-                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+      {activeTab !== 'summary' && activeTab !== 'print' && (() => {
+        const fieldKey = activeTab === 'opening' ? 'opening' : activeTab === 'closing' ? 'closing' : activeTab === 'staff_meal' ? 'staff_meal' : 'wastage'
+        const counted = countedItems(fieldKey)
+        const pct = visible.length > 0 ? Math.round(counted / visible.length * 100) : 0
+        return (
+          <>
+            <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: '#c9a84c' }}>
+              {TABS.find(t => t.id === activeTab)?.desc} — enter quantities in the item's UOM, then click Save All.
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="btn btn-ghost" style={{ color: '#f87171', borderColor: 'rgba(248,113,113,0.3)' }} onClick={clearAll} disabled={saveAllLoading || isLocked}>Clear All</button>
-              <button className="btn btn-primary" onClick={saveAll} disabled={saveAllLoading || isLocked}>
-                {saveAllLoading ? 'Saving…' : saved ? '✓ Saved' : 'Save All'}
-              </button>
-            </div>
-          </div>
 
-          <div className="card">
-            {loading ? (
-              <p style={{ color: '#6b7280', fontSize: 13 }}>Loading…</p>
+            {isMobile ? (
+              <div style={{ marginBottom: 12 }}>
+                <input
+                  style={{ background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: '100%', marginBottom: 10 }}
+                  placeholder="Search items…" value={search} onChange={e => setSearch(e.target.value)}
+                />
+                <div className="mobile-cat-strip">
+                  <button className={`mobile-cat-btn${filterCat === 'all' ? ' active' : ''}`} onClick={() => setFilterCat('all')}>All</button>
+                  {categories.map(c => (
+                    <button key={c.id} className={`mobile-cat-btn${filterCat === c.id ? ' active' : ''}`} onClick={() => setFilterCat(c.id)}>{c.name}</button>
+                  ))}
+                </div>
+              </div>
             ) : (
-              <div className="table-wrap">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Item</th>
-                      <th>Category</th>
-                      <th style={{ textAlign: 'right' }}>UOM</th>
-                      <th style={{ textAlign: 'right', color: '#c9a84c' }}>
-                        {activeTab === 'opening' ? 'Opening Qty' : activeTab === 'closing' ? 'Physical Count' : activeTab === 'staff_meal' ? 'Staff Meals Qty' : 'Wastage Qty'}
-                      </th>
-                      <th style={{ textAlign: 'right' }}>Purchased</th>
-                      <th style={{ textAlign: 'right', color: '#f87171' }}>Returned</th>
-                      <th style={{ textAlign: 'right', color: '#c9a84c' }}>
-                        <Tip text="Qty entered × unit rate (per_uom_rate). Gives the NPR value of this item's stock entry." width={220}>Value (NPR)</Tip>
-                      </th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visible.map(item => {
-                      const row = stockData[item.id] || {}
-                      const fieldKey = activeTab === 'opening' ? 'opening' : activeTab === 'closing' ? 'closing' : activeTab === 'staff_meal' ? 'staff_meal' : 'wastage'
-                      const val = row[fieldKey]
-                      const isSaving = saving[item.id]
-                      const returned = returns[item.id] || 0
-                      const rate = parseFloat(item.per_uom_rate || 0)
-                      const qty = parseFloat(val || 0)
-                      const lineValue = rate > 0 && qty > 0 ? Math.round(qty * rate) : null
-                      return (
-                        <tr key={item.id}>
-                          <td style={{ fontWeight: 600, color: '#e8e0d0' }}>{item.name}</td>
-                          <td><span className="badge badge-yellow">{item.categories?.name}</span></td>
-                          <td style={{ textAlign: 'right', color: '#6b7280' }}>{item.uom}</td>
-                          <td style={{ textAlign: 'right', width: 140 }}>
-                            <input
-                              type="number" min="0"
-                              value={val === '' ? '' : val}
-                              onChange={e => updateField(item.id, fieldKey, e.target.value)}
-                              onBlur={() => saveRow(item.id)}
-                              placeholder="0"
-                              disabled={isLocked}
-                              style={{
-                                background: '#0f1117', border: '1px solid #2a2f3d',
-                                borderRadius: 5, padding: '6px 10px', fontSize: 13,
-                                color: '#e8e0d0', outline: 'none', width: 110,
-                                textAlign: 'right',
-                                borderColor: val > 0 ? 'rgba(201,168,76,0.4)' : '#2a2f3d'
-                              }}
-                            />
-                          </td>
-                          <td style={{ textAlign: 'right', color: '#6b7280', fontSize: 13 }}>
-                            {purchases[item.id] ? `${Number(purchases[item.id]).toLocaleString()} ${item.uom}` : '—'}
-                          </td>
-                          <td style={{ textAlign: 'right', color: returned > 0 ? '#f87171' : '#9ca3af', fontSize: 13 }}>
-                            {returned > 0 ? `−${Number(returned).toLocaleString()} ${item.uom}` : '—'}
-                          </td>
-                          <td style={{ textAlign: 'right', color: '#c9a84c', fontSize: 13, fontWeight: lineValue ? 600 : 400 }}>
-                            {lineValue != null ? `NPR ${lineValue.toLocaleString('en-NP')}` : '—'}
-                          </td>
-                          <td style={{ width: 40, textAlign: 'center' }}>
-                            {isSaving && <span style={{ fontSize: 11, color: '#6b7280' }}>…</span>}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+              <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <input
+                    style={{ background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: 200 }}
+                    placeholder="Search items…" value={search} onChange={e => setSearch(e.target.value)}
+                  />
+                  <select
+                    style={{ background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: '#e8e0d0', outline: 'none' }}
+                    value={filterCat} onChange={e => setFilterCat(e.target.value)}
+                  >
+                    <option value="all">All Categories</option>
+                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="btn btn-ghost" style={{ color: '#f87171', borderColor: 'rgba(248,113,113,0.3)' }} onClick={clearAll} disabled={saveAllLoading || isLocked}>Clear All</button>
+                  <button className="btn btn-primary" onClick={saveAll} disabled={saveAllLoading || isLocked}>
+                    {saveAllLoading ? 'Saving…' : saved ? '✓ Saved' : 'Save All'}
+                  </button>
+                </div>
               </div>
             )}
-          </div>
-        </>
-      )}
+
+            {isMobile && (
+              <div className="mobile-progress">
+                <div className="mobile-progress-bar" style={{ width: `${pct}%` }} />
+                <span className="mobile-progress-label">{counted} / {visible.length} counted</span>
+              </div>
+            )}
+
+            {isMobile ? (
+              <div className="mobile-stock-list">
+                {visible.map(item => {
+                  const row = stockData[item.id] || {}
+                  const val = row[fieldKey]
+                  const returned = returns[item.id] || 0
+                  const rate = parseFloat(item.per_uom_rate || 0)
+                  const qty = parseFloat(val || 0)
+                  const lineValue = rate > 0 && qty > 0 ? Math.round(qty * rate) : null
+                  return (
+                    <div key={item.id} className={`mobile-stock-card${val > 0 ? ' has-value' : ''}`}>
+                      <div className="mobile-stock-card-header">
+                        <span className="mobile-stock-item-name">{item.name}</span>
+                        <span className="badge badge-yellow">{item.categories?.name}</span>
+                      </div>
+                      <div className="mobile-stock-card-meta">
+                        <span className="mobile-stock-uom">{item.uom}</span>
+                        {purchases[item.id] > 0 && (
+                          <span className="mobile-stock-ref">Purchased: {Number(purchases[item.id]).toLocaleString()}</span>
+                        )}
+                        {returned > 0 && (
+                          <span className="mobile-stock-ref" style={{ color: '#f87171' }}>Returned: −{Number(returned).toLocaleString()}</span>
+                        )}
+                      </div>
+                      <div className="mobile-stock-card-input-row">
+                        <input
+                          type="number" min="0"
+                          value={val === '' ? '' : val}
+                          onChange={e => updateField(item.id, fieldKey, e.target.value)}
+                          onBlur={() => saveRow(item.id)}
+                          placeholder="0"
+                          disabled={isLocked}
+                          className="mobile-stock-input"
+                        />
+                        <span className="mobile-stock-unit">{item.uom}</span>
+                        {lineValue != null && (
+                          <span className="mobile-stock-value">NPR {lineValue.toLocaleString('en-NP')}</span>
+                        )}
+                        {saving[item.id] && <span style={{ fontSize: 11, color: '#6b7280' }}>…</span>}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="card">
+                {loading ? (
+                  <p style={{ color: '#6b7280', fontSize: 13 }}>Loading…</p>
+                ) : (
+                  <div className="table-wrap">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Item</th>
+                          <th>Category</th>
+                          <th style={{ textAlign: 'right' }}>UOM</th>
+                          <th style={{ textAlign: 'right', color: '#c9a84c' }}>
+                            {activeTab === 'opening' ? 'Opening Qty' : activeTab === 'closing' ? 'Physical Count' : activeTab === 'staff_meal' ? 'Staff Meals Qty' : 'Wastage Qty'}
+                          </th>
+                          <th style={{ textAlign: 'right' }}>Purchased</th>
+                          <th style={{ textAlign: 'right', color: '#f87171' }}>Returned</th>
+                          <th style={{ textAlign: 'right', color: '#c9a84c' }}>
+                            <Tip text="Qty entered × unit rate (per_uom_rate). Gives the NPR value of this item's stock entry." width={220}>Value (NPR)</Tip>
+                          </th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {visible.map(item => {
+                          const row = stockData[item.id] || {}
+                          const val = row[fieldKey]
+                          const isSaving = saving[item.id]
+                          const returned = returns[item.id] || 0
+                          const rate = parseFloat(item.per_uom_rate || 0)
+                          const qty = parseFloat(val || 0)
+                          const lineValue = rate > 0 && qty > 0 ? Math.round(qty * rate) : null
+                          return (
+                            <tr key={item.id}>
+                              <td style={{ fontWeight: 600, color: '#e8e0d0' }}>{item.name}</td>
+                              <td><span className="badge badge-yellow">{item.categories?.name}</span></td>
+                              <td style={{ textAlign: 'right', color: '#6b7280' }}>{item.uom}</td>
+                              <td style={{ textAlign: 'right', width: 140 }}>
+                                <input
+                                  type="number" min="0"
+                                  value={val === '' ? '' : val}
+                                  onChange={e => updateField(item.id, fieldKey, e.target.value)}
+                                  onBlur={() => saveRow(item.id)}
+                                  placeholder="0"
+                                  disabled={isLocked}
+                                  style={{
+                                    background: '#0f1117', border: '1px solid #2a2f3d',
+                                    borderRadius: 5, padding: '6px 10px', fontSize: 13,
+                                    color: '#e8e0d0', outline: 'none', width: 110,
+                                    textAlign: 'right',
+                                    borderColor: val > 0 ? 'rgba(201,168,76,0.4)' : '#2a2f3d'
+                                  }}
+                                />
+                              </td>
+                              <td style={{ textAlign: 'right', color: '#6b7280', fontSize: 13 }}>
+                                {purchases[item.id] ? `${Number(purchases[item.id]).toLocaleString()} ${item.uom}` : '—'}
+                              </td>
+                              <td style={{ textAlign: 'right', color: returned > 0 ? '#f87171' : '#9ca3af', fontSize: 13 }}>
+                                {returned > 0 ? `−${Number(returned).toLocaleString()} ${item.uom}` : '—'}
+                              </td>
+                              <td style={{ textAlign: 'right', color: '#c9a84c', fontSize: 13, fontWeight: lineValue ? 600 : 400 }}>
+                                {lineValue != null ? `NPR ${lineValue.toLocaleString('en-NP')}` : '—'}
+                              </td>
+                              <td style={{ width: 40, textAlign: 'center' }}>
+                                {isSaving && <span style={{ fontSize: 11, color: '#6b7280' }}>…</span>}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {isMobile && (
+              <div className="mobile-save-bar">
+                <button className="btn btn-primary" style={{ flex: 1 }} onClick={saveAll} disabled={saveAllLoading || isLocked}>
+                  {saveAllLoading ? 'Saving…' : saved ? '✓ Saved' : 'Save All'}
+                </button>
+              </div>
+            )}
+          </>
+        )
+      })()}
     </div>
   )
 }

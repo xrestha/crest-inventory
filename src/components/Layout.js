@@ -54,6 +54,7 @@ export default function Layout() {
   const navigate = useNavigate()
   const clientName = profile?.clients?.name
   const [collapsed, setCollapsed] = useState(false)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [allClients, setAllClients] = useState([])
   const [clientDropdownOpen, setClientDropdownOpen] = useState(false)
   const dropdownRef = useRef(null)
@@ -87,7 +88,8 @@ export default function Layout() {
     return (
       <NavLink key={item.to} to={item.to}
         className={({ isActive }) => `sidebar-link${isActive ? ' sidebar-link--active' : ''}`}
-        title={collapsed ? item.label : undefined}>
+        title={collapsed ? item.label : undefined}
+        onClick={() => setMobileSidebarOpen(false)}>
         <span className="sidebar-icon">{item.icon}</span>
         {!collapsed && item.label}
       </NavLink>
@@ -143,7 +145,8 @@ export default function Layout() {
 
   return (
     <div className="layout-root">
-      <aside className={`sidebar${collapsed ? ' sidebar--collapsed' : ''}`}>
+      {mobileSidebarOpen && <div className="sidebar-overlay" onClick={() => setMobileSidebarOpen(false)} />}
+      <aside className={`sidebar${collapsed ? ' sidebar--collapsed' : ''}${mobileSidebarOpen ? ' mobile-open' : ''}`}>
 
         {/* Brand + toggle button */}
         <div className="sidebar-brand">
@@ -265,25 +268,29 @@ export default function Layout() {
             <>
               <NavLink to="/admin/clients"
                 className={({ isActive }) => `sidebar-link${isActive ? ' sidebar-link--active' : ''}`}
-                title={collapsed ? 'Clients' : undefined}>
+                title={collapsed ? 'Clients' : undefined}
+                onClick={() => setMobileSidebarOpen(false)}>
                 <span className="sidebar-icon">⊛</span>
                 {!collapsed && 'Clients'}
               </NavLink>
               <NavLink to="/periods"
                 className={({ isActive }) => `sidebar-link${isActive ? ' sidebar-link--active' : ''}`}
-                title={collapsed ? 'Periods' : undefined}>
+                title={collapsed ? 'Periods' : undefined}
+                onClick={() => setMobileSidebarOpen(false)}>
                 <span className="sidebar-icon">◷</span>
                 {!collapsed && 'Periods'}
               </NavLink>
               <NavLink to="/admin/audit"
                 className={({ isActive }) => `sidebar-link${isActive ? ' sidebar-link--active' : ''}`}
-                title={collapsed ? 'Audit Log' : undefined}>
+                title={collapsed ? 'Audit Log' : undefined}
+                onClick={() => setMobileSidebarOpen(false)}>
                 <span className="sidebar-icon">◈</span>
                 {!collapsed && 'Audit Log'}
               </NavLink>
               <NavLink to="/settings"
                 className={({ isActive }) => `sidebar-link${isActive ? ' sidebar-link--active' : ''}`}
-                title={collapsed ? 'Settings' : undefined}>
+                title={collapsed ? 'Settings' : undefined}
+                onClick={() => setMobileSidebarOpen(false)}>
                 <span className="sidebar-icon">⚙</span>
                 {!collapsed && 'Settings'}
               </NavLink>
@@ -313,7 +320,8 @@ export default function Layout() {
           <div className="sidebar-divider" />
           <NavLink to="/help"
             className={({ isActive }) => `sidebar-link${isActive ? ' sidebar-link--active' : ''}`}
-            title={collapsed ? 'Help' : undefined}>
+            title={collapsed ? 'Help' : undefined}
+            onClick={() => setMobileSidebarOpen(false)}>
             <span className="sidebar-icon">?</span>
             {!collapsed && 'Help'}
           </NavLink>
@@ -347,6 +355,7 @@ export default function Layout() {
       </aside>
 
       <main className={`main-content${collapsed ? ' main-content--collapsed' : ''}`}>
+        <button className="mobile-hamburger" onClick={() => setMobileSidebarOpen(true)}>☰</button>
         <Outlet />
       </main>
     </div>

@@ -728,3 +728,50 @@ table.data-table td input:focus {
   .print-sheet-blank { min-width: 80px; height: 28px; }
   .print-sheet-section { page-break-inside: avoid; }
 }
+
+/* ── MOBILE RESPONSIVE ───────────────────────────────────────────────────── */
+.mobile-hamburger { display: none; }
+.sidebar-overlay  { display: none; }
+
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(-220px);
+    transition: width 0.22s ease, min-width 0.22s ease, transform 0.22s ease;
+    z-index: 200;
+  }
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 199;
+  }
+  .main-content {
+    margin-left: 0 !important;
+    padding: 16px !important;
+  }
+  .page-header {
+    padding-left: 52px;
+  }
+  .mobile-hamburger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 150;
+    background: var(--theme-card);
+    border: 1px solid var(--theme-border);
+    border-radius: 6px;
+    color: var(--theme-text1);
+    font-size: 18px;
+    width: 36px;
+    height: 36px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+}
