@@ -32,10 +32,11 @@ export default function Recipes() {
       supabase.from('items').select('*').eq('client_id', clientId).eq('is_active', true).eq('is_sub_recipe', false).order('name')
     ])
 
-    // Fetch ingredients separately
-    const { data: ings } = await supabase
-      .from('recipe_ingredients')
-      .select('*, items(name, uom, per_uom_rate, item_code, yield_pct)')
+    // Fetch ingredients separately — scoped to this client's recipe IDs
+    const recipeIds = (r || []).map(x => x.id)
+    const { data: ings } = recipeIds.length > 0
+      ? await supabase.from('recipe_ingredients').select('*, items(name, uom, per_uom_rate, item_code, yield_pct)').in('recipe_id', recipeIds)
+      : { data: [] }
 
     // Attach ingredients to recipes
     const allRecipes = (r || []).map(recipe => ({

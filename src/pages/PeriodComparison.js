@@ -14,19 +14,20 @@ function fcColor(pct) {
 }
 
 export default function PeriodComparison() {
-  const { clientId } = useAuth()
+  const { clientId, profile } = useAuth()
+  const effectiveClientId = clientId || profile?.client_id
   const [periods, setPeriods] = useState([])
   const [stats, setStats]     = useState({})
   const [limit, setLimit]     = useState(12)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (!clientId) return
+    if (!effectiveClientId) return
     supabase.from('monthly_periods')
-      .select('*').eq('client_id', clientId)
+      .select('*').eq('client_id', effectiveClientId)
       .order('bs_year', { ascending: false }).order('bs_month', { ascending: false })
       .then(({ data }) => setPeriods(data || []))
-  }, [clientId])
+  }, [effectiveClientId])
 
   useEffect(() => {
     if (periods.length > 0) fetchData()

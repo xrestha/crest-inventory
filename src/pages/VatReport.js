@@ -32,7 +32,8 @@ function buildVendorSummary(entries, returns) {
 }
 
 export default function VatReport() {
-  const { clientId } = useAuth()
+  const { clientId, profile } = useAuth()
+  const effectiveClientId = clientId || profile?.client_id
   const [periods, setPeriods]         = useState([])
   const [selectedPeriod, setSelected] = useState(null)
   const [entries, setEntries]         = useState([])
@@ -41,15 +42,15 @@ export default function VatReport() {
   const [tab, setTab]                 = useState('entries')
 
   useEffect(() => {
-    if (!clientId) return
+    if (!effectiveClientId) return
     supabase.from('monthly_periods')
-      .select('*').eq('client_id', clientId)
+      .select('*').eq('client_id', effectiveClientId)
       .order('bs_year', { ascending: false }).order('bs_month', { ascending: false })
       .then(({ data }) => {
         setPeriods(data || [])
         if (data && data.length > 0) setSelected(data[0])
       })
-  }, [clientId])
+  }, [effectiveClientId])
 
   useEffect(() => {
     if (selectedPeriod) fetchData(selectedPeriod.id)

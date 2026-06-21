@@ -10,7 +10,8 @@ const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kart
 const SLOW_THRESHOLD = 0.2
 
 export default function DeadStock() {
-  const { clientId } = useAuth()
+  const { clientId, profile } = useAuth()
+  const effectiveClientId = clientId || profile?.client_id
   const [periods, setPeriods]           = useState([])
   const [selectedPeriod, setSelected]   = useState(null)
   const [rows, setRows]                 = useState([])
@@ -19,15 +20,15 @@ export default function DeadStock() {
   const [loading, setLoading]           = useState(false)
 
   useEffect(() => {
-    if (!clientId) return
+    if (!effectiveClientId) return
     supabase.from('monthly_periods')
-      .select('*').eq('client_id', clientId)
+      .select('*').eq('client_id', effectiveClientId)
       .order('bs_year', { ascending: false }).order('bs_month', { ascending: false })
       .then(({ data }) => {
         setPeriods(data || [])
         if (data?.length) setSelected(data[0])
       })
-  }, [clientId])
+  }, [effectiveClientId])
 
   useEffect(() => {
     if (selectedPeriod) fetchData(selectedPeriod.id)
@@ -43,7 +44,7 @@ export default function DeadStock() {
       { data: wastes },
       { data: closings },
     ] = await Promise.all([
-      supabase.from('items').select('id, name, uom, per_uom_rate, categories(name)').eq('client_id', clientId).eq('is_active', true).eq('is_sub_recipe', false),
+      supabase.from('items').select('id, name, uom, per_uom_rate, categories(name)').eq('client_id', effectiveClientId).eq('is_active', true).eq('is_sub_recipe', false),
       supabase.from('opening_stock').select('item_id, qty').eq('period_id', periodId),
       supabase.from('purchase_entries').select('item_id, qty').eq('period_id', periodId),
       supabase.from('vendor_returns').select('item_id, qty').eq('period_id', periodId),

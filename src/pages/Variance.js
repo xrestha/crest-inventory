@@ -50,7 +50,7 @@ export default function Variance() {
       { data: wastages },
       { data: staffMealsData },
       { data: sales },
-      { data: recipeIngs }
+      { data: clientRecipes }
     ] = await Promise.all([
       supabase.from('items').select('*, categories(name)').eq('client_id', effectiveClientId).eq('is_active', true).eq('is_sub_recipe', false),
       supabase.from('opening_stock').select('*').eq('period_id', periodId),
@@ -60,8 +60,13 @@ export default function Variance() {
       supabase.from('wastages').select('item_id, qty').eq('period_id', periodId),
       supabase.from('staff_meals').select('item_id, qty').eq('period_id', periodId),
       supabase.from('sales_entries').select('recipe_id, qty_sold').eq('period_id', periodId),
-      supabase.from('recipe_ingredients').select('recipe_id, item_id, qty_per_portion')
+      supabase.from('recipes').select('id').eq('client_id', effectiveClientId)
     ])
+
+    const recipeIds = (clientRecipes || []).map(r => r.id)
+    const { data: recipeIngs } = recipeIds.length > 0
+      ? await supabase.from('recipe_ingredients').select('recipe_id, item_id, qty_per_portion').in('recipe_id', recipeIds)
+      : { data: [] }
 
     const openMap = {}; (opening || []).forEach(r => { openMap[r.item_id] = parseFloat(r.qty) || 0 })
     const closeMap = {}; (closing || []).forEach(r => { closeMap[r.item_id] = parseFloat(r.physical_qty) || 0 })

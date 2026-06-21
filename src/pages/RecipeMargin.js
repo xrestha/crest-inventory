@@ -13,7 +13,8 @@ function fcColor(pct) {
 }
 
 export default function RecipeMargin() {
-  const { clientId } = useAuth()
+  const { clientId, profile } = useAuth()
+  const effectiveClientId = clientId || profile?.client_id
   const [periods, setPeriods]         = useState([])
   const [selectedPeriod, setSelected] = useState(null)
   const [rows, setRows]               = useState([])
@@ -23,15 +24,15 @@ export default function RecipeMargin() {
   const [loading, setLoading]         = useState(false)
 
   useEffect(() => {
-    if (!clientId) return
+    if (!effectiveClientId) return
     supabase.from('monthly_periods')
-      .select('*').eq('client_id', clientId)
+      .select('*').eq('client_id', effectiveClientId)
       .order('bs_year', { ascending: false }).order('bs_month', { ascending: false })
       .then(({ data }) => {
         setPeriods(data || [])
         if (data?.length) setSelected(data[0])
       })
-  }, [clientId])
+  }, [effectiveClientId])
 
   useEffect(() => {
     if (selectedPeriod) fetchData(selectedPeriod.id)
@@ -43,7 +44,7 @@ export default function RecipeMargin() {
       supabase.from('sales_entries').select('recipe_id, qty_sold').eq('period_id', periodId),
       supabase.from('recipes')
         .select('id, name, category, selling_price')
-        .eq('client_id', clientId)
+        .eq('client_id', effectiveClientId)
         .neq('category', 'Sub-Recipe')
         .eq('is_active', true),
     ])

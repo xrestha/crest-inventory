@@ -12,7 +12,8 @@ const RED    = '#f87171'
 const MUTED  = '#6b7280'
 
 export default function BestSellers() {
-  const { clientId } = useAuth()
+  const { clientId, profile } = useAuth()
+  const effectiveClientId = clientId || profile?.client_id
   const [periods, setPeriods]         = useState([])
   const [selectedPeriod, setSelected] = useState(null)
   const [rows, setRows]               = useState([])
@@ -20,15 +21,15 @@ export default function BestSellers() {
   const [loading, setLoading]         = useState(false)
 
   useEffect(() => {
-    if (!clientId) return
+    if (!effectiveClientId) return
     supabase.from('monthly_periods')
-      .select('*').eq('client_id', clientId)
+      .select('*').eq('client_id', effectiveClientId)
       .order('bs_year', { ascending: false }).order('bs_month', { ascending: false })
       .then(({ data }) => {
         setPeriods(data || [])
         if (data && data.length > 0) setSelected(data[0])
       })
-  }, [clientId])
+  }, [effectiveClientId])
 
   useEffect(() => {
     if (selectedPeriod) fetchData(selectedPeriod.id)
@@ -38,7 +39,7 @@ export default function BestSellers() {
     setLoading(true)
     const [{ data: entries }, { data: recipes }] = await Promise.all([
       supabase.from('sales_entries').select('recipe_id, qty_sold').eq('period_id', periodId),
-      supabase.from('recipes').select('id, name, category, selling_price').eq('client_id', clientId).neq('category', 'Sub-Recipe'),
+      supabase.from('recipes').select('id, name, category, selling_price').eq('client_id', effectiveClientId).neq('category', 'Sub-Recipe'),
     ])
 
     const recipeIds = (recipes || []).map(r => r.id)

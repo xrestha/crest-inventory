@@ -54,7 +54,7 @@ export default function ShrinkageReport() {
       { data: returns },
       { data: wastages },
       { data: sales },
-      { data: recipeIngs },
+      { data: clientRecipes },
     ] = await Promise.all([
       supabase.from('items').select('*, categories(name)').eq('client_id', effectiveClientId).eq('is_active', true).eq('is_sub_recipe', false),
       supabase.from('opening_stock').select('period_id, item_id, qty').in('period_id', periodIds),
@@ -63,8 +63,13 @@ export default function ShrinkageReport() {
       supabase.from('vendor_returns').select('period_id, item_id, qty').in('period_id', periodIds),
       supabase.from('wastages').select('period_id, item_id, qty').in('period_id', periodIds),
       supabase.from('sales_entries').select('period_id, recipe_id, qty_sold').in('period_id', periodIds),
-      supabase.from('recipe_ingredients').select('recipe_id, item_id, qty_per_portion').not('item_id', 'is', null),
+      supabase.from('recipes').select('id').eq('client_id', effectiveClientId),
     ])
+
+    const shrinkRecipeIds = (clientRecipes || []).map(r => r.id)
+    const { data: recipeIngs } = shrinkRecipeIds.length > 0
+      ? await supabase.from('recipe_ingredients').select('recipe_id, item_id, qty_per_portion').not('item_id', 'is', null).in('recipe_id', shrinkRecipeIds)
+      : { data: [] }
 
     // Build per-period-per-item lookups
     function makeMap(rows, valKey) {

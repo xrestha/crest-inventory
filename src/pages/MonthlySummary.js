@@ -307,6 +307,7 @@ export default function MonthlySummary() {
                     </td>
                     <td style={{ textAlign: 'right', fontWeight: 700, color: '#c9a84c', paddingTop: 14 }}>{fmt(report.totalNetPurchase)}</td>
                     <td style={{ textAlign: 'right', fontWeight: 700, color: '#f87171', paddingTop: 14 }}>{fmt(report.totalWastage)}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700, color: '#a78bfa', paddingTop: 14 }}>{report.totalStaffMeals > 0 ? fmt(report.totalStaffMeals) : '—'}</td>
                     <td style={{ textAlign: 'right', fontWeight: 700, color: '#34d399', paddingTop: 14 }}>{fmt(report.totalClosing)}</td>
                     <td style={{ textAlign: 'right', fontWeight: 800, color: '#c9a84c', paddingTop: 14, fontSize: 15 }}>{fmt(report.totalCOGS)}</td>
                     <td style={{ textAlign: 'right', paddingTop: 14, fontWeight: 700, color: '#6b7280' }}>100%</td>
@@ -316,7 +317,7 @@ export default function MonthlySummary() {
             </div>
 
             <div style={{ marginTop: 20, padding: '12px 16px', background: '#0f1117', borderRadius: 6, fontSize: 12, color: '#9ca3af' }}>
-              COGS = Opening Stock + (Purchases − Returns) − Wastage − Closing Stock &nbsp;·&nbsp;
+              COGS = Opening Stock + (Purchases − Returns) − Wastage − Staff Meals − Closing Stock &nbsp;·&nbsp;
               Food Cost % = COGS ÷ Net Sales Revenue × 100
             </div>
           </div>

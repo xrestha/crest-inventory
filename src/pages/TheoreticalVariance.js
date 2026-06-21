@@ -26,13 +26,17 @@ export default function TheoreticalVariance() {
 
   async function init() {
     setLoading(true)
-    const [{ data: p }, { data: i }, { data: c }, { data: r }, { data: ri }] = await Promise.all([
+    const [{ data: p }, { data: i }, { data: c }, { data: r }] = await Promise.all([
       supabase.from('monthly_periods').select('*').eq('client_id', effectiveClientId).order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
       supabase.from('items').select('*, categories(name)').eq('client_id', effectiveClientId).eq('is_active', true).eq('is_sub_recipe', false),
       supabase.from('categories').select('*').eq('client_id', effectiveClientId).order('sort_order'),
       supabase.from('recipes').select('id, name, yield_qty').eq('client_id', effectiveClientId),
-      supabase.from('recipe_ingredients').select('recipe_id, item_id, sub_recipe_id, qty_per_portion'),
     ])
+
+    const tvRecipeIds = (r || []).map(x => x.id)
+    const { data: ri } = tvRecipeIds.length > 0
+      ? await supabase.from('recipe_ingredients').select('recipe_id, item_id, sub_recipe_id, qty_per_portion').in('recipe_id', tvRecipeIds)
+      : { data: [] }
 
     setPeriods(p || [])
     setItems(i || [])

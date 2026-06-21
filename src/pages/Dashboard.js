@@ -103,8 +103,9 @@ export default function Dashboard() {
     const yieldMap = {}
     ;(items || []).forEach(i => { yieldMap[i.id] = (parseFloat(i.yield_pct) || 100) / 100 })
 
+    const clientRecipeIdSet = new Set((recipes || []).map(r => r.id))
     const theoreticalMap = {}
-    ;(recipeIngs || []).forEach(ri => {
+    ;(recipeIngs || []).filter(ri => clientRecipeIdSet.has(ri.recipe_id)).forEach(ri => {
       if (!ri.item_id) return
       const sold = soldMap[ri.recipe_id] || 0
       const yieldFactor = yieldMap[ri.item_id] || 1

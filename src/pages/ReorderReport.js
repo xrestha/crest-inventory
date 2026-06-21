@@ -53,7 +53,7 @@ export default function ReorderReport() {
       { data: purchases },
       { data: returns },
       { data: wastages },
-      { data: recipeIngs },
+      { data: clientRecipes },
       { data: sales },
       { data: pars }
     ] = await Promise.all([
@@ -63,10 +63,15 @@ export default function ReorderReport() {
       supabase.from('purchase_entries').select('item_id, qty').eq('period_id', periodId),
       supabase.from('vendor_returns').select('item_id, qty').eq('period_id', periodId),
       supabase.from('wastages').select('item_id, qty').eq('period_id', periodId),
-      supabase.from('recipe_ingredients').select('recipe_id, item_id, qty_per_portion'),
+      supabase.from('recipes').select('id').eq('client_id', effectiveClientId),
       supabase.from('sales_entries').select('recipe_id, qty_sold').eq('period_id', periodId),
       supabase.from('par_levels').select('*').eq('client_id', effectiveClientId)
     ])
+
+    const reorderRecipeIds = (clientRecipes || []).map(r => r.id)
+    const { data: recipeIngs } = reorderRecipeIds.length > 0
+      ? await supabase.from('recipe_ingredients').select('recipe_id, item_id, qty_per_portion').in('recipe_id', reorderRecipeIds)
+      : { data: [] }
 
     const parMap = {}
     ;(pars || []).forEach(p => { parMap[p.item_id] = { id: p.id, par_qty: parseFloat(p.par_qty) || 0 } })

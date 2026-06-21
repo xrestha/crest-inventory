@@ -17,7 +17,7 @@ const NAV = [
   { to: '/purchase-orders',  label: 'Purchase Orders',   icon: '◫', featureKey: 'purchase_orders', minPlan: 'growth' },
   { to: '/stock',            label: 'Stock Count',       icon: '⊞' },
   { to: '/requisitions',     label: 'Requisitions',      icon: '↔', featureKey: 'requisitions',    minPlan: 'growth' },
-  { to: '/sales',            label: 'Sales Entry',       icon: '↑', featureKey: 'sales_entry',     minPlan: 'growth' },
+  { to: '/sales',            label: 'Sales Entry',       icon: '↑', featureKey: 'sales_entry',     minPlan: 'starter' },
   { to: '/recipes',          label: 'Recipe Costing',    icon: '◈', featureKey: 'recipe_costing',  minPlan: 'growth' },
   { to: '/menu-engineering', label: 'Menu Engineering',  icon: '◈', featureKey: 'menu_engineering',minPlan: 'pro' },
   { to: '/overheads',        label: 'Overheads',         icon: '₿', featureKey: 'overheads',       minPlan: 'pro' },
@@ -32,7 +32,7 @@ const REPORTS = [
   { to: '/non-vat-report',      label: 'Non-VAT Report',       icon: '₨', featureKey: 'non_vat_report'     },
   { to: '/wastage-report',       label: 'Wastage Report',       icon: '⚠', featureKey: 'wastage_report'     },
   // Growth
-  { to: '/payments',             label: 'Payment Summary',      icon: '⊕', featureKey: 'payment_summary',   minPlan: 'growth' },
+  { to: '/payments',             label: 'Payment Summary',      icon: '⊕', featureKey: 'payment_summary',   minPlan: 'starter' },
   { to: '/variance',             label: 'Variance Report',      icon: '△', featureKey: 'variance_report',   minPlan: 'growth' },
   { to: '/budget',               label: 'Budget vs Actual',     icon: '◎', featureKey: 'budget_vs_actual',  minPlan: 'growth' },
   { to: '/best-sellers',         label: 'Best & Worst Sellers', icon: '▲', featureKey: 'best_sellers',      minPlan: 'growth' },
