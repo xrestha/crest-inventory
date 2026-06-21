@@ -124,6 +124,46 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S104 — 2026-06-21 — HR Employee: RLS Fix, Gender Constraint Fix, Delete Employee
+
+Three fixes for the HR Employee Master after first real-world Add Employee attempt.
+
+**Fix 1 — hr_employees RLS policy used `my_client_id()` function (doesn't exist)**
+- The original `CREATE POLICY` used `client_id = my_client_id()` — a custom function that was never created, causing all writes to be blocked with "new row violates row-level security policy".
+- Fix: Run the following in Supabase SQL Editor to replace with safe inline subquery pattern (same as all other tables):
+```sql
+DROP POLICY IF EXISTS "client_owns_employees" ON public.hr_employees;
+CREATE POLICY "hr_employees_select" ON public.hr_employees FOR SELECT USING (
+  (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'
+  OR client_id = (SELECT client_id FROM profiles WHERE id = auth.uid())
+);
+CREATE POLICY "hr_employees_insert" ON public.hr_employees FOR INSERT WITH CHECK (
+  (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'
+  OR client_id = (SELECT client_id FROM profiles WHERE id = auth.uid())
+);
+CREATE POLICY "hr_employees_update" ON public.hr_employees FOR UPDATE
+  USING ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin' OR client_id = (SELECT client_id FROM profiles WHERE id = auth.uid()))
+  WITH CHECK ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin' OR client_id = (SELECT client_id FROM profiles WHERE id = auth.uid()));
+CREATE POLICY "hr_employees_delete" ON public.hr_employees FOR DELETE USING (
+  (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'
+  OR client_id = (SELECT client_id FROM profiles WHERE id = auth.uid())
+);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.hr_employees TO authenticated;
+```
+
+**Fix 2 — Gender CHECK constraint rejected empty string**
+- DB constraint: `CHECK(gender IN ('male','female','other'))`. When no gender is selected the form sends `''` (empty string), which the constraint rejects.
+- Fix: `EmployeeForm.jsx` payload now converts empty strings to `null` for `gender`, `pan_no`, and `citizenship_no` before the DB call (`form.gender || null`).
+
+**Fix 3 — Added Delete Employee (hard delete with double confirm)**
+- Added `handleDelete()` function: two `window.confirm` prompts → `supabase.from('hr_employees').delete().eq('id', employee.id)` → `onSave()`.
+- Added **Delete** button in the form footer next to the existing Deactivate button. Only visible in edit mode.
+- Hard delete — row is permanently removed. Future linked tables (payroll, leave, etc.) will cascade-delete automatically via `ON DELETE CASCADE` on the FK.
+
+**Files:** `src/modules/hr/employees/EmployeeForm.jsx`
+
+---
+
 ### S103 — 2026-06-21 — Help Page Module-Based Reorganisation
 
 Full rewrite of `src/pages/Help.js` — the Module Guide tab is now module-aware and plan-tier aware.

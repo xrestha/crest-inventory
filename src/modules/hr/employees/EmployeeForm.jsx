@@ -64,8 +64,11 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
       client_id:     clientId,
       full_name:     form.full_name.trim(),
       basic_salary:  parseFloat(form.basic_salary) || 0,
+      gender:        form.gender        || null,
       date_of_birth: form.date_of_birth || null,
-      end_date:      form.end_date || null,
+      end_date:      form.end_date      || null,
+      pan_no:        form.pan_no        || null,
+      citizenship_no: form.citizenship_no || null,
     }
 
     const { error: err } = isEdit
@@ -80,6 +83,14 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
   async function handleDeactivate() {
     if (!window.confirm(`Mark ${employee.full_name} as inactive?`)) return
     await supabase.from('hr_employees').update({ status: 'inactive' }).eq('id', employee.id)
+    onSave()
+  }
+
+  async function handleDelete() {
+    if (!window.confirm(`Delete ${employee.full_name}? This cannot be undone.`)) return
+    if (!window.confirm(`Are you sure? All data for ${employee.full_name} will be permanently deleted.`)) return
+    const { error: err } = await supabase.from('hr_employees').delete().eq('id', employee.id)
+    if (err) { setError(err.message); return }
     onSave()
   }
 
@@ -298,10 +309,15 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
 
         {/* Footer */}
         <div style={{ padding: '16px 24px', borderTop: '1px solid #2a2f3d', display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-          <div>
+          <div style={{ display: 'flex', gap: 8 }}>
             {isEdit && employee.status === 'active' && (
               <button className="btn btn-ghost" style={{ fontSize: 12, color: '#f87171', borderColor: 'rgba(248,113,113,0.25)' }} onClick={handleDeactivate}>
                 Deactivate
+              </button>
+            )}
+            {isEdit && (
+              <button className="btn btn-ghost" style={{ fontSize: 12, color: '#f87171', borderColor: 'rgba(248,113,113,0.25)' }} onClick={handleDelete}>
+                Delete
               </button>
             )}
           </div>
