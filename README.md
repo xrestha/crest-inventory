@@ -96,7 +96,7 @@ Starter: 1-month free trial. Annual = 25% off monthly.
 - **Done (S61):** PWA — installable shell. `manifest.json` updated (name, colors, scope), `public/service-worker.js` added (cache-first for assets, network-first for navigation, never caches Supabase calls), registered in `src/index.js`. Icons: replace `public/logo192.png` + `public/logo512.png` with actual Crest logo at those sizes.
 - **Not built:** PWA offline stock count — IndexedDB + background sync for closing stock counts with no signal
 - **Done (S93):** Staff meal & complimentary tracking — `staff_meals` table, new tab in Stock Count, deducted from Used/COGS separately from wastage. Staff Meals column added to Stock Summary and Monthly Summary. Variance updated. Growth plan, `staff_meals` flag. DB migration run ✓
-- **Not built:** Mobile-first stock count UX — dedicated counting flow optimised for phone
+- **Done (S96):** Mobile-first stock count UX — responsive sidebar (hamburger + overlay), card list, category pill strip, progress bar, fixed Save All bar on mobile
 - **Deferred (client):** Owner Dashboard — mobile-first single-page P&L view
 - **Deferred (client):** Role-based users Owner/Manager
 
@@ -134,6 +134,31 @@ Starter: 1-month free trial. Annual = 25% off monthly.
 
 **Files:** `src/pages/Help.js`, `src/pages/OutstandingPayables.js`  
 **Commits:** `5c8e97b`, `1671522`
+
+---
+
+### S96 — 2026-06-21 — GHC Logo + Mobile-First Stock Count UX
+
+**GHC gold hexagon logo added:**
+- `GHC.png` (gold hexagon brand asset) moved from repo root to `src/assets/logo.png`
+- Login page: replaced `⬡` placeholder with `<img>` using the real logo
+- Sidebar: replaced `⬡` fallback (shown when no `settings.logo_url`) with the real logo
+- PWA icons: `public/logo192.png` + `public/logo512.png` replaced with the GHC logo
+- Browser tab favicon updated in `public/index.html` to reference `logo192.png` (PNG, replaces default CRA `.ico`)
+
+**Mobile-first Stock Count UX (no DB change):**
+- `Layout.js` / `Layout.css`: responsive sidebar added — sidebar hides on viewports <768px; hamburger ☰ button (position fixed, top-left) slides the sidebar in; overlay tap closes it; all NavLinks close sidebar on tap
+- `Stock.js` / `Stock.css` (new): `isMobile` state via `window.innerWidth` + resize listener; on mobile, entry tabs (Opening / Closing / Wastage / Staff Meals) switch from table layout to:
+  - Full-width search input
+  - Scrollable category pill strip (All + one per category)
+  - Progress bar showing X / Y items counted in gold
+  - Vertical card list per item — item name, category badge, UOM, purchased/returned reference, 20px number input (auto-saves on blur)
+  - Gold border on card when a value is entered
+  - Fixed "Save All" bar at bottom of screen
+- Desktop table layout unchanged; Summary and Print Sheet tabs unaffected
+
+**Files:** `src/assets/logo.png` (new), `public/logo192.png`, `public/logo512.png`, `public/index.html`, `src/pages/Login.js`, `src/components/Layout.js`, `src/components/Layout.css`, `src/pages/Stock.js`, `src/pages/Stock.css` (new)
+**Commits:** `c8cd4d3` (logo), `c962015` (mobile UX)
 
 ---
 
