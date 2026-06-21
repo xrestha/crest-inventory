@@ -37,7 +37,7 @@ export default function OutstandingPayables() {
   const [savingPayment, setSavingPayment] = useState(false)
   const [payError, setPayError]           = useState('')
 
-  useEffect(() => { if (!authLoading && effectiveClientId) load(activeTab) }, [clientId]) // eslint-disable-line
+  useEffect(() => { if (!authLoading && effectiveClientId) load(activeTab) }, [effectiveClientId]) // eslint-disable-line
 
   async function load(tab = activeTab) {
     setLoading(true)
