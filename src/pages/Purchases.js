@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabaseClient'
 import { bsToAd, formatAd, daysInBsMonth } from '../utils/bsCalendar'
@@ -38,6 +38,13 @@ export default function Purchases() {
   // Bill (multi-row add) state
   const [billHeader, setBillHeader]         = useState(EMPTY_HEADER)
   const [billLines, setBillLines]           = useState([newLine()])
+  const formRef = useRef(null)
+
+  // When the bill form opens, scroll it into view (it renders at the top of the
+  // tab, so opening it from the bottom "+ Add Purchase" button looked like a no-op).
+  useEffect(() => {
+    if (showForm) formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [showForm])
 
 
   // Returns tab
@@ -523,7 +530,7 @@ export default function Purchases() {
         <>
           {/* ── BILL FORM (new or edit) ── */}
           {showForm && (
-            <div className="card" style={{ marginBottom: 24 }}>
+            <div ref={formRef} className="card" style={{ marginBottom: 24 }}>
               <h3 style={{ margin: '0 0 16px', fontSize: 15, color: '#e8e0d0' }}>{editingGroupId ? 'Edit Purchase Bill' : 'Add Purchase Bill'}</h3>
 
               {/* Header row */}
