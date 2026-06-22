@@ -31,3 +31,19 @@ export function minRateFor(payBasis, employmentType) {
   if (payBasis === 'hourly') return employmentType === 'part_time' ? MIN_HOURLY_PARTTIME : MIN_HOURLY
   return MIN_BASIC_MONTHLY
 }
+
+// ── Attendance ────────────────────────────────────────────────────────────────
+export const STANDARD_HOURS_PER_DAY = 8     // Nepal Labour Act standard working day
+export const OT_MULTIPLIER          = 1.5   // overtime paid at 1.5× normal hourly rate
+export const WEEKLY_OFF_WEEKDAY     = 6     // Saturday (JS Date.getDay(): 0=Sun … 6=Sat)
+
+export const ATTENDANCE_STATUSES = [
+  { key: 'present',      label: 'Present',      short: 'P',  color: '#34d399' },
+  { key: 'half_day',     label: 'Half-day',     short: '½',  color: '#c9a84c' },
+  { key: 'absent',       label: 'Absent',       short: 'A',  color: '#f87171' },
+  { key: 'paid_leave',   label: 'Paid Leave',   short: 'PL', color: '#60a5fa' },
+  { key: 'unpaid_leave', label: 'Unpaid Leave', short: 'UL', color: '#9ca3af' },
+  { key: 'weekly_off',   label: 'Weekly Off',   short: 'W',  color: '#4b5563' },
+  { key: 'holiday',      label: 'Holiday',      short: 'H',  color: '#818cf8' },
+]
+

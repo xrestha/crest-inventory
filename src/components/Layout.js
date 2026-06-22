@@ -322,8 +322,9 @@ export default function Layout() {
               <div className="sidebar-divider" />
               {!collapsed && <div className="sidebar-section-label">Human Resources</div>}
               {[
-                { to: '/hr/employees', label: 'Employees',        icon: '👤' },
-                { to: '/hr/salary',    label: 'Salary Structure', icon: '₿'  },
+                { to: '/hr/employees',  label: 'Employees',        icon: '👤' },
+                { to: '/hr/salary',     label: 'Salary Structure', icon: '₿'  },
+                { to: '/hr/attendance', label: 'Attendance',       icon: '🗓️' },
               ].map(renderNavItem)}
             </>
           )}

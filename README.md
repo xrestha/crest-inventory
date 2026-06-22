@@ -124,6 +124,47 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S110 — 2026-06-22 — Crest HR: Attendance Module
+
+HR roadmap session 3. Builds the daily attendance sheet — the data source the future Payroll module needs to compute pay for daily/hourly staff and apply overtime.
+
+**DB migration (run in Supabase SQL editor):**
+```sql
+CREATE TABLE IF NOT EXISTS hr_attendance (
+  id           uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  client_id    uuid REFERENCES clients(id)          ON DELETE CASCADE NOT NULL,
+  employee_id  uuid REFERENCES hr_employees(id)     ON DELETE CASCADE NOT NULL,
+  period_id    uuid REFERENCES monthly_periods(id)  ON DELETE CASCADE NOT NULL,
+  bs_day       integer NOT NULL,
+  status       text NOT NULL DEFAULT 'present'
+               CHECK(status IN ('present','absent','half_day','paid_leave','unpaid_leave','weekly_off','holiday')),
+  hours_worked numeric(5,2) DEFAULT 0,
+  ot_hours     numeric(5,2) DEFAULT 0,
+  note         text,
+  created_at   timestamptz DEFAULT now(),
+  UNIQUE (employee_id, period_id, bs_day)
+);
+ALTER TABLE hr_attendance ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "client_own" ON hr_attendance FOR ALL
+  USING ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin' OR client_id = (SELECT client_id FROM profiles WHERE id = auth.uid()))
+  WITH CHECK ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin' OR client_id = (SELECT client_id FROM profiles WHERE id = auth.uid()));
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.hr_attendance TO authenticated;
+```
+
+**AttendanceSheet (`/hr/attendance`) — new page:**
+- Period selector (reuses `monthly_periods`); fetches active/probation employees + the period's attendance once
+- **Mark Attendance tab:** BS day selector (defaults to today in the current month); per-employee status dropdown (Present / Half-day / Absent / Paid Leave / Unpaid Leave / Weekly Off / Holiday), Hours input (hourly staff only), OT hours, Note. Bulk buttons (All Present / All Weekly Off / All Holiday). **Save Day** upserts a complete row set for every active employee (`onConflict: 'employee_id,period_id,bs_day'`)
+- **Saturday auto weekly-off:** derived from `bsToAd(...).getDay() === 6` — Saturdays default to Weekly Off with an amber banner; no holiday calendar stored
+- **Month Summary tab:** colour-coded grid (employees × BS days), Saturdays shaded, sticky employee column, per-employee totals (present incl. half-days, absent, OT hours); Excel export
+- New constants in `payrollConstants.js`: `STANDARD_HOURS_PER_DAY` (8), `OT_MULTIPLIER` (1.5), `WEEKLY_OFF_WEEKDAY` (6), `ATTENDANCE_STATUSES`
+- Nav "Attendance" (🗓️) under Human Resources; Help page HR_FEATURES entry added
+
+**Deferred:** Payroll (computes rate × days/hours + OT × 1.5 from this data — next HR session), leave-approval workflow, rosters, biometric import, maintained public-holiday calendar.
+
+**Files:** `src/modules/hr/attendance/AttendanceSheet.jsx` (new), `src/modules/hr/payrollConstants.js`, `src/App.js`, `src/components/Layout.js`, `src/pages/Help.js`
+
+---
+
 ### S109 — 2026-06-22 — Fix: Service Worker Served Stale Bundle in Development
 
 **Symptom:** AdminClients (and any page) kept rendering an old pre-S101 design on every load, even though the source had the new layout and compiled cleanly.
