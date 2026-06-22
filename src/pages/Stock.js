@@ -5,8 +5,10 @@ import { supabase } from '../supabaseClient'
 import Tip from '../components/Tip'
 import './Stock.css'
 import { cacheItems, getCachedItems, cacheCategories, getCachedCategories, cachePeriods, getCachedPeriods, cacheStockData, getCachedStockData, enqueue, getQueue, dequeue } from '../utils/offlineQueue'
+import { daysInBsMonth, bsToAd, formatAd, getBsToday } from '../utils/bsCalendar'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
+const WASTAGE_REASONS = ['Spoilage', 'Expiry', 'Over-prep', 'Breakage', 'Spillage', 'Customer return', 'Other']
 
 export default function Stock() {
   const { clientId, profile, loading: authLoading, isAdmin, hasFeature } = useAuth()
@@ -20,6 +22,11 @@ export default function Stock() {
   const [returns, setReturns] = useState({}) // { item_id: total_returned_qty }
   const [requisitioned, setRequisitioned] = useState({}) // { item_id: total_qty_issued }
   const [purchFreq, setPurchFreq] = useState({})
+  const [dailyWastage, setDailyWastage] = useState({})   // { item_id: total dated wastage qty }
+  const [dailyRows, setDailyRows] = useState([])         // raw dated wastage rows (with item join) for the Daily tab
+  const [wDay, setWDay] = useState(getBsToday().day)     // selected BS day for daily wastage entry
+  const [wEntry, setWEntry] = useState({ item_id: '', qty: '', reason: 'Other' })
+  const [wBusy, setWBusy] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState({})
   const [activeTab, setActiveTab] = useState('opening')
@@ -119,7 +126,7 @@ export default function Stock() {
     const [{ data: opening }, { data: closing }, { data: wastages }, { data: staffMealsData }, { data: purch }, { data: rets }] = await Promise.all([
       supabase.from('opening_stock').select('*').eq('period_id', periodId),
       supabase.from('closing_stock').select('*').eq('period_id', periodId),
-      supabase.from('wastages').select('item_id, qty').eq('period_id', periodId),
+      supabase.from('wastages').select('id, item_id, qty, bs_day, reason, items(name, uom, per_uom_rate)').eq('period_id', periodId),
       supabase.from('staff_meals').select('item_id, qty').eq('period_id', periodId),
       supabase.from('purchase_entries').select('item_id, qty').eq('period_id', periodId),
       supabase.from('vendor_returns').select('item_id, qty').eq('period_id', periodId)
@@ -131,9 +138,23 @@ export default function Stock() {
     ;(opening || []).forEach(r => { if (data[r.item_id]) data[r.item_id].opening = r.qty })
     ;(closing || []).forEach(r => { if (data[r.item_id]) data[r.item_id].closing = r.physical_qty })
 
-    const wastageMap = {}
-    ;(wastages || []).forEach(r => { wastageMap[r.item_id] = (wastageMap[r.item_id] || 0) + parseFloat(r.qty) })
-    Object.keys(wastageMap).forEach(id => { if (data[id]) data[id].wastage = wastageMap[id] })
+    // Split wastage: undated rows (bs_day NULL) = the monthly catch-all edited in the Wastage tab;
+    // dated rows = daily entries. Period total wastage = catch-all + daily (see getUsed/getSummary).
+    const catchAllMap = {}
+    const dailyMap = {}
+    const dated = []
+    ;(wastages || []).forEach(r => {
+      const q = parseFloat(r.qty) || 0
+      if (r.bs_day == null) {
+        catchAllMap[r.item_id] = (catchAllMap[r.item_id] || 0) + q
+      } else {
+        dailyMap[r.item_id] = (dailyMap[r.item_id] || 0) + q
+        dated.push(r)
+      }
+    })
+    Object.keys(catchAllMap).forEach(id => { if (data[id]) data[id].wastage = catchAllMap[id] })
+    setDailyWastage(dailyMap)
+    setDailyRows(dated)
 
     const staffMealMap = {}
     ;(staffMealsData || []).forEach(r => { staffMealMap[r.item_id] = (staffMealMap[r.item_id] || 0) + parseFloat(r.qty) })
@@ -210,8 +231,9 @@ export default function Stock() {
       }
     }
     if (fieldKey === 'wastage') {
-      await supabase.from('wastages').delete().eq('period_id', periodId).eq('item_id', itemId)
-      if (qty > 0) await supabase.from('wastages').insert({ period_id: periodId, item_id: itemId, qty })
+      // Only the undated catch-all row — dated daily-wastage rows are managed in the Daily Wastage tab.
+      await supabase.from('wastages').delete().eq('period_id', periodId).eq('item_id', itemId).is('bs_day', null)
+      if (qty > 0) await supabase.from('wastages').insert({ period_id: periodId, item_id: itemId, qty, bs_day: null })
     }
     if (fieldKey === 'staff_meal') {
       await supabase.from('staff_meals').delete().eq('period_id', periodId).eq('item_id', itemId)
@@ -266,6 +288,29 @@ export default function Stock() {
     setTimeout(() => setSaved(false), 2500)
   }
 
+  // ── Daily wastage (dated, reason-tagged) ───────────────────────────────────
+  async function addDailyWastage() {
+    if (!selectedPeriod || !wEntry.item_id) return
+    const qty = parseFloat(wEntry.qty) || 0
+    if (qty <= 0) return
+    setWBusy(true)
+    await supabase.from('wastages').insert({
+      period_id: selectedPeriod.id, item_id: wEntry.item_id, qty,
+      bs_day: wDay, reason: wEntry.reason || 'Other',
+    })
+    setWEntry({ item_id: '', qty: '', reason: wEntry.reason })
+    await loadStockData(selectedPeriod.id, items)
+    setWBusy(false)
+  }
+
+  async function deleteDailyWastage(id) {
+    if (!selectedPeriod) return
+    setWBusy(true)
+    await supabase.from('wastages').delete().eq('id', id)
+    await loadStockData(selectedPeriod.id, items)
+    setWBusy(false)
+  }
+
   async function clearAll() {
     const fieldKey = activeTab === 'opening' ? 'opening' : activeTab === 'closing' ? 'closing' : activeTab === 'staff_meal' ? 'staff_meal' : 'wastage'
     const label = TABS.find(t => t.id === activeTab)?.label || 'these'
@@ -305,7 +350,7 @@ export default function Stock() {
     const purchased = parseFloat(purchases[itemId]) || 0
     const returned = parseFloat(returns[itemId]) || 0
     const closing = parseFloat(row.closing) || 0
-    const wastage    = parseFloat(row.wastage)    || 0
+    const wastage    = (parseFloat(row.wastage) || 0) + (parseFloat(dailyWastage[itemId]) || 0)
     const staffMeal  = parseFloat(row.staff_meal) || 0
     return opening + purchased - returned - closing - wastage - staffMeal
   }
@@ -346,7 +391,7 @@ export default function Stock() {
       const openingVal   = catItems.reduce((sum, i) => sum + (parseFloat(stockData[i.id]?.opening) || 0) * parseFloat(i.per_uom_rate || 0), 0)
       const closingVal   = catItems.reduce((sum, i) => sum + (parseFloat(stockData[i.id]?.closing) || 0) * parseFloat(i.per_uom_rate || 0), 0)
       const purchasesVal = catItems.reduce((sum, i) => sum + (parseFloat(purchases[i.id]) || 0) * parseFloat(i.per_uom_rate || 0), 0)
-      const wastageVal    = catItems.reduce((sum, i) => sum + (parseFloat(stockData[i.id]?.wastage)    || 0) * parseFloat(i.per_uom_rate || 0), 0)
+      const wastageVal    = catItems.reduce((sum, i) => sum + ((parseFloat(stockData[i.id]?.wastage) || 0) + (parseFloat(dailyWastage[i.id]) || 0)) * parseFloat(i.per_uom_rate || 0), 0)
       const staffMealsVal = catItems.reduce((sum, i) => sum + (parseFloat(stockData[i.id]?.staff_meal) || 0) * parseFloat(i.per_uom_rate || 0), 0)
       const cogsVal       = catItems.reduce((sum, i) => sum + getUsed(i.id) * parseFloat(i.per_uom_rate || 0), 0)
       byCategory[c.name] = { opening: openingVal, closing: closingVal, purchases: purchasesVal, wastage: wastageVal, staffMeals: staffMealsVal, cogs: cogsVal }
@@ -362,7 +407,7 @@ export default function Stock() {
       const openQty  = parseFloat(row.opening  || 0)
       const purchQty = parseFloat(purchases[item.id] || 0)
       const retQty   = parseFloat(returns[item.id]   || 0)
-      const wastQty  = parseFloat(row.wastage    || 0)
+      const wastQty  = parseFloat(row.wastage || 0) + (parseFloat(dailyWastage[item.id]) || 0)
       const staffQty = parseFloat(row.staff_meal || 0)
       const closeQty = parseFloat(row.closing    || 0)
       const usedQty  = getUsed(item.id)
@@ -398,7 +443,8 @@ export default function Stock() {
   const TABS = [
     { id: 'opening',    label: 'Opening Stock', desc: 'Stock at start of month' },
     { id: 'closing',    label: 'Closing Stock', desc: 'Physical count at month end' },
-    { id: 'wastage',    label: 'Wastage',       desc: 'Spoilage & waste recorded' },
+    { id: 'wastage',    label: 'Wastage',       desc: 'Monthly catch-all total — quick single figure per item (daily detail goes in the Daily Wastage tab)' },
+    { id: 'daily_wastage', label: 'Daily Wastage', desc: 'Log wastage by day with a reason — rolls into the period total and COGS' },
     ...(hasFeature('staff_meals') ? [{ id: 'staff_meal', label: 'Staff Meals', desc: 'Staff & complimentary consumption — tracked separately from wastage' }] : []),
     { id: 'summary',    label: 'Summary',       desc: 'Full picture per item' },
     { id: 'print',      label: 'Print Sheet',   desc: 'Physical count sheet for the floor' },
@@ -674,7 +720,131 @@ export default function Stock() {
         </div>
       )}
 
-      {activeTab !== 'summary' && activeTab !== 'print' && (() => {
+      {/* Daily Wastage Tab */}
+      {activeTab === 'daily_wastage' && (() => {
+        if (!selectedPeriod) {
+          return <div className="card" style={{ padding: 28, textAlign: 'center', color: '#6b7280' }}>No period selected.</div>
+        }
+        const winp = { background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 6, padding: '8px 10px', fontSize: 13, color: '#e8e0d0', outline: 'none', fontFamily: 'inherit' }
+        const dayCount = daysInBsMonth(selectedPeriod.bs_year, selectedPeriod.bs_month)
+        const days = Array.from({ length: dayCount }, (_, i) => i + 1)
+        const adLabel = d => { try { return formatAd(bsToAd(selectedPeriod.bs_year, selectedPeriod.bs_month, d)) } catch { return '' } }
+        const valOf = r => (parseFloat(r.qty) || 0) * parseFloat(r.items?.per_uom_rate || 0)
+        const dayEntries = dailyRows.filter(r => r.bs_day === wDay).sort((a, b) => valOf(b) - valOf(a))
+        const dayQty = dayEntries.reduce((s, r) => s + (parseFloat(r.qty) || 0), 0)
+        const dayValue = dayEntries.reduce((s, r) => s + valOf(r), 0)
+        const perDay = {}
+        dailyRows.forEach(r => { perDay[r.bs_day] = (perDay[r.bs_day] || 0) + valOf(r) })
+        const monthValue = Object.values(perDay).reduce((s, v) => s + v, 0)
+        const fmtNpr = n => `NPR ${Math.round(n).toLocaleString('en-NP')}`
+        return (
+          <div>
+            <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: '#c9a84c' }}>
+              Log spoilage and waste as it happens, by day and reason. These entries roll into the period's total wastage and COGS — alongside the monthly catch-all on the Wastage tab.
+            </div>
+
+            {/* Day selector + month total */}
+            <div className="card" style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 12, color: '#6b7280' }}>Day</span>
+                <select style={winp} value={wDay} onChange={e => setWDay(parseInt(e.target.value, 10))}>
+                  {days.map(d => <option key={d} value={d}>{d} · {adLabel(d)}</option>)}
+                </select>
+              </div>
+              <div style={{ flex: 1 }} />
+              <span style={{ fontSize: 12, color: '#6b7280' }}>
+                Month total: <span style={{ color: '#f87171', fontWeight: 700 }}>{monthValue > 0 ? fmtNpr(monthValue) : '—'}</span>
+              </span>
+            </div>
+
+            {/* Add entry */}
+            {!isLocked && (
+              <div className="card" style={{ marginBottom: 14, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                <div style={{ flex: '2 1 220px' }}>
+                  <label style={{ display: 'block', fontSize: 11, color: '#6b7280', marginBottom: 5 }}>Item</label>
+                  <select style={{ ...winp, width: '100%' }} value={wEntry.item_id} onChange={e => setWEntry(w => ({ ...w, item_id: e.target.value }))}>
+                    <option value="">— Select item —</option>
+                    {items.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                  </select>
+                </div>
+                <div style={{ flex: '0 1 110px' }}>
+                  <label style={{ display: 'block', fontSize: 11, color: '#6b7280', marginBottom: 5 }}>Qty</label>
+                  <input type="number" min="0" step="any" style={{ ...winp, width: '100%', textAlign: 'right' }} value={wEntry.qty} onChange={e => setWEntry(w => ({ ...w, qty: e.target.value }))} placeholder="0" />
+                </div>
+                <div style={{ flex: '1 1 150px' }}>
+                  <label style={{ display: 'block', fontSize: 11, color: '#6b7280', marginBottom: 5 }}>
+                    <Tip text="Why the stock was lost. Used to group wastage by cause in the Wastage Report." width={240}>Reason</Tip>
+                  </label>
+                  <select style={{ ...winp, width: '100%' }} value={wEntry.reason} onChange={e => setWEntry(w => ({ ...w, reason: e.target.value }))}>
+                    {WASTAGE_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </div>
+                <button className="btn btn-primary" onClick={addDailyWastage} disabled={wBusy || !wEntry.item_id || !(parseFloat(wEntry.qty) > 0)} style={{ fontSize: 13 }}>
+                  {wBusy ? 'Saving…' : '+ Add'}
+                </button>
+              </div>
+            )}
+
+            {/* Selected day's entries */}
+            <div className="card" style={{ padding: 0, marginBottom: 16 }}>
+              <div className="table-wrap">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Item</th>
+                      <th>Reason</th>
+                      <th style={{ textAlign: 'right' }}>Qty</th>
+                      <th style={{ textAlign: 'right' }}>
+                        <Tip text="Qty wasted × per-unit rate." width={200}>Value (NPR)</Tip>
+                      </th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dayEntries.length === 0 ? (
+                      <tr><td colSpan={5} style={{ textAlign: 'center', color: '#6b7280', padding: 24 }}>No wastage logged for Day {wDay}.</td></tr>
+                    ) : dayEntries.map(r => (
+                      <tr key={r.id}>
+                        <td style={{ fontWeight: 600, color: '#e8e0d0' }}>{r.items?.name || '—'}</td>
+                        <td><span className="badge badge-yellow">{r.reason || 'Other'}</span></td>
+                        <td style={{ textAlign: 'right', color: '#f87171' }}>{Number(r.qty).toLocaleString()} {r.items?.uom || ''}</td>
+                        <td style={{ textAlign: 'right', color: '#f87171', fontWeight: 600 }}>{valOf(r) > 0 ? fmtNpr(valOf(r)) : '—'}</td>
+                        <td style={{ textAlign: 'right' }}>
+                          {!isLocked && <button className="btn btn-danger" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => deleteDailyWastage(r.id)} disabled={wBusy}>Del</button>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  {dayEntries.length > 0 && (
+                    <tfoot>
+                      <tr style={{ borderTop: '2px solid #2a2f3d' }}>
+                        <td colSpan={2} style={{ fontWeight: 700, color: '#6b7280', paddingTop: 12 }}>Day {wDay} total</td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#f87171', paddingTop: 12 }}>{Number(dayQty).toLocaleString()}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#f87171', fontSize: 14, paddingTop: 12 }}>{fmtNpr(dayValue)}</td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
+            </div>
+
+            {/* Month strip — days with wastage */}
+            {Object.keys(perDay).length > 0 && (
+              <div className="card" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 4 }}>Days with wastage</span>
+                {Object.keys(perDay).map(Number).sort((a, b) => a - b).map(d => (
+                  <button key={d} onClick={() => setWDay(d)} className="btn btn-ghost" style={{ fontSize: 11, padding: '5px 10px', borderColor: d === wDay ? 'rgba(201,168,76,0.5)' : '#2a2f3d', color: d === wDay ? '#c9a84c' : '#9ca3af' }}>
+                    Day {d} · {fmtNpr(perDay[d])}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
+      {activeTab !== 'summary' && activeTab !== 'print' && activeTab !== 'daily_wastage' && (() => {
         const fieldKey = activeTab === 'opening' ? 'opening' : activeTab === 'closing' ? 'closing' : activeTab === 'staff_meal' ? 'staff_meal' : 'wastage'
         const counted = countedItems(fieldKey)
         const pct = visible.length > 0 ? Math.round(counted / visible.length * 100) : 0

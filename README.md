@@ -124,6 +124,31 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S118 — 2026-06-22 — Daily Wastage Tracker
+
+Wastage can now be logged **per day with a reason**, on top of the existing monthly figure.
+
+**Migration (run in Supabase):**
+```sql
+ALTER TABLE wastages ADD COLUMN IF NOT EXISTS bs_day     integer;      -- NULL = monthly catch-all; set = daily entry
+ALTER TABLE wastages ADD COLUMN IF NOT EXISTS reason     text;         -- dropdown value (daily entries)
+ALTER TABLE wastages ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+```
+
+**Model:** `wastages` rows with `bs_day = NULL` are the **monthly catch-all** (the existing Wastage tab); rows with a `bs_day` are **daily entries** with a reason. Period total wastage = catch-all + daily, so COGS is unchanged. Existing rows become the catch-all automatically.
+
+**Stock Count (`Stock.js`):**
+- New **Daily Wastage** tab — BS day selector, add-entry row (item · qty · reason dropdown: Spoilage / Expiry / Over-prep / Breakage / Spillage / Customer return / Other), that day's entries list with delete + day total, and a "days with wastage" strip showing per-day NPR.
+- The **Wastage tab** now edits only the catch-all (`bs_day IS NULL`); `getUsed`, the Summary tab, and the Excel register all use catch-all + daily. Daily entries are online-only (not in the offline queue).
+
+**Wastage Report (`WastageReport.js`):** now **aggregates by item** (an item can have many rows), plus a **By Reason** breakdown card + second Excel sheet. Undated catch-all shows as "Monthly (untagged)".
+
+**Deferred:** offline queue for daily entries, in-place edit (delete + re-add for now), deeper reason analytics.
+
+**Files:** `src/pages/Stock.js`, `src/pages/WastageReport.js`, `src/pages/Help.js`
+
+---
+
 ### S117 — 2026-06-22 — Floating "+ Add" buttons + modal create-forms
 
 UX pass: every create page now uses a single **floating action button** (fixed bottom-right, always reachable regardless of scroll) instead of a top/bottom button. Create forms that used to render at the top of the page (so they looked dead when triggered from a long list) now pop up as **centered modals** in front of the user.

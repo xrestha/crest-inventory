@@ -12,6 +12,7 @@ export default function WastageReport() {
   const [periods, setPeriods]           = useState([])
   const [selectedPeriod, setSelected]   = useState(null)
   const [rows, setRows]                 = useState([])
+  const [reasons, setReasons]           = useState([])
   const [catFilter, setCatFilter]       = useState('All')
   const [loading, setLoading]           = useState(false)
 
@@ -34,23 +35,35 @@ export default function WastageReport() {
     setLoading(true)
     const { data } = await supabase
       .from('wastages')
-      .select('item_id, qty, items(name, uom, per_uom_rate, categories(name))')
+      .select('item_id, qty, bs_day, reason, items(name, uom, per_uom_rate, categories(name))')
       .eq('period_id', periodId)
 
-    const built = (data || [])
-      .filter(r => parseFloat(r.qty) > 0)
-      .map(r => ({
-        item_id:  r.item_id,
-        name:     r.items?.name || '—',
-        category: r.items?.categories?.name || 'Uncategorised',
-        uom:      r.items?.uom || '',
-        qty:      parseFloat(r.qty || 0),
-        rate:     parseFloat(r.items?.per_uom_rate || 0),
-        value:    parseFloat(r.qty || 0) * parseFloat(r.items?.per_uom_rate || 0),
-      }))
-      .sort((a, b) => b.value - a.value)
+    // Aggregate by item — an item can now have many rows (monthly catch-all + dated daily entries).
+    const byItem = {}
+    const byReason = {}
+    ;(data || []).forEach(r => {
+      const qty = parseFloat(r.qty || 0)
+      if (qty <= 0) return
+      const rate  = parseFloat(r.items?.per_uom_rate || 0)
+      const value = qty * rate
+      if (!byItem[r.item_id]) {
+        byItem[r.item_id] = {
+          item_id: r.item_id, name: r.items?.name || '—',
+          category: r.items?.categories?.name || 'Uncategorised',
+          uom: r.items?.uom || '', rate, qty: 0, value: 0,
+        }
+      }
+      byItem[r.item_id].qty   += qty
+      byItem[r.item_id].value += value
+      // Reason breakdown — undated catch-all rows have no reason.
+      const reason = r.bs_day == null ? 'Monthly (untagged)' : (r.reason || 'Other')
+      if (!byReason[reason]) byReason[reason] = { reason, qty: 0, value: 0 }
+      byReason[reason].qty   += qty
+      byReason[reason].value += value
+    })
 
-    setRows(built)
+    setRows(Object.values(byItem).sort((a, b) => b.value - a.value))
+    setReasons(Object.values(byReason).sort((a, b) => b.value - a.value))
     setCatFilter('All')
     setLoading(false)
   }
@@ -83,6 +96,15 @@ export default function WastageReport() {
       '% of Total':   totalValue ? ((r.value / totalValue) * 100).toFixed(1) + '%' : '0%',
     }))
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), 'Wastage')
+    if (reasons.length) {
+      const rData = reasons.map(r => ({
+        'Reason':      r.reason,
+        'Qty':         r.qty || '',
+        'Value (NPR)': r.value ? r.value.toFixed(0) : '',
+        '% of Total':  totalValue ? ((r.value / totalValue) * 100).toFixed(1) + '%' : '0%',
+      }))
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rData), 'By Reason')
+    }
     XLSX.writeFile(wb, `Wastage-${selectedPeriod?.bs_year}-${selectedPeriod?.bs_month}.xlsx`)
   }
 
@@ -127,6 +149,37 @@ export default function WastageReport() {
           {topCat && <div className="stat-label" style={{ marginTop: 4 }}>{fmt(topCat[1])}</div>}
         </div>
       </div>
+
+      {/* By Reason breakdown */}
+      {reasons.length > 0 && (
+        <div className="card no-print" style={{ marginBottom: 20, padding: 0 }}>
+          <div style={{ padding: '12px 16px', fontSize: 12, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            <Tip text="Wastage grouped by reason. Daily Wastage entries carry a reason; the monthly catch-all from the Wastage tab shows as “Monthly (untagged)”." width={280}>By Reason</Tip>
+          </div>
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Reason</th>
+                  <th style={{ textAlign: 'right' }}>Qty</th>
+                  <th style={{ textAlign: 'right' }}>Value (NPR)</th>
+                  <th style={{ textAlign: 'right' }}>% of Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reasons.map(r => (
+                  <tr key={r.reason}>
+                    <td><span className="badge badge-yellow">{r.reason}</span></td>
+                    <td style={{ textAlign: 'right' }}>{Number(r.qty).toLocaleString()}</td>
+                    <td style={{ textAlign: 'right', color: '#f87171' }}>{fmt(r.value)}</td>
+                    <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>{totalValue ? ((r.value / totalValue) * 100).toFixed(1) + '%' : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Category filter tabs */}
       {categories.length > 2 && (
