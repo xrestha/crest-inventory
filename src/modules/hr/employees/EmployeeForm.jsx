@@ -63,6 +63,9 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
   const [components, setComponents] = useState([])
   const [saving, setSaving]   = useState(false)
   const [error, setError]     = useState('')
+  const [splitOpen, setSplitOpen]   = useState(false)
+  const [grossInput, setGrossInput] = useState('')
+  const [basicPct, setBasicPct]     = useState(60)
 
   useEffect(() => {
     if (!isEdit) return
@@ -78,6 +81,28 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
 
   function addComponent(type, name = '') {
     setComponents(c => [...c, { name, type, calc_type: 'fixed', value: '' }])
+  }
+
+  // Split a gross figure into basic (basicPct%) + one editable allowance (remainder).
+  function applySplit() {
+    const gross = parseFloat(grossInput) || 0
+    if (gross <= 0) return
+    const pct = Math.max(60, Math.min(100, parseFloat(basicPct) || 60))
+    const newBasic = Math.round(gross * pct / 100)
+    const remainder = gross - newBasic
+    set('basic_salary', String(newBasic))
+    setComponents(c => {
+      const earnings = c.filter(x => x.type === 'earning')
+      const deductions = c.filter(x => x.type === 'deduction')
+      // Reuse an existing "Other Allowances" line if present, else prepend one.
+      const otherIdx = earnings.findIndex(x => x.name === 'Other Allowances')
+      const otherRow = { name: 'Other Allowances', type: 'earning', calc_type: 'fixed', value: remainder > 0 ? String(remainder) : '' }
+      const newEarnings = otherIdx >= 0
+        ? earnings.map((x, i) => i === otherIdx ? { ...x, calc_type: 'fixed', value: String(remainder) } : x)
+        : (remainder > 0 ? [otherRow, ...earnings] : earnings)
+      return [...newEarnings, ...deductions]
+    })
+    setSplitOpen(false)
   }
 
   function updateComponent(i, field, value) {
@@ -323,6 +348,59 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
 
           {/* ── SALARY ── */}
           {tab === 'salary' && <>
+
+            {/* Quick split from gross */}
+            <div style={{ background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 8, overflow: 'hidden' }}>
+              <button
+                onClick={() => setSplitOpen(o => !o)}
+                style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'none', border: 'none', padding: '10px 14px', cursor: 'pointer', color: '#9ca3af', fontSize: 12 }}
+              >
+                <span>
+                  <Tip text="Enter a total/gross salary and we'll split it into basic and allowances. You can edit everything afterwards." width={300}>
+                    ⚡ Split from gross salary
+                  </Tip>
+                </span>
+                <span style={{ color: '#6b7280' }}>{splitOpen ? '▲' : '▼'}</span>
+              </button>
+              {splitOpen && (
+                <div style={{ padding: '0 14px 14px' }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                    <div style={{ flex: 2 }}>
+                      <label style={lbl}>Gross / Total (NPR / month)</label>
+                      <input type="number" min="0" style={inp} placeholder="e.g. 30000" value={grossInput} onChange={e => setGrossInput(e.target.value)} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={lbl}>
+                        <Tip text="Basic as a % of gross. Minimum 60% by Labour Act. Higher basic = higher SSF." width={260}>Basic %</Tip>
+                      </label>
+                      <select style={inp} value={basicPct} onChange={e => setBasicPct(parseInt(e.target.value, 10))}>
+                        <option value={60}>60%</option>
+                        <option value={70}>70%</option>
+                        <option value={80}>80%</option>
+                        <option value={100}>100%</option>
+                      </select>
+                    </div>
+                  </div>
+                  {parseFloat(grossInput) > 0 && (
+                    <div style={{ fontSize: 11, color: '#6b7280', marginTop: 8 }}>
+                      → Basic <strong style={{ color: '#e8e0d0' }}>NPR {Math.round((parseFloat(grossInput) || 0) * basicPct / 100).toLocaleString('en-NP')}</strong>
+                      {' · '}Other Allowances <strong style={{ color: '#34d399' }}>NPR {Math.round((parseFloat(grossInput) || 0) * (100 - basicPct) / 100).toLocaleString('en-NP')}</strong>
+                    </div>
+                  )}
+                  <button
+                    onClick={applySplit}
+                    disabled={!(parseFloat(grossInput) > 0)}
+                    className="btn btn-primary"
+                    style={{ marginTop: 10, fontSize: 12, opacity: parseFloat(grossInput) > 0 ? 1 : 0.5 }}
+                  >
+                    Apply split
+                  </button>
+                  <div style={{ fontSize: 10, color: '#4b5563', marginTop: 8, lineHeight: 1.5 }}>
+                    Fills the fields below — rename or split "Other Allowances" into Housing / Transport / etc. afterwards. SSF is computed on basic only, so a higher basic % means higher SSF contribution.
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Basic salary */}
             <div style={col}>

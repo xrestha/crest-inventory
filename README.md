@@ -124,6 +124,24 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S107 — 2026-06-22 — HR Salary: "Split from Gross" Helper
+
+Employers hire on a gross/total figure then split it — the form previously forced bottom-up entry from basic. Added a one-shot calculator.
+
+**EmployeeForm — Salary tab:**
+- Collapsible "⚡ Split from gross salary" helper above the Basic Salary field
+- Inputs: Gross (NPR/month) + Basic % (60/70/80/100, 60% floor per Labour Act)
+- Live preview: "→ Basic NPR X · Other Allowances NPR Y"
+- **Apply split** sets `basic_salary = gross × pct` and writes the remainder into an editable `Other Allowances` earning line (reuses the line if it already exists, else prepends it)
+- Data model unchanged — it just populates the existing basic + components fields; everything stays editable afterwards (rename/split the allowance, adjust %)
+- Tip notes the SSF trade-off (higher basic % = higher SSF, since SSF is on basic only)
+
+Deliberately a populate-once helper, not a separate "gross mode" — avoids the basic↔gross sync problem once explicit allowances are added.
+
+**Files:** `src/modules/hr/employees/EmployeeForm.jsx`
+
+---
+
 ### S106 — 2026-06-22 — HR Salary: SSF Cap + Basic Salary Validation (Nepal Law Compliance)
 
 Researched current Nepal payroll law (FY 2082/83 and the new FY 2083/84 budget) and corrected the salary engine.
