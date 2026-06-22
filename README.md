@@ -124,6 +124,24 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S113 — 2026-06-22 — Crest HR: HR Reports
+
+Turns finalized payroll into filing/disbursement artefacts. **No DB migration** — read-only aggregation over `hr_payslips` + `hr_employees`.
+
+**HrReports (`/hr/reports`):** period selector loads the run + payslips + employees (for bank/SSF/PAN fields). Empty state if no run; amber note if the run is a draft. Four tabs, each with Excel export + print-clean layout:
+- **Payroll Summary** — stat cards (Total Gross / Deductions / Net Payable / **Employer Cost** = gross + OT + employer SSF) + by-department table.
+- **SSF Challan** — SSF-enrolled employees only: SSF No · SSF Basic (min(basic, 100k)) · 11% · 20% · 31%, with grand total to deposit and a count of excluded (no-SSF) staff.
+- **Bank Transfer / Salary Disbursement** — Employee · Bank · Account No · Net Pay; missing bank details flagged amber; **Excel + CSV** export (generic columns: Name, Bank, Account No, Amount).
+- **TDS Report** — Employee · PAN · Taxable (gross + OT − SSF) · TDS (period) · **TDS YTD** (sum of finalized payslips in the same fiscal year, via `fiscalYearOf` from `tds.js`).
+
+Nav "HR Reports" (📊) under Human Resources; Help HR_FEATURES entry added.
+
+**Deferred:** bank-specific upload templates, annual rollups, SSF return XML / IRD e-filing formats, payslip email/SMS.
+
+**Files:** `src/modules/hr/reports/HrReports.jsx` (new), `src/App.js`, `src/components/Layout.js`, `src/pages/Help.js`
+
+---
+
 ### S112 — 2026-06-22 — Crest HR: Automatic TDS (Income Tax)
 
 Replaces the manual TDS field on payslips with an automatic income-tax engine. **No DB migration** — TDS already exists on `hr_payslips` and year-to-date figures are derived from existing columns.
