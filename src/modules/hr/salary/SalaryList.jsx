@@ -11,6 +11,9 @@ const STATUS_COLORS = {
   terminated: { color: '#f87171', bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.2)' },
 }
 
+// SSF is computed on basic salary capped at NPR 100,000/month (SSF Act).
+const SSF_CAP = 100000
+
 function fmt(n) { return Math.round(n).toLocaleString('en-NP') }
 
 function calcAmount(comp, basic) {
@@ -51,8 +54,9 @@ export default function SalaryList() {
     const deductions = comps.filter(c => c.type === 'deduction')
     const totalAllowances = earnings.reduce((s, c)    => s + calcAmount(c, basic), 0)
     const totalOtherDed   = deductions.reduce((s, c)  => s + calcAmount(c, basic), 0)
-    const ssf_emp   = Math.round(basic * 0.11)
-    const ssf_emp_  = Math.round(basic * 0.20)
+    const ssf_base  = Math.min(basic, SSF_CAP)
+    const ssf_emp   = Math.round(ssf_base * 0.11)
+    const ssf_emp_  = Math.round(ssf_base * 0.20)
     const gross     = basic + totalAllowances
     const totalDed  = ssf_emp + totalOtherDed
     const net       = gross - totalDed

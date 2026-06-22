@@ -47,6 +47,9 @@ const lbl = { fontSize: 11, color: '#6b7280', marginBottom: 4, display: 'block',
 const row = { display: 'flex', gap: 12 }
 const col = { flex: 1, display: 'flex', flexDirection: 'column' }
 
+// SSF is computed on basic salary capped at NPR 100,000/month (SSF Act).
+const SSF_CAP = 100000
+
 function calcAmount(comp, basic) {
   const v = parseFloat(comp.value) || 0
   if (comp.calc_type === 'percent_of_basic') return Math.round((parseFloat(basic) || 0) * v / 100)
@@ -158,11 +161,14 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
   const deductions  = components.filter(c => c.type === 'deduction')
   const totalEarnings   = earnings.reduce((s, c)   => s + calcAmount(c, basic), 0)
   const totalDeductions = deductions.reduce((s, c) => s + calcAmount(c, basic), 0)
-  const ssf_employee    = Math.round(basic * 0.11)
-  const ssf_employer    = Math.round(basic * 0.20)
+  const ssf_base        = Math.min(basic, SSF_CAP)
+  const ssf_employee    = Math.round(ssf_base * 0.11)
+  const ssf_employer    = Math.round(ssf_base * 0.20)
   const gross    = basic + totalEarnings
   const totalDed = ssf_employee + totalDeductions
   const net      = gross - totalDed
+  // Labour Act: basic salary must be at least 60% of gross.
+  const basicTooLow = gross > 0 && basic < gross * 0.6
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', justifyContent: 'flex-end' }}>
@@ -321,9 +327,14 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
             {/* Basic salary */}
             <div style={col}>
               <label style={lbl}>
-                <Tip text="Monthly basic salary in NPR. SSF is computed on basic: employee 11%, employer 20%." width={280}>Basic Salary (NPR / month)</Tip>
+                <Tip text="Monthly basic salary in NPR. SSF is computed on basic (capped at NPR 100,000): employee 11%, employer 20%." width={300}>Basic Salary (NPR / month)</Tip>
               </label>
               <input type="number" min="0" style={inp} placeholder="e.g. 25000" value={form.basic_salary} onChange={e => set('basic_salary', e.target.value)} />
+              {basicTooLow && (
+                <span style={{ fontSize: 11, color: '#c9a84c', marginTop: 4 }}>
+                  ⚠ Basic is below 60% of gross (NPR {Math.round(gross * 0.6).toLocaleString('en-NP')}). Labour Act requires basic ≥ 60% of total pay.
+                </span>
+              )}
             </div>
 
             {/* ── Allowances ── */}
@@ -408,7 +419,9 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
               {basic > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: '#0f1117', borderRadius: 6, marginBottom: 6, border: '1px solid #2a2f3d' }}>
                   <span style={{ fontSize: 12, color: '#6b7280' }}>
-                    <Tip text="11% of basic salary deducted from employee each month. Mandatory under SSF Act." width={260}>SSF — Employee (11%) · auto</Tip>
+                    <Tip text="11% of basic salary deducted from employee each month. Mandatory under SSF Act. Basic is capped at NPR 100,000 for SSF." width={280}>
+                      SSF — Employee (11%) · auto{basic > SSF_CAP ? ' · capped' : ''}
+                    </Tip>
                   </span>
                   <span style={{ fontSize: 13, color: '#e8e0d0', fontWeight: 500 }}>NPR {ssf_employee.toLocaleString('en-NP')}</span>
                 </div>

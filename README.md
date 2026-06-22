@@ -124,6 +124,70 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S106 — 2026-06-22 — HR Salary: SSF Cap + Basic Salary Validation (Nepal Law Compliance)
+
+Researched current Nepal payroll law (FY 2082/83 and the new FY 2083/84 budget) and corrected the salary engine.
+
+**Research findings (sources in memory):**
+- SSF: 11% employee + 20% employer, computed on **basic salary capped at NPR 100,000/month** (the cap was missing in S105)
+- Labour Act: basic salary must be **≥ 60% of gross pay**
+- Income tax FY 2083/84 (effective mid-July 2026): unified single schedule (no married/single split), first slab NPR 10L @ 1%, top rate cut 39% → 29%. SSF contributors get the 1% first-slab tax waived → most F&B staff under ~NPR 83k/month gross pay **zero income tax**. (Informs the future TDS module — not built this session.)
+
+**Fix 1 — SSF cap (NPR 100,000 basic)**
+- `EmployeeForm.jsx` + `SalaryList.jsx`: `ssf_base = Math.min(basic, 100000)`; SSF employee/employer computed on `ssf_base` not raw basic
+- SSF auto-row label shows "· capped" when basic exceeds the cap
+
+**Fix 2 — Basic salary 60%-of-gross validation**
+- Amber warning under the Basic Salary field when `basic < 0.6 × gross` (gross = basic + allowances)
+
+**Deferred (planned, not built):** TDS module (`/hr/tds`), Festival Allowance (annual 1× basic at Dashain — deliberately kept out of monthly chips to avoid corrupting monthly net), Gratuity accrual tracker.
+
+**Files:** `src/modules/hr/employees/EmployeeForm.jsx`, `src/modules/hr/salary/SalaryList.jsx`
+
+---
+
+### S105 — 2026-06-22 — HR Salary Structure: Per-Employee Components + Salary List Page
+
+First HR session after Employee Master. Builds the Salary Structure feature (HR roadmap session 2).
+
+**DB migration required (run in Supabase SQL editor):**
+```sql
+CREATE TABLE IF NOT EXISTS hr_salary_components (
+  id          uuid    DEFAULT gen_random_uuid() PRIMARY KEY,
+  client_id   uuid    REFERENCES clients(id)       ON DELETE CASCADE NOT NULL,
+  employee_id uuid    REFERENCES hr_employees(id)  ON DELETE CASCADE NOT NULL,
+  name        text    NOT NULL,
+  type        text    NOT NULL CHECK(type IN ('earning', 'deduction')),
+  calc_type   text    NOT NULL DEFAULT 'fixed' CHECK(calc_type IN ('fixed', 'percent_of_basic')),
+  value       numeric(12,2) NOT NULL DEFAULT 0,
+  created_at  timestamptz DEFAULT now()
+);
+ALTER TABLE hr_salary_components ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "client_own" ON hr_salary_components FOR ALL
+  USING ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin' OR client_id = (SELECT client_id FROM profiles WHERE id = auth.uid()))
+  WITH CHECK ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin' OR client_id = (SELECT client_id FROM profiles WHERE id = auth.uid()));
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.hr_salary_components TO authenticated;
+```
+
+**EmployeeForm — Salary tab rebuilt:**
+- Loads existing `hr_salary_components` on edit (useEffect)
+- Add/remove Allowances (earnings) and Deductions with inline rows; `calc_type` = Fixed NPR or % of Basic (live computed display)
+- Quick-add chips: Housing, Transport, Medical, Food, Grade Pay (earnings); CIT/PF, Advance Recovery, Other (deductions)
+- SSF Employee (11%) auto-row always shown, read-only
+- Live Monthly Summary panel: Gross → Deductions → Net Salary
+- Components synced on Save (delete-all + re-insert, same pattern as overheads/wastages)
+
+**SalaryList (`/hr/salary`) — new page:**
+- Fetches all employees + all salary components for the client
+- Per-employee computed: Basic / Allowances / Gross / Deductions / Net / SSF Employer
+- Stat cards: Total Gross Payroll, SSF Employee, SSF Employer, Net Payroll
+- Status filter tabs (Active / All / Inactive); table with tfoot totals; Export Excel
+- Nav: added "Salary Structure" (₿) under Human Resources in Layout
+
+**Files:** `src/modules/hr/employees/EmployeeForm.jsx`, `src/modules/hr/salary/SalaryList.jsx`, `src/App.js`, `src/components/Layout.js`
+
+---
+
 ### S104 — 2026-06-21 — HR Employee: RLS Fix, Gender Constraint Fix, Delete Employee
 
 Three fixes for the HR Employee Master after first real-world Add Employee attempt.

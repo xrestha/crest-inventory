@@ -201,8 +201,13 @@ const IMS_TIERS = [
 const HR_FEATURES = [
   {
     icon: '👤', name: 'Employees',
-    guide: 'The Employee Master for Crest HR. Add and manage all staff — personal details, employment type, department, join date, and status (Active / Probation / Resigned / Terminated). Four tabs per employee: Personal (name, NID, date of birth, phone, address, emergency contact), Employment (type, department, designation, dates), Salary (basic salary with live SSF preview), and Bank / SSF (bank name, account number, branch, SSF number). Dashboard HR stat cards show Total Employees, Active count, and combined basic payroll/month.',
-    tips: ['Employee code is auto-generated (EMP-001) — do not change it after payroll records are created', 'SSF contribution preview on the Salary tab uses the standard 11% employee + 20% employer split', 'Probation employees are included in the active headcount and payroll total', 'HR module must be enabled by your admin before the Employees page appears in your sidebar']
+    guide: 'The Employee Master for Crest HR. Add and manage all staff — personal details, employment type, department, join date, and status (Active / Probation / Resigned / Terminated). Four tabs per employee: Personal (name, NID, date of birth, phone, address, emergency contact), Employment (type, department, designation, dates), Salary (basic salary, allowances, deductions with live net preview), and Bank / SSF (bank name, account number, branch, SSF number). Dashboard HR stat cards show Total Employees, Active count, and combined basic payroll/month.',
+    tips: ['Employee code is auto-generated (EMP-001) — do not change it after payroll records are created', 'SSF contribution uses the standard 11% employee + 20% employer split, computed on basic salary capped at NPR 100,000/month', 'Probation employees are included in the active headcount and payroll total', 'HR module must be enabled by your admin before the Employees page appears in your sidebar']
+  },
+  {
+    icon: '₿', name: 'Salary Structure',
+    guide: 'Per-employee monthly salary breakdown. On each employee\'s Salary tab, set basic salary then add Allowances (Housing, Transport, Medical, Food, etc.) and Deductions (CIT/PF, advances) — each as a fixed NPR amount or a percentage of basic. SSF Employee (11%) is added automatically. The live Monthly Summary shows Gross Earnings → Deductions → Net Salary. The Salary Structure page lists every employee with Basic / Allowances / Gross / Deductions / Net / Employer SSF, plus payroll totals and an Excel export.',
+    tips: ['SSF is computed on basic salary capped at NPR 100,000 — the cap is applied automatically', 'Nepal Labour Act requires basic salary to be at least 60% of gross — an amber warning appears if it is lower', 'Employer SSF (20%) is paid by the company and is not deducted from the employee\'s net salary', 'Use the quick-add chips to add common allowances and deductions in one click', 'Income tax / TDS is not deducted here yet — it will arrive in a future Crest HR update']
   },
 ]
 
