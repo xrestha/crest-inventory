@@ -124,6 +124,22 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S109 — 2026-06-22 — Fix: Service Worker Served Stale Bundle in Development
+
+**Symptom:** AdminClients (and any page) kept rendering an old pre-S101 design on every load, even though the source had the new layout and compiled cleanly.
+
+**Root cause:** The PWA service worker (`public/service-worker.js`) uses a **cache-first** strategy for JS/CSS. In production that's fine — CRA emits hashed filenames, so a new build = new URL = cache miss = fresh fetch. But the SW was also registered in **development** (`npm start`), where the dev bundle has a *stable* filename. The SW cached the dev bundle once and served it forever, ignoring all subsequent code changes — so the UI "fell back" to whatever was first cached.
+
+**Fix:**
+- `src/index.js`: register the service worker **only when `process.env.NODE_ENV === 'production'`**. In development, actively `unregister()` any existing SW and clear all caches — so a dev browser that was already stuck self-heals on next load.
+- `public/service-worker.js`: bumped `CACHE_NAME` `crest-v3` → `crest-v4`. Browsers always re-fetch the SW script itself (bypassing the cache), detect the change, install the new SW, and its `activate` handler deletes the old `crest-v3` cache.
+
+**Manual unstick (if a browser is still showing the old UI):** DevTools → Application → Service Workers → Unregister; then Application → Storage → Clear site data; hard reload (Ctrl+Shift+R).
+
+**Files:** `src/index.js`, `public/service-worker.js`
+
+---
+
 ### S108 — 2026-06-22 — HR Salary: Pay Basis (Monthly/Daily/Hourly) + Minimum Wage Validation
 
 Researched Nepal minimum wage (FY 2082/83): NPR 19,550/month = 12,170 basic + 7,380 dearness; daily NPR 754; hourly NPR 101 (part-time 107). Found two real bugs and a structural gap.
