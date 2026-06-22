@@ -18,7 +18,7 @@ export default function BsDatePicker({ bsYear, bsMonth, value, onChange, disable
     <div>
       <div style={{ display: 'flex', gap: 6 }}>
         <select
-          value={value}
+          value={value ?? ''}
           onChange={e => onChange(e.target.value)}
           disabled={disabled}
           style={{ flex: 1 }}
