@@ -678,6 +678,12 @@ export default function Stock() {
         const fieldKey = activeTab === 'opening' ? 'opening' : activeTab === 'closing' ? 'closing' : activeTab === 'staff_meal' ? 'staff_meal' : 'wastage'
         const counted = countedItems(fieldKey)
         const pct = visible.length > 0 ? Math.round(counted / visible.length * 100) : 0
+        const totalQty = visible.reduce((s, item) => s + (parseFloat(stockData[item.id]?.[fieldKey]) || 0), 0)
+        const totalValue = visible.reduce((s, item) => {
+          const rate = parseFloat(item.per_uom_rate || 0)
+          const qty  = parseFloat(stockData[item.id]?.[fieldKey]) || 0
+          return s + (rate > 0 ? qty * rate : 0)
+        }, 0)
         return (
           <>
             <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: '#c9a84c' }}>
@@ -729,6 +735,7 @@ export default function Stock() {
             )}
 
             {isMobile ? (
+              <>
               <div className="mobile-stock-list">
                 {visible.map(item => {
                   const row = stockData[item.id] || {}
@@ -772,6 +779,14 @@ export default function Stock() {
                   )
                 })}
               </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', marginTop: 10, background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 8, fontWeight: 700 }}>
+                <span style={{ color: '#6b7280', fontSize: 13 }}>Total — {visible.length} item{visible.length !== 1 ? 's' : ''}</span>
+                <span style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+                  <span style={{ color: '#e8e0d0', fontSize: 13 }}>{totalQty > 0 ? Number(totalQty).toLocaleString() : '—'}</span>
+                  <span style={{ color: '#c9a84c', fontSize: 14 }}>{totalValue > 0 ? `NPR ${Math.round(totalValue).toLocaleString('en-NP')}` : '—'}</span>
+                </span>
+              </div>
+              </>
             ) : (
               <div className="card">
                 {loading ? (
@@ -842,6 +857,21 @@ export default function Stock() {
                           )
                         })}
                       </tbody>
+                      <tfoot>
+                        <tr style={{ borderTop: '2px solid #2a2f3d' }}>
+                          <td colSpan={3} style={{ fontWeight: 700, color: '#6b7280', paddingTop: 12 }}>
+                            Total — {visible.length} item{visible.length !== 1 ? 's' : ''}
+                          </td>
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: '#e8e0d0', paddingTop: 12 }}>
+                            {totalQty > 0 ? Number(totalQty).toLocaleString() : '—'}
+                          </td>
+                          <td colSpan={2}></td>
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: '#c9a84c', fontSize: 14, paddingTop: 12 }}>
+                            {totalValue > 0 ? `NPR ${Math.round(totalValue).toLocaleString('en-NP')}` : '—'}
+                          </td>
+                          <td></td>
+                        </tr>
+                      </tfoot>
                     </table>
                   </div>
                 )}
