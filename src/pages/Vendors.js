@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useSettings } from '../context/SettingsContext'
 import { supabase } from '../supabaseClient'
+import Fab from '../components/Fab'
+import Modal from '../components/Modal'
 
 const EMPTY_FORM = { name: '', contact_person: '', phone: '', address: '', pan_vat_no: '' }
 
@@ -118,14 +120,10 @@ export default function Vendors() {
           <h1 className="page-title">Vendors</h1>
           <p className="page-subtitle">Manage your supplier list — linked to daily purchase entries</p>
         </div>
-        <button className="btn btn-primary" onClick={openNew}>+ Add Vendor</button>
       </div>
 
       {showForm && (
-        <div className="card" style={{ marginBottom: 24 }}>
-          <h3 style={{ margin: '0 0 20px', fontSize: 15, color: '#e8e0d0' }}>
-            {editing ? 'Edit Vendor' : 'Add Vendor'}
-          </h3>
+        <Modal onClose={() => setShowForm(false)} title={editing ? 'Edit Vendor' : 'Add Vendor'}>
           <div className="form-grid form-grid-3">
             <div className="form-field">
               <label>Vendor Name *</label>
@@ -178,7 +176,7 @@ export default function Vendors() {
               {saving ? 'Saving…' : editing ? 'Update Vendor' : 'Add Vendor'}
             </button>
           </div>
-        </div>
+        </Modal>
       )}
 
       <div style={{ marginBottom: 16 }}>
@@ -266,6 +264,8 @@ export default function Vendors() {
           </div>
         )}
       </div>
+
+      <Fab onClick={openNew} label="+ Add Vendor" show={!showForm} />
     </div>
   )
 }

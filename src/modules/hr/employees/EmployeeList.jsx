@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../../../context/AuthContext'
 import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
+import Fab from '../../../components/Fab'
 import EmployeeForm from './EmployeeForm'
 
 const STATUS_COLORS = {
@@ -73,7 +74,6 @@ export default function EmployeeList() {
           <h1 className="page-title">Employees</h1>
           <p className="page-subtitle">Employee master — personal info, employment details, salary and banking</p>
         </div>
-        <button className="btn btn-primary" onClick={openAdd}>+ Add Employee</button>
       </div>
 
       {/* Stat cards */}
@@ -212,6 +212,8 @@ export default function EmployeeList() {
           onClose={closeDrawer}
         />
       )}
+
+      <Fab onClick={openAdd} label="+ Add Employee" show={!drawerOpen} />
     </div>
   )
 }

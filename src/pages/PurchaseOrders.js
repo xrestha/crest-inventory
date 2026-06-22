@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabaseClient'
 import { getBsToday } from '../utils/bsCalendar'
 import Tip from '../components/Tip'
+import Fab from '../components/Fab'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 const PAYMENT_METHODS = ['Cash', 'Credit', 'FonePay']
@@ -699,7 +700,6 @@ export default function PurchaseOrders() {
               <option key={p.id} value={p.id}>{BS_MONTHS[p.bs_month - 1]} {p.bs_year}</option>
             ))}
           </select>
-          <button className="btn btn-primary" onClick={openNew}>+ New PO</button>
         </div>
       </div>
 
@@ -817,6 +817,8 @@ export default function PurchaseOrders() {
           </table>
         </div>
       )}
+
+      <Fab onClick={openNew} label="+ New PO" show={!!selectedPeriod} />
     </div>
   )
 }

@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabaseClient'
 import { bsToAd, formatAd, daysInBsMonth } from '../utils/bsCalendar'
 import BsDatePicker from '../components/BsDatePicker'
 import Tip from '../components/Tip'
+import Fab from '../components/Fab'
+import Modal from '../components/Modal'
 import * as XLSX from 'xlsx'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
@@ -38,13 +40,6 @@ export default function Purchases() {
   // Bill (multi-row add) state
   const [billHeader, setBillHeader]         = useState(EMPTY_HEADER)
   const [billLines, setBillLines]           = useState([newLine()])
-  const formRef = useRef(null)
-
-  // When the bill form opens, scroll it into view (it renders at the top of the
-  // tab, so opening it from the bottom "+ Add Purchase" button looked like a no-op).
-  useEffect(() => {
-    if (showForm) formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, [showForm])
 
 
   // Returns tab
@@ -530,9 +525,7 @@ export default function Purchases() {
         <>
           {/* ── BILL FORM (new or edit) ── */}
           {showForm && (
-            <div ref={formRef} className="card" style={{ marginBottom: 24 }}>
-              <h3 style={{ margin: '0 0 16px', fontSize: 15, color: '#e8e0d0' }}>{editingGroupId ? 'Edit Purchase Bill' : 'Add Purchase Bill'}</h3>
-
+            <Modal onClose={() => { setShowForm(false); setEditingGroupId(null) }} title={editingGroupId ? 'Edit Purchase Bill' : 'Add Purchase Bill'}>
               {/* Header row */}
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 2fr 1fr', gap: 14, marginBottom: 20 }}>
                 <div className="form-field">
@@ -699,7 +692,7 @@ export default function Purchases() {
                   {saving ? 'Saving…' : editingGroupId ? 'Update Bill' : `Save ${billLines.filter(l => l.item_id && parseFloat(l.qty) > 0 && parseFloat(l.rate) > 0).length || ''} Entr${billLines.filter(l => l.item_id && parseFloat(l.qty) > 0 && parseFloat(l.rate) > 0).length === 1 ? 'y' : 'ies'}`}
                 </button>
               </div>
-            </div>
+            </Modal>
           )}
 
           {/* Filters */}
@@ -716,9 +709,6 @@ export default function Purchases() {
               <button className="btn btn-ghost" style={{ fontSize: 12, padding: '6px 12px' }} onClick={() => { setFilterDay('all'); setFilterItem('all') }}>Clear Filters</button>
             )}
             <span style={{ fontSize: 13, color: '#6b7280' }}>{filtered.length} entr{filtered.length !== 1 ? 'ies' : 'y'}</span>
-            {!isLocked && (
-              <button className="btn btn-primary" style={{ marginLeft: 'auto', fontSize: 12, padding: '5px 14px' }} onClick={openNew} disabled={!selectedPeriod}>+ Add Purchase</button>
-            )}
           </div>
 
           {/* Purchases table */}
@@ -844,34 +834,13 @@ export default function Purchases() {
             )}
           </div>
 
-          {/* Floating Add Purchase — always reachable regardless of scroll position.
-              Hidden while the form is open or the period is locked. */}
-          {!isLocked && !showForm && selectedPeriod && (
-            <button
-              className="btn btn-primary"
-              onClick={openNew}
-              title="Add Purchase"
-              style={{
-                position: 'fixed', right: 28, bottom: 28, zIndex: 50,
-                padding: '12px 20px', fontSize: 14, fontWeight: 600,
-                borderRadius: 28, boxShadow: '0 6px 20px rgba(0,0,0,0.45)',
-              }}
-            >
-              + Add Purchase
-            </button>
-          )}
+          <Fab onClick={openNew} label="+ Add Purchase" show={!isLocked && !showForm && !!selectedPeriod} />
         </>
       )}
 
       {/* ── RETURNS TAB ── */}
       {activeTab === 'returns' && (
         <>
-          {!isLocked && purchases.length > 0 && !showReturnForm && (
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-              <button className="btn btn-primary" style={{ fontSize: 12, padding: '5px 14px', background: '#7f1d1d', borderColor: '#f87171' }}
-                onClick={openNewReturn}>+ Add Return</button>
-            </div>
-          )}
           {purchases.length === 0 && (
             <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: '#c9a84c' }}>
               No purchases exist for this period yet. Add purchases first before recording returns.
@@ -880,11 +849,7 @@ export default function Purchases() {
 
           {/* Return Add/Edit Form */}
           {showReturnForm && (
-            <div className="card" style={{ marginBottom: 24, borderColor: 'rgba(248,113,113,0.3)' }}>
-              <h3 style={{ margin: '0 0 20px', fontSize: 15, color: '#f87171' }}>
-                {editingReturnId ? 'Edit Return' : 'Record Return to Vendor'}
-              </h3>
-
+            <Modal onClose={() => { setShowReturnForm(false); setEditingReturnId(null) }} title={editingReturnId ? 'Edit Return' : 'Record Return to Vendor'}>
               <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 2fr', gap: 16 }}>
                 <div className="form-field">
                   <label>Purchase Entry to Return *</label>
@@ -976,7 +941,7 @@ export default function Purchases() {
                   {returnSaving ? 'Saving…' : editingReturnId ? 'Update Return' : 'Record Return'}
                 </button>
               </div>
-            </div>
+            </Modal>
           )}
 
           {/* Returns table */}
@@ -1051,6 +1016,7 @@ export default function Purchases() {
               </div>
             )}
           </div>
+          <Fab onClick={openNewReturn} label="+ Add Return" show={!isLocked && !showReturnForm && purchases.length > 0} />
         </>
       )}
 

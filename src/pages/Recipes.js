@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { useSettings } from '../context/SettingsContext'
 import { supabase } from '../supabaseClient'
 import Tip from '../components/Tip'
+import Fab from '../components/Fab'
 
 const RECIPE_CATS = ['Food', 'Beverage', 'Dessert', 'Snack', 'Sub-Recipe', 'Other']
 const EMPTY_RECIPE = { name: '', category: 'Food', selling_price: '', vat_rate: '0.13', yield_qty: '1', yield_uom: 'portion', target_fc_pct: '30' }
@@ -376,7 +377,6 @@ export default function Recipes() {
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           {view !== 'list' && <button className="btn btn-ghost" onClick={() => setView('list')}>← Back</button>}
-          {view === 'list' && <button className="btn btn-primary" onClick={openNew}>+ New Recipe</button>}
         </div>
       </div>
 
@@ -1189,6 +1189,8 @@ export default function Recipes() {
           </div>
         )
       })()}
+
+      <Fab onClick={openNew} label="+ New Recipe" show={view === 'list'} />
     </div>
   )
 }

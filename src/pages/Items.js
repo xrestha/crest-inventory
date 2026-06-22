@@ -3,6 +3,8 @@ import { useAuth } from '../context/AuthContext'
 import { useSettings } from '../context/SettingsContext'
 import { supabase } from '../supabaseClient'
 import Tip from '../components/Tip'
+import Fab from '../components/Fab'
+import Modal from '../components/Modal'
 
 const DEFAULT_CATEGORIES = [
   'Dairy & Bakery',
@@ -279,7 +281,6 @@ export default function Items() {
               ✕ Clear All Conversions
             </button>
           )}
-          <button className="btn btn-primary" onClick={openNew}>+ Add Item</button>
         </div>
       </div>
 
@@ -292,7 +293,7 @@ export default function Items() {
       )}
 
       {showForm && (
-        <div className="card" style={{ marginBottom: 24 }}>
+        <Modal onClose={() => setShowForm(false)} title={editing ? 'Edit Item' : 'Add Item'}>
           {/* Tab bar */}
           <div style={{ display: 'flex', borderBottom: '1px solid #2a2f3d', marginBottom: 20, gap: 0 }}>
             <button style={tabStyle('details')} onClick={() => setActiveTab('details')}>
@@ -473,7 +474,7 @@ export default function Items() {
               {saving ? 'Saving…' : editing ? 'Update Item' : 'Add Item'}
             </button>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Search + filters */}
@@ -639,6 +640,8 @@ export default function Items() {
           </div>
         )}
       </div>
+
+      <Fab onClick={openNew} label="+ Add Item" show={!showForm} />
     </div>
   )
 }

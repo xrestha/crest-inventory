@@ -124,6 +124,20 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S117 — 2026-06-22 — Floating "+ Add" buttons + modal create-forms
+
+UX pass: every create page now uses a single **floating action button** (fixed bottom-right, always reachable regardless of scroll) instead of a top/bottom button. Create forms that used to render at the top of the page (so they looked dead when triggered from a long list) now pop up as **centered modals** in front of the user.
+
+- **New reusable components:** `src/components/Fab.js` (fixed bottom-right `+ Add` button; `show` prop gates on tab/view/lock state; `no-print`) and `src/components/Modal.js` (centered overlay hosting a form; × button + backdrop click close).
+- **FAB + Modal** (forms were top-of-page cards): Purchases (Purchases + Returns tabs), Vendors, Item Master.
+- **FAB only** (forms are full-view switches or a slide-in drawer — no scroll problem, modal not applicable): Recipes, Purchase Orders, Requisitions, Employees. Their list-view create button was relocated to the FAB.
+- Old top/bottom create buttons removed on all of the above; FAB hides while a form/drawer is open and respects each page's lock/period rules.
+- **Not FAB'd:** Stock Count & Sales Entry (bulk pages with Save All / mobile save bar a FAB would collide with), in-form "+ Add Row" buttons, AdminClients, Periods.
+
+**Files:** `src/components/Fab.js` (new), `src/components/Modal.js` (new), `src/pages/Purchases.js`, `src/pages/Vendors.js`, `src/pages/Items.js`, `src/pages/Recipes.js`, `src/pages/PurchaseOrders.js`, `src/pages/Requisitions.js`, `src/modules/hr/employees/EmployeeList.jsx`
+
+---
+
 ### S116 — 2026-06-22 — Crest HR: Leave Management
 
 New HR feature `/hr/leave` — leave entitlements, requests, and balances, with automatic Attendance integration. Closes the gap where paid/unpaid leave had to be hand-marked day-by-day in the Attendance sheet.

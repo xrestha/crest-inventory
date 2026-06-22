@@ -5,6 +5,7 @@ import { supabase } from '../supabaseClient'
 import BsDatePicker from '../components/BsDatePicker'
 import { getBsToday } from '../utils/bsCalendar'
 import Tip from '../components/Tip'
+import Fab from '../components/Fab'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 const DEPARTMENTS = [
@@ -255,9 +256,6 @@ export default function Requisitions() {
           >
             {periods.map(p => <option key={p.id} value={p.id}>{BS_MONTHS[p.bs_month - 1]} {p.bs_year} {p.status === 'open' ? '(open)' : ''}</option>)}
           </select>
-          {mode === 'list' && !periodClosed && (
-            <button className="btn btn-primary" onClick={startNew}>+ New Requisition</button>
-          )}
           {mode !== 'list' && (
             <button className="btn btn-ghost" onClick={backToList}>← Back to List</button>
           )}
@@ -706,6 +704,8 @@ export default function Requisitions() {
           )}
         </div>
       )}
+
+      <Fab onClick={startNew} label="+ New Requisition" show={mode === 'list' && !periodClosed} />
     </div>
   )
 }
