@@ -44,6 +44,7 @@ import AnnualSummary from './pages/AnnualSummary'
 import OutstandingPayables from './pages/OutstandingPayables'
 import ShrinkageReport from './pages/ShrinkageReport'
 import EmployeeList from './modules/hr/employees/EmployeeList'
+import SalaryList from './modules/hr/salary/SalaryList'
 import './components/Layout.css'
 
 export default function App() {
@@ -129,6 +130,7 @@ export default function App() {
 
               {/* Crest HR — gated on hr_enabled */}
               <Route path="/hr/employees" element={<ModuleGate module="hr"><EmployeeList /></ModuleGate>} />
+              <Route path="/hr/salary"    element={<ModuleGate module="hr"><SalaryList /></ModuleGate>} />
 
               {/* Admin only */}
               <Route path="/admin/clients"

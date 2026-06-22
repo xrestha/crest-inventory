@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
 
@@ -35,6 +35,9 @@ const TABS = [
   { key: 'bank',       label: 'Bank / SSF' },
 ]
 
+const QUICK_EARNINGS   = ['Housing Allowance', 'Transport', 'Medical Allowance', 'Food Allowance', 'Grade Pay']
+const QUICK_DEDUCTIONS = ['CIT / Provident Fund', 'Advance Recovery', 'Other Deduction']
+
 const inp = {
   background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 6,
   padding: '8px 12px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: '100%',
@@ -44,39 +47,94 @@ const lbl = { fontSize: 11, color: '#6b7280', marginBottom: 4, display: 'block',
 const row = { display: 'flex', gap: 12 }
 const col = { flex: 1, display: 'flex', flexDirection: 'column' }
 
+function calcAmount(comp, basic) {
+  const v = parseFloat(comp.value) || 0
+  if (comp.calc_type === 'percent_of_basic') return Math.round((parseFloat(basic) || 0) * v / 100)
+  return Math.round(v)
+}
+
 export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
   const isEdit = !!employee
-  const [tab, setTab]     = useState('personal')
-  const [form, setForm]   = useState(isEdit ? { ...EMPTY, ...employee } : { ...EMPTY })
-  const [saving, setSaving] = useState(false)
-  const [error, setError]   = useState('')
+  const [tab, setTab]         = useState('personal')
+  const [form, setForm]       = useState(isEdit ? { ...EMPTY, ...employee } : { ...EMPTY })
+  const [components, setComponents] = useState([])
+  const [saving, setSaving]   = useState(false)
+  const [error, setError]     = useState('')
+
+  useEffect(() => {
+    if (!isEdit) return
+    supabase
+      .from('hr_salary_components')
+      .select('*')
+      .eq('employee_id', employee.id)
+      .order('created_at')
+      .then(({ data }) => { if (data) setComponents(data) })
+  }, [isEdit, employee?.id])
 
   function set(field, value) { setForm(f => ({ ...f, [field]: value })) }
+
+  function addComponent(type, name = '') {
+    setComponents(c => [...c, { name, type, calc_type: 'fixed', value: '' }])
+  }
+
+  function updateComponent(i, field, value) {
+    setComponents(c => c.map((comp, idx) => idx === i ? { ...comp, [field]: value } : comp))
+  }
+
+  function removeComponent(i) {
+    setComponents(c => c.filter((_, idx) => idx !== i))
+  }
 
   async function handleSave() {
     if (!form.full_name.trim()) { setError('Full name is required.'); setTab('personal'); return }
     if (!form.join_date)        { setError('Join date is required.'); setTab('employment'); return }
+    const invalidComp = components.find(c => !c.name.trim())
+    if (invalidComp) { setError('All salary components need a name.'); setTab('salary'); return }
     setError('')
     setSaving(true)
 
     const payload = {
       ...form,
-      client_id:     clientId,
-      full_name:     form.full_name.trim(),
-      basic_salary:  parseFloat(form.basic_salary) || 0,
-      gender:        form.gender        || null,
-      date_of_birth: form.date_of_birth || null,
-      end_date:      form.end_date      || null,
-      pan_no:        form.pan_no        || null,
+      client_id:      clientId,
+      full_name:      form.full_name.trim(),
+      basic_salary:   parseFloat(form.basic_salary) || 0,
+      gender:         form.gender         || null,
+      date_of_birth:  form.date_of_birth  || null,
+      end_date:       form.end_date       || null,
+      pan_no:         form.pan_no         || null,
       citizenship_no: form.citizenship_no || null,
     }
 
-    const { error: err } = isEdit
-      ? await supabase.from('hr_employees').update(payload).eq('id', employee.id)
-      : await supabase.from('hr_employees').insert(payload)
+    let empId = employee?.id
+    if (isEdit) {
+      const { error: err } = await supabase.from('hr_employees').update(payload).eq('id', empId)
+      if (err) { setError(err.message); setSaving(false); return }
+    } else {
+      const { data, error: err } = await supabase.from('hr_employees').insert(payload).select('id').single()
+      if (err) { setError(err.message); setSaving(false); return }
+      empId = data.id
+    }
+
+    // Sync salary components — delete-all + re-insert
+    await supabase.from('hr_salary_components').delete().eq('employee_id', empId)
+    if (components.length > 0) {
+      const rows = components
+        .filter(c => c.name.trim())
+        .map(c => ({
+          client_id:   clientId,
+          employee_id: empId,
+          name:        c.name.trim(),
+          type:        c.type,
+          calc_type:   c.calc_type,
+          value:       parseFloat(c.value) || 0,
+        }))
+      if (rows.length > 0) {
+        const { error: compErr } = await supabase.from('hr_salary_components').insert(rows)
+        if (compErr) { setError(compErr.message); setSaving(false); return }
+      }
+    }
 
     setSaving(false)
-    if (err) { setError(err.message); return }
     onSave()
   }
 
@@ -94,11 +152,23 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
     onSave()
   }
 
+  // ── Salary tab computed values ───────────────────────────────────────────
+  const basic       = parseFloat(form.basic_salary) || 0
+  const earnings    = components.filter(c => c.type === 'earning')
+  const deductions  = components.filter(c => c.type === 'deduction')
+  const totalEarnings   = earnings.reduce((s, c)   => s + calcAmount(c, basic), 0)
+  const totalDeductions = deductions.reduce((s, c) => s + calcAmount(c, basic), 0)
+  const ssf_employee    = Math.round(basic * 0.11)
+  const ssf_employer    = Math.round(basic * 0.20)
+  const gross    = basic + totalEarnings
+  const totalDed = ssf_employee + totalDeductions
+  const net      = gross - totalDed
+
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', justifyContent: 'flex-end' }}>
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)' }} onClick={onClose} />
       <div style={{
-        position: 'relative', width: 480, maxWidth: '100vw',
+        position: 'relative', width: 520, maxWidth: '100vw',
         background: '#141820', borderLeft: '1px solid #2a2f3d',
         display: 'flex', flexDirection: 'column',
       }}>
@@ -247,31 +317,167 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
 
           {/* ── SALARY ── */}
           {tab === 'salary' && <>
-            <div style={{ padding: '12px 14px', background: '#0f1117', borderRadius: 8, border: '1px solid #2a2f3d', fontSize: 12, color: '#6b7280', lineHeight: 1.6 }}>
-              Only basic salary is stored here. Full salary components (HRA, transport, medical) will be configured in Salary Structure — coming next session.
-            </div>
+
+            {/* Basic salary */}
             <div style={col}>
               <label style={lbl}>
                 <Tip text="Monthly basic salary in NPR. SSF is computed on basic: employee 11%, employer 20%." width={280}>Basic Salary (NPR / month)</Tip>
               </label>
               <input type="number" min="0" style={inp} placeholder="e.g. 25000" value={form.basic_salary} onChange={e => set('basic_salary', e.target.value)} />
             </div>
-            {parseFloat(form.basic_salary) > 0 && (
-              <div style={{ padding: '14px 16px', background: '#0f1117', borderRadius: 8, border: '1px solid #2a2f3d' }}>
-                <p style={{ margin: '0 0 10px', fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em' }}>SSF Preview</p>
-                {[
-                  { label: 'Basic Salary',           value: parseFloat(form.basic_salary),        indent: false, red: false, bold: false },
-                  { label: 'Employee SSF (11%)',      value: parseFloat(form.basic_salary) * 0.11, indent: true,  red: true,  bold: false },
-                  { label: 'Employer SSF (20%)',      value: parseFloat(form.basic_salary) * 0.20, indent: true,  red: false, bold: false },
-                  { label: 'Total SSF Contribution',  value: parseFloat(form.basic_salary) * 0.31, indent: false, red: false, bold: true  },
-                ].map(r => (
-                  <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
-                    <span style={{ color: r.indent ? '#6b7280' : '#9ca3af', paddingLeft: r.indent ? 12 : 0 }}>{r.label}</span>
-                    <span style={{ fontWeight: r.bold ? 700 : 400, color: r.red ? '#f87171' : r.bold ? '#c9a84c' : '#e8e0d0' }}>
-                      NPR {Math.round(r.value).toLocaleString('en-NP')}
-                    </span>
-                  </div>
+
+            {/* ── Allowances ── */}
+            <div style={{ borderTop: '1px solid #2a2f3d', paddingTop: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Allowances</span>
+                <button
+                  onClick={() => addComponent('earning')}
+                  style={{ background: 'none', border: '1px solid #2a2f3d', borderRadius: 5, color: '#9ca3af', fontSize: 11, padding: '3px 10px', cursor: 'pointer' }}
+                >+ Add</button>
+              </div>
+
+              {/* Quick-add chips */}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                {QUICK_EARNINGS.filter(n => !earnings.find(c => c.name === n)).map(n => (
+                  <button key={n} onClick={() => addComponent('earning', n)}
+                    style={{ background: 'rgba(52,211,153,0.06)', border: '1px solid rgba(52,211,153,0.2)', borderRadius: 12, color: '#34d399', fontSize: 11, padding: '3px 10px', cursor: 'pointer' }}>
+                    + {n}
+                  </button>
                 ))}
+              </div>
+
+              {earnings.length === 0 && (
+                <div style={{ fontSize: 12, color: '#4b5563', padding: '8px 0' }}>No allowances added. Use the chips above to add common ones.</div>
+              )}
+              {earnings.map((comp, i) => {
+                const globalIdx = components.indexOf(comp)
+                const computed = calcAmount(comp, basic)
+                return (
+                  <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
+                    <input
+                      style={{ ...inp, flex: 2 }} placeholder="Name" value={comp.name}
+                      onChange={e => updateComponent(globalIdx, 'name', e.target.value)}
+                    />
+                    <select
+                      style={{ ...inp, flex: 1, padding: '8px 6px' }}
+                      value={comp.calc_type}
+                      onChange={e => updateComponent(globalIdx, 'calc_type', e.target.value)}
+                    >
+                      <option value="fixed">Fixed NPR</option>
+                      <option value="percent_of_basic">% of Basic</option>
+                    </select>
+                    <input
+                      type="number" min="0"
+                      style={{ ...inp, flex: 1, textAlign: 'right' }}
+                      placeholder={comp.calc_type === 'percent_of_basic' ? '%' : 'NPR'}
+                      value={comp.value}
+                      onChange={e => updateComponent(globalIdx, 'value', e.target.value)}
+                    />
+                    {comp.calc_type === 'percent_of_basic' && basic > 0 && (
+                      <span style={{ fontSize: 11, color: '#6b7280', whiteSpace: 'nowrap', minWidth: 60, textAlign: 'right' }}>
+                        = {computed.toLocaleString()}
+                      </span>
+                    )}
+                    <button onClick={() => removeComponent(globalIdx)} style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: 16, cursor: 'pointer', flexShrink: 0, padding: '0 4px' }}>✕</button>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* ── Deductions ── */}
+            <div style={{ borderTop: '1px solid #2a2f3d', paddingTop: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#f87171', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Deductions</span>
+                <button
+                  onClick={() => addComponent('deduction')}
+                  style={{ background: 'none', border: '1px solid #2a2f3d', borderRadius: 5, color: '#9ca3af', fontSize: 11, padding: '3px 10px', cursor: 'pointer' }}
+                >+ Add</button>
+              </div>
+
+              {/* Quick-add chips */}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                {QUICK_DEDUCTIONS.filter(n => !deductions.find(c => c.name === n)).map(n => (
+                  <button key={n} onClick={() => addComponent('deduction', n)}
+                    style={{ background: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 12, color: '#f87171', fontSize: 11, padding: '3px 10px', cursor: 'pointer' }}>
+                    + {n}
+                  </button>
+                ))}
+              </div>
+
+              {/* SSF auto-row — always shown when basic > 0 */}
+              {basic > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: '#0f1117', borderRadius: 6, marginBottom: 6, border: '1px solid #2a2f3d' }}>
+                  <span style={{ fontSize: 12, color: '#6b7280' }}>
+                    <Tip text="11% of basic salary deducted from employee each month. Mandatory under SSF Act." width={260}>SSF — Employee (11%) · auto</Tip>
+                  </span>
+                  <span style={{ fontSize: 13, color: '#e8e0d0', fontWeight: 500 }}>NPR {ssf_employee.toLocaleString('en-NP')}</span>
+                </div>
+              )}
+
+              {deductions.map((comp, i) => {
+                const globalIdx = components.indexOf(comp)
+                const computed = calcAmount(comp, basic)
+                return (
+                  <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
+                    <input
+                      style={{ ...inp, flex: 2 }} placeholder="Name" value={comp.name}
+                      onChange={e => updateComponent(globalIdx, 'name', e.target.value)}
+                    />
+                    <select
+                      style={{ ...inp, flex: 1, padding: '8px 6px' }}
+                      value={comp.calc_type}
+                      onChange={e => updateComponent(globalIdx, 'calc_type', e.target.value)}
+                    >
+                      <option value="fixed">Fixed NPR</option>
+                      <option value="percent_of_basic">% of Basic</option>
+                    </select>
+                    <input
+                      type="number" min="0"
+                      style={{ ...inp, flex: 1, textAlign: 'right' }}
+                      placeholder={comp.calc_type === 'percent_of_basic' ? '%' : 'NPR'}
+                      value={comp.value}
+                      onChange={e => updateComponent(globalIdx, 'value', e.target.value)}
+                    />
+                    {comp.calc_type === 'percent_of_basic' && basic > 0 && (
+                      <span style={{ fontSize: 11, color: '#6b7280', whiteSpace: 'nowrap', minWidth: 60, textAlign: 'right' }}>
+                        = {computed.toLocaleString()}
+                      </span>
+                    )}
+                    <button onClick={() => removeComponent(globalIdx)} style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: 16, cursor: 'pointer', flexShrink: 0, padding: '0 4px' }}>✕</button>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* ── Net Summary ── */}
+            {basic > 0 && (
+              <div style={{ borderTop: '1px solid #2a2f3d', paddingTop: 14 }}>
+                <p style={{ margin: '0 0 10px', fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Monthly Summary</p>
+                <div style={{ background: '#0f1117', borderRadius: 8, border: '1px solid #2a2f3d', overflow: 'hidden' }}>
+                  {[
+                    { label: 'Basic Salary',        value: basic,           indent: false, color: '#e8e0d0' },
+                    earnings.length > 0 && { label: `Allowances (${earnings.length})`, value: totalEarnings, indent: true, color: '#34d399' },
+                    { label: 'Gross Earnings',       value: gross,           indent: false, color: '#e8e0d0', bold: true, separator: true },
+                    { label: 'SSF Employee (11%)',   value: -ssf_employee,   indent: true,  color: '#f87171' },
+                    ...deductions.map(c => ({ label: c.name || 'Deduction', value: -calcAmount(c, basic), indent: true, color: '#f87171' })),
+                    { label: 'Net Salary',           value: net,             indent: false, color: '#c9a84c', bold: true, big: true, separator: true },
+                    { label: 'Employer SSF (20%)',   value: ssf_employer,    indent: true,  color: '#6b7280', note: 'paid by company' },
+                  ].filter(Boolean).map((r, i) => (
+                    <div key={i} style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: r.big ? '12px 16px' : '7px 16px',
+                      borderTop: r.separator ? '1px solid #2a2f3d' : 'none',
+                      background: r.big ? 'rgba(201,168,76,0.05)' : 'transparent',
+                    }}>
+                      <span style={{ fontSize: r.big ? 13 : 12, color: r.indent ? '#6b7280' : '#9ca3af', paddingLeft: r.indent ? 12 : 0, fontWeight: r.bold ? 700 : 400 }}>
+                        {r.label}{r.note ? <span style={{ fontSize: 10, color: '#4b5563', marginLeft: 6 }}>({r.note})</span> : null}
+                      </span>
+                      <span style={{ fontSize: r.big ? 15 : 13, color: r.color, fontWeight: r.bold ? 700 : 400 }}>
+                        {r.value < 0 ? '−' : ''} NPR {Math.abs(r.value).toLocaleString('en-NP')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </>}
