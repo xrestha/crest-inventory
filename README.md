@@ -124,6 +124,46 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S114 — 2026-06-22 — Crest HR: Festival Allowance
+
+The legally-required annual festival bonus (Dashain / पर्व खर्च) — broadly one month's basic, pro-rated for mid-year joiners.
+
+**DB migration (run in Supabase SQL editor):**
+```sql
+CREATE TABLE IF NOT EXISTS hr_festival_allowances (
+  id            uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  client_id     uuid REFERENCES clients(id)       ON DELETE CASCADE NOT NULL,
+  employee_id   uuid REFERENCES hr_employees(id)  ON DELETE CASCADE NOT NULL,
+  bs_year       integer NOT NULL,
+  festival_name text NOT NULL DEFAULT 'Dashain',
+  pay_basis     text,
+  basic         numeric(12,2) DEFAULT 0,
+  months_worked numeric(4,1)  DEFAULT 12,
+  amount        numeric(12,2) DEFAULT 0,
+  status        text NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','finalized')),
+  note          text,
+  created_at    timestamptz DEFAULT now(),
+  UNIQUE (client_id, employee_id, bs_year, festival_name)
+);
+ALTER TABLE hr_festival_allowances ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "client_own" ON hr_festival_allowances FOR ALL
+  USING ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin' OR client_id = (SELECT client_id FROM profiles WHERE id = auth.uid()))
+  WITH CHECK ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin' OR client_id = (SELECT client_id FROM profiles WHERE id = auth.uid()));
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.hr_festival_allowances TO authenticated;
+```
+
+**FestivalAllowance (`/hr/festival`):**
+- Keyed by **BS year + festival name** (default Dashain), not a monthly period. Generate→review→Finalize flow (mirrors Payroll); admin Reopen.
+- **Generate:** per active employee — `monthsWorked = clamp(0..12, full months from join_date to bsToAd(bsYear, 6, 15))`; **monthly** `amount = round(basic × monthsWorked/12)`; **daily/hourly** default 0 (editable). Upsert `onConflict: client_id,employee_id,bs_year,festival_name`.
+- Inline-editable Amount + Note while draft; stat cards (Total / Headcount / Average); register Excel + **bank-transfer Excel/CSV** (generic columns, missing-bank flag).
+- **No TDS** — recorded gross (festival pay is taxable; reconciliation deferred). Nav "Festival Allowance" (🎉); Help entry added.
+
+**Deferred:** TDS on the bonus, multi-festival auto-handling, advance/loan recovery against it.
+
+**Files:** `src/modules/hr/festival/FestivalAllowance.jsx` (new), `src/App.js`, `src/components/Layout.js`, `src/pages/Help.js`
+
+---
+
 ### S113 — 2026-06-22 — Crest HR: HR Reports
 
 Turns finalized payroll into filing/disbursement artefacts. **No DB migration** — read-only aggregation over `hr_payslips` + `hr_employees`.

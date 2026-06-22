@@ -327,6 +327,7 @@ export default function Layout() {
                 { to: '/hr/attendance', label: 'Attendance',       icon: '🗓️' },
                 { to: '/hr/payroll',    label: 'Payroll',          icon: '💵' },
                 { to: '/hr/reports',    label: 'HR Reports',       icon: '📊' },
+                { to: '/hr/festival',   label: 'Festival Allowance', icon: '🎉' },
               ].map(renderNavItem)}
             </>
           )}
