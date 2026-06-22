@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../supabaseClient'
 import { useAuth } from '../../../context/AuthContext'
+import Tip from '../../../components/Tip'
 import * as XLSX from 'xlsx'
 import { SSF_CAP, SSF_EMPLOYEE_PCT, SSF_EMPLOYER_PCT, PAY_BASES } from '../payrollConstants'
 
@@ -131,13 +132,15 @@ export default function SalaryList() {
       {/* Stat cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
         {[
-          { label: 'Total Gross Payroll', value: fmt(totals.gross),       color: '#c9a84c' },
-          { label: 'SSF — Employee',      value: fmt(totals.ssf_emp),     color: '#f87171' },
-          { label: 'SSF — Employer',      value: fmt(totals.ssf_employer), color: '#6b7280' },
-          { label: 'Net Payroll',         value: fmt(totals.net),         color: '#34d399' },
+          { label: 'Total Gross Payroll', value: fmt(totals.gross),       color: '#c9a84c', tip: 'Sum of gross earnings (basic + allowances) across all monthly employees. Daily/hourly workers are excluded — their pay is computed at payroll.' },
+          { label: 'SSF — Employee',      value: fmt(totals.ssf_emp),     color: '#f87171', tip: 'Total 11% SSF deducted from employees this month, computed on basic salary (capped at NPR 100,000 each).' },
+          { label: 'SSF — Employer',      value: fmt(totals.ssf_employer), color: '#6b7280', tip: 'Total 20% SSF the company pays on top of salaries — not deducted from employee net pay.' },
+          { label: 'Net Payroll',         value: fmt(totals.net),         color: '#34d399', tip: 'Total take-home pay (gross − SSF employee − other deductions) across all monthly employees.' },
         ].map(s => (
           <div key={s.label} className="card" style={{ padding: '16px 18px' }}>
-            <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{s.label}</div>
+            <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              <Tip text={s.tip} width={260}>{s.label}</Tip>
+            </div>
             <div style={{ fontSize: 18, fontWeight: 700, color: s.color }}>NPR {s.value}</div>
             <div style={{ fontSize: 10, color: '#4b5563', marginTop: 3 }}>{totals.count} monthly employees</div>
           </div>
@@ -168,14 +171,24 @@ export default function SalaryList() {
                 <tr>
                   <th>Employee</th>
                   <th>Department</th>
-                  <th style={{ textAlign: 'right' }}>Basic</th>
-                  <th style={{ textAlign: 'right' }}>Allowances</th>
-                  <th style={{ textAlign: 'right' }}>Gross</th>
                   <th style={{ textAlign: 'right' }}>
-                    <span title="SSF Employee 11% + other deductions">Deductions</span>
+                    <Tip text="Monthly basic salary. SSF and the 60% rule are computed on this." width={240}>Basic</Tip>
                   </th>
-                  <th style={{ textAlign: 'right', color: '#c9a84c' }}>Net Salary</th>
-                  <th style={{ textAlign: 'right', color: '#6b7280' }}>SSF Employer</th>
+                  <th style={{ textAlign: 'right' }}>
+                    <Tip text="Sum of all allowances (housing, transport, etc.) — fixed or % of basic." width={240}>Allowances</Tip>
+                  </th>
+                  <th style={{ textAlign: 'right' }}>
+                    <Tip text="Gross earnings = basic + allowances, before any deduction." width={220}>Gross</Tip>
+                  </th>
+                  <th style={{ textAlign: 'right' }}>
+                    <Tip text="SSF Employee (11% of basic) plus any other deductions configured for the employee." width={250}>Deductions</Tip>
+                  </th>
+                  <th style={{ textAlign: 'right', color: '#c9a84c' }}>
+                    <Tip text="Take-home pay = gross − deductions. What the employee actually receives." width={230}>Net Salary</Tip>
+                  </th>
+                  <th style={{ textAlign: 'right', color: '#6b7280' }}>
+                    <Tip text="20% SSF the company pays on top — not deducted from the employee's net salary." width={240}>SSF Employer</Tip>
+                  </th>
                 </tr>
               </thead>
               <tbody>
