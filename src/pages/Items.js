@@ -17,7 +17,7 @@ const DEFAULT_CATEGORIES = [
 
 const UNITS = ['GM', 'ML', 'KG', 'LTR', 'PCS', 'PKT', 'BTL', 'BOX', 'ROLL', 'BUNCH', 'JAR', 'CTN', 'BAG', 'TIN', 'SACHET']
 
-const USAGE_LABELS = { OS: 'Opening Stock', CS: 'Closing Stock', R: 'Recipes', P: 'Purchases', W: 'Wastage' }
+const USAGE_LABELS = { OS: 'Opening Stock', CS: 'Closing Stock', R: 'Recipes', P: 'Purchases', W: 'Wastage', SM: 'Staff Meals', RQ: 'Requisitions', VR: 'Vendor Returns' }
 
 const EMPTY_FORM = {
   name: '', category_id: '', uom: 'GM',
@@ -53,37 +53,94 @@ export default function Items() {
   }, [clientId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function checkAllUsage() {
+    // Every table whose FK references items.id — any row here blocks a DB delete.
+    // qtyCol present = also require qty > 0 to count it as "active" usage for the badge.
     const referenceTables = [
       { table: 'recipe_ingredients', label: 'R',  qtyCol: null },
       { table: 'purchase_entries',   label: 'P',  qtyCol: 'qty' },
       { table: 'opening_stock',      label: 'OS', qtyCol: 'qty' },
       { table: 'closing_stock',      label: 'CS', qtyCol: 'physical_qty' },
       { table: 'wastages',           label: 'W',  qtyCol: 'qty' },
+      { table: 'staff_meals',        label: 'SM', qtyCol: 'qty' },
+      { table: 'requisition_lines',  label: 'RQ', qtyCol: null },
+      { table: 'vendor_returns',     label: 'VR', qtyCol: 'qty' },
     ]
     const map = {}
     for (const { table, label, qtyCol } of referenceTables) {
-      const { data } = await supabase.from(table).select(qtyCol ? `item_id, ${qtyCol}` : 'item_id')
-      if (data) {
-        data.forEach(row => {
-          if (!row.item_id) return
-          if (qtyCol && (!row[qtyCol] || parseFloat(row[qtyCol]) <= 0)) return
-          if (!map[row.item_id]) map[row.item_id] = []
-          if (!map[row.item_id].includes(label)) map[row.item_id].push(label)
-        })
-      }
+      const { data, error } = await supabase.from(table).select(qtyCol ? `item_id, ${qtyCol}` : 'item_id')
+      if (error || !data) continue // table may not exist for this client/plan — skip quietly
+      data.forEach(row => {
+        if (!row.item_id) return
+        if (qtyCol && (!row[qtyCol] || parseFloat(row[qtyCol]) <= 0)) return
+        if (!map[row.item_id]) map[row.item_id] = []
+        if (!map[row.item_id].includes(label)) map[row.item_id].push(label)
+      })
     }
     setUsageMap(map)
   }
 
   async function deleteItem(item) {
-    if (usageMap[item.id]?.length > 0) {
-      const fullNames = usageMap[item.id].map(code => USAGE_LABELS[code] || code)
-      alert(`Cannot delete "${item.name}" — referenced in: ${fullNames.join(', ')}. Hide it instead.`)
+    const refs = usageMap[item.id] || []
+    if (refs.length > 0) {
+      const fullNames = refs.map(code => USAGE_LABELS[code] || code).join(', ')
+      if (!isAdmin) {
+        alert(`Cannot delete "${item.name}" — referenced in: ${fullNames}. Hide it instead.`)
+        return
+      }
+      // Admin: offer to force-delete (removes the referencing records too).
+      if (window.confirm(
+        `"${item.name}" is referenced in: ${fullNames}.\n\n` +
+        `FORCE DELETE will permanently remove the item AND every record that references it ` +
+        `(purchases, stock counts, wastage, staff meals, requisitions, vendor returns, recipe lines).\n\n` +
+        `This erases its history and recalculates affected reports. It cannot be undone.\n\nProceed?`
+      )) {
+        await forceDeleteItem(item)
+      }
       return
     }
     if (!window.confirm(`Delete "${item.name}"? This cannot be undone.`)) return
     const { error } = await supabase.from('items').delete().eq('id', item.id)
-    if (error) { setError(error.message); return }
+    if (error) {
+      // Foreign-key violation from a reference the badge didn't show (e.g. a zero-quantity row).
+      const isFk = /foreign key|violates|referenced/i.test(error.message || '')
+      if (isFk && isAdmin) {
+        if (window.confirm(
+          `"${item.name}" still has hidden references (e.g. a zero-quantity stock/purchase row).\n\n` +
+          `Force-delete it and permanently remove those references? This cannot be undone.`
+        )) {
+          await forceDeleteItem(item)
+        }
+        return
+      }
+      alert(
+        `Could not delete "${item.name}".\n\n` +
+        (isFk
+          ? 'It is still referenced by an older record (purchase, stock, wastage, staff meal, requisition, vendor return, or recipe). Use "Hide" instead to keep that history intact.'
+          : error.message)
+      )
+      return
+    }
+    loadItems()
+    checkAllUsage()
+  }
+
+  // Admin-only hard delete: clears every FK reference, then removes the item.
+  // Order matters — vendor_returns before purchase_entries (it references both).
+  async function forceDeleteItem(item) {
+    const id = item.id
+    const refTables = [
+      'vendor_returns', 'recipe_ingredients', 'requisition_lines', 'staff_meals',
+      'wastages', 'opening_stock', 'closing_stock', 'purchase_entries',
+    ]
+    for (const table of refTables) {
+      // Best-effort: ignore errors (missing table / already-clear); the final item delete is the gate.
+      await supabase.from(table).delete().eq('item_id', id)
+    }
+    const { error } = await supabase.from('items').delete().eq('id', id)
+    if (error) {
+      alert(`References were cleared but the item still couldn't be deleted:\n\n${error.message}`)
+      return
+    }
     loadItems()
     checkAllUsage()
   }

@@ -124,6 +124,17 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S125 — 2026-06-23 — Item delete: surface blocks + admin force-delete
+
+Deleting an item silently did nothing when the DB rejected it (FK reference) — the error only rendered inside the closed Add/Edit modal. Fixes in [src/pages/Items.js](src/pages/Items.js):
+- **Surfaced the failure** via `alert` (list view has no inline error), explaining it's still referenced and even a zero-qty row counts.
+- **Broadened the usage check** (`checkAllUsage`) to also cover `staff_meals`, `requisition_lines`, `vendor_returns` (was only recipes/purchases/opening/closing/wastage), and to skip tables that error rather than break; added `SM`/`RQ`/`VR` to `USAGE_LABELS`.
+- **Admin-only `forceDeleteItem`** — when a referenced item is deleted, an admin gets a force-delete confirm that clears every FK reference (`vendor_returns` → `recipe_ingredients` → `requisition_lines` → `staff_meals` → `wastages` → `opening_stock` → `closing_stock` → `purchase_entries`, in that order) then deletes the item. Non-admins still get "Hide it instead." Triggers audit-log delete rows for the audited tables.
+
+**Files:** `src/pages/Items.js`
+
+---
+
 ### S124 — 2026-06-23 — Recipe Costing: find-by-ingredient search
 
 Added a second search box (right of the toolbar, 🔍 + clear ×) on the Recipe Costing list that filters recipes **by an ingredient they contain** — distinct from the existing name search. `recipeHasIngredient(recipe, q, allRecipes)` is **recursive** (matches items + nested sub-recipe names/ingredients), so searching "coffee" surfaces a Flat White even when coffee lives in its Doppio sub-recipe. ANDs with the name search + category tabs; shows a "(N found)" helper line and updates tab counts.
