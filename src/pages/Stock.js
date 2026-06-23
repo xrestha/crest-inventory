@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import * as XLSX from 'xlsx'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabaseClient'
 import Tip from '../components/Tip'
+import SearchableSelect from '../components/SearchableSelect'
 import './Stock.css'
 import { cacheItems, getCachedItems, cacheCategories, getCachedCategories, cachePeriods, getCachedPeriods, cacheStockData, getCachedStockData, enqueue, getQueue, dequeue } from '../utils/offlineQueue'
 import { daysInBsMonth, bsToAd, formatAd, getBsToday } from '../utils/bsCalendar'
@@ -16,6 +17,7 @@ export default function Stock() {
   const [periods, setPeriods] = useState([])
   const [selectedPeriod, setSelectedPeriod] = useState(null)
   const [items, setItems] = useState([])
+  const itemOptions = useMemo(() => items.map(i => ({ value: i.id, label: i.name })), [items])
   const [categories, setCategories] = useState([])
   const [stockData, setStockData] = useState({})
   const [purchases, setPurchases] = useState({})
@@ -762,10 +764,12 @@ export default function Stock() {
               <div className="card" style={{ marginBottom: 14, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
                 <div style={{ flex: '2 1 220px' }}>
                   <label style={{ display: 'block', fontSize: 11, color: '#6b7280', marginBottom: 5 }}>Item</label>
-                  <select style={{ ...winp, width: '100%' }} value={wEntry.item_id} onChange={e => setWEntry(w => ({ ...w, item_id: e.target.value }))}>
-                    <option value="">— Select item —</option>
-                    {items.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-                  </select>
+                  <SearchableSelect
+                    value={wEntry.item_id}
+                    onChange={v => setWEntry(w => ({ ...w, item_id: v }))}
+                    options={itemOptions}
+                    placeholder="— Select item —"
+                  />
                 </div>
                 <div style={{ flex: '0 1 110px' }}>
                   <label style={{ display: 'block', fontSize: 11, color: '#6b7280', marginBottom: 5 }}>Qty</label>

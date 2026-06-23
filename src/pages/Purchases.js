@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabaseClient'
 import { bsToAd, formatAd, daysInBsMonth } from '../utils/bsCalendar'
@@ -6,6 +6,7 @@ import BsDatePicker from '../components/BsDatePicker'
 import Tip from '../components/Tip'
 import Fab from '../components/Fab'
 import Modal from '../components/Modal'
+import SearchableSelect from '../components/SearchableSelect'
 import * as XLSX from 'xlsx'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
@@ -359,6 +360,12 @@ export default function Purchases() {
 
   // ─── DERIVED ─────────────────────────────────────────────
 
+  // Options for the searchable item picker (built once per items change).
+  const itemOptions = useMemo(
+    () => items.map(i => ({ value: i.id, label: `${i.name}${i.categories?.name ? ` (${i.categories.name})` : ''}` })),
+    [items]
+  )
+
   const filtered = purchases.filter(p => {
     const matchDay  = filterDay  === 'all' || p.bs_day === parseInt(filterDay)
     const matchItem = filterItem === 'all' || p.item_id === filterItem
@@ -584,11 +591,12 @@ export default function Purchases() {
                       return (
                         <tr key={line._key} style={{ borderBottom: '1px solid #1a1f2e' }}>
                           <td style={{ padding: '6px 8px 6px 0', verticalAlign: 'top' }}>
-                            <select className="form-select" style={{ width: '100%' }} value={line.item_id}
-                              onChange={e => updateBillLine(line._key, 'item_id', e.target.value)}>
-                              <option value="">— Select item —</option>
-                              {items.map(i => <option key={i.id} value={i.id}>{i.name}{i.categories?.name ? ` (${i.categories.name})` : ''}</option>)}
-                            </select>
+                            <SearchableSelect
+                              value={line.item_id}
+                              onChange={v => updateBillLine(line._key, 'item_id', v)}
+                              options={itemOptions}
+                              placeholder="— Select item —"
+                            />
                             <div style={{ display: 'flex', gap: 6, marginTop: 5, alignItems: 'center' }}>
                               <span style={{ fontSize: 10, color: '#4b5563', whiteSpace: 'nowrap' }}>Expiry</span>
                               <input type="date" value={line.expiry_date}

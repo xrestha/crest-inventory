@@ -1,10 +1,11 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useSettings } from '../context/SettingsContext'
 import { supabase } from '../supabaseClient'
 import Tip from '../components/Tip'
 import Fab from '../components/Fab'
 import Modal from '../components/Modal'
+import SearchableSelect from '../components/SearchableSelect'
 import { NUTRIENTS, EMPTY_NUTRITION, calcRecipeNutrition, calcLiveNutrition, hasNutrition, buildNutritionPayload, defaultBasisUnit } from '../utils/nutrition'
 import { suggestSeeds } from '../data/nutritionSeed'
 
@@ -177,6 +178,13 @@ export default function Recipes() {
 
   // Sub-recipes available as ingredients (all recipes with category Sub-Recipe)
   const subRecipes = recipes.filter(r => r.category === 'Sub-Recipe')
+
+  // Options for the searchable ingredient/sub-recipe pickers
+  const itemOptions = useMemo(() => items.map(i => ({ value: i.id, label: i.name })), [items])
+  const subRecipeOptions = useMemo(
+    () => subRecipes.filter(sr => sr.id !== selectedRecipe?.id).map(sr => ({ value: sr.id, label: `⚙ ${sr.name} (${sr.yield_qty} ${sr.yield_uom})` })),
+    [subRecipes, selectedRecipe]
+  )
 
   // ── Form helpers ──────────────────────────────────────────────
   function openNew() {
@@ -982,19 +990,19 @@ export default function Recipes() {
                       </td>
                       <td style={{ padding: '6px 8px' }}>
                         {ing.type === 'item' ? (
-                          <select value={ing.item_id} onChange={e => updateIng(ing._key, 'item_id', e.target.value)}
-                            style={{ background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: '100%' }}>
-                            <option value="">— Select ingredient —</option>
-                            {items.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-                          </select>
+                          <SearchableSelect
+                            value={ing.item_id}
+                            onChange={v => updateIng(ing._key, 'item_id', v)}
+                            options={itemOptions}
+                            placeholder="— Select ingredient —"
+                          />
                         ) : (
-                          <select value={ing.sub_recipe_id} onChange={e => updateIng(ing._key, 'sub_recipe_id', e.target.value)}
-                            style={{ background: '#0f1117', border: '1px solid rgba(201,168,76,0.3)', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: '#c9a84c', outline: 'none', width: '100%' }}>
-                            <option value="">— Select sub-recipe —</option>
-                            {subRecipes.filter(sr => sr.id !== selectedRecipe?.id).map(sr => (
-                              <option key={sr.id} value={sr.id}>⚙ {sr.name} ({sr.yield_qty} {sr.yield_uom})</option>
-                            ))}
-                          </select>
+                          <SearchableSelect
+                            value={ing.sub_recipe_id}
+                            onChange={v => updateIng(ing._key, 'sub_recipe_id', v)}
+                            options={subRecipeOptions}
+                            placeholder="— Select sub-recipe —"
+                          />
                         )}
                       </td>
                       <td style={{ padding: '6px 12px', textAlign: 'right' }}>

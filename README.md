@@ -124,6 +124,16 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S123 — 2026-06-23 — Searchable item picker (Purchases)
+
+The native `<select>` for items (218+) was painful to scroll. Added a reusable **`src/components/SearchableSelect.js`** — a type-to-filter combobox: a styled trigger button opens a panel with a search input + filtered list; **↑/↓ to move, Enter to pick, Esc/outside-click to close**, mouse hover highlights. The dropdown is **`position:fixed`** (measured from the trigger's rect, repositioned on scroll/resize) so it's never clipped by the bill modal/table overflow. Drop-in API: `value` / `onChange(value)` / `options=[{value,label}]` / `placeholder`.
+
+Wired into the item dropdowns across **Purchases** (bill lines), **Recipes** (ingredient + sub-recipe pickers), **Stock** (Daily Wastage entry), and **Requisitions** (request lines); each builds a memoized `options` list from `items` (Purchases/Requisitions include the category/uom in the label, Recipes' sub-recipe picker shows yield).
+
+**Files:** `src/components/SearchableSelect.js` (new), `src/pages/Purchases.js`, `src/pages/Recipes.js`, `src/pages/Stock.js`, `src/pages/Requisitions.js`
+
+---
+
 ### S122 — 2026-06-23 — Default brand mark → gold hexagon
 
 Replaced the default `logo.png` Crest brand mark with a gold hexagon glyph (**⬢**, `#c9a84c`) in the two places it rendered: the sidebar brand ([src/components/Layout.js](src/components/Layout.js)) and the login card ([src/pages/Login.js](src/pages/Login.js)). A paying client's own uploaded logo (`settings.logo_url`) still takes priority — only the default fallback changed. Removed the now-unused `logo.png` imports (the asset file remains in `src/assets/`). The logo-upload feature (Admin/Settings) is untouched.

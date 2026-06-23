@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import * as XLSX from 'xlsx'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabaseClient'
@@ -6,6 +6,7 @@ import BsDatePicker from '../components/BsDatePicker'
 import { getBsToday } from '../utils/bsCalendar'
 import Tip from '../components/Tip'
 import Fab from '../components/Fab'
+import SearchableSelect from '../components/SearchableSelect'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 const DEPARTMENTS = [
@@ -50,6 +51,8 @@ export default function Requisitions() {
   const [formLines, setFormLines] = useState([{ item_id: '', qty_requested: '', qty_issued: '', _key: 1 }])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  const itemOptions = useMemo(() => items.map(i => ({ value: i.id, label: `${i.name} (${i.uom})` })), [items])
 
   // Issue mode
   const [issuingId, setIssuingId] = useState(null)
@@ -330,14 +333,12 @@ export default function Requisitions() {
                     return (
                       <tr key={line._key}>
                         <td>
-                          <select
+                          <SearchableSelect
                             value={line.item_id}
-                            onChange={e => updateFormLine(line._key, 'item_id', e.target.value)}
-                            style={{ width: '100%' }}
-                          >
-                            <option value="">— Select item —</option>
-                            {items.map(i => <option key={i.id} value={i.id}>{i.name} ({i.uom})</option>)}
-                          </select>
+                            onChange={v => updateFormLine(line._key, 'item_id', v)}
+                            options={itemOptions}
+                            placeholder="— Select item —"
+                          />
                         </td>
                         <td style={{ color: '#6b7280', fontSize: 12 }}>{item?.uom || '—'}</td>
                         <td>
