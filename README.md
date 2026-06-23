@@ -124,6 +124,24 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S129 — 2026-06-23 — Stock Report (inventory valuation + movement)
+
+New standalone **Stock Report** ([src/pages/StockReport.js](src/pages/StockReport.js), `/stock-report`, **Starter** `stock_report` flag) — answers "what stock do I hold and what's it worth," which the buried Stock-Count Summary tab didn't surface. Value-focused sibling of the Reorder Report.
+
+- **On-hand per item** = closing physical count if entered, else theoretical `Opening + Net Purchases − Usage − Wastage − Staff Meals − Requisitioned` (clamped ≥0; raw-negative flagged as a data issue). `Stock Value = on-hand × per_uom_rate`.
+- **Headline** = Total Stock Value (NPR); stat cards for Low / Out-of-stock / Items tracked; negative-stock warning banner.
+- Table (sorted by value): Item · Category · UOM · On-hand (+ Physical/Theor. badge) · Opening · Purchased · Used · Wastage · Rate · **Stock Value** · Status (Low ≤ par, Out = 0). Category/search/status filters, `tfoot` total, **Excel** + **Print**. Tip tooltips on On-hand / Stock Value.
+- Wired like `reorder_report`: STARTER_KEYS + both DEFAULT_FLAGS + AdminClients Starter group; route in App.js; nav entry in the Reports group ([Layout.js](src/components/Layout.js)).
+
+**DB migration (run in Supabase):**
+```sql
+ALTER TABLE feature_flags ADD COLUMN IF NOT EXISTS stock_report boolean DEFAULT false;
+```
+
+**Files:** `src/pages/StockReport.js` (new), `src/context/AuthContext.js`, `src/context/SettingsContext.js`, `src/pages/AdminClients.js`, `src/App.js`, `src/components/Layout.js`, `src/pages/Help.js`
+
+---
+
 ### S128 — 2026-06-23 — Collapsible sidebar nav groups
 
 A Pro/admin client had ~33 flat nav links (12 ops + ~20 reports) → constant scrolling. Grouped the IMS nav into **collapsible sections** in [src/components/Layout.js](src/components/Layout.js): **Operations** (Periods…Sales Entry), **Costing** (Recipe Costing/Menu Eng/Overheads), **Reports** (all reports, **collapsed by default** — the big win), plus **Human Resources** as a group. Dashboard stays pinned on top, Settings below; the brand header + user footer were already sticky (`.sidebar-nav` is the only scroll area).

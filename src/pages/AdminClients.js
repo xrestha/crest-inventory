@@ -38,7 +38,7 @@ const DEFAULT_FLAGS = {
   theoretical_variance: null, annual_summary: null,
   outstanding_payables: null, shrinkage_report: null,
   staff_meals: null, settings: null,
-  nutrition_facts: null,
+  nutrition_facts: null, stock_report: null,
 }
 
 const FEATURE_GROUPS = [
@@ -59,6 +59,7 @@ const FEATURE_GROUPS = [
     { key: 'vat_report',      label: 'VAT Report' },
     { key: 'non_vat_report',  label: 'Non-VAT Report' },
     { key: 'wastage_report',  label: 'Wastage Report' },
+    { key: 'stock_report',    label: 'Stock Report' },
     { key: 'settings',        label: 'Settings' },
   ]},
   { tier: 'growth',  label: 'Growth Plan',      color: '#34d399', features: [

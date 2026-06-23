@@ -31,6 +31,7 @@ const DEFAULT_FLAGS = {
   recipe_costing: false,
   menu_engineering: false,
   nutrition_facts: false,
+  stock_report: false,
 }
 
 export function SettingsProvider({ children }) {

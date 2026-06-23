@@ -26,6 +26,7 @@ const REPORTS = [
   // Starter — all plans
   { to: '/summary',              label: 'Monthly Summary',      icon: '◻', featureKey: 'monthly_summary'    },
   { to: '/annual-summary',       label: 'Annual Summary',       icon: '◫', featureKey: 'annual_summary'     },
+  { to: '/stock-report',         label: 'Stock Report',         icon: '▤', featureKey: 'stock_report'       },
   { to: '/reorder',              label: 'Reorder Report',       icon: '↻', featureKey: 'reorder_report'     },
   { to: '/vat-report',           label: 'VAT Report',           icon: '₨', featureKey: 'vat_report'         },
   { to: '/non-vat-report',      label: 'Non-VAT Report',       icon: '₨', featureKey: 'non_vat_report'     },

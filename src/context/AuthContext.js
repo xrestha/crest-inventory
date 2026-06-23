@@ -6,7 +6,7 @@ const AuthContext = createContext({})
 // Included on all plans (Starter and above)
 const STARTER_KEYS = new Set([
   'monthly_summary', 'annual_summary', 'reorder_report', 'vat_report', 'non_vat_report', 'wastage_report', 'settings',
-  'sales_entry', 'payment_summary',
+  'sales_entry', 'payment_summary', 'stock_report',
 ])
 // Requires Growth plan or above
 const GROWTH_KEYS = new Set([

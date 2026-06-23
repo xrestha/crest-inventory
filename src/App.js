@@ -37,6 +37,7 @@ import Pricing from './pages/Pricing'
 import TheoreticalVariance from './pages/TheoreticalVariance'
 import Requisitions from './pages/Requisitions'
 import WastageReport from './pages/WastageReport'
+import StockReport from './pages/StockReport'
 import DeadStock from './pages/DeadStock'
 import RecipeMargin from './pages/RecipeMargin'
 import PeriodComparison from './pages/PeriodComparison'
@@ -92,6 +93,8 @@ export default function App() {
                 element={<ModuleGate module="ims"><PremiumGate featureKey="non_vat_report" minPlan="starter"><NonVatReport /></PremiumGate></ModuleGate>} />
               <Route path="/wastage-report"
                 element={<ModuleGate module="ims"><PremiumGate featureKey="wastage_report" minPlan="starter"><WastageReport /></PremiumGate></ModuleGate>} />
+              <Route path="/stock-report"
+                element={<ModuleGate module="ims"><PremiumGate featureKey="stock_report" minPlan="starter"><StockReport /></PremiumGate></ModuleGate>} />
               <Route path="/settings"
                 element={<ModuleGate module="ims"><PremiumGate featureKey="settings" minPlan="starter"><Settings /></PremiumGate></ModuleGate>} />
 

@@ -69,6 +69,11 @@ const IMS_TIERS = [
         tips: ['Use this to identify which months consistently run high food cost', 'Compare annual FC% year-over-year to spot long-term trends']
       },
       {
+        icon: '▤', name: 'Stock Report',
+        guide: 'Your current inventory valuation: on-hand quantity and value (qty × rate) per item and category, with a total stock-value headline. On-hand uses your closing physical count if entered, otherwise a theoretical estimate (Opening + Net Purchases − Usage − Wastage − Staff Meals − Requisitioned). Flags Low (at/below par) and Out-of-stock items. Export to Excel or print.',
+        tips: ['For an accurate valuation, enter a closing stock count — items then show a "Physical" badge instead of "Theor."', 'A negative-stock warning means usage/wastage exceeds recorded purchases — usually a missing purchase entry', 'Total Stock Value matches the Closing value in Stock Count → Summary for a counted period']
+      },
+      {
         icon: '⚑', name: 'Reorder Report',
         guide: 'Flags items running below their par level. Theoretical stock = Opening + Net Purchases − Wastage − Usage. Set par levels inline on the report. "✕ Clear All Par" resets all par levels at once.',
         tips: ['Set par levels based on supplier lead time × daily usage rate', 'Review the reorder report weekly, not just at month end']
