@@ -126,9 +126,11 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ### S122 — 2026-06-23 — Default brand mark → gold hexagon
 
-Replaced the default `logo.png` Crest brand mark with a gold hexagon glyph (**⬢**, `#c9a84c`) in the two places it rendered: the sidebar brand ([src/components/Layout.js](src/components/Layout.js)) and the login card ([src/pages/Login.js](src/pages/Login.js)). A paying client's own uploaded logo (`settings.logo_url`) still takes priority — only the default fallback changed. Removed the now-unused `logo.png` imports (the asset file remains in `src/assets/`). The logo-upload feature (Admin/Settings) and the favicon/PWA icons are untouched.
+Replaced the default `logo.png` Crest brand mark with a gold hexagon glyph (**⬢**, `#c9a84c`) in the two places it rendered: the sidebar brand ([src/components/Layout.js](src/components/Layout.js)) and the login card ([src/pages/Login.js](src/pages/Login.js)). A paying client's own uploaded logo (`settings.logo_url`) still takes priority — only the default fallback changed. Removed the now-unused `logo.png` imports (the asset file remains in `src/assets/`). The logo-upload feature (Admin/Settings) is untouched.
 
-**Files:** `src/components/Layout.js`, `src/pages/Login.js`
+**Favicon / PWA icons → hexagon too:** added `public/favicon.svg` (vector gold hexagon on dark rounded square) and regenerated `public/favicon.ico` + `public/logo192.png` + `public/logo512.png` as the same hexagon (via a Node `zlib` PNG/ICO generator with 2× supersampling — no ImageMagick available). `public/index.html` now references the SVG favicon (preferred) + PNG + ICO fallbacks; `manifest.json` already pointed at these filenames with gold `theme_color`/dark `background_color`, so no manifest change.
+
+**Files:** `src/components/Layout.js`, `src/pages/Login.js`, `public/index.html`, `public/favicon.svg`, `public/favicon.ico`, `public/logo192.png`, `public/logo512.png`
 
 ---
 
