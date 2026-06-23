@@ -629,15 +629,20 @@ export default function Recipes() {
             <input
               style={{ background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: 240 }}
               placeholder="Search recipes…" value={search} onChange={e => setSearch(e.target.value)} />
-            <div style={{ marginLeft: 'auto', position: 'relative' }}>
-              <input
-                style={{ background: '#181c27', border: `1px solid ${ingQ ? 'rgba(201,168,76,0.5)' : '#2a2f3d'}`, borderRadius: 6, padding: '8px 12px 8px 30px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: 260 }}
-                placeholder="Find ingredient in recipes…" value={ingSearch} onChange={e => setIngSearch(e.target.value)} />
-              <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: '#6b7280', pointerEvents: 'none' }}>🔍</span>
-              {ingSearch && (
-                <button onClick={() => setIngSearch('')} title="Clear"
-                  style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: '0 4px' }}>×</button>
-              )}
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Tip text="Find every recipe that uses an ingredient — e.g. type 'milk' to list all dishes containing it. Also matches ingredients hidden inside sub-recipes (e.g. 'coffee' finds a Flat White via its Doppio)." width={300}>
+                <span style={{ fontSize: 13, color: '#6b7280' }}>ⓘ</span>
+              </Tip>
+              <div style={{ position: 'relative' }}>
+                <input
+                  style={{ background: '#181c27', border: `1px solid ${ingQ ? 'rgba(201,168,76,0.5)' : '#2a2f3d'}`, borderRadius: 6, padding: '8px 12px 8px 30px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: 260 }}
+                  placeholder="Find ingredient in recipes…" value={ingSearch} onChange={e => setIngSearch(e.target.value)} />
+                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: '#6b7280', pointerEvents: 'none' }}>🔍</span>
+                {ingSearch && (
+                  <button onClick={() => setIngSearch('')} title="Clear"
+                    style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: '0 4px' }}>×</button>
+                )}
+              </div>
             </div>
           </div>
           {ingQ && (

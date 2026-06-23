@@ -124,6 +124,15 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S126 — 2026-06-23 — Tooltip + Help pass (S123–S125 features)
+
+- **Help** ([src/pages/Help.js](src/pages/Help.js)): FAQ *"Why won't an item delete?"* (reference block, Hide vs. admin Force Delete) and *"How do I quickly find an item in a long dropdown?"* (searchable pickers + ingredient search); Recipe Costing guide tip for the "Find ingredient in recipes" box.
+- **Tooltip** ([src/pages/Recipes.js](src/pages/Recipes.js)): ⓘ tooltip beside the ingredient-search box explaining the recursive (through sub-recipes) match. (Used a standalone ⓘ icon rather than wrapping the `<input>` in `Tip`, which adds a dashed underline / help-cursor meant for text labels.)
+
+**Files:** `src/pages/Help.js`, `src/pages/Recipes.js`
+
+---
+
 ### S125 — 2026-06-23 — Item delete: surface blocks + admin force-delete
 
 Deleting an item silently did nothing when the DB rejected it (FK reference) — the error only rendered inside the closed Add/Edit modal. Fixes in [src/pages/Items.js](src/pages/Items.js):
