@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState, useMemo } from 'react'
 import { supabase } from '../supabaseClient'
 
 const AuthContext = createContext({})
@@ -143,6 +143,26 @@ export function AuthProvider({ children }) {
     }
   }
 
+  // When admin "views as" a client, fetch that client's actual module subscription so the
+  // sidebar + dashboard show ONLY their modules (admin's isAdmin bypass otherwise shows all).
+  const [viewModules, setViewModules] = useState(null)
+  useEffect(() => {
+    if (!isAdmin || !adminViewClientId) { setViewModules(null); return }
+    let cancelled = false
+    supabase.from('clients').select('ims_enabled, hr_enabled').eq('id', adminViewClientId).single()
+      .then(({ data }) => { if (!cancelled) setViewModules(data ? { ims: data.ims_enabled !== false, hr: !!data.hr_enabled, pos: false } : null) })
+    return () => { cancelled = true }
+  }, [isAdmin, adminViewClientId])
+
+  // The DISPLAYED client's real module subscription (for nav visibility + dashboard sections).
+  // Separate from imsEnabled/hrEnabled, which keep the admin route-access bypass.
+  const cIms = profile?.clients?.ims_enabled, cHr = profile?.clients?.hr_enabled, cPos = profile?.clients?.pos_enabled
+  const clientModules = useMemo(() => {
+    if (isAdmin && adminViewClientId) return viewModules || { ims: true, hr: false, pos: false }
+    if (isAdmin) return { ims: true, hr: true, pos: false } // admin's own view: full nav for management
+    return { ims: cIms ?? true, hr: cHr ?? false, pos: cPos ?? false }
+  }, [isAdmin, adminViewClientId, viewModules, cIms, cHr, cPos])
+
   // Derive plan: admin always gets 'pro'; fallback to is_premium for pre-migration rows
   const plan = isAdmin
     ? 'pro'
@@ -174,6 +194,11 @@ export function AuthProvider({ children }) {
       featureFlags, hasFeature,
       imsEnabled: isAdmin || (profile?.clients?.ims_enabled ?? true),
       hrEnabled: isAdmin || (profile?.clients?.hr_enabled ?? false),
+      // POS module not built yet; clients.pos_enabled column doesn't exist, so this is
+      // false for clients (true only for admin, like ims/hr). When POS launches, add
+      // `pos_enabled` to the clients .select(...) above and it will start reflecting reality.
+      posEnabled: isAdmin || (profile?.clients?.pos_enabled ?? false),
+      clientModules, // displayed client's actual subscription (nav + dashboard sections)
       hrPlan: isAdmin ? 'pro' : (profile?.clients?.hr_plan || null),
       adminViewClientId, adminViewClientName, switchAdminClient,
     }}>

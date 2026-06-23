@@ -124,6 +124,21 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S127 — 2026-06-23 — Plan-aware, module-composable client Dashboard
+
+Reworked the **client** dashboard ([src/pages/Dashboard.js](src/pages/Dashboard.js)) to surface what each client can actually use, driven entirely by `hasFeature(key)` (plan tier **+ admin per-client `feature_flags` grants** + admin=all) — never a hardcoded plan name, so admin overrides reshape it live.
+
+- **Fixed real bug:** "Fixed Costs % of Revenue" + "Est. Net Margin %" cards rendered for everyone and linked to **/overheads** (a Pro page); now gated on `hasFeature('overheads')`.
+- **Relaxed Food Cost %** from `(canSales && canVariance)` → `canSales` (it's `purchaseTotal ÷ revenueTotal`, no variance needed) so Starter sees the headline metric; card links to `/variance` or `/summary` per access.
+- **Upsell nudges** (`UpsellCard` helper, dashed/dimmed, → `/pricing`) replace silently-hidden high-value KPIs — **Costed Recipes** (Growth), **Variance & Shrinkage** (Growth), **Fixed Costs & Net Margin** (Pro). Suppressed when `hasFeature` is true (admin grant flips nudge → real KPI).
+- **Module-composable:** sections render additively in order **Inventory → HR → POS**, each with a header shown only when **2+ modules** are active (single-module clients stay clean). Empty state now also checks POS.
+- **Sections + sidebar nav reflect the displayed client's ACTUAL subscription** (not the admin route bypass), via a new central **`AuthContext.clientModules`** `{ ims, hr, pos }`: real client = own `*_enabled` flags; **admin "view as client" = the viewed client's flags** (fetched from `clients` when `adminViewClientId` set); admin's own view = all-on (full nav for management). Both [Layout.js](src/components/Layout.js) nav blocks and the dashboard sections key off this. **Fixes:** admin previewing an IMS-only client used to see HR (and POS) nav + sections because `imsEnabled/hrEnabled` are `true` for admin. `imsEnabled/hrEnabled` are **kept** for `ModuleGate` route access (admin can still reach any route by URL); only *display* now reflects subscription. Real clients were already correct.
+- **POS-ready (not built):** `AuthContext` exposes `posEnabled` + `clientModules.pos`; dashboard has a "Crest POS — coming soon" slot. **Note:** `clients.pos_enabled` column doesn't exist yet, so it's deliberately **not** in the auth `.select(...)` (would 400 and break login) — POS is false for clients / true for admin-own until POS launches.
+
+**Files:** `src/context/AuthContext.js`, `src/pages/Dashboard.js`, `src/components/Layout.js`
+
+---
+
 ### S126 — 2026-06-23 — Tooltip + Help pass (S123–S125 features)
 
 - **Help** ([src/pages/Help.js](src/pages/Help.js)): FAQ *"Why won't an item delete?"* (reference block, Hide vs. admin Force Delete) and *"How do I quickly find an item in a long dropdown?"* (searchable pickers + ingredient search); Recipe Costing guide tip for the "Find ingredient in recipes" box.

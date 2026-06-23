@@ -14,7 +14,7 @@ const CHART_COLORS = ['#c9a84c', '#34d399', '#60a5fa', '#f87171', '#a78bfa', '#f
 
 
 export default function Dashboard() {
-  const { profile, clientId, isAdmin, imsEnabled, hrEnabled, hasFeature, loading: authLoading, adminViewClientId, adminViewClientName, switchAdminClient } = useAuth()
+  const { profile, clientId, isAdmin, clientModules, hasFeature, loading: authLoading, adminViewClientId, adminViewClientName, switchAdminClient } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
   const showAdminDash = isAdmin && !adminViewClientId
   const navigate = useNavigate()
@@ -37,17 +37,18 @@ export default function Dashboard() {
   useEffect(() => {
     if (authLoading) return
     if (showAdminDash) { loadAdminStats(); return }
-    if (effectiveClientId) {
-      if (imsEnabled) loadStats()
-      else setLoading(false)
-      if (hrEnabled) loadHrStats()
-    }
-  }, [authLoading, showAdminDash, effectiveClientId, imsEnabled, hrEnabled, location.key]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (!effectiveClientId) return
+    // Load only the modules the displayed client actually subscribes to (clientModules from
+    // AuthContext already resolves real-client vs admin "view as client").
+    if (clientModules.ims) loadStats(); else setLoading(false)
+    if (clientModules.hr) loadHrStats(); else setHrStats(null)
+  }, [authLoading, showAdminDash, effectiveClientId, clientModules.ims, clientModules.hr, location.key]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const canSales    = hasFeature('sales_entry')
   const canVariance = hasFeature('variance_report')
   const canRecipes  = hasFeature('recipe_costing')
   const canReorder  = hasFeature('reorder_report')
+  const canOverheads = hasFeature('overheads')
 
   async function loadStats() {
     setLoading(true)
@@ -610,6 +611,36 @@ export default function Dashboard() {
     transition: 'border-color 0.15s'
   })
 
+  // Compact upsell card for a locked feature → links to /pricing. Only render when the
+  // feature is locked; an admin grant flips hasFeature(...) → real KPI shows instead.
+  const UpsellCard = ({ label, tier, blurb }) => (
+    <div
+      onClick={() => navigate('/pricing')}
+      style={{
+        background: 'rgba(129,140,248,0.05)', border: '1px dashed rgba(129,140,248,0.4)',
+        borderRadius: 10, padding: '14px 16px', cursor: 'pointer', transition: 'border-color 0.15s'
+      }}
+    >
+      <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6, display: 'flex', justifyContent: 'space-between' }}>
+        <span>{label}</span><span>🔒</span>
+      </div>
+      <div style={{ fontSize: 15, fontWeight: 700, color: '#818cf8', lineHeight: 1.2 }}>Unlock with {tier}</div>
+      <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 5 }}>{blurb} · View plans →</div>
+    </div>
+  )
+
+  // Module-composable: show a section header per module only when 2+ modules are active.
+  // Dashboard sections reflect the displayed client's actual subscription (clientModules),
+  // not the admin route-access bypass — so admin "view as client" previews accurately.
+  const showIms = clientModules.ims
+  const showHr  = clientModules.hr
+  const showPos = clientModules.pos
+  const moduleCount = [showIms, showHr, showPos].filter(Boolean).length
+  const showModuleHeaders = moduleCount >= 2
+  const moduleHeader = (text) => showModuleHeaders
+    ? <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>{text}</div>
+    : null
+
   return (
     <div>
       {/* ── Header ── */}
@@ -686,7 +717,7 @@ export default function Dashboard() {
       )}
 
       {/* ── No modules enabled ── */}
-      {!imsEnabled && !hrEnabled && (
+      {!showIms && !showHr && !showPos && (
         <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
           <div style={{ fontSize: 32, marginBottom: 12 }}>⊛</div>
           <p style={{ fontSize: 15, color: '#e8e0d0', fontWeight: 600, margin: '0 0 8px' }}>No modules enabled</p>
@@ -694,47 +725,9 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── HR KPIs ── */}
-      {hrEnabled && hrStats && (
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
-            Human Resources
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
-            <div style={kpiCard(() => navigate('/hr/employees'))} onClick={() => navigate('/hr/employees')}>
-              <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Total Employees</div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: '#e8e0d0', lineHeight: 1.1 }}>{hrStats.total}</div>
-              <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 5 }}>All statuses →</div>
-            </div>
-            <div style={kpiCard(() => navigate('/hr/employees'))} onClick={() => navigate('/hr/employees')}>
-              <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Active</div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: '#34d399', lineHeight: 1.1 }}>{hrStats.active}</div>
-              {hrStats.probation > 0 && (
-                <div style={{ fontSize: 11, color: '#c9a84c', marginTop: 5 }}>{hrStats.probation} on probation</div>
-              )}
-            </div>
-            <div style={kpiCard(null)}>
-              <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
-                <Tip text="Sum of basic salary for active and probation employees. Full payroll with allowances, SSF and TDS is computed during payroll run." width={260}>Basic Payroll / Month</Tip>
-              </div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#c9a84c', lineHeight: 1.1 }}>
-                NPR {Math.round(hrStats.payroll).toLocaleString('en-NP')}
-              </div>
-              <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 5 }}>Basic salary only</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {hrEnabled && !hrStats && (
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Human Resources</div>
-          <div className="card"><p style={{ color: '#6b7280', fontSize: 13, margin: 0 }}>Loading HR data…</p></div>
-        </div>
-      )}
-
       {/* ── IMS KPIs ── */}
-      {imsEnabled && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 14 }}>
+      {showIms && moduleHeader('Inventory')}
+      {showIms && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 14 }}>
 
         {/* Net Purchases */}
         <div style={kpiCard(() => navigate('/purchases'))} onClick={() => navigate('/purchases')}>
@@ -756,9 +749,9 @@ export default function Dashboard() {
           </div>
         ) : null}
 
-        {/* Food Cost % */}
-        {(canSales && canVariance) ? (
-          <div style={kpiCard(() => navigate('/variance'))} onClick={() => navigate('/variance')}>
+        {/* Food Cost % — computable from purchases ÷ revenue, so any sales client sees it */}
+        {canSales ? (
+          <div style={kpiCard(() => navigate(canVariance ? '/variance' : '/summary'))} onClick={() => navigate(canVariance ? '/variance' : '/summary')}>
             <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
               <Tip text="Net purchases ÷ revenue × 100. Shows what portion of sales goes to ingredient cost. Healthy range: 28–35% for Nepal F&B." width={240}>Food Cost %</Tip>
             </div>
@@ -774,24 +767,28 @@ export default function Dashboard() {
           </div>
         ) : null}
 
-        {/* Fixed Costs % */}
-        <div style={kpiCard(() => navigate('/overheads'))} onClick={() => navigate('/overheads')}>
-          <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
-            <Tip text="All fixed costs (rent, utilities, labor, tax & fees) as a % of revenue. Target: under 60% combined. See Overheads page for the full breakdown." width={250}>Fixed Costs % of Revenue</Tip>
+        {/* Fixed Costs % (Pro — needs overhead data) */}
+        {canOverheads ? (
+          <div style={kpiCard(() => navigate('/overheads'))} onClick={() => navigate('/overheads')}>
+            <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
+              <Tip text="All fixed costs (rent, utilities, labor, tax & fees) as a % of revenue. Target: under 60% combined. See Overheads page for the full breakdown." width={250}>Fixed Costs % of Revenue</Tip>
+            </div>
+            <div style={{
+              fontSize: 28, fontWeight: 800, lineHeight: 1.1,
+              color: ohPct == null ? '#6b7280' : ohPct <= 50 ? '#34d399' : ohPct <= 65 ? '#c9a84c' : '#f87171'
+            }}>
+              {loading ? '—' : ohPct != null ? `${ohPct.toFixed(1)}%` : '—'}
+            </div>
+            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 5 }}>
+              {stats?.overheadTotal ? `NPR ${stats.overheadTotal.toLocaleString('en-NP', { maximumFractionDigits: 0 })} total →` : 'No overhead data'}
+            </div>
           </div>
-          <div style={{
-            fontSize: 28, fontWeight: 800, lineHeight: 1.1,
-            color: ohPct == null ? '#6b7280' : ohPct <= 50 ? '#34d399' : ohPct <= 65 ? '#c9a84c' : '#f87171'
-          }}>
-            {loading ? '—' : ohPct != null ? `${ohPct.toFixed(1)}%` : '—'}
-          </div>
-          <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 5 }}>
-            {stats?.overheadTotal ? `NPR ${stats.overheadTotal.toLocaleString('en-NP', { maximumFractionDigits: 0 })} total →` : 'No overhead data'}
-          </div>
-        </div>
+        ) : (
+          <UpsellCard label="Fixed Costs & Net Margin" tier="Pro" blurb="See true profit after rent, labor & tax" />
+        )}
 
-        {/* Est. Net Margin % */}
-        {canSales && (
+        {/* Est. Net Margin % (Pro — only meaningful with overhead data) */}
+        {canOverheads && (
           <div style={kpiCard(null)}>
             <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
               <Tip text="Revenue minus food cost and overheads, as a % of revenue. This is what the business keeps after ingredient and fixed costs. Healthy Nepal F&B target: ≥20%." width={260}>Est. Net Margin %</Tip>
@@ -808,7 +805,7 @@ export default function Dashboard() {
       </div>}
 
       {/* ── IMS Row 2 + Charts ── */}
-      {imsEnabled && <><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 20 }}>
+      {showIms && <><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 20 }}>
 
         <div style={kpiCard(null)}>
           <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 4 }}>Active Period</div>
@@ -838,7 +835,9 @@ export default function Dashboard() {
               {stats?.subRecipeCount > 0 ? `+ ${stats.subRecipeCount} sub-recipes →` : 'Active menu items →'}
             </div>
           </div>
-        ) : null}
+        ) : (
+          <UpsellCard label="Costed Recipes" tier="Growth" blurb="Cost every dish & protect margins" />
+        )}
 
         <div style={kpiCard(() => navigate('/wastage-report'))} onClick={() => navigate('/wastage-report')}>
           <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 4 }}>
@@ -1026,7 +1025,7 @@ export default function Dashboard() {
           )}
 
           {/* ── Bottom: Variance + Reorder side by side ── */}
-          {(canVariance || canReorder) && <div style={{ display: 'grid', gridTemplateColumns: canVariance && canReorder ? '1fr 1fr' : '1fr', gap: 14, marginBottom: 20 }}>
+          {<div style={{ display: 'grid', gridTemplateColumns: canReorder ? '1fr 1fr' : '1fr', gap: 14, marginBottom: 20 }}>
 
             {/* Variance table */}
             {canVariance ? (
@@ -1066,7 +1065,9 @@ export default function Dashboard() {
                   </div>
                 )}
               </div>
-            ) : null}
+            ) : (
+              <UpsellCard label="Variance & Shrinkage" tier="Growth" blurb="Catch waste, theft & over-portioning" />
+            )}
 
             {/* Reorder panel */}
             {canReorder ? (
@@ -1102,6 +1103,55 @@ export default function Dashboard() {
         </>
       )}
       </>}
+
+      {/* ── HR KPIs (below Inventory) ── */}
+      {showHr && hrStats && (
+        <div style={{ marginBottom: 20, marginTop: showIms ? 6 : 0 }}>
+          {moduleHeader('Human Resources')}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
+            <div style={kpiCard(() => navigate('/hr/employees'))} onClick={() => navigate('/hr/employees')}>
+              <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Total Employees</div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: '#e8e0d0', lineHeight: 1.1 }}>{hrStats.total}</div>
+              <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 5 }}>All statuses →</div>
+            </div>
+            <div style={kpiCard(() => navigate('/hr/employees'))} onClick={() => navigate('/hr/employees')}>
+              <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Active</div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: '#34d399', lineHeight: 1.1 }}>{hrStats.active}</div>
+              {hrStats.probation > 0 && (
+                <div style={{ fontSize: 11, color: '#c9a84c', marginTop: 5 }}>{hrStats.probation} on probation</div>
+              )}
+            </div>
+            <div style={kpiCard(null)}>
+              <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
+                <Tip text="Sum of basic salary for active and probation employees. Full payroll with allowances, SSF and TDS is computed during payroll run." width={260}>Basic Payroll / Month</Tip>
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#c9a84c', lineHeight: 1.1 }}>
+                NPR {Math.round(hrStats.payroll).toLocaleString('en-NP')}
+              </div>
+              <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 5 }}>Basic salary only</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showHr && !hrStats && (
+        <div style={{ marginBottom: 20 }}>
+          {moduleHeader('Human Resources')}
+          <div className="card"><p style={{ color: '#6b7280', fontSize: 13, margin: 0 }}>Loading HR data…</p></div>
+        </div>
+      )}
+
+      {/* ── POS (module slot — Crest POS not yet built) ── */}
+      {showPos && (
+        <div style={{ marginBottom: 20, marginTop: (showIms || showHr) ? 6 : 0 }}>
+          {moduleHeader('Point of Sale')}
+          <div className="card" style={{ textAlign: 'center', padding: '28px 24px' }}>
+            <div style={{ fontSize: 26, marginBottom: 8 }}>🧾</div>
+            <p style={{ fontSize: 14, color: '#e8e0d0', fontWeight: 600, margin: '0 0 4px' }}>Crest POS — coming soon</p>
+            <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>Your POS module is enabled. Live sales, table & billing dashboards will appear here once it launches.</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
