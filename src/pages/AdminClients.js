@@ -10,7 +10,16 @@ async function adminOp(action, params = {}) {
   const { data, error } = await supabase.functions.invoke('admin-user-ops', {
     body: { action, ...params },
   })
-  if (error) throw new Error(error.message || 'Edge function error')
+  if (error) {
+    // functions.invoke gives a generic "non-2xx status code" message; the real
+    // reason is in the response body (error.context) — surface it.
+    let detail = error.message || 'Edge function error'
+    try {
+      const body = await error.context.json()
+      detail = body?.error?.message || body?.error || body?.message || detail
+    } catch (_) {}
+    throw new Error(detail)
+  }
   if (data?.error) throw new Error(data.error.message || data.error || 'Admin op failed')
   return data
 }
@@ -197,50 +206,85 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
     }
     setSavingUser(true); setUserError(''); setUserSuccess('')
 
+    const email = userForm.email.trim()
+    const password = userForm.password.trim()
+    const full_name = userForm.full_name.trim()
+
     let authData
     try {
-      const result = await adminOp('createUser', {
-        email: userForm.email.trim(),
-        password: userForm.password.trim(),
-        full_name: userForm.full_name.trim(),
-      })
+      const result = await adminOp('createUser', { email, password, full_name })
       authData = result?.data
     } catch (err) {
       const already = /already.*registered|already.*exists|duplicate/i.test(err.message || '')
-      if (already) {
-        const [name, domain] = userForm.email.trim().split('@')
-        const suggestion = name && domain && !name.includes('+')
-          ? ` Try a separate login like ${name}+${client.name.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 8) || 'staff'}@${domain} — it reaches the same inbox but is its own account.`
-          : ''
-        setUserError(`That email already has an account (each login belongs to one account only).${suggestion}`)
-      } else {
-        setUserError('Could not create user: ' + err.message)
-      }
+      if (already) { await reassignExistingUser(email, full_name); return }
+      setUserError('Could not create user: ' + err.message)
       setSavingUser(false)
       return
     }
 
     const { error: profileError } = await supabase
       .from('profiles')
-      .update({ client_id: client.id, full_name: userForm.full_name.trim(), role: 'client' })
-      .eq('id', authData.user.id)
+      .upsert({ id: authData.user.id, client_id: client.id, full_name, role: 'client' }, { onConflict: 'id' })
     if (profileError) { setUserError('User created but profile link failed: ' + profileError.message); setSavingUser(false); return }
 
-    setUserSuccess(`✓ ${userForm.email.trim()} created and linked.`)
+    setUserSuccess(`✓ ${email} created and linked.`)
     setUserForm(EMPTY_USER)
     setSavingUser(false)
     loadUsers()
   }
 
+  // Email already exists → reassign that login to THIS client (one client at a time).
+  // Uses the admin-guarded SQL function find_user_id_by_email. Refuses admin accounts.
+  // The login keeps its existing password (we don't reset it on a move).
+  async function reassignExistingUser(email, full_name) {
+    try {
+      const { data: existingId, error: findErr } = await supabase.rpc('find_user_id_by_email', { p_email: email })
+      if (findErr) { setUserError('Could not look up the email: ' + findErr.message); setSavingUser(false); return }
+      if (!existingId) {
+        setUserError('That email already exists but could not be located to reassign.')
+        setSavingUser(false); return
+      }
+      const { data: prof } = await supabase.from('profiles').select('role').eq('id', existingId).maybeSingle()
+      if (prof?.role === 'admin') {
+        setUserError('That email is a platform-admin account — use a different email for a client login.')
+        setSavingUser(false); return
+      }
+      if (!window.confirm(`${email} already has a client login. Move it to "${client.name}"? It loses access to its previous client. (Its existing password is kept.)`)) {
+        setSavingUser(false); return
+      }
+      // upsert (not update): some older auth users have no profiles row, so a
+      // plain update would silently match 0 rows. .select() confirms it persisted.
+      const row = { id: existingId, client_id: client.id, role: 'client' }
+      if (full_name) row.full_name = full_name
+      const { data: saved, error: upErr } = await supabase.from('profiles').upsert(row, { onConflict: 'id' }).select('id')
+      if (upErr) { setUserError('Could not reassign: ' + upErr.message); setSavingUser(false); return }
+      if (!saved || saved.length === 0) {
+        setUserError('Reassign did not take effect — the profiles table is blocking it (RLS). Run the admin-profiles policy fix, then retry.')
+        setSavingUser(false); return
+      }
+      setUserSuccess(`✓ ${email} reassigned to this client.`)
+      setUserForm(EMPTY_USER)
+      setSavingUser(false)
+      loadUsers()
+    } catch (err) {
+      setUserError('Could not reassign user: ' + err.message)
+      setSavingUser(false)
+    }
+  }
+
   async function deleteUser(user) {
-    if (!window.confirm(`Delete "${user.full_name}" (${user.email})? This cannot be undone.`)) return
+    if (!window.confirm(`Delete "${user.full_name}" (${user.email})? This permanently removes the login and frees the email to be reused.`)) return
+    setUserError('')
     try {
       await adminOp('deleteUser', { userId: user.id })
     } catch (err) {
-      alert('Auth deletion failed: ' + err.message + '\nProfile entry will still be removed.')
+      // Don't delete the profile if the auth login survived — that would orphan it
+      // and keep the email locked. Surface the failure instead.
+      setUserError('Could not delete the login (email stays in use): ' + err.message)
+      return
     }
     await supabase.from('profiles').delete().eq('id', user.id)
-    setUserSuccess('✓ User deleted.')
+    setUserSuccess('✓ User deleted and email freed.')
     loadUsers()
   }
 
@@ -556,7 +600,7 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                       placeholder="user@restaurant.com"
                     />
                     <span style={{ fontSize: 11, color: '#6b7280', marginTop: 4, display: 'block' }}>
-                      Each login belongs to one account. To reuse your own inbox for a client login, add <code style={{ color: '#9ca3af' }}>+name</code> before the @ (e.g. you+casa@gmail.com).
+                      A login lives on one client at a time. If this email already has a client login, creating it here <strong>moves</strong> it to this client. To keep separate logins on the same inbox, add <code style={{ color: '#9ca3af' }}>+name</code> before the @ (e.g. you+casa@gmail.com).
                     </span>
                   </div>
                   <div className="form-field">

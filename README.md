@@ -124,6 +124,45 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S119 — 2026-06-23 — Client-user reassignment + orphaned-profile fixes
+
+Admins can now point a client login at any client, and broken/missing profile links self-heal.
+
+**Code (`AdminClients.js`):**
+- `adminOp` now surfaces the **real** edge-function error (reads `error.context` body) instead of the generic "non-2xx status code", so failures are diagnosable.
+- **Add User reassigns:** an existing email is **moved** to the current client (admin-guarded — refuses `role='admin'` accounts; confirms before moving). Uses the SQL function `find_user_id_by_email` for the email→id lookup (no edge redeploy).
+- **Upsert self-heal:** new-user link and reassign use `upsert` (not `update`), so an auth user with **no `profiles` row** (orphan from before the profile trigger) gets a row created instead of a silent 0-row no-op.
+- **Delete hardened:** stops if the auth deletion fails (no orphaned login keeping the email locked).
+
+**Database (run in Supabase — already applied):**
+```sql
+-- Admin-guarded email→id lookup (reassignment)
+CREATE OR REPLACE FUNCTION public.find_user_id_by_email(p_email text)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE uid uuid;
+BEGIN
+  IF (SELECT role FROM public.profiles WHERE id = auth.uid()) <> 'admin' THEN
+    RAISE EXCEPTION 'not authorized';
+  END IF;
+  SELECT id INTO uid FROM auth.users WHERE lower(email) = lower(p_email) LIMIT 1;
+  RETURN uid;
+END; $$;
+GRANT EXECUTE ON FUNCTION public.find_user_id_by_email(text) TO authenticated;
+
+-- Consolidate profiles UPDATE policies so admins can update ANY profile
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+DROP POLICY IF EXISTS "profiles_update_own"          ON public.profiles;
+DROP POLICY IF EXISTS "profiles_update"              ON public.profiles;
+CREATE POLICY "profiles_update" ON public.profiles FOR UPDATE
+  USING (id = auth.uid() OR is_admin()) WITH CHECK (id = auth.uid() OR is_admin());
+```
+
+**Gotcha learned:** orphaned auth users (no `profiles` row, e.g. `aashish727572@…`) made every `UPDATE profiles WHERE id=…` match 0 rows silently. Fix is `INSERT … ON CONFLICT (id) DO UPDATE` (SQL) / `upsert` (app). Founder uses a **separate non-admin email** to experience the app as a paying client (admin = `xrestha@…`).
+
+**Files:** `src/pages/AdminClients.js` (edge function `admin-user-ops/index.ts` reverted to original — no redeploy needed)
+
+---
+
 ### S118 — 2026-06-22 — Daily Wastage Tracker
 
 Wastage can now be logged **per day with a reason**, on top of the existing monthly figure.
