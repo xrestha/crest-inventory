@@ -181,19 +181,15 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
   // ── Users ──
   async function loadUsers() {
     setLoadingUsers(true)
-    const { data } = await supabase
+    const { data: profs } = await supabase
       .from('profiles')
       .select('id, full_name, role, client_id')
       .eq('client_id', client.id)
-    const enriched = await Promise.all((data || []).map(async u => {
-      try {
-        const result = await adminOp('getUser', { userId: u.id })
-        return { ...u, email: result?.data?.user?.email || '' }
-      } catch {
-        return { ...u, email: '' }
-      }
-    }))
-    setUsers(enriched)
+    // One batched call for all this client's emails — replaces N per-user edge
+    // calls (which raced/rate-limited and showed blank emails).
+    const { data: emailRows } = await supabase.rpc('client_user_emails', { p_client_id: client.id })
+    const emailMap = Object.fromEntries((emailRows || []).map(r => [r.id, r.email]))
+    setUsers((profs || []).map(u => ({ ...u, email: emailMap[u.id] || '' })))
     setLoadingUsers(false)
   }
 

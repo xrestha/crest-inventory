@@ -155,7 +155,17 @@ DROP POLICY IF EXISTS "profiles_update_own"          ON public.profiles;
 DROP POLICY IF EXISTS "profiles_update"              ON public.profiles;
 CREATE POLICY "profiles_update" ON public.profiles FOR UPDATE
   USING (id = auth.uid() OR is_admin()) WITH CHECK (id = auth.uid() OR is_admin());
+
+-- Batched email lookup for the Existing Users list (replaces N per-user edge calls)
+CREATE OR REPLACE FUNCTION public.client_user_emails(p_client_id uuid)
+RETURNS TABLE(id uuid, email text) LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+  SELECT u.id, u.email FROM public.profiles p JOIN auth.users u ON u.id = p.id
+  WHERE p.client_id = p_client_id AND public.is_admin();
+$$;
+GRANT EXECUTE ON FUNCTION public.client_user_emails(uuid) TO authenticated;
 ```
+
+`loadUsers` now does one `rpc('client_user_emails', …)` instead of one `getUser` edge call per user — kills the blank-email rows / 401 bursts and is faster.
 
 **Gotcha learned:** orphaned auth users (no `profiles` row, e.g. `aashish727572@…`) made every `UPDATE profiles WHERE id=…` match 0 rows silently. Fix is `INSERT … ON CONFLICT (id) DO UPDATE` (SQL) / `upsert` (app). Founder uses a **separate non-admin email** to experience the app as a paying client (admin = `xrestha@…`).
 
