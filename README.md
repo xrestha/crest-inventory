@@ -124,6 +124,20 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S135 — 2026-06-24 — Bulk recipe import (Excel) + Clone recipe
+
+Line-by-line ingredient entry was tedious for onboarding a whole menu. Added a spreadsheet importer + one-click clone to [Recipes.js](src/pages/Recipes.js).
+
+- **↓ Template** — generates `Recipe-Import-Template.xlsx`: a **Recipes** sheet (cols: Menu Item, Category, Selling Price, Yield, Ingredient (name or code), Qty, Unit) + auto-filled **"Your Items"** and **"Your Sub-Recipes"** reference sheets (exact names/codes/units to copy from).
+- **↑ Import Excel** — reads the sheet (SheetJS `XLSX.read`), groups rows by recipe (recipe-level fields on the first row; blank = same recipe continuing), matches each ingredient to the Item Master **by name or item code**, and to sub-recipes by name. Units auto-convert KG↔GM / LTR↔ML via `convertQty`. Shows a **validation preview modal** (recipes ready, ingredients matched ✓, unmatched ✗ with reason, unit warnings) before committing.
+- **Unmatched handling:** flag & skip — recipe imports with its matched ingredients; unmatched lines are listed so the user adds those items first and re-imports. Recipes that already exist (by name) and rows with category `Sub-Recipe` are skipped (create sub-recipes in-app for the linked-item/cost sync).
+- **Clone** — row button duplicates a recipe into the New Recipe form (`"… (Copy)"`) with all ingredients prefilled; reuses the normal save path (so clone works for sub-recipes too).
+- Bulk insert guarded against the NULL-client_id bug. Verified: parse/match/convert logic + SheetJS write→read round-trip via node; `npm run build` clean. Help page + FAQ updated.
+
+**Files:** `src/pages/Recipes.js`, `src/pages/Help.js`
+
+---
+
 ### S134 — 2026-06-24 — Recover "missing" recipes (NULL client_id bug)
 
 User reported food recipes vanished from Recipe Costing (only 2 of ~8 showed). Diagnosed against the live DB (service-role read): the recipes were **not deleted** — **15 recipes had `client_id = NULL`** and the list query filters `.eq('client_id', clientId)`, so they were invisible.
