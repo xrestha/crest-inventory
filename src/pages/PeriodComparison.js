@@ -8,9 +8,9 @@ const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kart
 
 function fcColor(pct) {
   if (pct == null) return 'var(--theme-text2)'
-  if (pct <= 30) return '#34d399'
-  if (pct <= 38) return '#fbbf24'
-  return '#f87171'
+  if (pct <= 30) return 'var(--theme-green)'
+  if (pct <= 38) return 'var(--theme-amber)'
+  return 'var(--theme-red)'
 }
 
 export default function PeriodComparison() {
@@ -97,8 +97,8 @@ export default function PeriodComparison() {
     if (Math.abs(diff) < 0.3) return <span style={{ color: 'var(--theme-text2)' }}>→</span>
     // For FC%: down is better (lower cost)
     return diff < 0
-      ? <span style={{ color: '#34d399' }}>↓ {Math.abs(diff).toFixed(1)}pp</span>
-      : <span style={{ color: '#f87171' }}>↑ {Math.abs(diff).toFixed(1)}pp</span>
+      ? <span style={{ color: 'var(--theme-green)' }}>↓ {Math.abs(diff).toFixed(1)}pp</span>
+      : <span style={{ color: 'var(--theme-red)' }}>↑ {Math.abs(diff).toFixed(1)}pp</span>
   }
 
   function exportExcel() {
@@ -151,7 +151,7 @@ export default function PeriodComparison() {
             {latestStats?.fcPct != null ? latestStats.fcPct.toFixed(1) + '%' : '—'}
           </div>
           {fcTrend != null && (
-            <div className="stat-label" style={{ marginTop: 4, color: fcTrend < 0 ? '#34d399' : '#f87171' }}>
+            <div className="stat-label" style={{ marginTop: 4, color: fcTrend < 0 ? 'var(--theme-green)' : 'var(--theme-red)' }}>
               {fcTrend < 0 ? '↓' : '↑'} {Math.abs(fcTrend).toFixed(1)}pp vs prev period
             </div>
           )}
@@ -164,7 +164,7 @@ export default function PeriodComparison() {
             {bestFcPeriod ? `${BS_MONTHS[bestFcPeriod.bs_month - 1]} ${bestFcPeriod.bs_year}` : '—'}
           </div>
           {bestFcPeriod && stats[bestFcPeriod.id]?.fcPct != null && (
-            <div className="stat-label" style={{ marginTop: 4, color: '#34d399' }}>
+            <div className="stat-label" style={{ marginTop: 4, color: 'var(--theme-green)' }}>
               {stats[bestFcPeriod.id].fcPct.toFixed(1)}%
             </div>
           )}
@@ -215,13 +215,13 @@ export default function PeriodComparison() {
                     <td>
                       <strong>{BS_MONTHS[p.bs_month - 1]} {p.bs_year}</strong>
                       {p.status === 'open' && (
-                        <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: '#34d399', background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.2)', borderRadius: 3, padding: '1px 5px' }}>
+                        <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: 'var(--theme-green)', background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.2)', borderRadius: 3, padding: '1px 5px' }}>
                           OPEN
                         </span>
                       )}
                     </td>
                     <td style={{ textAlign: 'right' }}>{fmt(s.netPurch)}</td>
-                    <td style={{ textAlign: 'right', color: s.wasteV ? '#fbbf24' : 'var(--theme-text2)' }}>{fmt(s.wasteV)}</td>
+                    <td style={{ textAlign: 'right', color: s.wasteV ? 'var(--theme-amber)' : 'var(--theme-text2)' }}>{fmt(s.wasteV)}</td>
                     <td style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(s.cogs)}</td>
                     <td style={{ textAlign: 'right' }}>{fmt(s.revenue)}</td>
                     <td style={{ textAlign: 'right', fontWeight: 700, color: fcColor(s.fcPct) }}>

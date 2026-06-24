@@ -198,7 +198,7 @@ export default function VatReport() {
           <div className="stat-value" style={{ fontSize: 16, color: 'var(--theme-amber)' }}>NPR {Math.round(netVatTotal).toLocaleString('en-NP')}</div>
           <div className="stat-sub">
             {vatEntries.length} purchases
-            {vatReturns.length > 0 && <span style={{ color: '#f87171' }}> − {vatReturns.length} returns</span>}
+            {vatReturns.length > 0 && <span style={{ color: 'var(--theme-red)' }}> − {vatReturns.length} returns</span>}
           </div>
         </div>
         <div className="stat-card">
@@ -296,7 +296,7 @@ export default function VatReport() {
           {/* VAT Returns */}
           {vatReturns.length > 0 && (
             <div className="card" style={{ marginBottom: 16, border: '1px solid rgba(248,113,113,0.2)' }}>
-              <h3 style={{ margin: '0 0 16px', fontSize: 14, color: '#f87171', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--theme-red)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>VAT-Inclusive Returns <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--theme-text2)', marginLeft: 8 }}>Input VAT reversed on returned goods</span></span>
                 <span style={{ fontSize: 12, color: 'var(--theme-text2)', fontWeight: 400 }}>{vatReturns.length} return{vatReturns.length !== 1 ? 's' : ''}</span>
               </h3>
@@ -311,7 +311,7 @@ export default function VatReport() {
                       <th style={{ textAlign: 'right' }}>Returned Qty</th>
                       <th>UOM</th>
                       <th style={{ textAlign: 'right' }}>Base Returned</th>
-                      <th style={{ textAlign: 'right', color: '#f87171' }}>VAT Reversed</th>
+                      <th style={{ textAlign: 'right', color: 'var(--theme-red)' }}>VAT Reversed</th>
                       <th style={{ textAlign: 'right' }}>Total Returned</th>
                       <th>Notes</th>
                     </tr>
@@ -331,20 +331,20 @@ export default function VatReport() {
                               : <span style={{ color: 'var(--theme-text2)' }}>—</span>}
                           </td>
                           <td style={{ color: 'var(--theme-text2)' }}>{r.vendors?.name || '—'}</td>
-                          <td style={{ textAlign: 'right', color: '#f87171' }}>−{Number(r.qty).toLocaleString(undefined, { maximumFractionDigits: 3 })}</td>
+                          <td style={{ textAlign: 'right', color: 'var(--theme-red)' }}>−{Number(r.qty).toLocaleString(undefined, { maximumFractionDigits: 3 })}</td>
                           <td style={{ color: 'var(--theme-text2)' }}>{r.items?.uom}</td>
-                          <td style={{ textAlign: 'right', color: '#f87171' }}>−{fmtNPR(base)}</td>
-                          <td style={{ textAlign: 'right', color: '#f87171', fontWeight: 600 }}>−{fmtNPR(vat)}</td>
-                          <td style={{ textAlign: 'right', color: '#f87171', fontWeight: 600 }}>−{fmtNPR(total)}</td>
+                          <td style={{ textAlign: 'right', color: 'var(--theme-red)' }}>−{fmtNPR(base)}</td>
+                          <td style={{ textAlign: 'right', color: 'var(--theme-red)', fontWeight: 600 }}>−{fmtNPR(vat)}</td>
+                          <td style={{ textAlign: 'right', color: 'var(--theme-red)', fontWeight: 600 }}>−{fmtNPR(total)}</td>
                           <td style={{ color: 'var(--theme-text2)', fontSize: 12 }}>{r.notes || '—'}</td>
                         </tr>
                       )
                     })}
                     <tr style={{ borderTop: '2px solid rgba(248,113,113,0.3)', fontWeight: 700 }}>
-                      <td colSpan={6} style={{ color: '#f87171', fontSize: 12 }}>TOTAL RETURNS</td>
-                      <td style={{ textAlign: 'right', color: '#f87171' }}>−{fmtNPR(retBaseTotal)}</td>
-                      <td style={{ textAlign: 'right', color: '#f87171' }}>−{fmtNPR(retVatTotal)}</td>
-                      <td style={{ textAlign: 'right', color: '#f87171' }}>−{fmtNPR(retTotal)}</td>
+                      <td colSpan={6} style={{ color: 'var(--theme-red)', fontSize: 12 }}>TOTAL RETURNS</td>
+                      <td style={{ textAlign: 'right', color: 'var(--theme-red)' }}>−{fmtNPR(retBaseTotal)}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--theme-red)' }}>−{fmtNPR(retVatTotal)}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--theme-red)' }}>−{fmtNPR(retTotal)}</td>
                       <td></td>
                     </tr>
                   </tbody>
@@ -402,7 +402,7 @@ export default function VatReport() {
                     <th><Tip text="PAN or VAT registration number of the supplier — add it in Vendors if missing.">PAN / VAT No.</Tip></th>
                     <th style={{ textAlign: 'right' }}><Tip text="Number of VAT-inclusive purchase entries from this vendor."># Bills</Tip></th>
                     <th style={{ textAlign: 'right' }}><Tip text="Gross purchases before deducting returns, ex-VAT.">Gross Base</Tip></th>
-                    <th style={{ textAlign: 'right', color: '#f87171' }}><Tip text="Base amount of VAT-inclusive goods returned to this vendor." width={230}>Returned</Tip></th>
+                    <th style={{ textAlign: 'right', color: 'var(--theme-red)' }}><Tip text="Base amount of VAT-inclusive goods returned to this vendor." width={230}>Returned</Tip></th>
                     <th style={{ textAlign: 'right' }}><Tip text="Net base = Gross purchases − Returns, ex-VAT.">Net Base</Tip></th>
                     <th style={{ textAlign: 'right', color: 'var(--theme-amber)' }}><Tip text="Net claimable input VAT = Net Base × 13%. Use for IRD VAT return." width={230}>Net Input VAT</Tip></th>
                     <th style={{ textAlign: 'right' }}><Tip text="Net amount paid to this vendor including VAT, after returns.">Net Total</Tip></th>
@@ -421,7 +421,7 @@ export default function VatReport() {
                         </td>
                         <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>{v.count}</td>
                         <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>{fmtNPR(v.gross)}</td>
-                        <td style={{ textAlign: 'right', color: v.returned > 0 ? '#f87171' : 'var(--theme-text2)' }}>
+                        <td style={{ textAlign: 'right', color: v.returned > 0 ? 'var(--theme-red)' : 'var(--theme-text2)' }}>
                           {v.returned > 0 ? `−${fmtNPR(v.returned)}` : '—'}
                         </td>
                         <td style={{ textAlign: 'right', color: 'var(--theme-text1)', fontWeight: 600 }}>{fmtNPR(netBase)}</td>
@@ -433,7 +433,7 @@ export default function VatReport() {
                   <tr style={{ borderTop: '2px solid var(--theme-border)', fontWeight: 700 }}>
                     <td colSpan={3} style={{ color: 'var(--theme-text2)', fontSize: 12 }}>PERIOD NET</td>
                     <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>{fmtNPR(vatBaseGross)}</td>
-                    <td style={{ textAlign: 'right', color: retBaseTotal > 0 ? '#f87171' : 'var(--theme-text2)' }}>
+                    <td style={{ textAlign: 'right', color: retBaseTotal > 0 ? 'var(--theme-red)' : 'var(--theme-text2)' }}>
                       {retBaseTotal > 0 ? `−${fmtNPR(retBaseTotal)}` : '—'}
                     </td>
                     <td style={{ textAlign: 'right', color: 'var(--theme-text1)' }}>{fmtNPR(netVatBase)}</td>

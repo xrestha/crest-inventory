@@ -168,7 +168,7 @@ export default function VendorReport() {
         </div>
         <div className="stat-card">
           <div className="stat-label">Total Returns</div>
-          <div className="stat-value" style={{ fontSize: 17, color: grandReturn > 0 ? '#f87171' : '#6b7280' }}>
+          <div className="stat-value" style={{ fontSize: 17, color: grandReturn > 0 ? 'var(--theme-red)' : 'var(--theme-text2)' }}>
             {grandReturn > 0 ? `−NPR ${grandReturn.toLocaleString('en-NP', { maximumFractionDigits: 0 })}` : '—'}
           </div>
         </div>
@@ -190,13 +190,13 @@ export default function VendorReport() {
       {/* Visual spend split */}
       {grandNet > 0 && vendorSummary.length > 0 && (
         <div className="card" style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 10 }}>Vendor Net Spend Split</div>
+          <div style={{ fontSize: 12, color: 'var(--theme-text2)', marginBottom: 10 }}>Vendor Net Spend Split</div>
           <div style={{ display: 'flex', height: 20, borderRadius: 6, overflow: 'hidden', gap: 2 }}>
             {vendorSummary.map((r, i) => {
               const pct = (r.net / grandNet) * 100
-              const colors = ['#c9a84c','#34d399','#60a5fa','#f87171','#a78bfa','#fb923c','#22d3ee','#f472b6']
+              const colors = ['var(--theme-accent)','var(--theme-green)','#60a5fa','var(--theme-red)','#a78bfa','#fb923c','#22d3ee','#f472b6']
               return (
-                <div key={r.vendor.id} style={{ width: `${pct}%`, background: colors[i % colors.length], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: '#0f1117', minWidth: pct > 8 ? 'auto' : 0 }}>
+                <div key={r.vendor.id} style={{ width: `${pct}%`, background: colors[i % colors.length], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: 'var(--theme-bg)', minWidth: pct > 8 ? 'auto' : 0 }}>
                   {pct > 8 ? `${pct.toFixed(0)}%` : ''}
                 </div>
               )
@@ -204,11 +204,11 @@ export default function VendorReport() {
           </div>
           <div style={{ display: 'flex', gap: 16, marginTop: 8, flexWrap: 'wrap' }}>
             {vendorSummary.map((r, i) => {
-              const colors = ['#c9a84c','#34d399','#60a5fa','#f87171','#a78bfa','#fb923c','#22d3ee','#f472b6']
+              const colors = ['var(--theme-accent)','var(--theme-green)','#60a5fa','var(--theme-red)','#a78bfa','#fb923c','#22d3ee','#f472b6']
               return (
                 <div key={r.vendor.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <div style={{ width: 10, height: 10, borderRadius: 2, background: colors[i % colors.length] }} />
-                  <span style={{ fontSize: 12, color: '#6b7280' }}>{r.vendor.name}</span>
+                  <span style={{ fontSize: 12, color: 'var(--theme-text2)' }}>{r.vendor.name}</span>
                 </div>
               )
             })}
@@ -223,30 +223,30 @@ export default function VendorReport() {
           onChange={e => setVendorSearch(e.target.value)}
           placeholder="Search vendor name or code…"
           style={{
-            background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 6,
-            padding: '8px 12px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: 280
+            background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6,
+            padding: '8px 12px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none', width: 280
           }}
         />
         {vendorSearch && (
-          <span style={{ marginLeft: 10, fontSize: 12, color: '#6b7280' }}>
+          <span style={{ marginLeft: 10, fontSize: 12, color: 'var(--theme-text2)' }}>
             {filteredSummary.length} vendor{filteredSummary.length !== 1 ? 's' : ''} matched
           </span>
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid #2a2f3d' }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid var(--theme-border)' }}>
         {['summary', 'daily'].map(m => (
           <button key={m} onClick={() => setViewMode(m)} style={{
             background: 'none', border: 'none', cursor: 'pointer', padding: '10px 20px', fontSize: 13, fontWeight: 500,
-            color: viewMode === m ? '#c9a84c' : '#6b7280',
-            borderBottom: viewMode === m ? '2px solid #c9a84c' : '2px solid transparent', marginBottom: -1
+            color: viewMode === m ? 'var(--theme-accent)' : 'var(--theme-text2)',
+            borderBottom: viewMode === m ? '2px solid var(--theme-accent)' : '2px solid transparent', marginBottom: -1
           }}>{m === 'summary' ? 'Vendor Summary' : 'Daily Breakdown'}</button>
         ))}
       </div>
 
       <div className="card">
         {loading ? (
-          <p style={{ color: '#6b7280', fontSize: 13 }}>Loading…</p>
+          <p style={{ color: 'var(--theme-text2)', fontSize: 13 }}>Loading…</p>
         ) : purchases.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">⊙</div>
@@ -260,7 +260,7 @@ export default function VendorReport() {
                   <th>Vendor</th>
                   <th style={{ textAlign: 'right' }}>Transactions</th>
                   <th style={{ textAlign: 'right' }}>Gross Purchases</th>
-                  <th style={{ textAlign: 'right', color: '#f87171' }}><Tip text="Total value of items returned to this vendor this period.">Returns</Tip></th>
+                  <th style={{ textAlign: 'right', color: 'var(--theme-red)' }}><Tip text="Total value of items returned to this vendor this period.">Returns</Tip></th>
                   <th style={{ textAlign: 'right' }}><Tip text="Net spend = Gross purchases − Returns. Your true payment obligation to this vendor.">Net Spend</Tip></th>
                   <th style={{ textAlign: 'right' }}><Tip text="This vendor's share of total net purchase spend for the period." width={220}>% of Net Total</Tip></th>
                   <th style={{ textAlign: 'right' }}><Tip text="Average daily spend (net) across days this vendor had deliveries.">Avg/Day</Tip></th>
@@ -274,49 +274,49 @@ export default function VendorReport() {
                   const pct = grandNet > 0 ? (r.net / grandNet) * 100 : 0
                   return (
                     <tr key={r.vendor.id}>
-                      <td style={{ fontWeight: 600, color: '#e8e0d0' }}>
+                      <td style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>
                         {r.vendor.vendor_code && (
-                          <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#c9a84c', marginRight: 8 }}>{r.vendor.vendor_code}</span>
+                          <span style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--theme-accent)', marginRight: 8 }}>{r.vendor.vendor_code}</span>
                         )}
                         {r.vendor.name}
-                        {r.returnCount > 0 && <span style={{ fontSize: 11, color: '#f87171', marginLeft: 6 }}>({r.returnCount} return{r.returnCount > 1 ? 's' : ''})</span>}
+                        {r.returnCount > 0 && <span style={{ fontSize: 11, color: 'var(--theme-red)', marginLeft: 6 }}>({r.returnCount} return{r.returnCount > 1 ? 's' : ''})</span>}
                       </td>
                       <td style={{ textAlign: 'right' }}>{r.count}</td>
-                      <td style={{ textAlign: 'right', color: '#c9a84c' }}>NPR {r.gross.toLocaleString('en-NP', { maximumFractionDigits: 0 })}</td>
-                      <td style={{ textAlign: 'right', color: '#f87171' }}>{r.returned > 0 ? `−NPR ${r.returned.toLocaleString('en-NP', { maximumFractionDigits: 0 })}` : '—'}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 700, color: '#c9a84c' }}>NPR {r.net.toLocaleString('en-NP', { maximumFractionDigits: 0 })}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>NPR {r.gross.toLocaleString('en-NP', { maximumFractionDigits: 0 })}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--theme-red)' }}>{r.returned > 0 ? `−NPR ${r.returned.toLocaleString('en-NP', { maximumFractionDigits: 0 })}` : '—'}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-accent)' }}>NPR {r.net.toLocaleString('en-NP', { maximumFractionDigits: 0 })}</td>
                       <td style={{ textAlign: 'right' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
-                          <div style={{ width: 70, height: 5, background: '#2a2f3d', borderRadius: 3 }}>
-                            <div style={{ width: `${Math.min(pct, 100)}%`, height: '100%', background: '#c9a84c', borderRadius: 3 }} />
+                          <div style={{ width: 70, height: 5, background: 'var(--theme-border)', borderRadius: 3 }}>
+                            <div style={{ width: `${Math.min(pct, 100)}%`, height: '100%', background: 'var(--theme-accent)', borderRadius: 3 }} />
                           </div>
-                          <span style={{ fontSize: 12, color: '#6b7280', minWidth: 38 }}>{pct.toFixed(1)}%</span>
+                          <span style={{ fontSize: 12, color: 'var(--theme-text2)', minWidth: 38 }}>{pct.toFixed(1)}%</span>
                         </div>
                       </td>
-                      <td style={{ textAlign: 'right', color: '#6b7280' }}>
+                      <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>
                         NPR {r.days > 0 ? (r.net / r.days).toLocaleString('en-NP', { maximumFractionDigits: 0 }) : '—'}
                       </td>
-                      <td style={{ textAlign: 'right', color: r.cash > 0 ? '#34d399' : '#9ca3af' }}>{fmt(r.cash)}</td>
-                      <td style={{ textAlign: 'right', color: r.credit > 0 ? '#f87171' : '#9ca3af' }}>{fmt(r.credit)}</td>
-                      <td style={{ textAlign: 'right', color: r.fonepay > 0 ? '#60a5fa' : '#9ca3af' }}>{fmt(r.fonepay)}</td>
+                      <td style={{ textAlign: 'right', color: r.cash > 0 ? 'var(--theme-green)' : 'var(--theme-text3)' }}>{fmt(r.cash)}</td>
+                      <td style={{ textAlign: 'right', color: r.credit > 0 ? 'var(--theme-red)' : 'var(--theme-text3)' }}>{fmt(r.credit)}</td>
+                      <td style={{ textAlign: 'right', color: r.fonepay > 0 ? '#60a5fa' : 'var(--theme-text3)' }}>{fmt(r.fonepay)}</td>
                     </tr>
                   )
                 })}
                 {unassignedTotal > 0 && (
                   <tr>
-                    <td style={{ color: '#9ca3af', fontStyle: 'italic' }}>Unassigned</td>
-                    <td style={{ textAlign: 'right', color: '#9ca3af' }}>{unassigned.length}</td>
-                    <td style={{ textAlign: 'right', color: '#9ca3af' }}>NPR {unassignedTotal.toLocaleString('en-NP', { maximumFractionDigits: 0 })}</td>
+                    <td style={{ color: 'var(--theme-text3)', fontStyle: 'italic' }}>Unassigned</td>
+                    <td style={{ textAlign: 'right', color: 'var(--theme-text3)' }}>{unassigned.length}</td>
+                    <td style={{ textAlign: 'right', color: 'var(--theme-text3)' }}>NPR {unassignedTotal.toLocaleString('en-NP', { maximumFractionDigits: 0 })}</td>
                     <td colSpan={7}></td>
                   </tr>
                 )}
-                <tr style={{ borderTop: '2px solid #2a2f3d' }}>
-                  <td style={{ fontWeight: 800, color: '#e8e0d0', paddingTop: 12 }}>TOTAL</td>
+                <tr style={{ borderTop: '2px solid var(--theme-border)' }}>
+                  <td style={{ fontWeight: 800, color: 'var(--theme-text1)', paddingTop: 12 }}>TOTAL</td>
                   <td style={{ textAlign: 'right', fontWeight: 700, paddingTop: 12 }}>{purchases.length}</td>
-                  <td style={{ textAlign: 'right', fontWeight: 700, color: '#c9a84c', paddingTop: 12 }}>NPR {grandGross.toLocaleString('en-NP', { maximumFractionDigits: 0 })}</td>
-                  <td style={{ textAlign: 'right', fontWeight: 700, color: '#f87171', paddingTop: 12 }}>{grandReturn > 0 ? `−NPR ${grandReturn.toLocaleString('en-NP', { maximumFractionDigits: 0 })}` : '—'}</td>
-                  <td style={{ textAlign: 'right', fontWeight: 800, color: '#c9a84c', fontSize: 15, paddingTop: 12 }}>NPR {grandNet.toLocaleString('en-NP', { maximumFractionDigits: 0 })}</td>
-                  <td style={{ textAlign: 'right', fontWeight: 700, color: '#6b7280', paddingTop: 12 }}>100%</td>
+                  <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-accent)', paddingTop: 12 }}>NPR {grandGross.toLocaleString('en-NP', { maximumFractionDigits: 0 })}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-red)', paddingTop: 12 }}>{grandReturn > 0 ? `−NPR ${grandReturn.toLocaleString('en-NP', { maximumFractionDigits: 0 })}` : '—'}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--theme-accent)', fontSize: 15, paddingTop: 12 }}>NPR {grandNet.toLocaleString('en-NP', { maximumFractionDigits: 0 })}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-text2)', paddingTop: 12 }}>100%</td>
                   <td colSpan={4}></td>
                 </tr>
               </tbody>
@@ -329,7 +329,7 @@ export default function VendorReport() {
                 <tr>
                   <th>Day</th>
                   {filteredActiveVendors.map(v => <th key={v.id} style={{ textAlign: 'right' }}>{v.name}</th>)}
-                  <th style={{ textAlign: 'right', color: '#c9a84c' }}>Day Net Total</th>
+                  <th style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>Day Net Total</th>
                 </tr>
               </thead>
               <tbody>
@@ -337,29 +337,29 @@ export default function VendorReport() {
                   const dn = dayNet(day)
                   return (
                     <tr key={day}>
-                      <td style={{ fontWeight: 700, color: '#c9a84c' }}>{day}</td>
+                      <td style={{ fontWeight: 700, color: 'var(--theme-accent)' }}>{day}</td>
                       {filteredActiveVendors.map(v => {
                         const val = vendorDayNet(v.id, day)
                         return (
-                          <td key={v.id} style={{ textAlign: 'right', color: val !== 0 ? '#e8e0d0' : '#2a2f3d' }}>
+                          <td key={v.id} style={{ textAlign: 'right', color: val !== 0 ? 'var(--theme-text1)' : 'var(--theme-border)' }}>
                             {val !== 0 ? val.toLocaleString('en-NP', { maximumFractionDigits: 0 }) : '—'}
                           </td>
                         )
                       })}
-                      <td style={{ textAlign: 'right', fontWeight: 700, color: '#c9a84c' }}>
+                      <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-accent)' }}>
                         NPR {dn.toLocaleString('en-NP', { maximumFractionDigits: 0 })}
                       </td>
                     </tr>
                   )
                 })}
-                <tr style={{ borderTop: '2px solid #2a2f3d' }}>
-                  <td style={{ fontWeight: 800, color: '#e8e0d0', paddingTop: 12 }}>TOTAL</td>
+                <tr style={{ borderTop: '2px solid var(--theme-border)' }}>
+                  <td style={{ fontWeight: 800, color: 'var(--theme-text1)', paddingTop: 12 }}>TOTAL</td>
                   {filteredActiveVendors.map(v => (
-                    <td key={v.id} style={{ textAlign: 'right', fontWeight: 700, color: '#c9a84c', paddingTop: 12 }}>
+                    <td key={v.id} style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-accent)', paddingTop: 12 }}>
                       NPR {vendorNet(v.id).toLocaleString('en-NP', { maximumFractionDigits: 0 })}
                     </td>
                   ))}
-                  <td style={{ textAlign: 'right', fontWeight: 800, color: '#c9a84c', fontSize: 15, paddingTop: 12 }}>
+                  <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--theme-accent)', fontSize: 15, paddingTop: 12 }}>
                     NPR {grandNet.toLocaleString('en-NP', { maximumFractionDigits: 0 })}
                   </td>
                 </tr>

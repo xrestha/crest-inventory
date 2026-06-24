@@ -107,7 +107,7 @@ export default function BudgetVsActual() {
           <p className="page-subtitle">Compare planned spend against actual net purchases — {periodLabel}</p>
         </div>
         <select
-          style={{ background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: '#e8e0d0', outline: 'none' }}
+          style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none' }}
           value={selectedPeriod?.id || ''}
           onChange={e => handlePeriodChange(e.target.value)}
         >
@@ -119,19 +119,19 @@ export default function BudgetVsActual() {
         </select>
       </div>
 
-      <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: '#c9a84c' }}>
+      <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: 'var(--theme-accent)' }}>
         Enter a budget for each category — the app compares it against net purchases (purchases − returns) for the selected period. Budgets are saved automatically.
       </div>
 
       {loading ? (
-        <p style={{ color: '#6b7280', fontSize: 13 }}>Loading…</p>
+        <p style={{ color: 'var(--theme-text2)', fontSize: 13 }}>Loading…</p>
       ) : (
         <div className="card">
           <div className="table-wrap">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th style={{ width: 36, textAlign: 'center', color: '#6b7280' }}>S.No</th>
+                  <th style={{ width: 36, textAlign: 'center', color: 'var(--theme-text2)' }}>S.No</th>
                   <th>Category</th>
                   <th style={{ textAlign: 'right' }}><Tip text="Enter your target spend for this category. Saved automatically when you click outside the field.">Budget (NPR)</Tip></th>
                   <th style={{ textAlign: 'right' }}><Tip text="Net purchases = gross purchases minus vendor returns for this category this period.">Actual Net (NPR)</Tip></th>
@@ -151,8 +151,8 @@ export default function BudgetVsActual() {
 
                   return (
                     <tr key={cat.id}>
-                      <td style={{ textAlign: 'center', color: '#6b7280' }}>{idx + 1}</td>
-                      <td style={{ fontWeight: 600, color: '#e8e0d0' }}>{cat.name}</td>
+                      <td style={{ textAlign: 'center', color: 'var(--theme-text2)' }}>{idx + 1}</td>
+                      <td style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{cat.name}</td>
                       <td style={{ textAlign: 'right', width: 180 }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
                           <input
@@ -162,30 +162,30 @@ export default function BudgetVsActual() {
                             onBlur={() => saveBudget(cat.id)}
                             placeholder="Set budget…"
                             style={{
-                              background: '#0f1117', border: '1px solid',
-                              borderColor: budget > 0 ? 'rgba(201,168,76,0.4)' : '#2a2f3d',
+                              background: 'var(--theme-bg)', border: '1px solid',
+                              borderColor: budget > 0 ? 'rgba(201,168,76,0.4)' : 'var(--theme-border)',
                               borderRadius: 5, padding: '5px 10px', fontSize: 13,
-                              color: '#e8e0d0', outline: 'none', width: 130, textAlign: 'right',
+                              color: 'var(--theme-text1)', outline: 'none', width: 130, textAlign: 'right',
                             }}
                           />
-                          {saving[cat.id] && <span style={{ fontSize: 11, color: '#6b7280' }}>…</span>}
+                          {saving[cat.id] && <span style={{ fontSize: 11, color: 'var(--theme-text2)' }}>…</span>}
                         </div>
                       </td>
-                      <td style={{ textAlign: 'right', color: '#9ca3af' }}>
+                      <td style={{ textAlign: 'right', color: 'var(--theme-text3)' }}>
                         {actual > 0 ? fmt(actual) : '—'}
                       </td>
-                      <td style={{ textAlign: 'right', fontWeight: 600, color: noBudget ? '#6b7280' : isOver ? '#f87171' : '#34d399' }}>
+                      <td style={{ textAlign: 'right', fontWeight: 600, color: noBudget ? 'var(--theme-text2)' : isOver ? 'var(--theme-red)' : 'var(--theme-green)' }}>
                         {noBudget ? '—' : (variance >= 0 ? '+' : '') + fmt(variance)}
                       </td>
-                      <td style={{ textAlign: 'right', color: noBudget ? '#6b7280' : isOver ? '#f87171' : '#34d399' }}>
+                      <td style={{ textAlign: 'right', color: noBudget ? 'var(--theme-text2)' : isOver ? 'var(--theme-red)' : 'var(--theme-green)' }}>
                         {pct !== null ? fmtPct(pct) : '—'}
                       </td>
                       <td style={{ textAlign: 'center' }}>
                         {noBudget
-                          ? <span style={{ fontSize: 11, color: '#6b7280', background: 'rgba(107,114,128,0.15)', padding: '2px 10px', borderRadius: 10 }}>No Budget</span>
+                          ? <span style={{ fontSize: 11, color: 'var(--theme-text2)', background: 'rgba(107,114,128,0.15)', padding: '2px 10px', borderRadius: 10 }}>No Budget</span>
                           : isOver
-                          ? <span style={{ fontSize: 11, color: '#f87171', background: 'rgba(248,113,113,0.12)', padding: '2px 10px', borderRadius: 10 }}>Over Budget</span>
-                          : <span style={{ fontSize: 11, color: '#34d399', background: 'rgba(52,211,153,0.12)', padding: '2px 10px', borderRadius: 10 }}>Under Budget</span>
+                          ? <span style={{ fontSize: 11, color: 'var(--theme-red)', background: 'rgba(248,113,113,0.12)', padding: '2px 10px', borderRadius: 10 }}>Over Budget</span>
+                          : <span style={{ fontSize: 11, color: 'var(--theme-green)', background: 'rgba(52,211,153,0.12)', padding: '2px 10px', borderRadius: 10 }}>Under Budget</span>
                         }
                       </td>
                     </tr>
@@ -193,19 +193,19 @@ export default function BudgetVsActual() {
                 })}
               </tbody>
               <tfoot>
-                <tr style={{ borderTop: '2px solid #2a2f3d' }}>
+                <tr style={{ borderTop: '2px solid var(--theme-border)' }}>
                   <td></td>
-                  <td style={{ fontWeight: 700, color: '#c9a84c' }}>Totals</td>
-                  <td style={{ textAlign: 'right', fontWeight: 700, color: '#e8e0d0' }}>
+                  <td style={{ fontWeight: 700, color: 'var(--theme-accent)' }}>Totals</td>
+                  <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-text1)' }}>
                     {totalBudget > 0 ? fmt(totalBudget) : '—'}
                   </td>
-                  <td style={{ textAlign: 'right', fontWeight: 700, color: '#9ca3af' }}>
+                  <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-text3)' }}>
                     {totalActual > 0 ? fmt(totalActual) : '—'}
                   </td>
-                  <td style={{ textAlign: 'right', fontWeight: 700, color: totalBudget === 0 ? '#6b7280' : totalVariance >= 0 ? '#34d399' : '#f87171' }}>
+                  <td style={{ textAlign: 'right', fontWeight: 700, color: totalBudget === 0 ? 'var(--theme-text2)' : totalVariance >= 0 ? 'var(--theme-green)' : 'var(--theme-red)' }}>
                     {totalBudget > 0 ? (totalVariance >= 0 ? '+' : '') + fmt(totalVariance) : '—'}
                   </td>
-                  <td style={{ textAlign: 'right', fontWeight: 700, color: totalBudget === 0 ? '#6b7280' : totalVariance >= 0 ? '#34d399' : '#f87171' }}>
+                  <td style={{ textAlign: 'right', fontWeight: 700, color: totalBudget === 0 ? 'var(--theme-text2)' : totalVariance >= 0 ? 'var(--theme-green)' : 'var(--theme-red)' }}>
                     {totalBudget > 0 ? fmtPct((totalVariance / totalBudget) * 100) : '—'}
                   </td>
                   <td></td>

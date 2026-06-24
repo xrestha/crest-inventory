@@ -132,9 +132,9 @@ export default function FifoReport() {
   const periodLabel = selectedPeriod ? `${BS_MONTHS[selectedPeriod.bs_month - 1]} ${selectedPeriod.bs_year}` : '—'
 
   function flagStyle(flag) {
-    if (flag === 'expired') return { color: '#f87171', badge: 'badge-red', label: 'Expired' }
-    if (flag === 'warning') return { color: '#c9a84c', badge: 'badge-yellow', label: `Expiring in ${warningDays}d` }
-    return { color: '#34d399', badge: 'badge-green', label: 'OK' }
+    if (flag === 'expired') return { color: 'var(--theme-red)', badge: 'badge-red', label: 'Expired' }
+    if (flag === 'warning') return { color: 'var(--theme-accent)', badge: 'badge-yellow', label: `Expiring in ${warningDays}d` }
+    return { color: 'var(--theme-green)', badge: 'badge-green', label: 'OK' }
   }
 
   return (
@@ -160,20 +160,20 @@ export default function FifoReport() {
         </div>
         <div className="stat-card">
           <div className="stat-label">Expired</div>
-          <div className="stat-value" style={{ color: expiredCount > 0 ? '#f87171' : '#34d399' }}>{expiredCount}</div>
+          <div className="stat-value" style={{ color: expiredCount > 0 ? 'var(--theme-red)' : 'var(--theme-green)' }}>{expiredCount}</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">
             <Tip text={`Items whose expiry date is within ${warningDays} days from today. Configurable in Settings → Thresholds.`} width={240}>Expiring Soon</Tip>
           </div>
-          <div className="stat-value" style={{ color: warningCount > 0 ? '#c9a84c' : '#34d399' }}>{warningCount}</div>
+          <div className="stat-value" style={{ color: warningCount > 0 ? 'var(--theme-accent)' : 'var(--theme-green)' }}>{warningCount}</div>
           <div className="stat-sub">Within {warningDays} days</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">
             <Tip text="Total NPR value of stock that is expired or expiring soon. This is the potential loss if not used or returned in time." width={240}>Value at Risk</Tip>
           </div>
-          <div className="stat-value" style={{ fontSize: 18, color: totalAtRisk > 0 ? '#f87171' : '#34d399' }}>
+          <div className="stat-value" style={{ fontSize: 18, color: totalAtRisk > 0 ? 'var(--theme-red)' : 'var(--theme-green)' }}>
             NPR {totalAtRisk.toLocaleString('en-NP', { maximumFractionDigits: 0 })}
           </div>
         </div>
@@ -192,7 +192,7 @@ export default function FifoReport() {
       </div>
 
       <div className="card">
-        {loading ? <p style={{ color: '#6b7280', fontSize: 13 }}>Loading…</p> :
+        {loading ? <p style={{ color: 'var(--theme-text2)', fontSize: 13 }}>Loading…</p> :
           rows.length === 0 ? (
             <div className="empty-state">
               <div className="empty-state-icon">◷</div>
@@ -206,7 +206,7 @@ export default function FifoReport() {
                     <th>Item</th>
                     <th>Category</th>
                     <th style={{ textAlign: 'right' }}><Tip text="Original purchased quantity minus any returns to vendor. This is the stock still on hand from this batch." width={230}>Net Qty</Tip></th>
-                    <th style={{ textAlign: 'right', color: '#f87171' }}>Returned</th>
+                    <th style={{ textAlign: 'right', color: 'var(--theme-red)' }}>Returned</th>
                     <th>UOM</th>
                     <th style={{ textAlign: 'right' }}>Rate</th>
                     <th style={{ textAlign: 'right' }}>Value</th>
@@ -220,15 +220,15 @@ export default function FifoReport() {
                     const fs = flagStyle(row.flag)
                     return (
                       <tr key={row.id} style={{ background: row.flag === 'expired' ? 'rgba(248,113,113,0.04)' : row.flag === 'warning' ? 'rgba(201,168,76,0.04)' : 'transparent' }}>
-                        <td style={{ fontWeight: 600, color: '#e8e0d0' }}>{row.itemName}</td>
+                        <td style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{row.itemName}</td>
                         <td><span className="badge badge-yellow">{row.category}</span></td>
                         <td style={{ textAlign: 'right' }}>{Number(row.qty).toLocaleString()}</td>
-                        <td style={{ textAlign: 'right', color: row.returnedQty > 0 ? '#f87171' : '#9ca3af' }}>
+                        <td style={{ textAlign: 'right', color: row.returnedQty > 0 ? 'var(--theme-red)' : 'var(--theme-text3)' }}>
                           {row.returnedQty > 0 ? `−${Number(row.returnedQty).toLocaleString()}` : '—'}
                         </td>
-                        <td style={{ color: '#6b7280' }}>{row.uom}</td>
+                        <td style={{ color: 'var(--theme-text2)' }}>{row.uom}</td>
                         <td style={{ textAlign: 'right' }}>{Number(row.rate).toLocaleString()}</td>
-                        <td style={{ textAlign: 'right', color: '#c9a84c', fontWeight: 600 }}>NPR {Number(row.value.toFixed(0)).toLocaleString()}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--theme-accent)', fontWeight: 600 }}>NPR {Number(row.value.toFixed(0)).toLocaleString()}</td>
                         <td style={{ color: fs.color }}>{row.expiryDate}</td>
                         <td style={{ textAlign: 'right', fontWeight: 700, color: fs.color }}>
                           {row.daysUntilExpiry < 0 ? `${Math.abs(row.daysUntilExpiry)}d ago` : `${row.daysUntilExpiry}d`}

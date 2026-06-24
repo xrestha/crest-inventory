@@ -6,7 +6,7 @@ import { useSettings } from '../context/SettingsContext'
 // ── IMS feature data, grouped by plan tier ───────────────────────────────────
 const IMS_TIERS = [
   {
-    tier: 'core', label: 'Core — All Plans', planLabel: null, planColor: '#6b7280',
+    tier: 'core', label: 'Core — All Plans', planLabel: null, planColor: 'var(--theme-text2)',
     features: [
       {
         icon: '◎', name: 'Dashboard',
@@ -46,7 +46,7 @@ const IMS_TIERS = [
     ]
   },
   {
-    tier: 'starter', label: 'Starter Plan', planLabel: 'Starter', planColor: '#9ca3af',
+    tier: 'starter', label: 'Starter Plan', planLabel: 'Starter', planColor: 'var(--theme-text3)',
     features: [
       {
         icon: '↑', name: 'Sales Entry',
@@ -101,7 +101,7 @@ const IMS_TIERS = [
     ]
   },
   {
-    tier: 'growth', label: 'Growth Plan', planLabel: 'Growth', planColor: '#34d399',
+    tier: 'growth', label: 'Growth Plan', planLabel: 'Growth', planColor: 'var(--theme-green)',
     features: [
       {
         icon: '◈', name: 'Recipe Costing',
@@ -307,8 +307,8 @@ const PRO_EXTRAS = [
   'Theoretical Variance (Advanced Drill-Down)',
 ]
 const PRICE_PLANS = [
-  { name: 'Starter', icon: '◎', color: '#c9a84c', badge: '1 Month Free', badgeBg: '#c9a84c',               monthly: 5000,  annual: 3750, features: STARTER_FEATURES, highlight: false, cta: 'Start Free Trial' },
-  { name: 'Growth',  icon: '◈', color: '#34d399', badge: 'Most Popular',   badgeBg: 'rgba(52,211,153,0.9)', monthly: 8000,  annual: 6000, features: GROWTH_EXTRAS,   highlight: true,  cta: 'Get Growth' },
+  { name: 'Starter', icon: '◎', color: 'var(--theme-accent)', badge: '1 Month Free', badgeBg: 'var(--theme-accent)',               monthly: 5000,  annual: 3750, features: STARTER_FEATURES, highlight: false, cta: 'Start Free Trial' },
+  { name: 'Growth',  icon: '◈', color: 'var(--theme-green)', badge: 'Most Popular',   badgeBg: 'rgba(52,211,153,0.9)', monthly: 8000,  annual: 6000, features: GROWTH_EXTRAS,   highlight: true,  cta: 'Get Growth' },
   { name: 'Pro',     icon: '⬡', color: '#818cf8', badge: 'Full Suite',     badgeBg: '#818cf8',               monthly: 12000, annual: 9000, features: PRO_EXTRAS,      highlight: false, cta: 'Get Pro' },
 ]
 
@@ -348,20 +348,20 @@ export default function Help() {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 15, width: 22, textAlign: 'center', flexShrink: 0 }}>{feat.icon}</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#e8e0d0' }}>{feat.name}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--theme-text1)' }}>{feat.name}</span>
           </div>
-          <span style={{ color: '#9ca3af', fontSize: 13 }}>{isOpen ? '▲' : '▼'}</span>
+          <span style={{ color: 'var(--theme-text3)', fontSize: 13 }}>{isOpen ? '▲' : '▼'}</span>
         </div>
         {isOpen && (
-          <div style={{ padding: '0 18px 16px', borderTop: '1px solid #2a2f3d' }}>
-            <p style={{ fontSize: 13, color: '#6b7280', marginTop: 14, lineHeight: 1.75 }}>{feat.guide}</p>
+          <div style={{ padding: '0 18px 16px', borderTop: '1px solid var(--theme-border)' }}>
+            <p style={{ fontSize: 13, color: 'var(--theme-text2)', marginTop: 14, lineHeight: 1.75 }}>{feat.guide}</p>
             {feat.tips?.length > 0 && (
               <div style={{ marginTop: 12 }}>
-                <p style={{ fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Tips</p>
+                <p style={{ fontSize: 10, color: 'var(--theme-text3)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Tips</p>
                 {feat.tips.map((tip, i) => (
                   <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
-                    <span style={{ color: '#c9a84c', fontSize: 11, marginTop: 2, flexShrink: 0 }}>→</span>
-                    <span style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.6 }}>{tip}</span>
+                    <span style={{ color: 'var(--theme-accent)', fontSize: 11, marginTop: 2, flexShrink: 0 }}>→</span>
+                    <span style={{ fontSize: 12, color: 'var(--theme-text2)', lineHeight: 1.6 }}>{tip}</span>
                   </div>
                 ))}
               </div>
@@ -377,11 +377,11 @@ export default function Help() {
     return (
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10, padding: '10px 18px',
-        background: '#181c27', border: '1px solid #1e2330', borderRadius: 8, marginBottom: 4,
+        background: 'var(--theme-card)', border: '1px solid var(--theme-border-lt)', borderRadius: 8, marginBottom: 4,
         opacity: 0.45,
       }}>
         <span style={{ fontSize: 14, width: 22, textAlign: 'center', flexShrink: 0 }}>{feat.icon}</span>
-        <span style={{ fontSize: 13, color: '#9ca3af' }}>{feat.name}</span>
+        <span style={{ fontSize: 13, color: 'var(--theme-text3)' }}>{feat.name}</span>
       </div>
     )
   }
@@ -394,7 +394,7 @@ export default function Help() {
       </div>
 
       {/* Section tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 28, borderBottom: '1px solid #2a2f3d' }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 28, borderBottom: '1px solid var(--theme-border)' }}>
         {[
           { id: 'guide',   label: 'Getting Started' },
           { id: 'modules', label: 'Module Guide' },
@@ -405,8 +405,8 @@ export default function Help() {
           <button key={s.id} onClick={() => setActiveSection(s.id)} style={{
             background: 'none', border: 'none', cursor: 'pointer',
             padding: '10px 20px', fontSize: 13, fontWeight: 500,
-            color: activeSection === s.id ? '#c9a84c' : '#6b7280',
-            borderBottom: activeSection === s.id ? '2px solid #c9a84c' : '2px solid transparent',
+            color: activeSection === s.id ? 'var(--theme-accent)' : 'var(--theme-text2)',
+            borderBottom: activeSection === s.id ? '2px solid var(--theme-accent)' : '2px solid transparent',
             marginBottom: -1
           }}>{s.label}</button>
         ))}
@@ -419,14 +419,14 @@ export default function Help() {
             <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
               <span style={{ fontSize: 32, lineHeight: 1, flexShrink: 0 }}>⬡</span>
               <div>
-                <h3 style={{ margin: '0 0 8px', fontSize: 15, color: '#e8e0d0' }}>Welcome to Crest Inventory</h3>
-                <p style={{ margin: '0 0 8px', fontSize: 13, color: '#6b7280', lineHeight: 1.75 }}>
+                <h3 style={{ margin: '0 0 8px', fontSize: 15, color: 'var(--theme-text1)' }}>Welcome to Crest Inventory</h3>
+                <p style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--theme-text2)', lineHeight: 1.75 }}>
                   Crest tracks your ingredient purchases, stock levels, and food cost in real time. The core idea is simple:
                 </p>
-                <div style={{ background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 6, padding: '10px 16px', display: 'inline-block', marginBottom: 8 }}>
-                  <span style={{ fontSize: 13, color: '#c9a84c', fontWeight: 600 }}>Opening Stock + Purchases − Wastage − Closing Stock = COGS (what you actually used)</span>
+                <div style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '10px 16px', display: 'inline-block', marginBottom: 8 }}>
+                  <span style={{ fontSize: 13, color: 'var(--theme-accent)', fontWeight: 600 }}>Opening Stock + Purchases − Wastage − Closing Stock = COGS (what you actually used)</span>
                 </div>
-                <p style={{ margin: 0, fontSize: 13, color: '#6b7280', lineHeight: 1.75 }}>
+                <p style={{ margin: 0, fontSize: 13, color: 'var(--theme-text2)', lineHeight: 1.75 }}>
                   Follow the steps below to get set up. First-time setup takes about 30–60 minutes. After that, the monthly routine takes 15–20 minutes of admin at month end.
                 </p>
               </div>
@@ -434,8 +434,8 @@ export default function Help() {
           </div>
 
           <div className="card" style={{ marginBottom: 16 }}>
-            <h3 style={{ margin: '0 0 6px', fontSize: 15, color: '#e8e0d0' }}>First-Time Setup</h3>
-            <p style={{ margin: '0 0 20px', fontSize: 12, color: '#6b7280' }}>Do this once when you first log in. Takes 30–60 minutes.</p>
+            <h3 style={{ margin: '0 0 6px', fontSize: 15, color: 'var(--theme-text1)' }}>First-Time Setup</h3>
+            <p style={{ margin: '0 0 20px', fontSize: 12, color: 'var(--theme-text2)' }}>Do this once when you first log in. Takes 30–60 minutes.</p>
             {[
               { step: 1, title: 'Add your Ingredients', desc: 'Go to Item Master → add every ingredient you buy. Each item needs a name, category, unit of measure (UOM), pack size, and rate per pack.', why: 'Every purchase and stock count is linked to items here. You cannot enter purchases without items.' },
               { step: 2, title: 'Add your Vendors', desc: 'Go to Vendors → add all your suppliers.', why: 'Every purchase must be linked to a vendor. Add at least one before entering any purchase.' },
@@ -443,17 +443,17 @@ export default function Help() {
               { step: 4, title: 'Enter Opening Stock', desc: 'Go to Stock Count → Opening Stock tab → enter the quantity of each ingredient you have right now.', why: 'COGS calculation starts from opening stock. Skip this and your food cost % will be wrong for the first month.' },
               { step: 5, title: 'Build your Recipes', desc: 'Go to Recipe Costing → New Recipe → add each menu item with its ingredients and selling price.', why: 'Required for the Variance Report and food cost % per dish. Skip this step if you are on the Starter plan.', plan: 'Growth+' },
             ].map((s, i, arr) => (
-              <div key={s.step} style={{ display: 'flex', gap: 16, marginBottom: 16, paddingBottom: 16, borderBottom: i < arr.length - 1 ? '1px solid #2a2f3d' : 'none' }}>
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#c9a84c', flexShrink: 0 }}>{s.step}</div>
+              <div key={s.step} style={{ display: 'flex', gap: 16, marginBottom: 16, paddingBottom: 16, borderBottom: i < arr.length - 1 ? '1px solid var(--theme-border)' : 'none' }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: 'var(--theme-accent)', flexShrink: 0 }}>{s.step}</div>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: '#e8e0d0' }}>{s.title}</span>
-                    {s.plan && <span style={{ fontSize: 10, fontWeight: 700, color: '#34d399', background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.2)', padding: '1px 7px', borderRadius: 8 }}>{s.plan}</span>}
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--theme-text1)' }}>{s.title}</span>
+                    {s.plan && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--theme-green)', background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.2)', padding: '1px 7px', borderRadius: 8 }}>{s.plan}</span>}
                   </div>
-                  <div style={{ fontSize: 13, color: '#9ca3af', marginBottom: 6 }}>{s.desc}</div>
+                  <div style={{ fontSize: 13, color: 'var(--theme-text3)', marginBottom: 6 }}>{s.desc}</div>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-                    <span style={{ color: '#c9a84c', fontSize: 11, marginTop: 1, flexShrink: 0 }}>Why:</span>
-                    <span style={{ fontSize: 12, color: '#6b7280' }}>{s.why}</span>
+                    <span style={{ color: 'var(--theme-accent)', fontSize: 11, marginTop: 1, flexShrink: 0 }}>Why:</span>
+                    <span style={{ fontSize: 12, color: 'var(--theme-text2)' }}>{s.why}</span>
                   </div>
                 </div>
               </div>
@@ -461,8 +461,8 @@ export default function Help() {
           </div>
 
           <div className="card" style={{ marginBottom: 16 }}>
-            <h3 style={{ margin: '0 0 6px', fontSize: 15, color: '#e8e0d0' }}>Monthly Workflow</h3>
-            <p style={{ margin: '0 0 20px', fontSize: 12, color: '#6b7280' }}>Repeat this every BS month. Steps 1–4 are ongoing during the month; steps 5–9 happen at month end.</p>
+            <h3 style={{ margin: '0 0 6px', fontSize: 15, color: 'var(--theme-text1)' }}>Monthly Workflow</h3>
+            <p style={{ margin: '0 0 20px', fontSize: 12, color: 'var(--theme-text2)' }}>Repeat this every BS month. Steps 1–4 are ongoing during the month; steps 5–9 happen at month end.</p>
             {[
               { step: 1, title: 'Open a new Period',               desc: 'Periods → New Period → select BS month → Create. Do this on day 1 of the month.' },
               { step: 2, title: 'Enter Opening Stock',              desc: 'Stock Count → Opening Stock tab → enter qty for each item. For month 2 onward, this auto-carries from last month\'s closing.' },
@@ -474,21 +474,21 @@ export default function Help() {
               { step: 8, title: 'Review Variance Report',           desc: 'Variance → sort by NPR value → investigate any item with >10% variance. High variance = waste, theft, or over-portioning.', plan: 'Growth+' },
               { step: 9, title: 'Close the Period',                 desc: 'Periods → Close → confirm. Locks all data. Closing stock automatically becomes opening stock for next month.' },
             ].map((s, i, arr) => (
-              <div key={s.step} style={{ display: 'flex', gap: 14, marginBottom: 12, paddingBottom: 12, borderBottom: i < arr.length - 1 ? '1px solid #1e2330' : 'none' }}>
-                <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#0f1117', border: '1px solid #2a2f3d', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#c9a84c', flexShrink: 0 }}>{s.step}</div>
+              <div key={s.step} style={{ display: 'flex', gap: 14, marginBottom: 12, paddingBottom: 12, borderBottom: i < arr.length - 1 ? '1px solid var(--theme-border-lt)' : 'none' }}>
+                <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'var(--theme-accent)', flexShrink: 0 }}>{s.step}</div>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#e8e0d0' }}>{s.title}</span>
-                    {s.plan && <span style={{ fontSize: 10, fontWeight: 700, color: s.plan === 'Growth+' ? '#34d399' : '#9ca3af', background: s.plan === 'Growth+' ? 'rgba(52,211,153,0.1)' : 'rgba(156,163,175,0.1)', border: `1px solid ${s.plan === 'Growth+' ? 'rgba(52,211,153,0.2)' : 'rgba(156,163,175,0.2)'}`, padding: '1px 7px', borderRadius: 8 }}>{s.plan}</span>}
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--theme-text1)' }}>{s.title}</span>
+                    {s.plan && <span style={{ fontSize: 10, fontWeight: 700, color: s.plan === 'Growth+' ? 'var(--theme-green)' : 'var(--theme-text3)', background: s.plan === 'Growth+' ? 'rgba(52,211,153,0.1)' : 'rgba(156,163,175,0.1)', border: `1px solid ${s.plan === 'Growth+' ? 'rgba(52,211,153,0.2)' : 'rgba(156,163,175,0.2)'}`, padding: '1px 7px', borderRadius: 8 }}>{s.plan}</span>}
                   </div>
-                  <div style={{ fontSize: 12, color: '#6b7280' }}>{s.desc}</div>
+                  <div style={{ fontSize: 12, color: 'var(--theme-text2)' }}>{s.desc}</div>
                 </div>
               </div>
             ))}
           </div>
 
           <div className="card" style={{ borderColor: 'rgba(248,113,113,0.15)' }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: 15, color: '#e8e0d0' }}>Common Mistakes to Avoid</h3>
+            <h3 style={{ margin: '0 0 16px', fontSize: 15, color: 'var(--theme-text1)' }}>Common Mistakes to Avoid</h3>
             {[
               'Closing a period before entering closing stock — your COGS will be inflated with no closing offset.',
               'Skipping opening stock in month 1 — your food cost % will be artificially high.',
@@ -497,8 +497,8 @@ export default function Help() {
               'Using estimated closing stock — always do a physical count. Estimated numbers make every report inaccurate.',
             ].map((text, i, arr) => (
               <div key={i} style={{ display: 'flex', gap: 10, marginBottom: i < arr.length - 1 ? 10 : 0 }}>
-                <span style={{ color: '#f87171', fontSize: 12, flexShrink: 0, marginTop: 1 }}>✕</span>
-                <span style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>{text}</span>
+                <span style={{ color: 'var(--theme-red)', fontSize: 12, flexShrink: 0, marginTop: 1 }}>✕</span>
+                <span style={{ fontSize: 13, color: 'var(--theme-text2)', lineHeight: 1.6 }}>{text}</span>
               </div>
             ))}
           </div>
@@ -513,11 +513,11 @@ export default function Help() {
             <div style={{ marginBottom: 32 }}>
               {/* Module header */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 12, borderBottom: '2px solid rgba(201,168,76,0.2)' }}>
-                <span style={{ fontSize: 18, color: '#c9a84c' }}>▦</span>
-                <span style={{ fontSize: 15, fontWeight: 700, color: '#e8e0d0', fontFamily: 'Georgia, serif' }}>Crest IMS</span>
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#34d399', background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.2)', padding: '2px 8px', borderRadius: 10 }}>Active</span>
+                <span style={{ fontSize: 18, color: 'var(--theme-accent)' }}>▦</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--theme-text1)', fontFamily: 'Georgia, serif' }}>Crest IMS</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--theme-green)', background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.2)', padding: '2px 8px', borderRadius: 10 }}>Active</span>
                 {!isAdmin && (
-                  <span style={{ fontSize: 11, color: '#6b7280', marginLeft: 4 }}>
+                  <span style={{ fontSize: 11, color: 'var(--theme-text2)', marginLeft: 4 }}>
                     {plan === 'pro' ? 'Pro Plan' : plan === 'growth' ? 'Growth Plan' : 'Starter Plan'}
                   </span>
                 )}
@@ -553,7 +553,7 @@ export default function Help() {
                         background: `${tier.planColor}08`, border: `1px dashed ${tier.planColor}30`,
                         borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12
                       }}>
-                        <span style={{ fontSize: 12, color: '#6b7280' }}>
+                        <span style={{ fontSize: 12, color: 'var(--theme-text2)' }}>
                           Upgrade to <strong style={{ color: tier.planColor }}>{tier.planLabel}</strong> to unlock {tier.features.length} features
                         </span>
                         <button
@@ -575,8 +575,8 @@ export default function Help() {
             <div style={{ marginBottom: 32 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 12, borderBottom: '2px solid rgba(96,165,250,0.2)' }}>
                 <span style={{ fontSize: 18, color: '#60a5fa' }}>👤</span>
-                <span style={{ fontSize: 15, fontWeight: 700, color: '#e8e0d0', fontFamily: 'Georgia, serif' }}>Crest HR</span>
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#34d399', background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.2)', padding: '2px 8px', borderRadius: 10 }}>Active</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--theme-text1)', fontFamily: 'Georgia, serif' }}>Crest HR</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--theme-green)', background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.2)', padding: '2px 8px', borderRadius: 10 }}>Active</span>
               </div>
               <div style={{ marginBottom: 8 }}>
                 <span style={{ fontSize: 10, fontWeight: 700, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Human Resources</span>
@@ -591,8 +591,8 @@ export default function Help() {
           {!imsEnabled && !hrEnabled && (
             <div className="card" style={{ textAlign: 'center', padding: '40px 24px', borderColor: 'rgba(107,114,128,0.2)' }}>
               <div style={{ fontSize: 28, marginBottom: 12 }}>⊘</div>
-              <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 6 }}>No modules are currently active</div>
-              <div style={{ fontSize: 12, color: '#4b5563' }}>Contact your Crest consultant to activate your subscription.</div>
+              <div style={{ fontSize: 14, color: 'var(--theme-text2)', marginBottom: 6 }}>No modules are currently active</div>
+              <div style={{ fontSize: 12, color: 'var(--theme-text3)' }}>Contact your Crest consultant to activate your subscription.</div>
             </div>
           )}
         </div>
@@ -612,8 +612,8 @@ export default function Help() {
               <tbody>
                 {GLOSSARY.map(g => (
                   <tr key={g.term}>
-                    <td style={{ fontWeight: 700, color: '#c9a84c' }}>{g.term}</td>
-                    <td style={{ color: '#6b7280', lineHeight: 1.6 }}>{g.def}</td>
+                    <td style={{ fontWeight: 700, color: 'var(--theme-accent)' }}>{g.term}</td>
+                    <td style={{ color: 'var(--theme-text2)', lineHeight: 1.6 }}>{g.def}</td>
                   </tr>
                 ))}
               </tbody>
@@ -626,41 +626,41 @@ export default function Help() {
       {activeSection === 'pricing' && (
         <div>
           <div style={{ textAlign: 'center', marginBottom: 28 }}>
-            <h2 style={{ fontSize: 20, margin: '0 0 8px', fontFamily: 'Georgia, serif', color: '#e8e0d0' }}>Plans & Pricing</h2>
-            <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 20px' }}>Choose the plan that fits your property</p>
-            <div style={{ display: 'inline-flex', background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 8, padding: 3, gap: 2 }}>
-              <button onClick={() => setPricingAnnual(false)} style={{ background: !pricingAnnual ? 'rgba(201,168,76,0.15)' : 'none', border: !pricingAnnual ? '1px solid rgba(201,168,76,0.3)' : '1px solid transparent', color: !pricingAnnual ? '#c9a84c' : '#6b7280', padding: '6px 18px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>Monthly</button>
-              <button onClick={() => setPricingAnnual(true)}  style={{ background:  pricingAnnual ? 'rgba(201,168,76,0.15)' : 'none', border:  pricingAnnual ? '1px solid rgba(201,168,76,0.3)' : '1px solid transparent', color:  pricingAnnual ? '#c9a84c' : '#6b7280', padding: '6px 18px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                Annual <span style={{ background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.25)', color: '#34d399', fontSize: 9, padding: '2px 7px', borderRadius: 8, fontWeight: 700 }}>Save 25%</span>
+            <h2 style={{ fontSize: 20, margin: '0 0 8px', fontFamily: 'Georgia, serif', color: 'var(--theme-text1)' }}>Plans & Pricing</h2>
+            <p style={{ fontSize: 13, color: 'var(--theme-text2)', margin: '0 0 20px' }}>Choose the plan that fits your property</p>
+            <div style={{ display: 'inline-flex', background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 8, padding: 3, gap: 2 }}>
+              <button onClick={() => setPricingAnnual(false)} style={{ background: !pricingAnnual ? 'rgba(201,168,76,0.15)' : 'none', border: !pricingAnnual ? '1px solid rgba(201,168,76,0.3)' : '1px solid transparent', color: !pricingAnnual ? 'var(--theme-accent)' : 'var(--theme-text2)', padding: '6px 18px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>Monthly</button>
+              <button onClick={() => setPricingAnnual(true)}  style={{ background:  pricingAnnual ? 'rgba(201,168,76,0.15)' : 'none', border:  pricingAnnual ? '1px solid rgba(201,168,76,0.3)' : '1px solid transparent', color:  pricingAnnual ? 'var(--theme-accent)' : 'var(--theme-text2)', padding: '6px 18px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                Annual <span style={{ background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.25)', color: 'var(--theme-green)', fontSize: 9, padding: '2px 7px', borderRadius: 8, fontWeight: 700 }}>Save 25%</span>
               </button>
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
             {PRICE_PLANS.map(plan => (
-              <div key={plan.name} className="card" style={{ border: plan.highlight ? '1px solid rgba(201,168,76,0.45)' : '1px solid #2a2f3d', position: 'relative', display: 'flex', flexDirection: 'column', padding: '32px 22px 22px', boxShadow: plan.highlight ? '0 4px 32px rgba(201,168,76,0.07)' : 'none' }}>
-                <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: plan.badgeBg, color: '#0f1117', fontSize: 9, fontWeight: 800, padding: '3px 12px', borderRadius: 8, letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+              <div key={plan.name} className="card" style={{ border: plan.highlight ? '1px solid rgba(201,168,76,0.45)' : '1px solid var(--theme-border)', position: 'relative', display: 'flex', flexDirection: 'column', padding: '32px 22px 22px', boxShadow: plan.highlight ? '0 4px 32px rgba(201,168,76,0.07)' : 'none' }}>
+                <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: plan.badgeBg, color: 'var(--theme-bg)', fontSize: 9, fontWeight: 800, padding: '3px 12px', borderRadius: 8, letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                   {plan.badge}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                   <span style={{ fontSize: 18, color: plan.color }}>{plan.icon}</span>
-                  <span style={{ fontSize: 16, fontWeight: 700, color: '#e8e0d0', fontFamily: 'Georgia, serif' }}>{plan.name}</span>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--theme-text1)', fontFamily: 'Georgia, serif' }}>{plan.name}</span>
                 </div>
-                <div style={{ marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid #2a2f3d' }}>
+                <div style={{ marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid var(--theme-border)' }}>
                   {plan.name === 'Starter' && !pricingAnnual ? (
                     <>
-                      <div style={{ fontSize: 10, color: '#c9a84c', fontWeight: 800, marginBottom: 4, letterSpacing: '0.07em' }}>FREE FOR 1 MONTH</div>
-                      <div style={{ fontSize: 20, fontWeight: 800, color: '#e8e0d0' }}>NPR {plan.monthly.toLocaleString()}<span style={{ fontSize: 12, fontWeight: 400, color: '#6b7280' }}>/mo after</span></div>
+                      <div style={{ fontSize: 10, color: 'var(--theme-accent)', fontWeight: 800, marginBottom: 4, letterSpacing: '0.07em' }}>FREE FOR 1 MONTH</div>
+                      <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--theme-text1)' }}>NPR {plan.monthly.toLocaleString()}<span style={{ fontSize: 12, fontWeight: 400, color: 'var(--theme-text2)' }}>/mo after</span></div>
                     </>
                   ) : (
                     <>
-                      <div style={{ fontSize: 20, fontWeight: 800, color: '#e8e0d0' }}>NPR {(pricingAnnual ? plan.annual : plan.monthly).toLocaleString()}<span style={{ fontSize: 12, fontWeight: 400, color: '#6b7280' }}>/mo</span></div>
-                      {pricingAnnual && <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>Billed annually · NPR {((pricingAnnual ? plan.annual : plan.monthly) * 12).toLocaleString()}/yr</div>}
+                      <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--theme-text1)' }}>NPR {(pricingAnnual ? plan.annual : plan.monthly).toLocaleString()}<span style={{ fontSize: 12, fontWeight: 400, color: 'var(--theme-text2)' }}>/mo</span></div>
+                      {pricingAnnual && <div style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 4 }}>Billed annually · NPR {((pricingAnnual ? plan.annual : plan.monthly) * 12).toLocaleString()}/yr</div>}
                     </>
                   )}
                 </div>
                 {plan.name !== 'Starter' && (
-                  <div style={{ fontSize: 10, color: '#9ca3af', marginBottom: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  <div style={{ fontSize: 10, color: 'var(--theme-text3)', marginBottom: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                     {plan.name === 'Growth' ? '+ Everything in Starter' : '+ Everything in Growth'}
                   </div>
                 )}
@@ -668,7 +668,7 @@ export default function Help() {
                   {plan.features.map((f, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 7 }}>
                       <span style={{ color: plan.color, fontSize: 12, flexShrink: 0, marginTop: 1 }}>✓</span>
-                      <span style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.4 }}>{f}</span>
+                      <span style={{ fontSize: 12, color: 'var(--theme-text2)', lineHeight: 1.4 }}>{f}</span>
                     </div>
                   ))}
                 </div>
@@ -679,15 +679,15 @@ export default function Help() {
           <div className="card" style={{ borderColor: 'rgba(201,168,76,0.2)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
               <div>
-                <h3 style={{ margin: '0 0 4px', fontSize: 15, color: '#e8e0d0' }}>Ready to upgrade?</h3>
-                <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Contact your Crest consultant to change your plan.</p>
+                <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--theme-text1)' }}>Ready to upgrade?</h3>
+                <p style={{ margin: 0, fontSize: 13, color: 'var(--theme-text2)' }}>Contact your Crest consultant to change your plan.</p>
               </div>
               <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                {phone   && <a href={`tel:${phone}`}    style={{ color: '#c9a84c', fontSize: 13, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>📞 {phone}</a>}
-                {email   && <a href={`mailto:${email}`} style={{ color: '#c9a84c', fontSize: 13, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>✉ {email}</a>}
-                {website && <a href={website.startsWith('http') ? website : `https://${website}`} target="_blank" rel="noopener noreferrer" style={{ color: '#c9a84c', fontSize: 13, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>🌐 {website}</a>}
-                {!phone && !email && !website && <span style={{ fontSize: 13, color: '#9ca3af' }}>Contact your Crest consultant to upgrade.</span>}
-                <button onClick={() => navigate('/pricing')} style={{ background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.3)', color: '#c9a84c', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+                {phone   && <a href={`tel:${phone}`}    style={{ color: 'var(--theme-accent)', fontSize: 13, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>📞 {phone}</a>}
+                {email   && <a href={`mailto:${email}`} style={{ color: 'var(--theme-accent)', fontSize: 13, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>✉ {email}</a>}
+                {website && <a href={website.startsWith('http') ? website : `https://${website}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--theme-accent)', fontSize: 13, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>🌐 {website}</a>}
+                {!phone && !email && !website && <span style={{ fontSize: 13, color: 'var(--theme-text3)' }}>Contact your Crest consultant to upgrade.</span>}
+                <button onClick={() => navigate('/pricing')} style={{ background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.3)', color: 'var(--theme-accent)', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
                   View full pricing page →
                 </button>
               </div>
@@ -703,12 +703,12 @@ export default function Help() {
             <div key={i} className="card" style={{ padding: 0, cursor: 'pointer' }}>
               <div onClick={() => setExpandedFaq(expandedFaq === i ? null : i)}
                 style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 14, fontWeight: 500, color: '#e8e0d0' }}>{item.q}</span>
-                <span style={{ color: '#9ca3af', fontSize: 14 }}>{expandedFaq === i ? '▲' : '▼'}</span>
+                <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--theme-text1)' }}>{item.q}</span>
+                <span style={{ color: 'var(--theme-text3)', fontSize: 14 }}>{expandedFaq === i ? '▲' : '▼'}</span>
               </div>
               {expandedFaq === i && (
-                <div style={{ padding: '0 20px 16px', borderTop: '1px solid #2a2f3d' }}>
-                  <p style={{ fontSize: 13, color: '#6b7280', marginTop: 12, lineHeight: 1.7 }}>{item.a}</p>
+                <div style={{ padding: '0 20px 16px', borderTop: '1px solid var(--theme-border)' }}>
+                  <p style={{ fontSize: 13, color: 'var(--theme-text2)', marginTop: 12, lineHeight: 1.7 }}>{item.a}</p>
                 </div>
               )}
             </div>

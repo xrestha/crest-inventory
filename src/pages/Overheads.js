@@ -8,7 +8,7 @@ const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kart
 const BUCKET_CONFIG = {
   overhead: {
     label: 'Fixed Overheads',
-    color: '#c9a84c',
+    color: 'var(--theme-accent)',
     target: 25,
     presets: ['Rent', 'Utilities', 'Tech & Software', 'Marketing', 'Insurance', 'Miscellaneous'],
     placeholders: {
@@ -200,11 +200,11 @@ export default function Overheads() {
   }
 
   function trafficLight(actual, target) {
-    if (actual == null) return '#6b7280'
+    if (actual == null) return 'var(--theme-text2)'
     const diff = actual - target
-    if (diff <= 2)  return '#34d399'
+    if (diff <= 2)  return 'var(--theme-green)'
     if (diff <= 8)  return '#f59e0b'
-    return '#f87171'
+    return 'var(--theme-red)'
   }
 
   function fmt(val) {
@@ -213,12 +213,12 @@ export default function Overheads() {
 
   // P&L rows
   const pnlRows = hasSales ? [
-    { key: 'food',   label: 'Food Cost',  amount: foodCost,        target: 30, color: '#c9a84c' },
+    { key: 'food',   label: 'Food Cost',  amount: foodCost,        target: 30, color: 'var(--theme-accent)' },
     { key: 'labor',  label: 'Labor',      amount: totals.labor,    target: 30, color: '#60a5fa' },
-    { key: 'oh',     label: 'Overhead',   amount: totals.overhead, target: 25, color: '#34d399' },
+    { key: 'oh',     label: 'Overhead',   amount: totals.overhead, target: 25, color: 'var(--theme-green)' },
     { key: 'tax',    label: 'Tax & Fees', amount: totals.tax_fees, target: 5,  color: '#a78bfa' },
     { key: 'profit', label: 'Net Profit', amount: netProfit,       target: 10,
-      color: netProfit != null && netProfit >= 0 ? '#34d399' : '#f87171' },
+      color: netProfit != null && netProfit >= 0 ? 'var(--theme-green)' : 'var(--theme-red)' },
   ] : null
 
   // Break-even
@@ -247,7 +247,7 @@ export default function Overheads() {
           <select
             value={periodId}
             onChange={e => setPeriodId(e.target.value)}
-            style={{ background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: '#e8e0d0', outline: 'none' }}
+            style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none' }}
           >
             {periods.map(p => <option key={p.id} value={p.id}>{p.label}{p.status === 'open' ? ' (open)' : ''}</option>)}
           </select>
@@ -258,7 +258,7 @@ export default function Overheads() {
       </div>
 
       {isLocked && (
-        <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#f87171' }}>
+        <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--theme-red)' }}>
           🔒 <strong>This period is closed.</strong> Data is read-only. Contact your admin to re-open if needed.
         </div>
       )}
@@ -269,7 +269,7 @@ export default function Overheads() {
           {
             label: 'Fixed Overheads', value: fmt(totals.overhead),
             sub: fmtPct(totals.overhead, revenue) ? `${fmtPct(totals.overhead, revenue)} of revenue` : 'No sales data',
-            color: '#c9a84c',
+            color: 'var(--theme-accent)',
             tip: 'Rent, utilities, tech, marketing — costs that exist regardless of how many customers you serve.'
           },
           {
@@ -287,13 +287,13 @@ export default function Overheads() {
           {
             label: 'Total Fixed Costs', value: fmt(totalFixed),
             sub: fmtPct(totalFixed, revenue) ? `${fmtPct(totalFixed, revenue)} of revenue` : 'Overhead + Labor + Tax',
-            color: '#e8e0d0',
+            color: 'var(--theme-text1)',
             tip: 'Sum of all three buckets. Every month you must earn more than this just to survive.'
           },
           {
             label: 'Daily Fixed Cost', value: fmt(totalFixed / 30),
             sub: '÷ 30 days estimate',
-            color: '#6b7280',
+            color: 'var(--theme-text2)',
             tip: 'How much your fixed costs burn each day, even if the cafe is closed.'
           },
         ].map(s => (
@@ -310,7 +310,7 @@ export default function Overheads() {
       {/* Entry card — tabs + table */}
       <div className="card" style={{ marginBottom: 20 }}>
         {/* Bucket tabs */}
-        <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #2a2f3d', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--theme-border)', marginBottom: 20 }}>
           {Object.entries(BUCKET_CONFIG).map(([key, c]) => (
             <button
               key={key}
@@ -318,7 +318,7 @@ export default function Overheads() {
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
                 padding: '10px 20px', fontSize: 13, fontWeight: 500,
-                color: activeBucket === key ? c.color : '#6b7280',
+                color: activeBucket === key ? c.color : 'var(--theme-text2)',
                 borderBottom: activeBucket === key ? `2px solid ${c.color}` : '2px solid transparent',
                 marginBottom: -1, transition: 'color 0.12s', whiteSpace: 'nowrap'
               }}
@@ -343,7 +343,7 @@ export default function Overheads() {
         </div>
 
         {loading ? (
-          <p style={{ color: '#6b7280', fontSize: 13 }}>Loading…</p>
+          <p style={{ color: 'var(--theme-text2)', fontSize: 13 }}>Loading…</p>
         ) : (
           <div className="table-wrap">
           <table className="data-table">
@@ -367,7 +367,7 @@ export default function Overheads() {
                         else updateRow(activeBucket, idx, 'category', e.target.value)
                       }}
                       disabled={isLocked}
-                      style={{ background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 5, padding: '6px 8px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: '100%' }}
+                      style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '6px 8px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none', width: '100%' }}
                     >
                       {cfg.presets.map(c => <option key={c} value={c}>{c}</option>)}
                       <option value="__custom__">Custom…</option>
@@ -378,7 +378,7 @@ export default function Overheads() {
                         onChange={e => updateRow(activeBucket, idx, 'category', e.target.value)}
                         placeholder="Category name"
                         disabled={isLocked}
-                        style={{ marginTop: 4, background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 5, padding: '5px 8px', fontSize: 12, color: '#e8e0d0', outline: 'none', width: '100%' }}
+                        style={{ marginTop: 4, background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '5px 8px', fontSize: 12, color: 'var(--theme-text1)', outline: 'none', width: '100%' }}
                       />
                     )}
                   </td>
@@ -388,7 +388,7 @@ export default function Overheads() {
                       onChange={e => updateRow(activeBucket, idx, 'description', e.target.value)}
                       disabled={isLocked}
                       placeholder={cfg.placeholders[row.category] || 'Description…'}
-                      style={{ background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 5, padding: '6px 8px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: '100%' }}
+                      style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '6px 8px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none', width: '100%' }}
                     />
                   </td>
                   <td style={{ textAlign: 'right' }}>
@@ -398,10 +398,10 @@ export default function Overheads() {
                       onChange={e => updateRow(activeBucket, idx, 'amount', e.target.value)}
                       disabled={isLocked}
                       placeholder="0"
-                      style={{ background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 5, padding: '6px 8px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: 130, textAlign: 'right' }}
+                      style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '6px 8px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none', width: 130, textAlign: 'right' }}
                     />
                   </td>
-                  <td style={{ textAlign: 'right', fontSize: 13, color: bucketTotal > 0 && parseFloat(row.amount) > 0 ? cfg.color : '#9ca3af', fontWeight: 600 }}>
+                  <td style={{ textAlign: 'right', fontSize: 13, color: bucketTotal > 0 && parseFloat(row.amount) > 0 ? cfg.color : 'var(--theme-text3)', fontWeight: 600 }}>
                     {bucketTotal > 0 && parseFloat(row.amount) > 0
                       ? `${((parseFloat(row.amount) / bucketTotal) * 100).toFixed(1)}%`
                       : '—'}
@@ -409,15 +409,15 @@ export default function Overheads() {
                   <td style={{ textAlign: 'center' }}>
                     {!isLocked && (
                       <button onClick={() => removeRow(activeBucket, idx)}
-                        style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: 16, padding: '4px 8px' }}>×</button>
+                        style={{ background: 'none', border: 'none', color: 'var(--theme-red)', cursor: 'pointer', fontSize: 16, padding: '4px 8px' }}>×</button>
                     )}
                   </td>
                 </tr>
               ))}
-              <tr style={{ borderTop: '2px solid #2a2f3d' }}>
-                <td colSpan={2} style={{ fontWeight: 700, color: '#6b7280', paddingTop: 12, fontSize: 13 }}>TOTAL</td>
+              <tr style={{ borderTop: '2px solid var(--theme-border)' }}>
+                <td colSpan={2} style={{ fontWeight: 700, color: 'var(--theme-text2)', paddingTop: 12, fontSize: 13 }}>TOTAL</td>
                 <td style={{ textAlign: 'right', fontWeight: 700, color: cfg.color, fontSize: 16, paddingTop: 12 }}>{fmt(bucketTotal)}</td>
-                <td style={{ textAlign: 'right', fontWeight: 700, color: '#6b7280', fontSize: 13, paddingTop: 12 }}>100%</td>
+                <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-text2)', fontSize: 13, paddingTop: 12 }}>100%</td>
                 <td></td>
               </tr>
             </tbody>
@@ -431,13 +431,13 @@ export default function Overheads() {
         <div className="card" style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
             <div>
-              <h3 style={{ margin: '0 0 4px', fontSize: 14, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em' }}>P&L Summary</h3>
-              <p style={{ margin: 0, fontSize: 12, color: '#9ca3af' }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: 14, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>P&L Summary</h3>
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--theme-text3)' }}>
                 Revenue: {fmt(revenue)} &nbsp;·&nbsp; {Math.round(covers).toLocaleString()} covers &nbsp;·&nbsp; {period?.label || '—'}
               </p>
             </div>
             <Tip text="Food cost uses net purchases ÷ revenue (purchase-based). For COGS-based food cost, see Monthly Summary." width={240}>
-              <span style={{ fontSize: 11, color: '#9ca3af', cursor: 'help' }}>Purchase-based FC%</span>
+              <span style={{ fontSize: 11, color: 'var(--theme-text3)', cursor: 'help' }}>Purchase-based FC%</span>
             </Tip>
           </div>
 
@@ -447,7 +447,7 @@ export default function Overheads() {
               const numPct     = actualPct || 0
               const isProfit   = row.key === 'profit'
               const barColor   = isProfit
-                ? (row.amount != null && row.amount >= 0 ? '#34d399' : '#f87171')
+                ? (row.amount != null && row.amount >= 0 ? 'var(--theme-green)' : 'var(--theme-red)')
                 : trafficLight(numPct, row.target)
               const barWidth   = Math.min(Math.abs(numPct), 100)
 
@@ -456,11 +456,11 @@ export default function Overheads() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{ width: 10, height: 10, borderRadius: '50%', background: row.color, display: 'inline-block', flexShrink: 0 }} />
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#e8e0d0', minWidth: 90 }}>{row.label}</span>
-                      <span style={{ fontSize: 11, color: '#9ca3af' }}>target {row.target}%</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--theme-text1)', minWidth: 90 }}>{row.label}</span>
+                      <span style={{ fontSize: 11, color: 'var(--theme-text3)' }}>target {row.target}%</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-                      <span style={{ fontSize: 13, color: '#6b7280' }}>{fmt(row.amount)}</span>
+                      <span style={{ fontSize: 13, color: 'var(--theme-text2)' }}>{fmt(row.amount)}</span>
                       <span style={{ fontSize: 15, fontWeight: 700, color: barColor, minWidth: 54, textAlign: 'right' }}>
                         {actualPct != null
                           ? `${isProfit && row.amount >= 0 ? '+' : ''}${actualPct.toFixed(1)}%`
@@ -468,7 +468,7 @@ export default function Overheads() {
                       </span>
                     </div>
                   </div>
-                  <div style={{ height: 7, background: '#2a2f3d', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ height: 7, background: 'var(--theme-border)', borderRadius: 4, overflow: 'hidden' }}>
                     <div style={{ width: `${barWidth}%`, height: '100%', background: barColor, borderRadius: 4, transition: 'width 0.4s ease' }} />
                   </div>
                 </div>
@@ -484,10 +484,10 @@ export default function Overheads() {
               border: `1px solid ${netProfit >= 0 ? 'rgba(52,211,153,0.25)' : 'rgba(248,113,113,0.25)'}`,
               display: 'flex', justifyContent: 'space-between', alignItems: 'center'
             }}>
-              <span style={{ fontSize: 13, color: '#6b7280' }}>
+              <span style={{ fontSize: 13, color: 'var(--theme-text2)' }}>
                 {netProfit >= 0 ? '✓ Profitable this period' : '✗ Operating at a loss this period'}
               </span>
-              <span style={{ fontSize: 20, fontWeight: 800, color: netProfit >= 0 ? '#34d399' : '#f87171' }}>
+              <span style={{ fontSize: 20, fontWeight: 800, color: netProfit >= 0 ? 'var(--theme-green)' : 'var(--theme-red)' }}>
                 {netProfit >= 0 ? '+' : ''}{fmt(netProfit)}
               </span>
             </div>
@@ -495,8 +495,8 @@ export default function Overheads() {
         </div>
       ) : (
         <div className="card" style={{ marginBottom: 16, background: 'rgba(201,168,76,0.04)', borderColor: 'rgba(201,168,76,0.15)' }}>
-          <p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>
-            💡 Add sales entries for this period to unlock the <strong style={{ color: '#c9a84c' }}>P&L Summary</strong>, <strong style={{ color: '#c9a84c' }}>Break-Even</strong>, and <strong style={{ color: '#c9a84c' }}>Overhead per Cover</strong> panels.
+          <p style={{ fontSize: 13, color: 'var(--theme-text2)', margin: 0 }}>
+            💡 Add sales entries for this period to unlock the <strong style={{ color: 'var(--theme-accent)' }}>P&L Summary</strong>, <strong style={{ color: 'var(--theme-accent)' }}>Break-Even</strong>, and <strong style={{ color: 'var(--theme-accent)' }}>Overhead per Cover</strong> panels.
           </p>
         </div>
       )}
@@ -510,30 +510,30 @@ export default function Overheads() {
             background: isAboveBreakEven ? 'rgba(52,211,153,0.04)' : 'rgba(248,113,113,0.04)',
             borderColor: isAboveBreakEven ? 'rgba(52,211,153,0.2)' : 'rgba(248,113,113,0.2)'
           }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 16 }}>
               <Tip text="The minimum revenue / covers needed to cover all fixed costs. Below this = loss. Above = profit begins." width={230}>Break-Even Analysis</Tip>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
               <div>
-                <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 4 }}>Need (Revenue)</div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: '#e8e0d0' }}>{breakEvenRev ? fmt(breakEvenRev) : '—'}</div>
+                <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginBottom: 4 }}>Need (Revenue)</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--theme-text1)' }}>{breakEvenRev ? fmt(breakEvenRev) : '—'}</div>
               </div>
               <div>
-                <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 4 }}>Need (Covers)</div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: '#e8e0d0' }}>{breakEvenCovers ? breakEvenCovers.toLocaleString() : '—'}</div>
+                <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginBottom: 4 }}>Need (Covers)</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--theme-text1)' }}>{breakEvenCovers ? breakEvenCovers.toLocaleString() : '—'}</div>
               </div>
               <div>
-                <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 4 }}>Actual Revenue</div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: isAboveBreakEven ? '#34d399' : '#f87171' }}>{fmt(revenue)}</div>
+                <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginBottom: 4 }}>Actual Revenue</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: isAboveBreakEven ? 'var(--theme-green)' : 'var(--theme-red)' }}>{fmt(revenue)}</div>
               </div>
               <div>
-                <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 4 }}>Actual Covers</div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: isAboveBreakEven ? '#34d399' : '#f87171' }}>{Math.round(covers).toLocaleString()}</div>
+                <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginBottom: 4 }}>Actual Covers</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: isAboveBreakEven ? 'var(--theme-green)' : 'var(--theme-red)' }}>{Math.round(covers).toLocaleString()}</div>
               </div>
             </div>
             <div style={{ padding: '10px 14px', borderRadius: 6, fontSize: 13, fontWeight: 700,
               background: isAboveBreakEven ? 'rgba(52,211,153,0.1)' : 'rgba(248,113,113,0.1)',
-              color: isAboveBreakEven ? '#34d399' : '#f87171'
+              color: isAboveBreakEven ? 'var(--theme-green)' : 'var(--theme-red)'
             }}>
               {isAboveBreakEven && breakEvenRev
                 ? `✓ Above break-even by ${fmt(revenue - breakEvenRev)}`
@@ -541,7 +541,7 @@ export default function Overheads() {
                   ? `✗ Below break-even by ${fmt(breakEvenRev - revenue)}`
                   : 'Enter cost data to calculate'}
             </div>
-            <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 10, marginBottom: 0, lineHeight: 1.6 }}>
+            <p style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 10, marginBottom: 0, lineHeight: 1.6 }}>
               Formula: Total Fixed Costs ÷ (1 − FC%) &nbsp;·&nbsp;
               Avg ticket: {avgTicket > 0 ? fmt(avgTicket) : '—'} &nbsp;·&nbsp;
               FC%: {revenue > 0 ? `${(fcPct * 100).toFixed(1)}%` : '—'}
@@ -550,37 +550,37 @@ export default function Overheads() {
 
           {/* Overhead per cover */}
           <div className="card">
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 16 }}>
               <Tip text="How much of each sale goes to fixed costs before any food cost or profit. Every cover must earn at least this much just to keep the lights on." width={240}>Cost per Cover</Tip>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <div>
-                <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 4 }}>Fixed OH / Cover</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: '#c9a84c' }}>
+                <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginBottom: 4 }}>Fixed OH / Cover</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--theme-accent)' }}>
                   {covers > 0 && totals.overhead > 0 ? fmt(totals.overhead / covers) : '—'}
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 4 }}>Labor / Cover</div>
+                <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginBottom: 4 }}>Labor / Cover</div>
                 <div style={{ fontSize: 22, fontWeight: 700, color: '#60a5fa' }}>
                   {covers > 0 && totals.labor > 0 ? fmt(totals.labor / covers) : '—'}
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 4 }}>Tax & Fees / Cover</div>
+                <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginBottom: 4 }}>Tax & Fees / Cover</div>
                 <div style={{ fontSize: 18, fontWeight: 600, color: '#a78bfa' }}>
                   {covers > 0 && totals.tax_fees > 0 ? fmt(totals.tax_fees / covers) : '—'}
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 4 }}>Total Fixed / Cover</div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: '#e8e0d0' }}>
+                <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginBottom: 4 }}>Total Fixed / Cover</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--theme-text1)' }}>
                   {covers > 0 && totalFixed > 0 ? fmt(totalFixed / covers) : '—'}
                 </div>
               </div>
             </div>
-            <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 14, marginBottom: 0, lineHeight: 1.6 }}>
-              Every sale must earn at least <strong style={{ color: '#e8e0d0' }}>{covers > 0 && totalFixed > 0 ? fmt(totalFixed / covers) : '—'}</strong> just to cover fixed costs. Food cost and profit are on top of this.
+            <p style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 14, marginBottom: 0, lineHeight: 1.6 }}>
+              Every sale must earn at least <strong style={{ color: 'var(--theme-text1)' }}>{covers > 0 && totalFixed > 0 ? fmt(totalFixed / covers) : '—'}</strong> just to cover fixed costs. Food cost and profit are on top of this.
             </p>
           </div>
         </div>
@@ -588,8 +588,8 @@ export default function Overheads() {
 
       {/* Footer note */}
       <div className="card" style={{ background: 'rgba(201,168,76,0.04)', borderColor: 'rgba(201,168,76,0.15)' }}>
-        <p style={{ fontSize: 12, color: '#6b7280', margin: 0, lineHeight: 1.7 }}>
-          💡 <strong style={{ color: '#c9a84c' }}>How overhead is allocated to recipes:</strong> Only <strong style={{ color: '#e8e0d0' }}>Fixed Overheads</strong> (not labor or tax) are distributed across menu items proportionally by each item's share of period revenue. This gives you the true overhead-per-portion in Recipe Costing. Labor and Tax & Fees are period-level costs tracked separately.
+        <p style={{ fontSize: 12, color: 'var(--theme-text2)', margin: 0, lineHeight: 1.7 }}>
+          💡 <strong style={{ color: 'var(--theme-accent)' }}>How overhead is allocated to recipes:</strong> Only <strong style={{ color: 'var(--theme-text1)' }}>Fixed Overheads</strong> (not labor or tax) are distributed across menu items proportionally by each item's share of period revenue. This gives you the true overhead-per-portion in Recipe Costing. Labor and Tax & Fees are period-level costs tracked separately.
         </p>
       </div>
     </div>

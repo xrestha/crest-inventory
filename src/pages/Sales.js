@@ -218,7 +218,7 @@ export default function Sales() {
           <p className="page-subtitle">Period total sales per menu item — {periodLabel}</p>
         </div>
         <select
-          style={{ background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: '#e8e0d0', outline: 'none' }}
+          style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none' }}
           value={selectedPeriod?.id || ''}
           onChange={e => handlePeriodChange(e.target.value)}
         >
@@ -233,7 +233,7 @@ export default function Sales() {
 
       {/* Period locked banner */}
       {isLocked && (
-        <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#f87171' }}>
+        <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--theme-red)' }}>
           🔒 <strong>This period is closed.</strong> Data is read-only. Contact your admin to re-open if needed.
         </div>
       )}
@@ -259,7 +259,7 @@ export default function Sales() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid #2a2f3d', marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid var(--theme-border)', marginBottom: 20 }}>
         <div style={{ display: 'flex', gap: 4 }}>
           {[
             { key: 'bulk',      label: 'Bulk Entry' },
@@ -270,8 +270,8 @@ export default function Sales() {
             <button key={key} onClick={() => setViewMode(key)} style={{
               background: 'none', border: 'none', cursor: 'pointer',
               padding: '10px 20px', fontSize: 13, fontWeight: 500,
-              color: viewMode === key ? '#c9a84c' : '#6b7280',
-              borderBottom: viewMode === key ? '2px solid #c9a84c' : '2px solid transparent',
+              color: viewMode === key ? 'var(--theme-accent)' : 'var(--theme-text2)',
+              borderBottom: viewMode === key ? '2px solid var(--theme-accent)' : '2px solid transparent',
               marginBottom: -1, transition: 'color 0.12s'
             }}>{label}</button>
           ))}
@@ -280,7 +280,7 @@ export default function Sales() {
           <select
             value={sortBy}
             onChange={e => setSortBy(e.target.value)}
-            style={{ background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 6, padding: '6px 10px', fontSize: 12, color: '#e8e0d0', outline: 'none', marginBottom: 6 }}
+            style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '6px 10px', fontSize: 12, color: 'var(--theme-text1)', outline: 'none', marginBottom: 6 }}
           >
             <option value="rev_desc">Highest Revenue</option>
             <option value="rev_asc">Lowest Revenue</option>
@@ -293,19 +293,19 @@ export default function Sales() {
       </div>
 
       {loading ? (
-        <div className="card"><p style={{ color: '#6b7280', fontSize: 13 }}>Loading…</p></div>
+        <div className="card"><p style={{ color: 'var(--theme-text2)', fontSize: 13 }}>Loading…</p></div>
       ) : (
         <>
           {/* BULK ENTRY */}
           {viewMode === 'bulk' && (
             <>
-              <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: '#c9a84c' }}>
+              <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: 'var(--theme-accent)' }}>
                 Enter total qty sold for the entire period per menu item. Sub-recipes are excluded.
               </div>
               <div className="card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                  <span style={{ fontSize: 13, color: '#6b7280' }}>
-                    Period total — <strong style={{ color: '#c9a84c' }}>{periodLabel}</strong>
+                  <span style={{ fontSize: 13, color: 'var(--theme-text2)' }}>
+                    Period total — <strong style={{ color: 'var(--theme-accent)' }}>{periodLabel}</strong>
                   </span>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button
@@ -317,7 +317,7 @@ export default function Sales() {
                         recipes.forEach(r => { cleared[r.id] = '' })
                         setBulkForm(cleared)
                       }}
-                      style={{ fontSize: 13, color: '#f87171', borderColor: 'rgba(248,113,113,0.3)' }}
+                      style={{ fontSize: 13, color: 'var(--theme-red)', borderColor: 'rgba(248,113,113,0.3)' }}
                     >
                       Clear All
                     </button>
@@ -352,9 +352,9 @@ export default function Sales() {
                         const rev = (parseFloat(qty) || 0) * (parseFloat(recipe.selling_price) || 0)
                         return (
                           <tr key={recipe.id}>
-                            <td style={{ fontWeight: 600, color: '#e8e0d0' }}>{recipe.name}</td>
+                            <td style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{recipe.name}</td>
                             <td><span className="badge badge-yellow">{recipe.category}</span></td>
-                            <td style={{ textAlign: 'right', color: '#6b7280' }}>
+                            <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>
                               {recipe.selling_price ? `NPR ${Number(recipe.selling_price).toLocaleString()}` : '—'}
                             </td>
                             <td style={{ textAlign: 'right' }}>
@@ -365,14 +365,14 @@ export default function Sales() {
                                 placeholder="0"
                                 disabled={isLocked}
                                 style={{
-                                  background: '#0f1117', border: '1px solid #2a2f3d',
+                                  background: 'var(--theme-bg)', border: '1px solid var(--theme-border)',
                                   borderRadius: 5, padding: '6px 10px', fontSize: 13,
-                                  color: '#e8e0d0', outline: 'none', width: 110, textAlign: 'right',
-                                  borderColor: parseFloat(qty) > 0 ? 'rgba(201,168,76,0.4)' : '#2a2f3d'
+                                  color: 'var(--theme-text1)', outline: 'none', width: 110, textAlign: 'right',
+                                  borderColor: parseFloat(qty) > 0 ? 'rgba(201,168,76,0.4)' : 'var(--theme-border)'
                                 }}
                               />
                             </td>
-                            <td style={{ textAlign: 'right', color: rev > 0 ? '#c9a84c' : '#9ca3af', fontWeight: rev > 0 ? 600 : 400 }}>
+                            <td style={{ textAlign: 'right', color: rev > 0 ? 'var(--theme-accent)' : 'var(--theme-text3)', fontWeight: rev > 0 ? 600 : 400 }}>
                               {rev > 0 ? `NPR ${rev.toLocaleString('en-NP', { maximumFractionDigits: 0 })}` : '—'}
                             </td>
                           </tr>
@@ -389,13 +389,13 @@ export default function Sales() {
           {/* DAILY ENTRY */}
           {viewMode === 'daily' && (
             <>
-              <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: '#c9a84c' }}>
+              <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: 'var(--theme-accent)' }}>
                 Enter qty sold per menu item for a single day. Use Bulk Entry for period totals instead.
               </div>
               <div className="card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 13, color: '#6b7280' }}>Day</span>
+                    <span style={{ fontSize: 13, color: 'var(--theme-text2)' }}>Day</span>
                     {(() => {
                       const dayCount = daysInBsMonth(selectedPeriod?.bs_year, selectedPeriod?.bs_month) || 32
                       const today = getBsToday()
@@ -412,7 +412,7 @@ export default function Sales() {
                             <select
                               value={selectedDay}
                               onChange={e => setSelectedDay(Number(e.target.value))}
-                              style={{ background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 6, padding: '6px 10px', fontSize: 13, color: '#c9a84c', fontWeight: 700, outline: 'none' }}
+                              style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '6px 10px', fontSize: 13, color: 'var(--theme-accent)', fontWeight: 700, outline: 'none' }}
                             >
                               {Array.from({ length: dayCount }, (_, i) => i + 1).map(d => (
                                 <option key={d} value={d}>{d}</option>
@@ -425,12 +425,12 @@ export default function Sales() {
                               style={{ padding: '4px 10px', fontSize: 14 }}
                             >›</button>
                           </div>
-                          <span style={{ fontSize: 13, color: '#6b7280' }}>of <strong style={{ color: '#e8e0d0' }}>{periodLabel}</strong></span>
+                          <span style={{ fontSize: 13, color: 'var(--theme-text2)' }}>of <strong style={{ color: 'var(--theme-text1)' }}>{periodLabel}</strong></span>
                           {isCurrentMonth && selectedDay !== today.day && (
                             <button
                               className="btn btn-ghost"
                               onClick={() => setSelectedDay(today.day)}
-                              style={{ fontSize: 11, padding: '4px 10px', color: '#c9a84c', borderColor: 'rgba(201,168,76,0.3)' }}
+                              style={{ fontSize: 11, padding: '4px 10px', color: 'var(--theme-accent)', borderColor: 'rgba(201,168,76,0.3)' }}
                             >Today (day {today.day})</button>
                           )}
                         </>
@@ -446,7 +446,7 @@ export default function Sales() {
                         recipes.forEach(r => { cleared[r.id] = '' })
                         return cleared
                       })}
-                      style={{ fontSize: 13, color: '#f87171', borderColor: 'rgba(248,113,113,0.3)' }}
+                      style={{ fontSize: 13, color: 'var(--theme-red)', borderColor: 'rgba(248,113,113,0.3)' }}
                     >Clear</button>
                     <button
                       className="btn btn-primary"
@@ -479,9 +479,9 @@ export default function Sales() {
                         const rev = qty * (parseFloat(recipe.selling_price) || 0)
                         return (
                           <tr key={recipe.id}>
-                            <td style={{ fontWeight: 600, color: '#e8e0d0' }}>{recipe.name}</td>
+                            <td style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{recipe.name}</td>
                             <td><span className="badge badge-yellow">{recipe.category}</span></td>
-                            <td style={{ textAlign: 'right', color: '#6b7280' }}>
+                            <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>
                               {recipe.selling_price ? `NPR ${Number(recipe.selling_price).toLocaleString()}` : '—'}
                             </td>
                             <td style={{ textAlign: 'right' }}>
@@ -492,14 +492,14 @@ export default function Sales() {
                                 placeholder="0"
                                 disabled={isLocked}
                                 style={{
-                                  background: '#0f1117', border: '1px solid #2a2f3d',
+                                  background: 'var(--theme-bg)', border: '1px solid var(--theme-border)',
                                   borderRadius: 5, padding: '6px 10px', fontSize: 13,
-                                  color: '#e8e0d0', outline: 'none', width: 110, textAlign: 'right',
-                                  borderColor: qty > 0 ? 'rgba(201,168,76,0.4)' : '#2a2f3d'
+                                  color: 'var(--theme-text1)', outline: 'none', width: 110, textAlign: 'right',
+                                  borderColor: qty > 0 ? 'rgba(201,168,76,0.4)' : 'var(--theme-border)'
                                 }}
                               />
                             </td>
-                            <td style={{ textAlign: 'right', color: rev > 0 ? '#c9a84c' : '#9ca3af', fontWeight: rev > 0 ? 600 : 400 }}>
+                            <td style={{ textAlign: 'right', color: rev > 0 ? 'var(--theme-accent)' : 'var(--theme-text3)', fontWeight: rev > 0 ? 600 : 400 }}>
                               {rev > 0 ? `NPR ${rev.toLocaleString('en-NP', { maximumFractionDigits: 0 })}` : '—'}
                             </td>
                           </tr>
@@ -517,7 +517,7 @@ export default function Sales() {
                         recipes.forEach(r => { cleared[r.id] = '' })
                         return cleared
                       })}
-                      style={{ fontSize: 13, color: '#f87171', borderColor: 'rgba(248,113,113,0.3)' }}
+                      style={{ fontSize: 13, color: 'var(--theme-red)', borderColor: 'rgba(248,113,113,0.3)' }}
                     >Clear</button>
                     <button
                       className="btn btn-primary"
@@ -533,7 +533,7 @@ export default function Sales() {
 
           {/* DAILY BREAKDOWN */}
           {viewMode === 'breakdown' && (() => {
-            if (monthlyLoading) return <div className="card"><p style={{ color: '#6b7280', fontSize: 13 }}>Loading…</p></div>
+            if (monthlyLoading) return <div className="card"><p style={{ color: 'var(--theme-text2)', fontSize: 13 }}>Loading…</p></div>
             if (monthlyEntries.length === 0) return (
               <div className="card">
                 <div className="empty-state">
@@ -565,7 +565,7 @@ export default function Sales() {
             const rowTotal = (recipeId) => Object.values(pivot[recipeId] || {}).reduce((s, v) => s + v, 0)
             const grandTotal = activeRecipes.reduce((s, r) => s + rowTotal(r.id), 0)
 
-            const fmtQty = (n) => n > 0 ? n.toLocaleString() : <span style={{ color: '#2a2f3d' }}>—</span>
+            const fmtQty = (n) => n > 0 ? n.toLocaleString() : <span style={{ color: 'var(--theme-border)' }}>—</span>
 
             return (
               <div className="card">
@@ -573,14 +573,14 @@ export default function Sales() {
                   <table className="data-table" style={{ minWidth: 'max-content' }}>
                     <thead>
                       <tr>
-                        <th style={{ position: 'sticky', left: 0, background: '#13171f', zIndex: 1, minWidth: 160 }}>Menu Item</th>
-                        <th style={{ position: 'sticky', left: 160, background: '#13171f', zIndex: 1, minWidth: 90 }}>Category</th>
+                        <th style={{ position: 'sticky', left: 0, background: 'var(--theme-bg)', zIndex: 1, minWidth: 160 }}>Menu Item</th>
+                        <th style={{ position: 'sticky', left: 160, background: 'var(--theme-bg)', zIndex: 1, minWidth: 90 }}>Category</th>
                         {activeDays.map(d => (
-                          <th key={d} style={{ textAlign: 'right', minWidth: 56, color: isCurrentMonth && d === today.day ? '#c9a84c' : undefined }}>
+                          <th key={d} style={{ textAlign: 'right', minWidth: 56, color: isCurrentMonth && d === today.day ? 'var(--theme-accent)' : undefined }}>
                             {isCurrentMonth && d === today.day ? <span title="Today">⬤ {d}</span> : d}
                           </th>
                         ))}
-                        {hasBulk && <th style={{ textAlign: 'right', minWidth: 70, color: '#6b7280' }}>Bulk</th>}
+                        {hasBulk && <th style={{ textAlign: 'right', minWidth: 70, color: 'var(--theme-text2)' }}>Bulk</th>}
                         <th style={{ textAlign: 'right', minWidth: 70, fontWeight: 700 }}>Total</th>
                       </tr>
                     </thead>
@@ -589,42 +589,42 @@ export default function Sales() {
                         const total = rowTotal(recipe.id)
                         return (
                           <tr key={recipe.id}>
-                            <td style={{ position: 'sticky', left: 0, background: '#13171f', fontWeight: 600, color: '#e8e0d0' }}>{recipe.name}</td>
-                            <td style={{ position: 'sticky', left: 160, background: '#13171f' }}>
+                            <td style={{ position: 'sticky', left: 0, background: 'var(--theme-bg)', fontWeight: 600, color: 'var(--theme-text1)' }}>{recipe.name}</td>
+                            <td style={{ position: 'sticky', left: 160, background: 'var(--theme-bg)' }}>
                               <span className="badge badge-yellow">{recipe.category}</span>
                             </td>
                             {activeDays.map(d => {
                               const qty = pivot[recipe.id]?.[d] || 0
                               return (
-                                <td key={d} style={{ textAlign: 'right', color: qty > 0 ? '#e8e0d0' : undefined }}>
+                                <td key={d} style={{ textAlign: 'right', color: qty > 0 ? 'var(--theme-text1)' : undefined }}>
                                   {fmtQty(qty)}
                                 </td>
                               )
                             })}
                             {hasBulk && (
-                              <td style={{ textAlign: 'right', color: (pivot[recipe.id]?.[0] || 0) > 0 ? '#9ca3af' : undefined }}>
+                              <td style={{ textAlign: 'right', color: (pivot[recipe.id]?.[0] || 0) > 0 ? 'var(--theme-text3)' : undefined }}>
                                 {fmtQty(pivot[recipe.id]?.[0] || 0)}
                               </td>
                             )}
-                            <td style={{ textAlign: 'right', fontWeight: 700, color: total > 0 ? '#c9a84c' : '#6b7280' }}>
+                            <td style={{ textAlign: 'right', fontWeight: 700, color: total > 0 ? 'var(--theme-accent)' : 'var(--theme-text2)' }}>
                               {total > 0 ? total.toLocaleString() : '—'}
                             </td>
                           </tr>
                         )
                       })}
-                      <tr style={{ borderTop: '2px solid #2a2f3d', fontWeight: 700 }}>
-                        <td style={{ position: 'sticky', left: 0, background: '#13171f', color: '#6b7280', fontSize: 12 }} colSpan={2}>DAY TOTAL</td>
+                      <tr style={{ borderTop: '2px solid var(--theme-border)', fontWeight: 700 }}>
+                        <td style={{ position: 'sticky', left: 0, background: 'var(--theme-bg)', color: 'var(--theme-text2)', fontSize: 12 }} colSpan={2}>DAY TOTAL</td>
                         {activeDays.map(d => (
-                          <td key={d} style={{ textAlign: 'right', color: '#e8e0d0' }}>
+                          <td key={d} style={{ textAlign: 'right', color: 'var(--theme-text1)' }}>
                             {colTotal(d) > 0 ? colTotal(d).toLocaleString() : '—'}
                           </td>
                         ))}
                         {hasBulk && (
-                          <td style={{ textAlign: 'right', color: '#9ca3af' }}>
+                          <td style={{ textAlign: 'right', color: 'var(--theme-text3)' }}>
                             {(() => { const t = activeRecipes.reduce((s, r) => s + (pivot[r.id]?.[0] || 0), 0); return t > 0 ? t.toLocaleString() : '—' })()}
                           </td>
                         )}
-                        <td style={{ textAlign: 'right', color: '#c9a84c', fontSize: 15 }}>{grandTotal.toLocaleString()}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--theme-accent)', fontSize: 15 }}>{grandTotal.toLocaleString()}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -673,35 +673,35 @@ export default function Sales() {
                         const revPct = sumTotalRev > 0 ? (rev / sumTotalRev) * 100 : 0
                         return (
                           <tr key={recipe.id} style={{ opacity: sold === 0 ? 0.4 : 1 }}>
-                            <td style={{ fontWeight: 600, color: '#e8e0d0' }}>{recipe.name}</td>
+                            <td style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{recipe.name}</td>
                             <td><span className="badge badge-yellow">{recipe.category}</span></td>
-                            <td style={{ textAlign: 'right', color: sold > 0 ? '#e8e0d0' : '#9ca3af' }}>
+                            <td style={{ textAlign: 'right', color: sold > 0 ? 'var(--theme-text1)' : 'var(--theme-text3)' }}>
                               {sold > 0 ? sold.toLocaleString() : '—'}
                             </td>
-                            <td style={{ textAlign: 'right', color: '#6b7280' }}>
+                            <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>
                               {recipe.selling_price ? `NPR ${Number(recipe.selling_price).toLocaleString()}` : '—'}
                             </td>
-                            <td style={{ textAlign: 'right', color: rev > 0 ? '#c9a84c' : '#9ca3af', fontWeight: 600 }}>
+                            <td style={{ textAlign: 'right', color: rev > 0 ? 'var(--theme-accent)' : 'var(--theme-text3)', fontWeight: 600 }}>
                               {rev > 0 ? `NPR ${rev.toLocaleString('en-NP', { maximumFractionDigits: 0 })}` : '—'}
                             </td>
                             <td style={{ textAlign: 'right' }}>
                               {revPct > 0 ? (
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
-                                  <div style={{ width: 60, height: 4, background: '#2a2f3d', borderRadius: 2 }}>
-                                    <div style={{ width: `${Math.min(revPct, 100)}%`, height: '100%', background: '#c9a84c', borderRadius: 2 }} />
+                                  <div style={{ width: 60, height: 4, background: 'var(--theme-border)', borderRadius: 2 }}>
+                                    <div style={{ width: `${Math.min(revPct, 100)}%`, height: '100%', background: 'var(--theme-accent)', borderRadius: 2 }} />
                                   </div>
-                                  <span style={{ fontSize: 12, color: '#6b7280', minWidth: 36 }}>{revPct.toFixed(1)}%</span>
+                                  <span style={{ fontSize: 12, color: 'var(--theme-text2)', minWidth: 36 }}>{revPct.toFixed(1)}%</span>
                                 </div>
                               ) : '—'}
                             </td>
                           </tr>
                         )
                       })}
-                      <tr style={{ borderTop: '2px solid #2a2f3d' }}>
-                        <td colSpan={2} style={{ fontWeight: 700, color: '#6b7280', paddingTop: 12 }}>Total</td>
+                      <tr style={{ borderTop: '2px solid var(--theme-border)' }}>
+                        <td colSpan={2} style={{ fontWeight: 700, color: 'var(--theme-text2)', paddingTop: 12 }}>Total</td>
                         <td style={{ textAlign: 'right', fontWeight: 700, paddingTop: 12 }}>{sumTotalQty.toLocaleString()}</td>
                         <td></td>
-                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#c9a84c', fontSize: 15, paddingTop: 12 }}>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-accent)', fontSize: 15, paddingTop: 12 }}>
                           NPR {sumTotalRev.toLocaleString('en-NP', { maximumFractionDigits: 0 })}
                         </td>
                         <td></td>

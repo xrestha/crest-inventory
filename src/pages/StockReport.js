@@ -186,12 +186,12 @@ export default function StockReport() {
         </div>
         <div className="stat-card">
           <div className="stat-label">Low Stock</div>
-          <div className="stat-value" style={{ color: lowCount > 0 ? '#c9a84c' : '#34d399' }}>{lowCount}</div>
+          <div className="stat-value" style={{ color: lowCount > 0 ? 'var(--theme-accent)' : 'var(--theme-green)' }}>{lowCount}</div>
           <div className="stat-sub">at or below par level</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Out of Stock</div>
-          <div className="stat-value" style={{ color: outCount > 0 ? '#f87171' : '#34d399' }}>{outCount}</div>
+          <div className="stat-value" style={{ color: outCount > 0 ? 'var(--theme-red)' : 'var(--theme-green)' }}>{outCount}</div>
           <div className="stat-sub">zero on hand</div>
         </div>
         <div className="stat-card">
@@ -202,13 +202,13 @@ export default function StockReport() {
       </div>
 
       {negativeCount > 0 && (
-        <div className="no-print" style={{ background: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: '#6b7280' }}>
-          <strong style={{ color: '#f87171' }}>⚠ {negativeCount} item{negativeCount !== 1 ? 's show' : ' shows'} negative theoretical stock</strong> — usage/wastage exceeds recorded purchases + opening. Check for missing purchase entries or over-recorded usage. Shown as 0 on hand.
+        <div className="no-print" style={{ background: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: 'var(--theme-text2)' }}>
+          <strong style={{ color: 'var(--theme-red)' }}>⚠ {negativeCount} item{negativeCount !== 1 ? 's show' : ' shows'} negative theoretical stock</strong> — usage/wastage exceeds recorded purchases + opening. Check for missing purchase entries or over-recorded usage. Shown as 0 on hand.
         </div>
       )}
 
       <div className="no-print" style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-        <input style={{ background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: 200 }}
+        <input style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none', width: 200 }}
           placeholder="Search items…" value={search} onChange={e => setSearch(e.target.value)} />
         <select className="form-select" value={filterCat} onChange={e => setFilterCat(e.target.value)}>
           <option value="all">All Categories</option>
@@ -220,12 +220,12 @@ export default function StockReport() {
           <option value="out">Out of Stock</option>
           <option value="ok">In Stock</option>
         </select>
-        <span style={{ fontSize: 13, color: '#6b7280' }}>{filtered.length} item{filtered.length !== 1 ? 's' : ''} · NPR {npr(filteredValue)}</span>
+        <span style={{ fontSize: 13, color: 'var(--theme-text2)' }}>{filtered.length} item{filtered.length !== 1 ? 's' : ''} · NPR {npr(filteredValue)}</span>
       </div>
 
       <div className="card">
         {loading ? (
-          <p style={{ color: '#6b7280', fontSize: 13 }}>Building report…</p>
+          <p style={{ color: 'var(--theme-text2)', fontSize: 13 }}>Building report…</p>
         ) : filtered.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">◈</div>
@@ -252,34 +252,34 @@ export default function StockReport() {
                 {filtered.map(r => (
                   <tr key={r.item.id} style={{ background: r.status === 'out' ? 'rgba(248,113,113,0.03)' : 'transparent' }}>
                     <td>
-                      <div style={{ fontWeight: 600, color: '#e8e0d0' }}>{r.item.name}</div>
-                      {r.item.item_code && <div style={{ fontSize: 11, color: '#9ca3af', fontFamily: 'monospace' }}>{r.item.item_code}</div>}
+                      <div style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{r.item.name}</div>
+                      {r.item.item_code && <div style={{ fontSize: 11, color: 'var(--theme-text3)', fontFamily: 'monospace' }}>{r.item.item_code}</div>}
                     </td>
                     <td><span className="badge badge-yellow">{r.category}</span></td>
-                    <td style={{ color: '#6b7280' }}>{r.item.uom}</td>
-                    <td style={{ textAlign: 'right', fontWeight: 700, color: r.status === 'out' ? '#f87171' : r.status === 'low' ? '#c9a84c' : '#e8e0d0' }}>
+                    <td style={{ color: 'var(--theme-text2)' }}>{r.item.uom}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700, color: r.status === 'out' ? 'var(--theme-red)' : r.status === 'low' ? 'var(--theme-accent)' : 'var(--theme-text1)' }}>
                       {r.onHand.toFixed(2)}
-                      {r.isNegative && <span title="Negative theoretical — data issue" style={{ color: '#f87171', marginLeft: 4 }}>⚠</span>}
+                      {r.isNegative && <span title="Negative theoretical — data issue" style={{ color: 'var(--theme-red)', marginLeft: 4 }}>⚠</span>}
                     </td>
                     <td>
                       <span className={`badge ${r.stockSource === 'closing' ? 'badge-green' : 'badge-gray'}`}>
                         {r.stockSource === 'closing' ? 'Physical' : 'Theor.'}
                       </span>
                     </td>
-                    <td style={{ textAlign: 'right', color: '#6b7280' }}>{r.openQty ? r.openQty.toFixed(1) : '—'}</td>
-                    <td style={{ textAlign: 'right', color: '#6b7280' }}>{r.netPurch ? r.netPurch.toFixed(1) : '—'}</td>
-                    <td style={{ textAlign: 'right', color: '#6b7280' }}>{r.usageQty ? r.usageQty.toFixed(1) : '—'}</td>
-                    <td style={{ textAlign: 'right', color: r.wasteQty ? '#f87171' : '#6b7280' }}>{r.wasteQty ? r.wasteQty.toFixed(1) : '—'}</td>
-                    <td style={{ textAlign: 'right', color: '#6b7280' }}>{r.unitRate.toFixed(2)}</td>
-                    <td style={{ textAlign: 'right', fontWeight: 700, color: '#c9a84c' }}>{r.stockValue > 0 ? npr(r.stockValue) : '—'}</td>
+                    <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>{r.openQty ? r.openQty.toFixed(1) : '—'}</td>
+                    <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>{r.netPurch ? r.netPurch.toFixed(1) : '—'}</td>
+                    <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>{r.usageQty ? r.usageQty.toFixed(1) : '—'}</td>
+                    <td style={{ textAlign: 'right', color: r.wasteQty ? 'var(--theme-red)' : 'var(--theme-text2)' }}>{r.wasteQty ? r.wasteQty.toFixed(1) : '—'}</td>
+                    <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>{r.unitRate.toFixed(2)}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-accent)' }}>{r.stockValue > 0 ? npr(r.stockValue) : '—'}</td>
                     <td>{statusBadge(r.status)}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
-                <tr style={{ borderTop: '2px solid #2a2f3d' }}>
-                  <td colSpan={10} style={{ fontWeight: 700, color: '#6b7280', paddingTop: 12 }}>Total stock value ({filtered.length} item{filtered.length !== 1 ? 's' : ''})</td>
-                  <td style={{ textAlign: 'right', fontWeight: 700, color: '#c9a84c', fontSize: 15, paddingTop: 12 }}>NPR {npr(filteredValue)}</td>
+                <tr style={{ borderTop: '2px solid var(--theme-border)' }}>
+                  <td colSpan={10} style={{ fontWeight: 700, color: 'var(--theme-text2)', paddingTop: 12 }}>Total stock value ({filtered.length} item{filtered.length !== 1 ? 's' : ''})</td>
+                  <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-accent)', fontSize: 15, paddingTop: 12 }}>NPR {npr(filteredValue)}</td>
                   <td></td>
                 </tr>
               </tfoot>

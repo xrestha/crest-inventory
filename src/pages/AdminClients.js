@@ -42,7 +42,7 @@ const DEFAULT_FLAGS = {
 }
 
 const FEATURE_GROUPS = [
-  { tier: 'core',    label: 'Core — All Plans', color: '#6b7280', features: [
+  { tier: 'core',    label: 'Core — All Plans', color: 'var(--theme-text2)', features: [
     { key: null, label: 'Dashboard' },
     { key: null, label: 'Periods' },
     { key: null, label: 'Item Master' },
@@ -50,7 +50,7 @@ const FEATURE_GROUPS = [
     { key: null, label: 'Purchases' },
     { key: null, label: 'Stock Count' },
   ]},
-  { tier: 'starter', label: 'Starter Plan',     color: '#9ca3af', features: [
+  { tier: 'starter', label: 'Starter Plan',     color: 'var(--theme-text3)', features: [
     { key: 'sales_entry',     label: 'Sales Entry' },
     { key: 'payment_summary', label: 'Payment Summary' },
     { key: 'monthly_summary', label: 'Monthly Summary' },
@@ -62,7 +62,7 @@ const FEATURE_GROUPS = [
     { key: 'stock_report',    label: 'Stock Report' },
     { key: 'settings',        label: 'Settings' },
   ]},
-  { tier: 'growth',  label: 'Growth Plan',      color: '#34d399', features: [
+  { tier: 'growth',  label: 'Growth Plan',      color: 'var(--theme-green)', features: [
     { key: 'recipe_costing',       label: 'Recipe Costing' },
     { key: 'purchase_orders',      label: 'Purchase Orders' },
     { key: 'requisitions',         label: 'Requisitions' },
@@ -75,7 +75,7 @@ const FEATURE_GROUPS = [
     { key: 'staff_meals',          label: 'Staff Meals' },
     { key: 'nutrition_facts',      label: 'Nutrition Facts' },
   ]},
-  { tier: 'pro',     label: 'Pro Plan',         color: '#c9a84c', features: [
+  { tier: 'pro',     label: 'Pro Plan',         color: 'var(--theme-accent)', features: [
     { key: 'menu_engineering',     label: 'Menu Engineering' },
     { key: 'overheads',            label: 'Overheads' },
     { key: 'vendor_report',        label: 'Vendor Report' },
@@ -106,7 +106,7 @@ const SETTINGS_DEFAULTS = {
 // ── Subscription badge ────────────────────────────────────────────────────────
 function SubBadge({ client }) {
   const s = getSubStatus(client)
-  if (!s.label) return <span style={{ color: '#9ca3af', fontSize: 12 }}>—</span>
+  if (!s.label) return <span style={{ color: 'var(--theme-text3)', fontSize: 12 }}>—</span>
   return (
     <span style={{
       fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
@@ -490,22 +490,22 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
       {/* Drawer */}
       <div style={{
         position: 'fixed', top: 0, right: 0, bottom: 0, width: 520,
-        background: '#181c27', borderLeft: '1px solid #2a2f3d',
+        background: 'var(--theme-card)', borderLeft: '1px solid var(--theme-border)',
         zIndex: 201, display: 'flex', flexDirection: 'column',
         boxShadow: '-8px 0 32px rgba(0,0,0,0.12)'
       }}>
         {/* Drawer header */}
         <div style={{
           padding: '20px 24px 0',
-          borderBottom: '1px solid #2a2f3d'
+          borderBottom: '1px solid var(--theme-border)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
             <div>
-              <h2 style={{ margin: 0, fontSize: 16, color: '#e8e0d0', fontFamily: 'Georgia, serif' }}>{client.name}</h2>
-              <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6b7280' }}>
+              <h2 style={{ margin: 0, fontSize: 16, color: 'var(--theme-text1)', fontFamily: 'Georgia, serif' }}>{client.name}</h2>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--theme-text2)' }}>
                 {client.location || 'No location'} ·{' '}
                 <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 4,
-                  color: client.plan === 'pro' ? '#c9a84c' : client.plan === 'growth' ? '#34d399' : '#6b7280',
+                  color: client.plan === 'pro' ? 'var(--theme-accent)' : client.plan === 'growth' ? 'var(--theme-green)' : 'var(--theme-text2)',
                   background: client.plan === 'pro' ? 'rgba(201,168,76,0.12)' : client.plan === 'growth' ? 'rgba(52,211,153,0.10)' : 'rgba(120,113,108,0.10)',
                   border: `1px solid ${client.plan === 'pro' ? 'rgba(201,168,76,0.25)' : client.plan === 'growth' ? 'rgba(52,211,153,0.20)' : 'rgba(107,114,128,0.25)'}`,
                 }}>
@@ -515,7 +515,7 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
             </div>
             <button
               onClick={onClose}
-              style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: 20, cursor: 'pointer', padding: 4, lineHeight: 1 }}
+              style={{ background: 'none', border: 'none', color: 'var(--theme-text2)', fontSize: 20, cursor: 'pointer', padding: 4, lineHeight: 1 }}
             >✕</button>
           </div>
 
@@ -526,10 +526,10 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                 background: 'none', border: 'none', cursor: 'pointer',
                 padding: '8px 16px', fontSize: 13,
                 color: activeTab === t.key
-                  ? (t.key === 'danger' ? '#f87171' : '#c9a84c')
-                  : (t.key === 'danger' ? '#9b5555' : '#6b7280'),
+                  ? (t.key === 'danger' ? 'var(--theme-red)' : 'var(--theme-accent)')
+                  : (t.key === 'danger' ? '#9b5555' : 'var(--theme-text2)'),
                 borderBottom: activeTab === t.key
-                  ? `2px solid ${t.key === 'danger' ? '#f87171' : '#c9a84c'}`
+                  ? `2px solid ${t.key === 'danger' ? 'var(--theme-red)' : 'var(--theme-accent)'}`
                   : '2px solid transparent',
                 fontWeight: activeTab === t.key ? 600 : 400,
                 transition: 'color 0.15s'
@@ -546,7 +546,7 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
             <div>
               {/* Edit client details */}
               <div style={{ marginBottom: 24 }}>
-                <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 12px' }}>
+                <p style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 12px' }}>
                   Client Details
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
@@ -568,7 +568,7 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                   </div>
                 </div>
                 {clientMsg && (
-                  <p style={{ fontSize: 12, margin: '0 0 8px', color: clientMsg.startsWith('ok:') ? '#34d399' : '#f87171' }}>
+                  <p style={{ fontSize: 12, margin: '0 0 8px', color: clientMsg.startsWith('ok:') ? 'var(--theme-green)' : 'var(--theme-red)' }}>
                     {clientMsg.replace(/^(ok|error):/, '')}
                   </p>
                 )}
@@ -577,8 +577,8 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                 </button>
               </div>
 
-              <div style={{ borderTop: '1px solid #2a2f3d', paddingTop: 20, marginBottom: 20 }}>
-                <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 12px' }}>
+              <div style={{ borderTop: '1px solid var(--theme-border)', paddingTop: 20, marginBottom: 20 }}>
+                <p style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 12px' }}>
                   Add New User
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
@@ -598,8 +598,8 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                       onChange={e => setUserForm({ ...userForm, email: e.target.value })}
                       placeholder="user@restaurant.com"
                     />
-                    <span style={{ fontSize: 11, color: '#6b7280', marginTop: 4, display: 'block' }}>
-                      A login lives on one client at a time. If this email already has a client login, creating it here <strong>moves</strong> it to this client. To keep separate logins on the same inbox, add <code style={{ color: '#9ca3af' }}>+name</code> before the @ (e.g. you+casa@gmail.com).
+                    <span style={{ fontSize: 11, color: 'var(--theme-text2)', marginTop: 4, display: 'block' }}>
+                      A login lives on one client at a time. If this email already has a client login, creating it here <strong>moves</strong> it to this client. To keep separate logins on the same inbox, add <code style={{ color: 'var(--theme-text3)' }}>+name</code> before the @ (e.g. you+casa@gmail.com).
                     </span>
                   </div>
                   <div className="form-field">
@@ -612,36 +612,36 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                     />
                   </div>
                 </div>
-                {userError   && <p style={{ color: '#f87171', fontSize: 12, margin: '0 0 8px' }}>{userError}</p>}
-                {userSuccess && <p style={{ color: '#34d399', fontSize: 12, margin: '0 0 8px' }}>{userSuccess}</p>}
+                {userError   && <p style={{ color: 'var(--theme-red)', fontSize: 12, margin: '0 0 8px' }}>{userError}</p>}
+                {userSuccess && <p style={{ color: 'var(--theme-green)', fontSize: 12, margin: '0 0 8px' }}>{userSuccess}</p>}
                 <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={createUser} disabled={savingUser}>
                   {savingUser ? 'Creating…' : '+ Create User'}
                 </button>
               </div>
 
               {/* Existing users */}
-              <div style={{ borderTop: '1px solid #2a2f3d', paddingTop: 20 }}>
-                <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 12px' }}>
+              <div style={{ borderTop: '1px solid var(--theme-border)', paddingTop: 20 }}>
+                <p style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 12px' }}>
                   Existing Users {loadingUsers ? '— Loading…' : `(${users.length})`}
                 </p>
                 {!loadingUsers && users.length === 0 && (
-                  <p style={{ fontSize: 13, color: '#9ca3af' }}>No users yet for this client.</p>
+                  <p style={{ fontSize: 13, color: 'var(--theme-text3)' }}>No users yet for this client.</p>
                 )}
                 {!loadingUsers && users.map(u => (
                   <div key={u.id} style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '10px 0', borderBottom: '1px solid #2a2f3d'
+                    padding: '10px 0', borderBottom: '1px solid var(--theme-border)'
                   }}>
                     <div>
-                      <span style={{ fontSize: 13, color: '#e8e0d0', fontWeight: 600 }}>{u.full_name || '—'}</span>
-                      <span style={{ fontSize: 12, color: '#6b7280', marginLeft: 8 }}>{u.email}</span>
-                      <span style={{ fontSize: 11, color: '#c9a84c', marginLeft: 8, background: 'rgba(201,168,76,0.1)', padding: '1px 6px', borderRadius: 3 }}>
+                      <span style={{ fontSize: 13, color: 'var(--theme-text1)', fontWeight: 600 }}>{u.full_name || '—'}</span>
+                      <span style={{ fontSize: 12, color: 'var(--theme-text2)', marginLeft: 8 }}>{u.email}</span>
+                      <span style={{ fontSize: 11, color: 'var(--theme-accent)', marginLeft: 8, background: 'rgba(201,168,76,0.1)', padding: '1px 6px', borderRadius: 3 }}>
                         {u.role}
                       </span>
                     </div>
                     <button
                       className="btn btn-ghost"
-                      style={{ fontSize: 11, padding: '3px 10px', color: '#f87171', borderColor: 'rgba(248,113,113,0.25)' }}
+                      style={{ fontSize: 11, padding: '3px 10px', color: 'var(--theme-red)', borderColor: 'rgba(248,113,113,0.25)' }}
                       onClick={() => deleteUser(u)}
                     >Delete</button>
                   </div>
@@ -653,30 +653,30 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
           {/* ── MODULES TAB ── */}
           {activeTab === 'modules' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-              <p style={{ fontSize: 11, color: '#6b7280', margin: '0 0 16px', lineHeight: 1.6 }}>
+              <p style={{ fontSize: 11, color: 'var(--theme-text2)', margin: '0 0 16px', lineHeight: 1.6 }}>
                 Enable / disable modules from the client card. Set the plan tier for each enabled module here.
               </p>
 
               {/* IMS plan */}
-              <div style={{ padding: '16px 0', borderBottom: '1px solid #2a2f3d' }}>
+              <div style={{ padding: '16px 0', borderBottom: '1px solid var(--theme-border)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
                   <div style={{ minWidth: 120 }}>
-                    <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 700, color: '#e8e0d0' }}>Crest IMS</p>
-                    <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>Inventory Management System</p>
+                    <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 700, color: 'var(--theme-text1)' }}>Crest IMS</p>
+                    <p style={{ margin: 0, fontSize: 12, color: 'var(--theme-text2)' }}>Inventory Management System</p>
                   </div>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
                     {['starter','growth','pro'].map(p => (
                       <button key={p} onClick={() => setCurrentPlan(p)} style={{
                         padding: '4px 12px', borderRadius: 4, cursor: 'pointer', fontSize: 11, fontWeight: 700,
                         border: currentPlan === p
-                          ? `1px solid ${p === 'pro' ? '#c9a84c' : p === 'growth' ? '#34d399' : '#6b7280'}`
-                          : '1px solid #2a2f3d',
+                          ? `1px solid ${p === 'pro' ? 'var(--theme-accent)' : p === 'growth' ? 'var(--theme-green)' : 'var(--theme-text2)'}`
+                          : '1px solid var(--theme-border)',
                         background: currentPlan === p
                           ? (p === 'pro' ? 'rgba(201,168,76,0.12)' : p === 'growth' ? 'rgba(52,211,153,0.10)' : 'rgba(120,113,108,0.10)')
                           : 'none',
                         color: currentPlan === p
-                          ? (p === 'pro' ? '#c9a84c' : p === 'growth' ? '#34d399' : '#9ca3af')
-                          : '#4b5563',
+                          ? (p === 'pro' ? 'var(--theme-accent)' : p === 'growth' ? 'var(--theme-green)' : 'var(--theme-text3)')
+                          : 'var(--theme-text3)',
                       }}>
                         {p.charAt(0).toUpperCase() + p.slice(1)}
                       </button>
@@ -686,32 +686,32 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                     </button>
                   </div>
                 </div>
-                {imsMsg && <p style={{ margin: '6px 0 0', fontSize: 11, color: imsMsg.startsWith('ok:') ? '#34d399' : '#f87171' }}>{imsMsg.replace(/^(ok|error):/, '')}</p>}
+                {imsMsg && <p style={{ margin: '6px 0 0', fontSize: 11, color: imsMsg.startsWith('ok:') ? 'var(--theme-green)' : 'var(--theme-red)' }}>{imsMsg.replace(/^(ok|error):/, '')}</p>}
               </div>
 
               {/* HR plan */}
-              <div style={{ padding: '16px 0', borderBottom: '1px solid #2a2f3d' }}>
+              <div style={{ padding: '16px 0', borderBottom: '1px solid var(--theme-border)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
                   <div style={{ minWidth: 120 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: hrEnabled ? '#e8e0d0' : '#4b5563' }}>Crest HR</p>
-                      {!hrEnabled && <span style={{ fontSize: 10, color: '#374151' }}>not enabled</span>}
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: hrEnabled ? 'var(--theme-text1)' : 'var(--theme-text3)' }}>Crest HR</p>
+                      {!hrEnabled && <span style={{ fontSize: 10, color: 'var(--theme-text3)' }}>not enabled</span>}
                     </div>
-                    <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>Human Resources</p>
+                    <p style={{ margin: 0, fontSize: 12, color: 'var(--theme-text2)' }}>Human Resources</p>
                   </div>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0, opacity: hrEnabled ? 1 : 0.35 }}>
                     {['starter','growth','pro'].map(p => (
                       <button key={p} onClick={() => hrEnabled && setHrPlan(p)} style={{
                         padding: '4px 12px', borderRadius: 4, cursor: hrEnabled ? 'pointer' : 'not-allowed', fontSize: 11, fontWeight: 700,
                         border: hrPlan === p
-                          ? `1px solid ${p === 'pro' ? '#c9a84c' : p === 'growth' ? '#34d399' : '#6b7280'}`
-                          : '1px solid #2a2f3d',
+                          ? `1px solid ${p === 'pro' ? 'var(--theme-accent)' : p === 'growth' ? 'var(--theme-green)' : 'var(--theme-text2)'}`
+                          : '1px solid var(--theme-border)',
                         background: hrPlan === p
                           ? (p === 'pro' ? 'rgba(201,168,76,0.12)' : p === 'growth' ? 'rgba(52,211,153,0.10)' : 'rgba(120,113,108,0.10)')
                           : 'none',
                         color: hrPlan === p
-                          ? (p === 'pro' ? '#c9a84c' : p === 'growth' ? '#34d399' : '#9ca3af')
-                          : '#4b5563',
+                          ? (p === 'pro' ? 'var(--theme-accent)' : p === 'growth' ? 'var(--theme-green)' : 'var(--theme-text3)')
+                          : 'var(--theme-text3)',
                       }}>
                         {p.charAt(0).toUpperCase() + p.slice(1)}
                       </button>
@@ -721,7 +721,7 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                     </button>
                   </div>
                 </div>
-                {hrMsg && <p style={{ margin: '6px 0 0', fontSize: 11, color: hrMsg.startsWith('ok:') ? '#34d399' : '#f87171' }}>{hrMsg.replace(/^(ok|error):/, '')}</p>}
+                {hrMsg && <p style={{ margin: '6px 0 0', fontSize: 11, color: hrMsg.startsWith('ok:') ? 'var(--theme-green)' : 'var(--theme-red)' }}>{hrMsg.replace(/^(ok|error):/, '')}</p>}
               </div>
 
               {/* POS plan */}
@@ -729,16 +729,16 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#4b5563' }}>Crest POS</p>
-                      <span style={{ fontSize: 10, color: '#374151', fontStyle: 'italic' }}>coming soon</span>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--theme-text3)' }}>Crest POS</p>
+                      <span style={{ fontSize: 10, color: 'var(--theme-text3)', fontStyle: 'italic' }}>coming soon</span>
                     </div>
-                    <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>Point of Sale</p>
+                    <p style={{ margin: 0, fontSize: 12, color: 'var(--theme-text2)' }}>Point of Sale</p>
                   </div>
                   <div style={{ display: 'flex', gap: 6, flexShrink: 0, opacity: 0.25 }}>
                     {['starter','growth','pro'].map(p => (
                       <button key={p} disabled style={{
                         padding: '4px 12px', borderRadius: 4, cursor: 'not-allowed', fontSize: 11, fontWeight: 700,
-                        border: '1px solid #2a2f3d', background: 'none', color: '#4b5563',
+                        border: '1px solid var(--theme-border)', background: 'none', color: 'var(--theme-text3)',
                       }}>
                         {p.charAt(0).toUpperCase() + p.slice(1)}
                       </button>
@@ -759,19 +759,19 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
             return (
               <div>
                 {/* Trial info */}
-                <div style={{ marginBottom: 24, padding: '14px 16px', background: '#0f1117', borderRadius: 8, border: '1px solid #2a2f3d' }}>
-                  <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 8px' }}>Free Trial (1 month)</p>
+                <div style={{ marginBottom: 24, padding: '14px 16px', background: 'var(--theme-bg)', borderRadius: 8, border: '1px solid var(--theme-border)' }}>
+                  <p style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 8px' }}>Free Trial (1 month)</p>
                   {trialEndsAt ? (
-                    <p style={{ fontSize: 13, color: '#e8e0d0', margin: 0 }}>
+                    <p style={{ fontSize: 13, color: 'var(--theme-text1)', margin: 0 }}>
                       Ends {new Date(trialEndsAt).toLocaleDateString('en-NP', { day: 'numeric', month: 'short', year: 'numeric' })}
                       {' · '}
-                      <span style={{ fontWeight: 700, color: trialDays > 0 ? '#c9a84c' : '#f87171' }}>
+                      <span style={{ fontWeight: 700, color: trialDays > 0 ? 'var(--theme-accent)' : 'var(--theme-red)' }}>
                         {trialDays > 0 ? `${trialDays} days left` : `expired ${Math.abs(trialDays)} days ago`}
                       </span>
                     </p>
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <p style={{ fontSize: 13, color: '#9ca3af', margin: 0 }}>No trial set.</p>
+                      <p style={{ fontSize: 13, color: 'var(--theme-text3)', margin: 0 }}>No trial set.</p>
                       {!subEndsAt && (
                         <button
                           className="btn btn-ghost"
@@ -787,18 +787,18 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                 </div>
 
                 {/* Current subscription status */}
-                <div style={{ marginBottom: 20, padding: '14px 16px', background: '#0f1117', borderRadius: 8, border: `1px solid ${subStatus.border || '#2a2f3d'}` }}>
-                  <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 8px' }}>Paid Subscription</p>
+                <div style={{ marginBottom: 20, padding: '14px 16px', background: 'var(--theme-bg)', borderRadius: 8, border: `1px solid ${subStatus.border || 'var(--theme-border)'}` }}>
+                  <p style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 8px' }}>Paid Subscription</p>
                   {subEndsAt ? (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                      <p style={{ fontSize: 13, color: '#e8e0d0', margin: 0 }}>
+                      <p style={{ fontSize: 13, color: 'var(--theme-text1)', margin: 0 }}>
                         Expires {new Date(subEndsAt).toLocaleDateString('en-NP', { day: 'numeric', month: 'short', year: 'numeric' })}
                         {' · '}
                         <span style={{ fontWeight: 700, color: subStatus.color }}>{subStatus.label}</span>
                       </p>
                       <button
                         className="btn btn-ghost"
-                        style={{ fontSize: 11, color: '#f87171', borderColor: 'rgba(248,113,113,0.25)', whiteSpace: 'nowrap', flexShrink: 0 }}
+                        style={{ fontSize: 11, color: 'var(--theme-red)', borderColor: 'rgba(248,113,113,0.25)', whiteSpace: 'nowrap', flexShrink: 0 }}
                         onClick={async () => {
                           if (!window.confirm('Cancel subscription for ' + client.name + '?\n\nThey will fall back to their trial period (if active), otherwise be deactivated on next page load.')) return
                           const { error } = await supabase.from('clients').update({ subscription_ends_at: null }).eq('id', client.id)
@@ -809,17 +809,17 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                       </button>
                     </div>
                   ) : (
-                    <p style={{ fontSize: 13, color: '#9ca3af', margin: 0 }}>No paid subscription set.</p>
+                    <p style={{ fontSize: 13, color: 'var(--theme-text3)', margin: 0 }}>No paid subscription set.</p>
                   )}
                 </div>
 
                 {/* Activate / extend subscription */}
-                <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px' }}>
+                <p style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px' }}>
                   {subEndsAt ? 'Extend Subscription' : 'Activate Subscription'}
                 </p>
 
                 {/* Plan selector */}
-                <p style={{ fontSize: 11, color: '#6b7280', margin: '0 0 8px' }}>Plan</p>
+                <p style={{ fontSize: 11, color: 'var(--theme-text2)', margin: '0 0 8px' }}>Plan</p>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
                   {[
                     { key: 'starter', label: 'Starter', monthly: 'NPR 8,000', annual: 'NPR 5,000' },
@@ -829,14 +829,14 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                     <button key={p.key} onClick={() => setCurrentPlan(p.key)} style={{
                       flex: 1, padding: '8px 4px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 700,
                       border: currentPlan === p.key
-                        ? `1px solid ${p.key === 'pro' ? '#c9a84c' : p.key === 'growth' ? '#34d399' : '#6b7280'}`
-                        : '1px solid #2a2f3d',
+                        ? `1px solid ${p.key === 'pro' ? 'var(--theme-accent)' : p.key === 'growth' ? 'var(--theme-green)' : 'var(--theme-text2)'}`
+                        : '1px solid var(--theme-border)',
                       background: currentPlan === p.key
                         ? p.key === 'pro' ? 'rgba(201,168,76,0.12)' : p.key === 'growth' ? 'rgba(52,211,153,0.10)' : 'rgba(120,113,108,0.10)'
                         : 'none',
                       color: currentPlan === p.key
-                        ? p.key === 'pro' ? '#c9a84c' : p.key === 'growth' ? '#34d399' : '#6b7280'
-                        : '#9ca3af',
+                        ? p.key === 'pro' ? 'var(--theme-accent)' : p.key === 'growth' ? 'var(--theme-green)' : 'var(--theme-text2)'
+                        : 'var(--theme-text3)',
                       lineHeight: 1.4,
                     }}>
                       <div>{p.label}</div>
@@ -844,16 +844,16 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                     </button>
                   ))}
                 </div>
-                <p style={{ fontSize: 11, color: '#9ca3af', margin: '0 0 16px' }}>
+                <p style={{ fontSize: 11, color: 'var(--theme-text3)', margin: '0 0 16px' }}>
                   Annual rate: {currentPlan === 'pro' ? 'NPR 15,000' : currentPlan === 'growth' ? 'NPR 10,000' : 'NPR 5,000'}/mo · Quick-extend buttons apply annual pricing
                 </p>
 
                 {/* Date picker */}
-                <p style={{ fontSize: 11, color: '#6b7280', margin: '0 0 8px' }}>Subscription end date</p>
+                <p style={{ fontSize: 11, color: 'var(--theme-text2)', margin: '0 0 8px' }}>Subscription end date</p>
                 <div style={{ marginBottom: 12 }}>
                   <BsFullDatePicker value={subEndsAt} onChange={setSubEndsAt} />
                 </div>
-                <p style={{ fontSize: 11, color: '#6b7280', margin: '0 0 8px' }}>Quick extend from today:</p>
+                <p style={{ fontSize: 11, color: 'var(--theme-text2)', margin: '0 0 8px' }}>Quick extend from today:</p>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
                   {[{ label: '+1 Month', days: 30 }, { label: '+3 Months', days: 90 }, { label: '+1 Year', days: 365 }].map(({ label, days }) => (
                     <button key={label} className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => extendSub(days)}>{label}</button>
@@ -861,7 +861,7 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                 </div>
 
                 {subMsg && (
-                  <p style={{ fontSize: 12, margin: '0 0 12px', color: subMsg.startsWith('ok:') ? '#34d399' : '#f87171' }}>
+                  <p style={{ fontSize: 12, margin: '0 0 12px', color: subMsg.startsWith('ok:') ? 'var(--theme-green)' : 'var(--theme-red)' }}>
                     {subMsg.replace(/^(ok|error):/, '')}
                   </p>
                 )}
@@ -872,7 +872,7 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                   {subEndsAt && (
                     <button
                       className="btn btn-ghost"
-                      style={{ fontSize: 12, color: '#f87171', borderColor: 'rgba(248,113,113,0.25)' }}
+                      style={{ fontSize: 12, color: 'var(--theme-red)', borderColor: 'rgba(248,113,113,0.25)' }}
                       onClick={() => { setSubEndsAt(''); setSubMsg('') }}
                     >
                       Clear
@@ -887,23 +887,23 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
           {activeTab === 'settings' && (
             <div>
               {loadingSettings ? (
-                <p style={{ color: '#6b7280', fontSize: 13 }}>Loading…</p>
+                <p style={{ color: 'var(--theme-text2)', fontSize: 13 }}>Loading…</p>
               ) : (
                 <>
-                  <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 16px' }}>
+                  <p style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 16px' }}>
                     Branding
                   </p>
 
                   {/* Logo */}
                   <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', marginBottom: 16 }}>
-                    <div style={{ width: 64, height: 64, borderRadius: 8, border: '1px solid #2a2f3d', background: '#0f1117', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <div style={{ width: 64, height: 64, borderRadius: 8, border: '1px solid var(--theme-border)', background: 'var(--theme-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       {clientSettings.logo_url
                         ? <img src={clientSettings.logo_url} alt="logo" style={{ width: 56, height: 56, objectFit: 'contain', borderRadius: 6 }} />
-                        : <span style={{ fontSize: 26, color: '#c9a84c' }}>⬡</span>
+                        : <span style={{ fontSize: 26, color: 'var(--theme-accent)' }}>⬡</span>
                       }
                     </div>
                     <div style={{ flex: 1 }}>
-                      <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 8px' }}>Logo — square PNG/JPG/SVG, max 2MB</p>
+                      <p style={{ fontSize: 12, color: 'var(--theme-text2)', margin: '0 0 8px' }}>Logo — square PNG/JPG/SVG, max 2MB</p>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <label style={{ cursor: logoUploading ? 'not-allowed' : 'pointer' }}>
                           <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style={{ display: 'none' }}
@@ -915,12 +915,12 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                           </span>
                         </label>
                         {clientSettings.logo_url && (
-                          <button className="btn btn-ghost" style={{ fontSize: 11, color: '#f87171', borderColor: 'rgba(248,113,113,0.25)' }} onClick={handleLogoRemove}>
+                          <button className="btn btn-ghost" style={{ fontSize: 11, color: 'var(--theme-red)', borderColor: 'rgba(248,113,113,0.25)' }} onClick={handleLogoRemove}>
                             Remove
                           </button>
                         )}
                       </div>
-                      {logoMsg && <p style={{ fontSize: 11, margin: '6px 0 0', color: logoMsg.startsWith('error') ? '#f87171' : '#34d399' }}>{logoMsg.replace(/^(ok|error):/, '')}</p>}
+                      {logoMsg && <p style={{ fontSize: 11, margin: '6px 0 0', color: logoMsg.startsWith('error') ? 'var(--theme-red)' : 'var(--theme-green)' }}>{logoMsg.replace(/^(ok|error):/, '')}</p>}
                     </div>
                   </div>
 
@@ -939,7 +939,7 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                     </div>
                   </div>
 
-                  <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 16px', borderTop: '1px solid #2a2f3d', paddingTop: 16 }}>
+                  <p style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 16px', borderTop: '1px solid var(--theme-border)', paddingTop: 16 }}>
                     Property Details
                   </p>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
@@ -957,7 +957,7 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                     </div>
                   </div>
 
-                  <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 16px', borderTop: '1px solid #2a2f3d', paddingTop: 16 }}>
+                  <p style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 16px', borderTop: '1px solid var(--theme-border)', paddingTop: 16 }}>
                     Upgrade Contact
                   </p>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
@@ -976,7 +976,7 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                   </div>
 
                   {settingsMsg && (
-                    <p style={{ fontSize: 12, margin: '0 0 12px', color: settingsMsg.startsWith('ok:') ? '#34d399' : '#f87171' }}>
+                    <p style={{ fontSize: 12, margin: '0 0 12px', color: settingsMsg.startsWith('ok:') ? 'var(--theme-green)' : 'var(--theme-red)' }}>
                       {settingsMsg.replace(/^(ok|error):/, '')}
                     </p>
                   )}
@@ -992,13 +992,13 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
           {activeTab === 'thresholds' && (
             <div>
               {loadingSettings ? (
-                <p style={{ color: '#6b7280', fontSize: 13 }}>Loading…</p>
+                <p style={{ color: 'var(--theme-text2)', fontSize: 13 }}>Loading…</p>
               ) : (
                 <>
-                  <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 6px' }}>
+                  <p style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 6px' }}>
                     Food Cost Thresholds
                   </p>
-                  <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 16px', lineHeight: 1.5 }}>
+                  <p style={{ fontSize: 12, color: 'var(--theme-text3)', margin: '0 0 16px', lineHeight: 1.5 }}>
                     Controls the warning/critical colouring on the Dashboard Food Cost % KPI card and reports.
                   </p>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
@@ -1012,10 +1012,10 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                     </div>
                   </div>
 
-                  <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 6px', borderTop: '1px solid #2a2f3d', paddingTop: 16 }}>
+                  <p style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 6px', borderTop: '1px solid var(--theme-border)', paddingTop: 16 }}>
                     Alerts
                   </p>
-                  <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 16px', lineHeight: 1.5 }}>
+                  <p style={{ fontSize: 12, color: 'var(--theme-text3)', margin: '0 0 16px', lineHeight: 1.5 }}>
                     Controls when items are flagged in the Expiry and Variance reports.
                   </p>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
@@ -1030,7 +1030,7 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                   </div>
 
                   {settingsMsg && (
-                    <p style={{ fontSize: 12, margin: '0 0 12px', color: settingsMsg.startsWith('ok:') ? '#34d399' : '#f87171' }}>
+                    <p style={{ fontSize: 12, margin: '0 0 12px', color: settingsMsg.startsWith('ok:') ? 'var(--theme-green)' : 'var(--theme-red)' }}>
                       {settingsMsg.replace(/^(ok|error):/, '')}
                     </p>
                   )}
@@ -1049,18 +1049,18 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                 padding: '14px 16px', marginBottom: 24,
                 background: 'rgba(248,113,113,0.04)', border: '1px solid rgba(248,113,113,0.15)', borderRadius: 8
               }}>
-                <p style={{ fontSize: 13, color: '#f87171', fontWeight: 700, margin: '0 0 6px' }}>⚠ Danger Zone</p>
-                <p style={{ fontSize: 12, color: '#6b7280', margin: 0, lineHeight: 1.65 }}>
+                <p style={{ fontSize: 13, color: 'var(--theme-red)', fontWeight: 700, margin: '0 0 6px' }}>⚠ Danger Zone</p>
+                <p style={{ fontSize: 12, color: 'var(--theme-text2)', margin: 0, lineHeight: 1.65 }}>
                   This permanently deletes all operational data for{' '}
-                  <strong style={{ color: '#e8e0d0' }}>{client.name}</strong>:{' '}
+                  <strong style={{ color: 'var(--theme-text1)' }}>{client.name}</strong>:{' '}
                   categories, items, vendors, recipes, purchases, stock, sales, overheads, and all periods.
                   The client record, user accounts, feature flags, and settings are kept intact.
-                  <br /><strong style={{ color: '#f87171' }}>This cannot be undone.</strong>
+                  <br /><strong style={{ color: 'var(--theme-red)' }}>This cannot be undone.</strong>
                 </p>
               </div>
 
               {deleteMsg && (
-                <p style={{ fontSize: 12, margin: '0 0 16px', color: deleteMsg.startsWith('ok:') ? '#34d399' : '#f87171' }}>
+                <p style={{ fontSize: 12, margin: '0 0 16px', color: deleteMsg.startsWith('ok:') ? 'var(--theme-green)' : 'var(--theme-red)' }}>
                   {deleteMsg.replace(/^(ok|error):/, '')}
                 </p>
               )}
@@ -1071,7 +1071,7 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                   disabled={deleting}
                   style={{
                     background: 'rgba(248,113,113,0.05)', border: '1px solid rgba(248,113,113,0.15)',
-                    color: '#f87171', borderRadius: 6, padding: '9px 18px',
+                    color: 'var(--theme-red)', borderRadius: 6, padding: '9px 18px',
                     cursor: deleting ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600,
                     opacity: deleting ? 0.6 : 1
                   }}
@@ -1083,7 +1083,7 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                   disabled={deleting}
                   style={{
                     background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.20)',
-                    color: '#f87171', borderRadius: 6, padding: '9px 18px',
+                    color: 'var(--theme-red)', borderRadius: 6, padding: '9px 18px',
                     cursor: deleting ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600,
                     opacity: deleting ? 0.6 : 1
                   }}
@@ -1095,7 +1095,7 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                   disabled={deleting}
                   style={{
                     background: 'rgba(248,113,113,0.18)', border: '1px solid rgba(248,113,113,0.40)',
-                    color: '#f87171', borderRadius: 6, padding: '9px 18px',
+                    color: 'var(--theme-red)', borderRadius: 6, padding: '9px 18px',
                     cursor: deleting ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700,
                     opacity: deleting ? 0.6 : 1
                   }}
@@ -1121,7 +1121,7 @@ function FeatureAccessModal({ client, onClose }) {
   const [msg, setMsg] = useState('')
 
   const clientPlan = client.plan || 'starter'
-  const planColor  = clientPlan === 'pro' ? '#c9a84c' : clientPlan === 'growth' ? '#34d399' : '#9ca3af'
+  const planColor  = clientPlan === 'pro' ? 'var(--theme-accent)' : clientPlan === 'growth' ? 'var(--theme-green)' : 'var(--theme-text3)'
   const planLabel  = clientPlan.charAt(0).toUpperCase() + clientPlan.slice(1)
 
   useEffect(() => {
@@ -1151,24 +1151,24 @@ function FeatureAccessModal({ client, onClose }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 12, width: 'min(1120px, 96vw)', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.4)' }}>
+      <div style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 12, width: 'min(1120px, 96vw)', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.4)' }}>
 
         {/* Header */}
-        <div style={{ padding: '18px 24px 14px', borderBottom: '1px solid #2a2f3d', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ padding: '18px 24px 14px', borderBottom: '1px solid var(--theme-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <h3 style={{ margin: 0, fontSize: 15, color: '#e8e0d0', fontFamily: 'Georgia, serif' }}>Feature Access</h3>
-            <p style={{ margin: '3px 0 0', fontSize: 12, color: '#6b7280' }}>
+            <h3 style={{ margin: 0, fontSize: 15, color: 'var(--theme-text1)', fontFamily: 'Georgia, serif' }}>Feature Access</h3>
+            <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--theme-text2)' }}>
               {client.name} ·{' '}
               <span style={{ fontWeight: 700, color: planColor }}>{planLabel} Plan</span>
-              <span style={{ marginLeft: 10, fontSize: 11, color: '#4b5563' }}>Checkboxes override plan — check to grant, uncheck to revoke</span>
+              <span style={{ marginLeft: 10, fontSize: 11, color: 'var(--theme-text3)' }}>Checkboxes override plan — check to grant, uncheck to revoke</span>
             </p>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: '2px 6px' }}>✕</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--theme-text2)', fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: '2px 6px' }}>✕</button>
         </div>
 
         {/* Body — 4-column layout, one plan tier per column, no scroll */}
         <div style={{ padding: '16px 24px 8px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0 14px', alignItems: 'start' }}>
-          {loading ? <p style={{ color: '#6b7280', fontSize: 13, gridColumn: '1/-1' }}>Loading…</p> : FEATURE_GROUPS.map(group => {
+          {loading ? <p style={{ color: 'var(--theme-text2)', fontSize: 13, gridColumn: '1/-1' }}>Loading…</p> : FEATURE_GROUPS.map(group => {
             const planIncluded = isPlanIncluded(group.tier, clientPlan)
             return (
               <div key={group.tier} style={{ marginBottom: 16 }}>
@@ -1181,7 +1181,7 @@ function FeatureAccessModal({ client, onClose }) {
                     </span>
                   )}
                   {!planIncluded && (
-                    <span style={{ fontSize: 10, color: '#4b5563', background: '#1f2937', border: '1px solid #374151', borderRadius: 3, padding: '1px 6px' }}>
+                    <span style={{ fontSize: 10, color: 'var(--theme-text3)', background: 'var(--theme-card)', border: '1px solid var(--theme-text3)', borderRadius: 3, padding: '1px 6px' }}>
                       Not in plan — check to override
                     </span>
                   )}
@@ -1201,8 +1201,8 @@ function FeatureAccessModal({ client, onClose }) {
                         onClick={() => !locked && feat.key && toggleFeat(feat.key, isAdminGranted)}
                         style={{
                           display: 'flex', alignItems: 'center', gap: 10,
-                          background: '#0f1117', borderRadius: 6, padding: '6px 8px',
-                          border: `1px solid ${locked ? group.color + '22' : isAdminGranted ? '#c9a84c50' : '#2a2f3d'}`,
+                          background: 'var(--theme-bg)', borderRadius: 6, padding: '6px 8px',
+                          border: `1px solid ${locked ? group.color + '22' : isAdminGranted ? 'var(--theme-accent)50' : 'var(--theme-border)'}`,
                           cursor: locked ? 'default' : 'pointer',
                           transition: 'border-color 0.15s',
                         }}
@@ -1210,8 +1210,8 @@ function FeatureAccessModal({ client, onClose }) {
                         {/* Checkbox */}
                         <div style={{
                           width: 16, height: 16, borderRadius: 3, flexShrink: 0,
-                          background: isOn ? (locked ? group.color : '#c9a84c') : 'transparent',
-                          border: `2px solid ${isOn ? (locked ? group.color : '#c9a84c') : '#4b5563'}`,
+                          background: isOn ? (locked ? group.color : 'var(--theme-accent)') : 'transparent',
+                          border: `2px solid ${isOn ? (locked ? group.color : 'var(--theme-accent)') : 'var(--theme-text3)'}`,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           transition: 'all 0.15s',
                           opacity: isCore ? 0.45 : 1,
@@ -1221,7 +1221,7 @@ function FeatureAccessModal({ client, onClose }) {
 
                         {/* Label + badge */}
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <span style={{ fontSize: 12, color: isOn ? '#e8e0d0' : '#6b7280' }}>{feat.label}</span>
+                          <span style={{ fontSize: 12, color: isOn ? 'var(--theme-text1)' : 'var(--theme-text2)' }}>{feat.label}</span>
                           {locked && !isCore && (
                             <span style={{
                               marginLeft: 6, fontSize: 9, fontWeight: 700, color: group.color,
@@ -1231,8 +1231,8 @@ function FeatureAccessModal({ client, onClose }) {
                           )}
                           {isAdminGranted && (
                             <span style={{
-                              marginLeft: 6, fontSize: 9, fontWeight: 700, color: '#c9a84c',
-                              background: '#c9a84c18', border: '1px solid #c9a84c35',
+                              marginLeft: 6, fontSize: 9, fontWeight: 700, color: 'var(--theme-accent)',
+                              background: 'var(--theme-accent)18', border: '1px solid var(--theme-accent)35',
                               borderRadius: 3, padding: '1px 4px', verticalAlign: 'middle',
                             }}>Override</span>
                           )}
@@ -1247,8 +1247,8 @@ function FeatureAccessModal({ client, onClose }) {
         </div>
 
         {/* Footer */}
-        <div style={{ padding: '12px 24px', borderTop: '1px solid #2a2f3d', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 12, color: msg.startsWith('ok:') ? '#34d399' : msg.startsWith('error:') ? '#f87171' : 'transparent' }}>
+        <div style={{ padding: '12px 24px', borderTop: '1px solid var(--theme-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 12, color: msg.startsWith('ok:') ? 'var(--theme-green)' : msg.startsWith('error:') ? 'var(--theme-red)' : 'transparent' }}>
             {msg.replace(/^(ok|error):/, '') || '·'}
           </span>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -1410,7 +1410,7 @@ export default function AdminClients() {
       {/* New client form */}
       {showNewForm && (
         <div className="card" style={{ marginBottom: 24 }}>
-          <h3 style={{ margin: '0 0 20px', fontSize: 15, color: '#e8e0d0' }}>New Client</h3>
+          <h3 style={{ margin: '0 0 20px', fontSize: 15, color: 'var(--theme-text1)' }}>New Client</h3>
           <div className="form-grid form-grid-2">
             <div className="form-field">
               <label>Property / Restaurant Name *</label>
@@ -1429,7 +1429,7 @@ export default function AdminClients() {
               <input value={newForm.contact_phone} onChange={e => setNewForm({ ...newForm, contact_phone: e.target.value })} placeholder="98XXXXXXXX" />
             </div>
           </div>
-          {formError && <p style={{ color: '#f87171', fontSize: 13, margin: '12px 0 0' }}>{formError}</p>}
+          {formError && <p style={{ color: 'var(--theme-red)', fontSize: 13, margin: '12px 0 0' }}>{formError}</p>}
           <div className="form-actions">
             <button className="btn btn-ghost" onClick={() => { setShowNewForm(false); setNewForm(EMPTY_CLIENT_FORM) }}>Cancel</button>
             <button className="btn btn-primary" onClick={createClient} disabled={saving}>{saving ? 'Creating…' : 'Create Client'}</button>
@@ -1439,7 +1439,7 @@ export default function AdminClients() {
 
       {/* Client cards */}
       {loading ? (
-        <div className="card"><p style={{ color: '#6b7280', fontSize: 13 }}>Loading…</p></div>
+        <div className="card"><p style={{ color: 'var(--theme-text2)', fontSize: 13 }}>Loading…</p></div>
       ) : clients.length === 0 ? (
         <div className="card">
           <div className="empty-state">
@@ -1453,7 +1453,7 @@ export default function AdminClients() {
             const rel      = relativeTime(lastSeenMap[c.id])
             const isRecent = lastSeenMap[c.id] && Date.now() - new Date(lastSeenMap[c.id]).getTime() < 86400000
             const lastUser = lastUserMap[c.id]
-            const planColor = p => p === 'pro' ? '#c9a84c' : p === 'growth' ? '#34d399' : '#9ca3af'
+            const planColor = p => p === 'pro' ? 'var(--theme-accent)' : p === 'growth' ? 'var(--theme-green)' : 'var(--theme-text3)'
             const planLabel = p => p === 'pro' ? 'Pro' : p === 'growth' ? 'Growth' : 'Starter'
 
             return (
@@ -1461,31 +1461,31 @@ export default function AdminClients() {
                 key={c.id}
                 onClick={() => setActiveDrawer(c)}
                 style={{
-                  background: '#141820', border: '1px solid #2a2f3d', borderRadius: 10,
+                  background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 10,
                   overflow: 'hidden', cursor: 'pointer',
                   transition: 'border-color 0.15s',
                 }}
                 onMouseEnter={e => e.currentTarget.style.borderColor = '#3a3f4d'}
-                onMouseLeave={e => e.currentTarget.style.borderColor = '#2a2f3d'}
+                onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--theme-border)'}
               >
                 {/* Header row */}
                 <div style={{ padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-                      <span style={{ fontSize: 15, fontWeight: 700, color: '#e8e0d0', fontFamily: 'Georgia, serif' }}>{c.name}</span>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--theme-text1)', fontFamily: 'Georgia, serif' }}>{c.name}</span>
                       <span className={`badge ${c.is_active ? 'badge-green' : 'badge-gray'}`}>
                         {c.is_active ? 'Active' : 'Inactive'}
                       </span>
                       {rel && (
-                        <span style={{ fontSize: 11, color: isRecent ? '#34d399' : '#6b7280', fontWeight: isRecent ? 600 : 400 }}>
+                        <span style={{ fontSize: 11, color: isRecent ? 'var(--theme-green)' : 'var(--theme-text2)', fontWeight: isRecent ? 600 : 400 }}>
                           {rel}
                           {lastUser && (
-                            <span style={{ color: '#6b7280', fontWeight: 400 }}> · {lastUser}</span>
+                            <span style={{ color: 'var(--theme-text2)', fontWeight: 400 }}> · {lastUser}</span>
                           )}
                         </span>
                       )}
                     </div>
-                    <div style={{ fontSize: 12, color: '#6b7280' }}>
+                    <div style={{ fontSize: 12, color: 'var(--theme-text2)' }}>
                       {[c.location, c.contact_person, c.contact_phone].filter(Boolean).join(' · ') || '—'}
                     </div>
                   </div>
@@ -1493,17 +1493,17 @@ export default function AdminClients() {
                 </div>
 
                 {/* Module strip */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', borderTop: '1px solid #2a2f3d' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', borderTop: '1px solid var(--theme-border)' }}>
                   {/* IMS */}
-                  <div style={{ padding: '10px 18px', borderRight: '1px solid #2a2f3d' }} onClick={e => e.stopPropagation()}>
-                    <div style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>IMS</div>
+                  <div style={{ padding: '10px 18px', borderRight: '1px solid var(--theme-border)' }} onClick={e => e.stopPropagation()}>
+                    <div style={{ fontSize: 10, color: 'var(--theme-text3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>IMS</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <button
                         onClick={e => toggleImsEnabled(c, e)}
                         style={{
                           width: 32, height: 18, borderRadius: 9, border: 'none', cursor: 'pointer',
                           position: 'relative', flexShrink: 0, padding: 0,
-                          background: c.ims_enabled !== false ? '#34d399' : '#374151', transition: 'background 0.2s',
+                          background: c.ims_enabled !== false ? 'var(--theme-green)' : 'var(--theme-text3)', transition: 'background 0.2s',
                         }}
                       >
                         <span style={{
@@ -1516,21 +1516,21 @@ export default function AdminClients() {
                           {planLabel(c.plan || 'starter')}
                         </span>
                       ) : (
-                        <span style={{ fontSize: 12, color: '#374151' }}>Not enabled</span>
+                        <span style={{ fontSize: 12, color: 'var(--theme-text3)' }}>Not enabled</span>
                       )}
                     </div>
                   </div>
 
                   {/* HR */}
-                  <div style={{ padding: '10px 18px', borderRight: '1px solid #2a2f3d' }} onClick={e => e.stopPropagation()}>
-                    <div style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>HR</div>
+                  <div style={{ padding: '10px 18px', borderRight: '1px solid var(--theme-border)' }} onClick={e => e.stopPropagation()}>
+                    <div style={{ fontSize: 10, color: 'var(--theme-text3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>HR</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <button
                         onClick={e => toggleHrEnabled(c, e)}
                         style={{
                           width: 32, height: 18, borderRadius: 9, border: 'none', cursor: 'pointer',
                           position: 'relative', flexShrink: 0, padding: 0,
-                          background: c.hr_enabled ? '#34d399' : '#374151', transition: 'background 0.2s',
+                          background: c.hr_enabled ? 'var(--theme-green)' : 'var(--theme-text3)', transition: 'background 0.2s',
                         }}
                       >
                         <span style={{
@@ -1543,33 +1543,33 @@ export default function AdminClients() {
                           {planLabel(c.hr_plan || 'starter')}
                         </span>
                       ) : (
-                        <span style={{ fontSize: 12, color: '#374151' }}>Not enabled</span>
+                        <span style={{ fontSize: 12, color: 'var(--theme-text3)' }}>Not enabled</span>
                       )}
                     </div>
                   </div>
 
                   {/* POS */}
                   <div style={{ padding: '10px 18px' }}>
-                    <div style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>POS</div>
+                    <div style={{ fontSize: 10, color: 'var(--theme-text3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>POS</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <button
                         disabled
                         style={{
                           width: 32, height: 18, borderRadius: 9, border: 'none', cursor: 'not-allowed',
                           position: 'relative', flexShrink: 0, padding: 0,
-                          background: '#1f2937', opacity: 0.45,
+                          background: 'var(--theme-card)', opacity: 0.45,
                         }}
                       >
-                        <span style={{ position: 'absolute', top: 2, left: 2, width: 14, height: 14, borderRadius: '50%', background: '#4b5563' }} />
+                        <span style={{ position: 'absolute', top: 2, left: 2, width: 14, height: 14, borderRadius: '50%', background: 'var(--theme-text3)' }} />
                       </button>
-                      <span style={{ fontSize: 12, color: '#374151', fontStyle: 'italic' }}>Coming soon</span>
+                      <span style={{ fontSize: 12, color: 'var(--theme-text3)', fontStyle: 'italic' }}>Coming soon</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Action footer */}
                 <div
-                  style={{ padding: '10px 18px', borderTop: '1px solid #2a2f3d', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0f1117' }}
+                  style={{ padding: '10px 18px', borderTop: '1px solid var(--theme-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--theme-bg)' }}
                   onClick={e => e.stopPropagation()}
                 >
                   <button
@@ -1589,7 +1589,7 @@ export default function AdminClients() {
                     </button>
                     <button
                       className="btn btn-ghost"
-                      style={{ fontSize: 11, padding: '4px 10px', color: '#c9a84c', borderColor: 'rgba(201,168,76,0.3)' }}
+                      style={{ fontSize: 11, padding: '4px 10px', color: 'var(--theme-accent)', borderColor: 'rgba(201,168,76,0.3)' }}
                       onClick={e => { e.stopPropagation(); setActiveDrawer(c) }}
                     >
                       Manage →

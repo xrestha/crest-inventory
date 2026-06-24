@@ -4,10 +4,10 @@ import { supabase } from '../supabaseClient'
 import Tip from '../components/Tip'
 
 const QUADRANTS = {
-  Star:      { color: '#34d399', bg: 'rgba(52,211,153,0.10)', border: 'rgba(52,211,153,0.30)', icon: '★', desc: 'High profit · High popularity' },
+  Star:      { color: 'var(--theme-green)', bg: 'rgba(52,211,153,0.10)', border: 'rgba(52,211,153,0.30)', icon: '★', desc: 'High profit · High popularity' },
   Plowhouse: { color: '#60a5fa', bg: 'rgba(96,165,250,0.10)', border: 'rgba(96,165,250,0.30)', icon: '⬛', desc: 'High profit · Low popularity' },
   Puzzle:    { color: '#f59e0b', bg: 'rgba(245,158,11,0.10)',  border: 'rgba(245,158,11,0.30)',  icon: '?', desc: 'Low profit · High popularity' },
-  Dog:       { color: '#f87171', bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.30)', icon: '✕', desc: 'Low profit · Low popularity' },
+  Dog:       { color: 'var(--theme-red)', bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.30)', icon: '✕', desc: 'Low profit · Low popularity' },
 }
 
 const FC_CUTOFF = 35 // %
@@ -182,8 +182,8 @@ export default function MenuEngineering() {
             key={name}
             onClick={() => setFilterQ(filterQ === name ? 'All' : name)}
             style={{
-              background: filterQ === name ? q.bg : '#181c27',
-              border: `1px solid ${filterQ === name ? q.border : '#2a2f3d'}`,
+              background: filterQ === name ? q.bg : 'var(--theme-card)',
+              border: `1px solid ${filterQ === name ? q.border : 'var(--theme-border)'}`,
               borderRadius: 8, padding: '14px 16px', cursor: 'pointer',
               transition: 'all 0.15s'
             }}
@@ -194,8 +194,8 @@ export default function MenuEngineering() {
                 fontSize: 22, fontWeight: 700, color: q.color
               }}>{summary[name]}</span>
             </div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#e8e0d0' }}>{name}</div>
-            <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{q.desc}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--theme-text1)' }}>{name}</div>
+            <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginTop: 2 }}>{q.desc}</div>
           </div>
         ))}
       </div>
@@ -206,19 +206,19 @@ export default function MenuEngineering() {
           placeholder="Search menu items…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          style={{ background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: 220 }}
+          style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none', width: 220 }}
         />
         <select className="form-select" value={filterQ} onChange={e => setFilterQ(e.target.value)}>
           <option value="All">All Quadrants</option>
           {Object.keys(QUADRANTS).map(q => <option key={q} value={q}>{q}</option>)}
         </select>
-        <span style={{ fontSize: 12, color: '#6b7280' }}>
+        <span style={{ fontSize: 12, color: 'var(--theme-text2)' }}>
           {filtered.length} item{filtered.length !== 1 ? 's' : ''} · Revenue: NPR {totalRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })} · Qty: {totalQty.toLocaleString()}
         </span>
       </div>
 
       {loading ? (
-        <div className="card"><p style={{ color: '#6b7280', fontSize: 13 }}>Loading…</p></div>
+        <div className="card"><p style={{ color: 'var(--theme-text2)', fontSize: 13 }}>Loading…</p></div>
       ) : items.length === 0 ? (
         <div className="card">
           <div className="empty-state">
@@ -249,19 +249,19 @@ export default function MenuEngineering() {
                   const q = QUADRANTS[r.quadrant]
                   return (
                     <tr key={r.id}>
-                      <td style={{ fontWeight: 600, color: '#e8e0d0' }}>{r.name}</td>
-                      <td style={{ color: '#6b7280', fontSize: 12 }}>{r.category || '—'}</td>
+                      <td style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{r.name}</td>
+                      <td style={{ color: 'var(--theme-text2)', fontSize: 12 }}>{r.category || '—'}</td>
                       <td style={{ textAlign: 'right' }}>{r.sellingPrice > 0 ? r.sellingPrice.toLocaleString() : '—'}</td>
                       <td style={{ textAlign: 'right' }}>{r.ingredientCost.toFixed(2)}</td>
                       <td style={{ textAlign: 'right' }}>
                         <span style={{
-                          color: r.fcPct <= 30 ? '#34d399' : r.fcPct <= 38 ? '#f59e0b' : '#f87171',
+                          color: r.fcPct <= 30 ? 'var(--theme-green)' : r.fcPct <= 38 ? '#f59e0b' : 'var(--theme-red)',
                           fontWeight: 600
                         }}>
                           {r.sellingPrice > 0 ? r.fcPct.toFixed(1) + '%' : '—'}
                         </span>
                       </td>
-                      <td style={{ textAlign: 'right' }}>{r.qtySold > 0 ? r.qtySold.toLocaleString() : <span style={{ color: '#9ca3af' }}>0</span>}</td>
+                      <td style={{ textAlign: 'right' }}>{r.qtySold > 0 ? r.qtySold.toLocaleString() : <span style={{ color: 'var(--theme-text3)' }}>0</span>}</td>
                       <td style={{ textAlign: 'right' }}>{r.revenue > 0 ? r.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '—'}</td>
                       <td>
                         <span style={{
@@ -274,7 +274,7 @@ export default function MenuEngineering() {
                           {q.icon} {r.quadrant}
                         </span>
                       </td>
-                      <td style={{ fontSize: 11, color: '#6b7280', maxWidth: 160 }}>
+                      <td style={{ fontSize: 11, color: 'var(--theme-text2)', maxWidth: 160 }}>
                         {r.quadrant === 'Star'      && 'Keep on menu. Feature prominently.'}
                         {r.quadrant === 'Plowhouse' && 'Good margin. Promote to boost volume.'}
                         {r.quadrant === 'Puzzle'    && 'Review recipe cost. Can price be raised?'}
@@ -292,7 +292,7 @@ export default function MenuEngineering() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           {Object.entries(QUADRANTS).map(([name, q]) => (
             <div key={name} style={{
-              background: '#181c27',
+              background: 'var(--theme-card)',
               border: `1px solid ${q.border}`,
               borderRadius: 10, overflow: 'hidden'
             }}>
@@ -304,31 +304,31 @@ export default function MenuEngineering() {
               }}>
                 <div>
                   <span style={{ fontSize: 15, fontWeight: 700, color: q.color }}>{q.icon} {name}</span>
-                  <span style={{ fontSize: 11, color: '#6b7280', marginLeft: 10 }}>{q.desc}</span>
+                  <span style={{ fontSize: 11, color: 'var(--theme-text2)', marginLeft: 10 }}>{q.desc}</span>
                 </div>
                 <span style={{ fontSize: 20, fontWeight: 700, color: q.color }}>{byQuadrant[name].length}</span>
               </div>
               {/* Items */}
               <div style={{ padding: '8px 0', minHeight: 60 }}>
                 {byQuadrant[name].length === 0 ? (
-                  <p style={{ color: '#9ca3af', fontSize: 12, textAlign: 'center', padding: '16px 0' }}>No items</p>
+                  <p style={{ color: 'var(--theme-text3)', fontSize: 12, textAlign: 'center', padding: '16px 0' }}>No items</p>
                 ) : byQuadrant[name].map(r => (
                   <div key={r.id} style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '8px 16px', borderBottom: '1px solid #2a2f3d'
+                    padding: '8px 16px', borderBottom: '1px solid var(--theme-border)'
                   }}>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#e8e0d0' }}>{r.name}</div>
-                      <div style={{ fontSize: 11, color: '#6b7280' }}>{r.category}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--theme-text1)' }}>{r.name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--theme-text2)' }}>{r.category}</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <div style={{
                         fontSize: 12, fontWeight: 700,
-                        color: r.fcPct <= 30 ? '#34d399' : r.fcPct <= 38 ? '#f59e0b' : '#f87171'
+                        color: r.fcPct <= 30 ? 'var(--theme-green)' : r.fcPct <= 38 ? '#f59e0b' : 'var(--theme-red)'
                       }}>
                         {r.sellingPrice > 0 ? r.fcPct.toFixed(1) + '%' : '—'} FC
                       </div>
-                      <div style={{ fontSize: 11, color: '#6b7280' }}>{r.qtySold} sold</div>
+                      <div style={{ fontSize: 11, color: 'var(--theme-text2)' }}>{r.qtySold} sold</div>
                     </div>
                   </div>
                 ))}
@@ -341,15 +341,15 @@ export default function MenuEngineering() {
       {/* Legend */}
       {!loading && items.length > 0 && (
         <div className="card" style={{ marginTop: 16, display: 'flex', gap: 24, flexWrap: 'wrap', padding: '12px 20px' }}>
-          <span style={{ fontSize: 11, color: '#6b7280', alignSelf: 'center' }}>Thresholds:</span>
+          <span style={{ fontSize: 11, color: 'var(--theme-text2)', alignSelf: 'center' }}>Thresholds:</span>
           <Tip text="Items with food cost ≤ 35% of selling price are 'high profit'. Above 35% = low profit.">
-            <span style={{ fontSize: 12, color: '#6b7280' }}>FC% cutoff <span style={{ color: '#c9a84c' }}>35%</span></span>
+            <span style={{ fontSize: 12, color: 'var(--theme-text2)' }}>FC% cutoff <span style={{ color: 'var(--theme-accent)' }}>35%</span></span>
           </Tip>
           <Tip text={`Median portions sold this period. Items at or above ${medianQty.toFixed(0)} are 'high popularity'; below = low popularity.`}>
-            <span style={{ fontSize: 12, color: '#6b7280' }}>Volume cutoff <span style={{ color: '#c9a84c' }}>median = {medianQty.toFixed(1)} portions</span></span>
+            <span style={{ fontSize: 12, color: 'var(--theme-text2)' }}>Volume cutoff <span style={{ color: 'var(--theme-accent)' }}>median = {medianQty.toFixed(1)} portions</span></span>
           </Tip>
           <Tip text="The Bikram Sambat period being analysed. Change the period in the dropdown above to compare months.">
-            <span style={{ fontSize: 12, color: '#6b7280' }}>Period <span style={{ color: '#c9a84c' }}>{periods.find(p => p.id === periodId)?.label || ''}</span></span>
+            <span style={{ fontSize: 12, color: 'var(--theme-text2)' }}>Period <span style={{ color: 'var(--theme-accent)' }}>{periods.find(p => p.id === periodId)?.label || ''}</span></span>
           </Tip>
         </div>
       )}

@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-const GOLD   = '#c9a84c'
-const GREEN  = '#34d399'
+const GOLD   = 'var(--theme-accent)'
+const GREEN  = 'var(--theme-green)'
 const INDIGO = '#4a6fa3'
-const BG     = '#0f1117'
-const CARD   = '#181c27'
-const BORDER = '#2a2f3d'
+const BG     = 'var(--theme-bg)'
+const CARD   = 'var(--theme-card)'
+const BORDER = 'var(--theme-border)'
 
 const STARTER_FEATURES = [
   'Dashboard & KPI Overview',
@@ -99,13 +99,13 @@ export default function Pricing() {
   const navigate = useNavigate()
 
   return (
-    <div style={{ minHeight: '100vh', background: BG, color: '#e8e0d0', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: BG, color: 'var(--theme-text1)', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
 
       {/* Nav */}
       <nav style={{ background: CARD, borderBottom: `1px solid ${BORDER}`, padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64, position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 24, color: GOLD }}>⬡</span>
-          <span style={{ fontSize: 17, fontWeight: 700, color: '#e8e0d0', fontFamily: 'Georgia, serif' }}>Crest Inventory</span>
+          <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--theme-text1)', fontFamily: 'Georgia, serif' }}>Crest Inventory</span>
         </div>
         <button
           onClick={() => navigate('/login')}
@@ -119,10 +119,10 @@ export default function Pricing() {
         <div style={{ display: 'inline-block', background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.2)', borderRadius: 20, padding: '5px 18px', fontSize: 12, color: GREEN, marginBottom: 24, letterSpacing: '0.06em', fontWeight: 600 }}>
           1-month free Starter trial · No credit card required
         </div>
-        <h1 style={{ fontSize: 44, fontWeight: 800, margin: '0 0 16px', fontFamily: 'Georgia, serif', lineHeight: 1.15, color: '#e8e0d0' }}>
+        <h1 style={{ fontSize: 44, fontWeight: 800, margin: '0 0 16px', fontFamily: 'Georgia, serif', lineHeight: 1.15, color: 'var(--theme-text1)' }}>
           Simple, honest pricing
         </h1>
-        <p style={{ fontSize: 16, color: '#6b7280', margin: '0 auto 44px', maxWidth: 500, lineHeight: 1.7 }}>
+        <p style={{ fontSize: 16, color: 'var(--theme-text2)', margin: '0 auto 44px', maxWidth: 500, lineHeight: 1.7 }}>
           Built for Nepal's restaurants and cafes. Works in BS calendar, NPR, and FonePay — no Western SaaS workarounds needed.
         </p>
 
@@ -130,12 +130,12 @@ export default function Pricing() {
         <div style={{ display: 'inline-flex', background: CARD, border: `1px solid ${BORDER}`, borderRadius: 9, padding: 4, gap: 2 }}>
           <button
             onClick={() => setAnnual(false)}
-            style={{ background: !annual ? 'rgba(201,168,76,0.15)' : 'none', border: !annual ? `1px solid rgba(201,168,76,0.3)` : '1px solid transparent', color: !annual ? GOLD : '#6b7280', padding: '8px 22px', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+            style={{ background: !annual ? 'rgba(201,168,76,0.15)' : 'none', border: !annual ? `1px solid rgba(201,168,76,0.3)` : '1px solid transparent', color: !annual ? GOLD : 'var(--theme-text2)', padding: '8px 22px', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
             Monthly
           </button>
           <button
             onClick={() => setAnnual(true)}
-            style={{ background: annual ? 'rgba(201,168,76,0.15)' : 'none', border: annual ? `1px solid rgba(201,168,76,0.3)` : '1px solid transparent', color: annual ? GOLD : '#6b7280', padding: '8px 22px', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+            style={{ background: annual ? 'rgba(201,168,76,0.15)' : 'none', border: annual ? `1px solid rgba(201,168,76,0.3)` : '1px solid transparent', color: annual ? GOLD : 'var(--theme-text2)', padding: '8px 22px', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
             Annual
             <span style={{ background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.25)', color: GREEN, fontSize: 10, padding: '2px 8px', borderRadius: 10, fontWeight: 700, letterSpacing: '0.04em' }}>
               Save 25%
@@ -154,16 +154,16 @@ export default function Pricing() {
             display: 'flex', flexDirection: 'column',
             boxShadow: plan.highlight ? '0 4px 48px rgba(201,168,76,0.08)' : 'none',
           }}>
-            <div style={{ position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)', background: plan.badgeBg, color: '#0f1117', fontSize: 10, fontWeight: 800, padding: '4px 14px', borderRadius: 10, letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+            <div style={{ position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)', background: plan.badgeBg, color: 'var(--theme-bg)', fontSize: 10, fontWeight: 800, padding: '4px 14px', borderRadius: 10, letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
               {plan.badge}
             </div>
 
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <span style={{ fontSize: 22, color: plan.color }}>{plan.icon}</span>
-                <span style={{ fontSize: 20, fontWeight: 700, color: '#e8e0d0', fontFamily: 'Georgia, serif' }}>{plan.name}</span>
+                <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--theme-text1)', fontFamily: 'Georgia, serif' }}>{plan.name}</span>
               </div>
-              <p style={{ fontSize: 13, color: '#6b7280', margin: 0, lineHeight: 1.5 }}>{plan.tagline}</p>
+              <p style={{ fontSize: 13, color: 'var(--theme-text2)', margin: 0, lineHeight: 1.5 }}>{plan.tagline}</p>
             </div>
 
             {/* Price */}
@@ -171,19 +171,19 @@ export default function Pricing() {
               {plan.name === 'Starter' && !annual ? (
                 <>
                   <div style={{ fontSize: 11, color: GOLD, fontWeight: 800, marginBottom: 5, letterSpacing: '0.07em' }}>FREE FOR 1 MONTH</div>
-                  <div style={{ fontSize: 26, fontWeight: 800, color: '#e8e0d0', lineHeight: 1 }}>
+                  <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--theme-text1)', lineHeight: 1 }}>
                     NPR {plan.monthly.toLocaleString()}
-                    <span style={{ fontSize: 13, fontWeight: 400, color: '#6b7280' }}>/mo after</span>
+                    <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--theme-text2)' }}>/mo after</span>
                   </div>
                 </>
               ) : (
                 <>
-                  <div style={{ fontSize: 26, fontWeight: 800, color: '#e8e0d0', lineHeight: 1 }}>
+                  <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--theme-text1)', lineHeight: 1 }}>
                     NPR {(annual ? plan.annual : plan.monthly).toLocaleString()}
-                    <span style={{ fontSize: 13, fontWeight: 400, color: '#6b7280' }}>/mo</span>
+                    <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--theme-text2)' }}>/mo</span>
                   </div>
                   {annual && (
-                    <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 6 }}>
+                    <div style={{ fontSize: 12, color: 'var(--theme-text3)', marginTop: 6 }}>
                       Billed annually · NPR {((annual ? plan.annual : plan.monthly) * 12).toLocaleString()}/yr
                     </div>
                   )}
@@ -193,13 +193,13 @@ export default function Pricing() {
 
             <button
               onClick={() => navigate('/login')}
-              style={{ background: plan.highlight ? GOLD : 'rgba(201,168,76,0.08)', border: `1px solid ${plan.highlight ? GOLD : 'rgba(201,168,76,0.25)'}`, color: plan.highlight ? '#0f1117' : GOLD, padding: '11px 20px', borderRadius: 7, cursor: 'pointer', fontSize: 14, fontWeight: 700, marginBottom: 22, width: '100%' }}>
+              style={{ background: plan.highlight ? GOLD : 'rgba(201,168,76,0.08)', border: `1px solid ${plan.highlight ? GOLD : 'rgba(201,168,76,0.25)'}`, color: plan.highlight ? 'var(--theme-bg)' : GOLD, padding: '11px 20px', borderRadius: 7, cursor: 'pointer', fontSize: 14, fontWeight: 700, marginBottom: 22, width: '100%' }}>
               {plan.cta} →
             </button>
 
             <div style={{ flex: 1 }}>
               {plan.name !== 'Starter' && (
-                <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                <div style={{ fontSize: 11, color: 'var(--theme-text3)', marginBottom: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                   {plan.name === 'Growth' ? '+ Everything in Starter' : '+ Everything in Growth'}
                 </div>
               )}
@@ -207,7 +207,7 @@ export default function Pricing() {
                 {plan.features.map((f, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
                     <span style={{ color: plan.color, fontSize: 13, flexShrink: 0, marginTop: 1 }}>✓</span>
-                    <span style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.45 }}>{f}</span>
+                    <span style={{ fontSize: 13, color: 'var(--theme-text2)', lineHeight: 1.45 }}>{f}</span>
                   </div>
                 ))}
               </div>
@@ -218,43 +218,43 @@ export default function Pricing() {
 
       {/* FAQ */}
       <div style={{ maxWidth: 700, margin: '0 auto', padding: '0 24px 80px' }}>
-        <h2 style={{ textAlign: 'center', fontSize: 24, marginBottom: 36, fontFamily: 'Georgia, serif', color: '#e8e0d0' }}>
+        <h2 style={{ textAlign: 'center', fontSize: 24, marginBottom: 36, fontFamily: 'Georgia, serif', color: 'var(--theme-text1)' }}>
           Common questions
         </h2>
         {FAQS.map((faq, i) => (
           <div key={i} style={{ padding: '20px 0', borderBottom: `1px solid ${BORDER}` }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#e8e0d0', marginBottom: 8 }}>{faq.q}</div>
-            <div style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.75 }}>{faq.a}</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--theme-text1)', marginBottom: 8 }}>{faq.q}</div>
+            <div style={{ fontSize: 13, color: 'var(--theme-text2)', lineHeight: 1.75 }}>{faq.a}</div>
           </div>
         ))}
       </div>
 
       {/* Footer CTA */}
       <div style={{ background: CARD, borderTop: `1px solid ${BORDER}`, padding: '64px 32px', textAlign: 'center' }}>
-        <h2 style={{ fontSize: 28, margin: '0 0 12px', fontFamily: 'Georgia, serif', color: '#e8e0d0' }}>
+        <h2 style={{ fontSize: 28, margin: '0 0 12px', fontFamily: 'Georgia, serif', color: 'var(--theme-text1)' }}>
           Ready to take control of your food costs?
         </h2>
-        <p style={{ fontSize: 14, color: '#6b7280', margin: '0 0 36px', lineHeight: 1.6 }}>
+        <p style={{ fontSize: 14, color: 'var(--theme-text2)', margin: '0 0 36px', lineHeight: 1.6 }}>
           Start free today. No credit card. No commitment. Cancel any time.
         </p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 48 }}>
           <button
             onClick={() => navigate(-1)}
-            style={{ background: 'none', border: `1px solid ${BORDER}`, color: '#6b7280', padding: '13px 24px', borderRadius: 7, cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
+            style={{ background: 'none', border: `1px solid ${BORDER}`, color: 'var(--theme-text2)', padding: '13px 24px', borderRadius: 7, cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
             ← Back
           </button>
           <button
             onClick={() => navigate('/login')}
-            style={{ background: GOLD, border: 'none', color: '#0f1117', padding: '13px 32px', borderRadius: 7, cursor: 'pointer', fontSize: 14, fontWeight: 700 }}>
+            style={{ background: GOLD, border: 'none', color: 'var(--theme-bg)', padding: '13px 32px', borderRadius: 7, cursor: 'pointer', fontSize: 14, fontWeight: 700 }}>
             Start Free Trial →
           </button>
           <a
             href="mailto:info@cresthospitality.com"
-            style={{ background: 'none', border: `1px solid ${BORDER}`, color: '#6b7280', padding: '13px 28px', borderRadius: 7, textDecoration: 'none', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            style={{ background: 'none', border: `1px solid ${BORDER}`, color: 'var(--theme-text2)', padding: '13px 28px', borderRadius: 7, textDecoration: 'none', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             ✉ Email us
           </a>
         </div>
-        <p style={{ fontSize: 11, color: '#374151', margin: 0 }}>© 2083 BS · Crest Hospitality · Kathmandu, Nepal</p>
+        <p style={{ fontSize: 11, color: 'var(--theme-text3)', margin: 0 }}>© 2083 BS · Crest Hospitality · Kathmandu, Nepal</p>
       </div>
     </div>
   )

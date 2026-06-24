@@ -140,7 +140,7 @@ export default function MonthlySummary() {
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <select
-            style={{ background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: '#e8e0d0', outline: 'none' }}
+            style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none' }}
             value={selectedPeriod?.id || ''}
             onChange={e => handlePeriodChange(e.target.value)}
           >
@@ -155,21 +155,21 @@ export default function MonthlySummary() {
       </div>
 
       {loading ? (
-        <div className="card"><p style={{ color: '#6b7280', fontSize: 13 }}>Building report…</p></div>
+        <div className="card"><p style={{ color: 'var(--theme-text2)', fontSize: 13 }}>Building report…</p></div>
       ) : !report ? (
-        <div className="card"><p style={{ color: '#6b7280', fontSize: 13 }}>No data for this period yet.</p></div>
+        <div className="card"><p style={{ color: 'var(--theme-text2)', fontSize: 13 }}>No data for this period yet.</p></div>
       ) : (
         <>
           {/* KPI row */}
           <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(6,1fr)', marginBottom: 24 }}>
             {[
-              { label: 'Opening Stock',    value: fmt(report.totalOpening),     color: '#e8e0d0' },
-              { label: 'Gross Purchases',  value: fmt(report.totalPurchase),    color: '#c9a84c' },
-              { label: 'Returns',          value: fmt(report.totalReturn),      color: '#f87171',
+              { label: 'Opening Stock',    value: fmt(report.totalOpening),     color: 'var(--theme-text1)' },
+              { label: 'Gross Purchases',  value: fmt(report.totalPurchase),    color: 'var(--theme-accent)' },
+              { label: 'Returns',          value: fmt(report.totalReturn),      color: 'var(--theme-red)',
                 sub: report.totalReturn > 0 ? `Net: ${fmt(report.totalNetPurchase)}` : 'None this period' },
-              { label: 'Wastage',          value: fmt(report.totalWastage),     color: '#f87171' },
-              { label: 'Closing Stock',    value: fmt(report.totalClosing),     color: '#34d399' },
-              { label: 'COGS',             value: fmt(report.totalCOGS),        color: '#c9a84c',
+              { label: 'Wastage',          value: fmt(report.totalWastage),     color: 'var(--theme-red)' },
+              { label: 'Closing Stock',    value: fmt(report.totalClosing),     color: 'var(--theme-green)' },
+              { label: 'COGS',             value: fmt(report.totalCOGS),        color: 'var(--theme-accent)',
                 sub: report.fcPct != null ? `${report.fcPct.toFixed(1)}% of revenue` : 'No sales data',
                 tip: 'Cost of Goods Used: Opening + Net Purchases − Wastage − Closing Stock. The actual ingredient cost consumed.' }
             ].map(s => (
@@ -186,32 +186,32 @@ export default function MonthlySummary() {
             background: report.fcPct == null ? 'rgba(107,114,128,0.08)' :
               report.fcPct <= 35 ? 'rgba(52,211,153,0.06)' :
               report.fcPct <= 45 ? 'rgba(201,168,76,0.06)' : 'rgba(248,113,113,0.06)',
-            border: `1px solid ${report.fcPct == null ? '#2a2f3d' :
+            border: `1px solid ${report.fcPct == null ? 'var(--theme-border)' :
               report.fcPct <= 35 ? 'rgba(52,211,153,0.2)' :
               report.fcPct <= 45 ? 'rgba(201,168,76,0.2)' : 'rgba(248,113,113,0.2)'}`,
             borderRadius: 10, padding: '20px 24px', marginBottom: 24,
             display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px,1fr))', gap: 20
           }}>
             <div>
-              <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>Net Sales Revenue</div>
-              <div style={{ fontSize: 22, fontWeight: 700, color: '#34d399' }}>{fmt(report.totalRevenue)}</div>
-              <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>From sales entries (excl. VAT)</div>
+              <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>Net Sales Revenue</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--theme-green)' }}>{fmt(report.totalRevenue)}</div>
+              <div style={{ fontSize: 12, color: 'var(--theme-text2)', marginTop: 4 }}>From sales entries (excl. VAT)</div>
             </div>
             <div>
-              <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>
+              <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>
                 <Tip text="Opening Stock + Net Purchases − Wastage − Staff Meals − Closing Stock. This is the actual ingredient cost consumed during the period." width={260}>Cost of Goods Used (COGS)</Tip>
               </div>
-              <div style={{ fontSize: 22, fontWeight: 700, color: '#c9a84c' }}>{fmt(report.totalCOGS)}</div>
-              <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Opening + Net Purchases − Wastage − Staff Meals − Closing</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--theme-accent)' }}>{fmt(report.totalCOGS)}</div>
+              <div style={{ fontSize: 12, color: 'var(--theme-text2)', marginTop: 4 }}>Opening + Net Purchases − Wastage − Staff Meals − Closing</div>
             </div>
             <div>
-              <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>
+              <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>
                 <Tip text="COGS ÷ Net Sales Revenue × 100. Tells you how much of every rupee earned went to ingredients. Target: 28–35%." width={240}>Food Cost %</Tip>
               </div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: report.fcPct == null ? '#6b7280' : report.fcPct <= 35 ? '#34d399' : report.fcPct <= 45 ? '#c9a84c' : '#f87171' }}>
+              <div style={{ fontSize: 28, fontWeight: 800, color: report.fcPct == null ? 'var(--theme-text2)' : report.fcPct <= 35 ? 'var(--theme-green)' : report.fcPct <= 45 ? 'var(--theme-accent)' : 'var(--theme-red)' }}>
                 {report.fcPct != null ? `${report.fcPct.toFixed(1)}%` : '—'}
               </div>
-              <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
+              <div style={{ fontSize: 12, color: 'var(--theme-text2)', marginTop: 4 }}>
                 {report.fcPct == null ? 'Add sales entries to calculate' :
                   report.fcPct <= 35 ? '✓ Within benchmark (28–35%)' :
                   report.fcPct <= 45 ? '⚠ Above benchmark — review purchases' :
@@ -219,19 +219,19 @@ export default function MonthlySummary() {
               </div>
             </div>
             <div>
-              <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>
+              <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>
                 <Tip text="Net Purchases ÷ Revenue. A simpler estimate that ignores opening/closing stock. Useful when stock counts are unavailable." width={250}>Purchase-Based FC%</Tip>
               </div>
-              <div style={{ fontSize: 22, fontWeight: 700, color: '#6b7280' }}>
+              <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--theme-text2)' }}>
                 {report.purchaseFcPct != null ? `${report.purchaseFcPct.toFixed(1)}%` : '—'}
               </div>
-              <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Net purchases ÷ revenue</div>
+              <div style={{ fontSize: 12, color: 'var(--theme-text2)', marginTop: 4 }}>Net purchases ÷ revenue</div>
             </div>
           </div>
 
           {/* Category breakdown table */}
           <div className="card">
-            <h3 style={{ margin: '0 0 20px', fontSize: 14, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            <h3 style={{ margin: '0 0 20px', fontSize: 14, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               Category Breakdown — {clientName} · {periodLabel}
             </h3>
             <div className="table-wrap">
@@ -241,7 +241,7 @@ export default function MonthlySummary() {
                     <th>Category</th>
                     <th style={{ textAlign: 'right' }}>Opening Stock</th>
                     <th style={{ textAlign: 'right' }}>Gross Purchases</th>
-                    <th style={{ textAlign: 'right', color: '#f87171' }}>Returns</th>
+                    <th style={{ textAlign: 'right', color: 'var(--theme-red)' }}>Returns</th>
                     <th style={{ textAlign: 'right' }}><Tip text="Gross purchases minus returns to vendor. The true amount spent on stock this period." width={220}>Net Purchases</Tip></th>
                     <th style={{ textAlign: 'right' }}>Wastage</th>
                     <th style={{ textAlign: 'right', color: '#a78bfa' }}><Tip text="Staff & complimentary consumption recorded this period. Deducted from COGS separately from wastage." width={240}>Staff Meals</Tip></th>
@@ -255,41 +255,41 @@ export default function MonthlySummary() {
                     const cogsPct = report.totalCOGS > 0 ? (row.cogsVal / report.totalCOGS) * 100 : 0
                     return (
                       <tr key={row.category}>
-                        <td style={{ fontWeight: 600, color: '#e8e0d0' }}>
+                        <td style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>
                           {row.category}
-                          <span style={{ fontSize: 11, color: '#9ca3af', marginLeft: 8 }}>{row.itemCount} items</span>
+                          <span style={{ fontSize: 11, color: 'var(--theme-text3)', marginLeft: 8 }}>{row.itemCount} items</span>
                         </td>
-                        <td style={{ textAlign: 'right', color: '#6b7280' }}>
-                          {row.openingVal > 0 ? fmt(row.openingVal) : <span style={{ color: '#9ca3af' }}>—</span>}
+                        <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>
+                          {row.openingVal > 0 ? fmt(row.openingVal) : <span style={{ color: 'var(--theme-text3)' }}>—</span>}
                         </td>
-                        <td style={{ textAlign: 'right', color: '#c9a84c', fontWeight: 600 }}>
-                          {row.purchaseVal > 0 ? fmt(row.purchaseVal) : <span style={{ color: '#9ca3af' }}>—</span>}
+                        <td style={{ textAlign: 'right', color: 'var(--theme-accent)', fontWeight: 600 }}>
+                          {row.purchaseVal > 0 ? fmt(row.purchaseVal) : <span style={{ color: 'var(--theme-text3)' }}>—</span>}
                         </td>
-                        <td style={{ textAlign: 'right', color: '#f87171' }}>
-                          {row.returnVal > 0 ? `−${fmt(row.returnVal)}` : <span style={{ color: '#9ca3af' }}>—</span>}
+                        <td style={{ textAlign: 'right', color: 'var(--theme-red)' }}>
+                          {row.returnVal > 0 ? `−${fmt(row.returnVal)}` : <span style={{ color: 'var(--theme-text3)' }}>—</span>}
                         </td>
-                        <td style={{ textAlign: 'right', color: '#c9a84c' }}>
-                          {row.netPurchaseVal !== row.purchaseVal ? fmt(row.netPurchaseVal) : <span style={{ color: '#9ca3af' }}>—</span>}
+                        <td style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>
+                          {row.netPurchaseVal !== row.purchaseVal ? fmt(row.netPurchaseVal) : <span style={{ color: 'var(--theme-text3)' }}>—</span>}
                         </td>
-                        <td style={{ textAlign: 'right', color: '#f87171' }}>
-                          {row.wastageVal > 0 ? fmt(row.wastageVal) : <span style={{ color: '#9ca3af' }}>—</span>}
+                        <td style={{ textAlign: 'right', color: 'var(--theme-red)' }}>
+                          {row.wastageVal > 0 ? fmt(row.wastageVal) : <span style={{ color: 'var(--theme-text3)' }}>—</span>}
                         </td>
                         <td style={{ textAlign: 'right', color: '#a78bfa' }}>
-                          {(row.staffMealsVal || 0) > 0 ? fmt(row.staffMealsVal) : <span style={{ color: '#9ca3af' }}>—</span>}
+                          {(row.staffMealsVal || 0) > 0 ? fmt(row.staffMealsVal) : <span style={{ color: 'var(--theme-text3)' }}>—</span>}
                         </td>
-                        <td style={{ textAlign: 'right', color: '#34d399' }}>
-                          {row.closingVal > 0 ? fmt(row.closingVal) : <span style={{ color: '#9ca3af' }}>—</span>}
+                        <td style={{ textAlign: 'right', color: 'var(--theme-green)' }}>
+                          {row.closingVal > 0 ? fmt(row.closingVal) : <span style={{ color: 'var(--theme-text3)' }}>—</span>}
                         </td>
-                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#e8e0d0' }}>
-                          {row.cogsVal !== 0 ? fmt(row.cogsVal) : <span style={{ color: '#9ca3af' }}>—</span>}
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-text1)' }}>
+                          {row.cogsVal !== 0 ? fmt(row.cogsVal) : <span style={{ color: 'var(--theme-text3)' }}>—</span>}
                         </td>
                         <td style={{ textAlign: 'right' }}>
                           {cogsPct > 0 ? (
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
-                              <div style={{ width: 70, height: 5, background: '#2a2f3d', borderRadius: 3 }}>
-                                <div style={{ width: `${Math.min(cogsPct, 100)}%`, height: '100%', background: '#c9a84c', borderRadius: 3 }} />
+                              <div style={{ width: 70, height: 5, background: 'var(--theme-border)', borderRadius: 3 }}>
+                                <div style={{ width: `${Math.min(cogsPct, 100)}%`, height: '100%', background: 'var(--theme-accent)', borderRadius: 3 }} />
                               </div>
-                              <span style={{ fontSize: 12, color: '#6b7280', minWidth: 38 }}>{cogsPct.toFixed(1)}%</span>
+                              <span style={{ fontSize: 12, color: 'var(--theme-text2)', minWidth: 38 }}>{cogsPct.toFixed(1)}%</span>
                             </div>
                           ) : '—'}
                         </td>
@@ -298,25 +298,25 @@ export default function MonthlySummary() {
                   })}
                 </tbody>
                 <tfoot>
-                  <tr style={{ borderTop: '2px solid #2a2f3d' }}>
-                    <td style={{ fontWeight: 800, color: '#e8e0d0', paddingTop: 14, fontSize: 14 }}>TOTAL</td>
-                    <td style={{ textAlign: 'right', fontWeight: 700, color: '#6b7280', paddingTop: 14 }}>{fmt(report.totalOpening)}</td>
-                    <td style={{ textAlign: 'right', fontWeight: 700, color: '#c9a84c', paddingTop: 14 }}>{fmt(report.totalPurchase)}</td>
-                    <td style={{ textAlign: 'right', fontWeight: 700, color: '#f87171', paddingTop: 14 }}>
+                  <tr style={{ borderTop: '2px solid var(--theme-border)' }}>
+                    <td style={{ fontWeight: 800, color: 'var(--theme-text1)', paddingTop: 14, fontSize: 14 }}>TOTAL</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-text2)', paddingTop: 14 }}>{fmt(report.totalOpening)}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-accent)', paddingTop: 14 }}>{fmt(report.totalPurchase)}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-red)', paddingTop: 14 }}>
                       {report.totalReturn > 0 ? `−${fmt(report.totalReturn)}` : '—'}
                     </td>
-                    <td style={{ textAlign: 'right', fontWeight: 700, color: '#c9a84c', paddingTop: 14 }}>{fmt(report.totalNetPurchase)}</td>
-                    <td style={{ textAlign: 'right', fontWeight: 700, color: '#f87171', paddingTop: 14 }}>{fmt(report.totalWastage)}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-accent)', paddingTop: 14 }}>{fmt(report.totalNetPurchase)}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-red)', paddingTop: 14 }}>{fmt(report.totalWastage)}</td>
                     <td style={{ textAlign: 'right', fontWeight: 700, color: '#a78bfa', paddingTop: 14 }}>{report.totalStaffMeals > 0 ? fmt(report.totalStaffMeals) : '—'}</td>
-                    <td style={{ textAlign: 'right', fontWeight: 700, color: '#34d399', paddingTop: 14 }}>{fmt(report.totalClosing)}</td>
-                    <td style={{ textAlign: 'right', fontWeight: 800, color: '#c9a84c', paddingTop: 14, fontSize: 15 }}>{fmt(report.totalCOGS)}</td>
-                    <td style={{ textAlign: 'right', paddingTop: 14, fontWeight: 700, color: '#6b7280' }}>100%</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-green)', paddingTop: 14 }}>{fmt(report.totalClosing)}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--theme-accent)', paddingTop: 14, fontSize: 15 }}>{fmt(report.totalCOGS)}</td>
+                    <td style={{ textAlign: 'right', paddingTop: 14, fontWeight: 700, color: 'var(--theme-text2)' }}>100%</td>
                   </tr>
                 </tfoot>
               </table>
             </div>
 
-            <div style={{ marginTop: 20, padding: '12px 16px', background: '#0f1117', borderRadius: 6, fontSize: 12, color: '#9ca3af' }}>
+            <div style={{ marginTop: 20, padding: '12px 16px', background: 'var(--theme-bg)', borderRadius: 6, fontSize: 12, color: 'var(--theme-text3)' }}>
               COGS = Opening Stock + (Purchases − Returns) − Wastage − Staff Meals − Closing Stock &nbsp;·&nbsp;
               Food Cost % = COGS ÷ Net Sales Revenue × 100
             </div>

@@ -137,7 +137,7 @@ export default function WastageReport() {
       <div className="stat-grid no-print" style={{ marginBottom: 20 }}>
         <div className="stat-card">
           <div className="stat-label">Total Wastage Value</div>
-          <div className="stat-value" style={{ color: '#f87171' }}>{fmt(totalValue)}</div>
+          <div className="stat-value" style={{ color: 'var(--theme-red)' }}>{fmt(totalValue)}</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Items with Wastage</div>
@@ -153,7 +153,7 @@ export default function WastageReport() {
       {/* By Reason breakdown */}
       {reasons.length > 0 && (
         <div className="card no-print" style={{ marginBottom: 20, padding: 0 }}>
-          <div style={{ padding: '12px 16px', fontSize: 12, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          <div style={{ padding: '12px 16px', fontSize: 12, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             <Tip text="Wastage grouped by reason. Daily Wastage entries carry a reason; the monthly catch-all from the Wastage tab shows as “Monthly (untagged)”." width={280}>By Reason</Tip>
           </div>
           <div className="table-wrap">
@@ -171,7 +171,7 @@ export default function WastageReport() {
                   <tr key={r.reason}>
                     <td><span className="badge badge-yellow">{r.reason}</span></td>
                     <td style={{ textAlign: 'right' }}>{Number(r.qty).toLocaleString()}</td>
-                    <td style={{ textAlign: 'right', color: '#f87171' }}>{fmt(r.value)}</td>
+                    <td style={{ textAlign: 'right', color: 'var(--theme-red)' }}>{fmt(r.value)}</td>
                     <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>{totalValue ? ((r.value / totalValue) * 100).toFixed(1) + '%' : '—'}</td>
                   </tr>
                 ))}
@@ -220,7 +220,7 @@ export default function WastageReport() {
                   <td>{r.category}</td>
                   <td>{r.uom}</td>
                   <td style={{ textAlign: 'right' }}>{Number(r.qty).toLocaleString()}</td>
-                  <td style={{ textAlign: 'right', color: '#f87171' }}>{fmt(r.value)}</td>
+                  <td style={{ textAlign: 'right', color: 'var(--theme-red)' }}>{fmt(r.value)}</td>
                   <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>
                     {totalValue ? ((r.value / totalValue) * 100).toFixed(1) + '%' : '—'}
                   </td>
@@ -231,7 +231,7 @@ export default function WastageReport() {
               <tr style={{ fontWeight: 700 }}>
                 <td colSpan={3}>Total ({filtered.length} items)</td>
                 <td />
-                <td style={{ textAlign: 'right', color: '#f87171' }}>{fmt(filtered.reduce((s, r) => s + r.value, 0))}</td>
+                <td style={{ textAlign: 'right', color: 'var(--theme-red)' }}>{fmt(filtered.reduce((s, r) => s + r.value, 0))}</td>
                 <td style={{ textAlign: 'right' }}>
                   {catFilter === 'All' ? '100%' : totalValue ? ((filtered.reduce((s,r) => s+r.value, 0) / totalValue * 100).toFixed(1) + '%') : '—'}
                 </td>

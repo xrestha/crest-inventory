@@ -9,17 +9,17 @@ const TODAY = new Date().toISOString().split('T')[0]
 const EPS = 0.001
 
 const INPUT = {
-  background: 'var(--theme-input-bg, #161b27)',
-  border: '1px solid var(--theme-border, #2a2f3d)',
+  background: 'var(--theme-input-bg, var(--theme-card))',
+  border: '1px solid var(--theme-border, var(--theme-border))',
   borderRadius: 6, padding: '7px 10px', fontSize: 13,
-  color: 'var(--theme-text, #e8e0d0)', outline: 'none',
+  color: 'var(--theme-text, var(--theme-text1))', outline: 'none',
 }
 
 function aging(days) {
-  if (days <= 30) return { label: 'Current',    color: '#34d399' }
-  if (days <= 60) return { label: '31–60 days', color: '#c9a84c' }
+  if (days <= 30) return { label: 'Current',    color: 'var(--theme-green)' }
+  if (days <= 60) return { label: '31–60 days', color: 'var(--theme-accent)' }
   if (days <= 90) return { label: '61–90 days', color: '#f97316' }
-  return                 { label: '90+ days',   color: '#f87171' }
+  return                 { label: '90+ days',   color: 'var(--theme-red)' }
 }
 
 export default function OutstandingPayables() {
@@ -190,9 +190,9 @@ export default function OutstandingPayables() {
 
       {setupNeeded && (
         <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.3)', borderRadius: 8, padding: '16px 20px', marginBottom: 24, fontSize: 13 }}>
-          <div style={{ fontWeight: 700, color: '#f87171', marginBottom: 8 }}>⚠ One-time setup required</div>
-          <div style={{ color: '#9ca3af', marginBottom: 10 }}>Run this SQL in Supabase → SQL Editor, then refresh:</div>
-          <code style={{ display: 'block', background: '#0f1117', padding: '10px 14px', borderRadius: 6, color: '#c9a84c', fontSize: 12, userSelect: 'all' }}>
+          <div style={{ fontWeight: 700, color: 'var(--theme-red)', marginBottom: 8 }}>⚠ One-time setup required</div>
+          <div style={{ color: 'var(--theme-text3)', marginBottom: 10 }}>Run this SQL in Supabase → SQL Editor, then refresh:</div>
+          <code style={{ display: 'block', background: 'var(--theme-bg)', padding: '10px 14px', borderRadius: 6, color: 'var(--theme-accent)', fontSize: 12, userSelect: 'all' }}>
             ALTER TABLE purchase_entries ADD COLUMN IF NOT EXISTS paid_at date;
           </code>
         </div>
@@ -202,23 +202,23 @@ export default function OutstandingPayables() {
         {activeTab === 'outstanding' ? (<>
           <div className="stat-card">
             <div className="stat-label"><Tip text="Total remaining balance across all outstanding credit bills." width={220}>Total Remaining</Tip></div>
-            <div className="stat-value" style={{ fontSize: 18, color: totalRemaining > 0 ? '#f87171' : '#6b7280' }}>{fmt(totalRemaining)}</div>
+            <div className="stat-value" style={{ fontSize: 18, color: totalRemaining > 0 ? 'var(--theme-red)' : 'var(--theme-text2)' }}>{fmt(totalRemaining)}</div>
             <div className="stat-sub">{filteredBills.length} bill{filteredBills.length !== 1 ? 's' : ''} · {Object.keys(byVendor).length} vendor{Object.keys(byVendor).length !== 1 ? 's' : ''}</div>
           </div>
           <div className="stat-card">
             <div className="stat-label"><Tip text="Bills with a remaining balance older than 60 days." width={230}>Overdue Bills</Tip></div>
-            <div className="stat-value" style={{ color: overdueBills > 0 ? '#f97316' : '#6b7280' }}>{overdueBills}</div>
+            <div className="stat-value" style={{ color: overdueBills > 0 ? '#f97316' : 'var(--theme-text2)' }}>{overdueBills}</div>
             <div className="stat-sub">&gt;60 days outstanding</div>
           </div>
           <div className="stat-card">
             <div className="stat-label"><Tip text="Remaining value on bills over 90 days old. Urgent settlement needed." width={240}>90+ Day Value</Tip></div>
-            <div className="stat-value" style={{ fontSize: 16, color: urgentValue > 0 ? '#f87171' : '#6b7280' }}>{urgentValue > 0 ? fmt(urgentValue) : '—'}</div>
+            <div className="stat-value" style={{ fontSize: 16, color: urgentValue > 0 ? 'var(--theme-red)' : 'var(--theme-text2)' }}>{urgentValue > 0 ? fmt(urgentValue) : '—'}</div>
             <div className="stat-sub">Urgent settlement</div>
           </div>
         </>) : (<>
           <div className="stat-card">
             <div className="stat-label"><Tip text="Total value of all fully settled credit bills." width={220}>Total Paid</Tip></div>
-            <div className="stat-value" style={{ fontSize: 18, color: '#34d399' }}>{fmt(totalRemaining)}</div>
+            <div className="stat-value" style={{ fontSize: 18, color: 'var(--theme-green)' }}>{fmt(totalRemaining)}</div>
             <div className="stat-sub">{filteredBills.length} settled bill{filteredBills.length !== 1 ? 's' : ''}</div>
           </div>
           <div className="stat-card">
@@ -249,7 +249,7 @@ export default function OutstandingPayables() {
       </div>
 
       {loading ? (
-        <div className="card"><p style={{ color: '#6b7280', fontSize: 13 }}>Loading payables…</p></div>
+        <div className="card"><p style={{ color: 'var(--theme-text2)', fontSize: 13 }}>Loading payables…</p></div>
       ) : setupNeeded ? null : filteredBills.length === 0 ? (
         <div className="card">
           <div className="empty-state">
@@ -269,9 +269,9 @@ export default function OutstandingPayables() {
             const cols = activeTab === 'outstanding' ? 9 : 6
             return (
               <div key={vName} className="card" style={{ marginBottom: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #2a2f3d' }}>
-                  <span style={{ fontWeight: 700, fontSize: 15, color: '#e8e0d0' }}>{vName}</span>
-                  <span style={{ fontSize: 15, fontWeight: 700, color: activeTab === 'outstanding' ? '#f87171' : '#34d399' }}>{fmt(vendorTotal)}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid var(--theme-border)' }}>
+                  <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--theme-text1)' }}>{vName}</span>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: activeTab === 'outstanding' ? 'var(--theme-red)' : 'var(--theme-green)' }}>{fmt(vendorTotal)}</span>
                 </div>
                 <div className="table-wrap">
                   <table className="data-table">
@@ -300,13 +300,13 @@ export default function OutstandingPayables() {
                         return (
                           <Fragment key={b.key}>
                             <tr style={{ cursor: 'pointer' }} onClick={() => toggleBill(b.key)}>
-                              <td style={{ fontWeight: 600, color: '#e8e0d0' }}>#{b.invoice_ref || '—'}</td>
-                              <td style={{ color: '#6b7280' }}>{BS_MONTHS[(b.period.bs_month || 1) - 1]} {b.period.bs_year}</td>
-                              <td style={{ textAlign: 'right', color: '#6b7280' }}>{b.entries.length}</td>
-                              <td style={{ textAlign: 'right', fontWeight: 600, color: '#c9a84c' }}>{fmt(b.total)}</td>
+                              <td style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>#{b.invoice_ref || '—'}</td>
+                              <td style={{ color: 'var(--theme-text2)' }}>{BS_MONTHS[(b.period.bs_month || 1) - 1]} {b.period.bs_year}</td>
+                              <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>{b.entries.length}</td>
+                              <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--theme-accent)' }}>{fmt(b.total)}</td>
                               {activeTab === 'outstanding' ? (<>
-                                <td style={{ textAlign: 'right', color: b.paid > 0 ? '#34d399' : '#6b7280' }}>{b.paid > 0 ? fmt(b.paid) : '—'}</td>
-                                <td style={{ textAlign: 'right', fontWeight: 700, color: '#f87171' }}>{fmt(b.remaining)}</td>
+                                <td style={{ textAlign: 'right', color: b.paid > 0 ? 'var(--theme-green)' : 'var(--theme-text2)' }}>{b.paid > 0 ? fmt(b.paid) : '—'}</td>
+                                <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-red)' }}>{fmt(b.remaining)}</td>
                                 <td style={{ textAlign: 'right', fontWeight: 700, color: b.aging.color }}>{b.daysOld}</td>
                                 <td>
                                   {b.isPartial
@@ -314,10 +314,10 @@ export default function OutstandingPayables() {
                                     : <span style={{ fontSize: 11, fontWeight: 700, color: b.aging.color, background: `${b.aging.color}18`, border: `1px solid ${b.aging.color}40`, borderRadius: 4, padding: '2px 8px', whiteSpace: 'nowrap' }}>{b.aging.label}</span>
                                   }
                                 </td>
-                                <td style={{ color: '#c9a84c', fontSize: 12, whiteSpace: 'nowrap' }}>{isExpanded ? '▲ Close' : '＋ Pay Bill'}</td>
+                                <td style={{ color: 'var(--theme-accent)', fontSize: 12, whiteSpace: 'nowrap' }}>{isExpanded ? '▲ Close' : '＋ Pay Bill'}</td>
                               </>) : (<>
-                                <td style={{ color: '#34d399', fontWeight: 600, fontSize: 13 }}>{b.settledOn || '—'}</td>
-                                <td style={{ color: '#9ca3af', fontSize: 12, whiteSpace: 'nowrap' }}>{isExpanded ? '▲ Hide' : '▼ Details'}</td>
+                                <td style={{ color: 'var(--theme-green)', fontWeight: 600, fontSize: 13 }}>{b.settledOn || '—'}</td>
+                                <td style={{ color: 'var(--theme-text3)', fontSize: 12, whiteSpace: 'nowrap' }}>{isExpanded ? '▲ Hide' : '▼ Details'}</td>
                               </>)}
                             </tr>
 
@@ -327,23 +327,23 @@ export default function OutstandingPayables() {
                                   <div style={{ padding: '16px 20px' }}>
 
                                     {/* Line items in this bill */}
-                                    <div style={{ fontSize: 11, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Items in this bill ({b.entries.length})</div>
+                                    <div style={{ fontSize: 11, color: 'var(--theme-text3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Items in this bill ({b.entries.length})</div>
                                     <table style={{ borderCollapse: 'collapse', fontSize: 13, width: '100%', maxWidth: 620, marginBottom: 20 }}>
                                       <thead>
                                         <tr>
-                                          <th style={{ textAlign: 'left', padding: '4px 16px 4px 0', color: '#6b7280', fontWeight: 600, fontSize: 11 }}>Item</th>
-                                          <th style={{ textAlign: 'right', padding: '4px 16px', color: '#6b7280', fontWeight: 600, fontSize: 11 }}>Qty</th>
-                                          <th style={{ textAlign: 'right', padding: '4px 16px', color: '#6b7280', fontWeight: 600, fontSize: 11 }}>Rate</th>
-                                          <th style={{ textAlign: 'right', padding: '4px 0 4px 16px', color: '#6b7280', fontWeight: 600, fontSize: 11 }}>Total</th>
+                                          <th style={{ textAlign: 'left', padding: '4px 16px 4px 0', color: 'var(--theme-text2)', fontWeight: 600, fontSize: 11 }}>Item</th>
+                                          <th style={{ textAlign: 'right', padding: '4px 16px', color: 'var(--theme-text2)', fontWeight: 600, fontSize: 11 }}>Qty</th>
+                                          <th style={{ textAlign: 'right', padding: '4px 16px', color: 'var(--theme-text2)', fontWeight: 600, fontSize: 11 }}>Rate</th>
+                                          <th style={{ textAlign: 'right', padding: '4px 0 4px 16px', color: 'var(--theme-text2)', fontWeight: 600, fontSize: 11 }}>Total</th>
                                         </tr>
                                       </thead>
                                       <tbody>
                                         {b.entries.map(e => (
                                           <tr key={e.id}>
-                                            <td style={{ padding: '4px 16px 4px 0', color: '#e8e0d0' }}>{e.items?.name}</td>
-                                            <td style={{ padding: '4px 16px', textAlign: 'right', color: '#6b7280' }}>{parseFloat(e.qty).toLocaleString()} {e.items?.uom}</td>
-                                            <td style={{ padding: '4px 16px', textAlign: 'right', color: '#6b7280' }}>{parseFloat(e.rate).toLocaleString()}</td>
-                                            <td style={{ padding: '4px 0 4px 16px', textAlign: 'right', color: '#c9a84c', fontWeight: 600 }}>{fmt(e.value)}</td>
+                                            <td style={{ padding: '4px 16px 4px 0', color: 'var(--theme-text1)' }}>{e.items?.name}</td>
+                                            <td style={{ padding: '4px 16px', textAlign: 'right', color: 'var(--theme-text2)' }}>{parseFloat(e.qty).toLocaleString()} {e.items?.uom}</td>
+                                            <td style={{ padding: '4px 16px', textAlign: 'right', color: 'var(--theme-text2)' }}>{parseFloat(e.rate).toLocaleString()}</td>
+                                            <td style={{ padding: '4px 0 4px 16px', textAlign: 'right', color: 'var(--theme-accent)', fontWeight: 600 }}>{fmt(e.value)}</td>
                                           </tr>
                                         ))}
                                       </tbody>
@@ -352,19 +352,19 @@ export default function OutstandingPayables() {
                                     {/* Payment history (across the whole bill) */}
                                     {b.payments.length > 0 && (
                                       <div style={{ marginBottom: activeTab === 'outstanding' ? 20 : 0 }}>
-                                        <div style={{ fontSize: 11, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Payment History</div>
+                                        <div style={{ fontSize: 11, color: 'var(--theme-text3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Payment History</div>
                                         <table style={{ borderCollapse: 'collapse', fontSize: 13, minWidth: 400 }}>
                                           <tbody>
                                             {b.payments.map(p => (
                                               <tr key={p.id}>
-                                                <td style={{ padding: '5px 16px 5px 0', color: '#34d399' }}>{p.paid_at}</td>
-                                                <td style={{ padding: '5px 16px', textAlign: 'right', color: '#e8e0d0', fontWeight: 600 }}>{fmt(p.amount)}</td>
-                                                <td style={{ padding: '5px 0 5px 16px', color: '#9ca3af' }}>{p.note || '—'}</td>
+                                                <td style={{ padding: '5px 16px 5px 0', color: 'var(--theme-green)' }}>{p.paid_at}</td>
+                                                <td style={{ padding: '5px 16px', textAlign: 'right', color: 'var(--theme-text1)', fontWeight: 600 }}>{fmt(p.amount)}</td>
+                                                <td style={{ padding: '5px 0 5px 16px', color: 'var(--theme-text3)' }}>{p.note || '—'}</td>
                                               </tr>
                                             ))}
-                                            <tr style={{ borderTop: '1px solid #2a2f3d' }}>
-                                              <td style={{ padding: '5px 16px 5px 0', color: '#6b7280', fontSize: 11 }}>Total paid</td>
-                                              <td style={{ padding: '5px 16px', textAlign: 'right', fontWeight: 700, color: '#34d399' }}>{fmt(b.paid)}</td>
+                                            <tr style={{ borderTop: '1px solid var(--theme-border)' }}>
+                                              <td style={{ padding: '5px 16px 5px 0', color: 'var(--theme-text2)', fontSize: 11 }}>Total paid</td>
+                                              <td style={{ padding: '5px 16px', textAlign: 'right', fontWeight: 700, color: 'var(--theme-green)' }}>{fmt(b.paid)}</td>
                                               <td />
                                             </tr>
                                           </tbody>
@@ -375,26 +375,26 @@ export default function OutstandingPayables() {
                                     {/* Record one payment for the whole bill — outstanding only */}
                                     {activeTab === 'outstanding' && (
                                       <div>
-                                        <div style={{ fontSize: 11, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+                                        <div style={{ fontSize: 11, color: 'var(--theme-text3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
                                           {b.payments.length === 0 ? 'Pay this bill' : 'Add payment'}
-                                          <span style={{ textTransform: 'none', letterSpacing: 0, color: '#6b7280', marginLeft: 8 }}>· applied across all {b.entries.length} item{b.entries.length !== 1 ? 's' : ''}</span>
+                                          <span style={{ textTransform: 'none', letterSpacing: 0, color: 'var(--theme-text2)', marginLeft: 8 }}>· applied across all {b.entries.length} item{b.entries.length !== 1 ? 's' : ''}</span>
                                         </div>
                                         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
                                           <div>
-                                            <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 4 }}>Amount (NPR)</div>
+                                            <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginBottom: 4 }}>Amount (NPR)</div>
                                             <input type="number" style={{ ...INPUT, width: 150 }} placeholder={`full: ${fmt(b.remaining)}`}
                                               value={payForm.amount}
                                               onChange={ev => setPayForm(f => ({ ...f, amount: ev.target.value }))}
                                               onClick={ev => ev.stopPropagation()} />
                                           </div>
                                           <div>
-                                            <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 4 }}>Date</div>
+                                            <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginBottom: 4 }}>Date</div>
                                             <input type="date" style={INPUT} value={payForm.paid_at}
                                               onChange={ev => setPayForm(f => ({ ...f, paid_at: ev.target.value }))}
                                               onClick={ev => ev.stopPropagation()} />
                                           </div>
                                           <div style={{ flex: 1, minWidth: 180 }}>
-                                            <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 4 }}>Note (optional)</div>
+                                            <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginBottom: 4 }}>Note (optional)</div>
                                             <input type="text" style={{ ...INPUT, width: '100%' }} placeholder="e.g. Cheque #1234"
                                               value={payForm.note}
                                               onChange={ev => setPayForm(f => ({ ...f, note: ev.target.value }))}
@@ -410,8 +410,8 @@ export default function OutstandingPayables() {
                                             {savingPayment ? '…' : 'Save'}
                                           </button>
                                         </div>
-                                        {payError && <div style={{ marginTop: 8, fontSize: 12, color: '#f87171' }}>⚠ {payError}</div>}
-                                        {willSettle && !payError && <div style={{ marginTop: 8, fontSize: 12, color: '#34d399' }}>✓ This will fully settle the bill</div>}
+                                        {payError && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--theme-red)' }}>⚠ {payError}</div>}
+                                        {willSettle && !payError && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--theme-green)' }}>✓ This will fully settle the bill</div>}
                                       </div>
                                     )}
 

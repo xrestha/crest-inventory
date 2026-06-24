@@ -396,12 +396,12 @@ export default function Purchases() {
       {/* Rate update modal */}
       {rateUpdateItems.length > 0 && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: '#181c27', border: '1px solid rgba(201,168,76,0.3)', borderRadius: 12, padding: '24px 28px', maxWidth: 520, width: '90%', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#e8e0d0', marginBottom: 4 }}>📦 Rate changes detected</div>
-            <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 16 }}>Select items to update in the Item Master. This affects recipe costing going forward.</div>
+          <div style={{ background: 'var(--theme-card)', border: '1px solid rgba(201,168,76,0.3)', borderRadius: 12, padding: '24px 28px', maxWidth: 520, width: '90%', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--theme-text1)', marginBottom: 4 }}>📦 Rate changes detected</div>
+            <div style={{ fontSize: 12, color: 'var(--theme-text2)', marginBottom: 16 }}>Select items to update in the Item Master. This affects recipe costing going forward.</div>
 
             {/* Select all */}
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#9ca3af', marginBottom: 10, cursor: 'pointer', userSelect: 'none' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--theme-text3)', marginBottom: 10, cursor: 'pointer', userSelect: 'none' }}>
               <input type="checkbox"
                 checked={rateUpdateSelected.size === rateUpdateItems.length}
                 onChange={e => setRateUpdateSelected(e.target.checked ? new Set(rateUpdateItems.map(i => i.itemId)) : new Set())} />
@@ -411,7 +411,7 @@ export default function Purchases() {
             {/* Item rows */}
             <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
               {rateUpdateItems.map(item => (
-                <label key={item.itemId} style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#0f1117', borderRadius: 7, padding: '10px 12px', cursor: 'pointer', userSelect: 'none' }}>
+                <label key={item.itemId} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--theme-bg)', borderRadius: 7, padding: '10px 12px', cursor: 'pointer', userSelect: 'none' }}>
                   <input type="checkbox"
                     checked={rateUpdateSelected.has(item.itemId)}
                     onChange={e => {
@@ -420,13 +420,13 @@ export default function Purchases() {
                       setRateUpdateSelected(next)
                     }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#e8e0d0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.itemName}</div>
-                    <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>per-unit → NPR {(item.newRate / item.purchaseQty).toFixed(4)}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--theme-text1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.itemName}</div>
+                    <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginTop: 2 }}>per-unit → NPR {(item.newRate / item.purchaseQty).toFixed(4)}</div>
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0, fontSize: 13 }}>
-                    <span style={{ color: '#f87171', fontWeight: 600 }}>NPR {item.oldRate.toLocaleString()}</span>
-                    <span style={{ color: '#6b7280' }}> → </span>
-                    <span style={{ color: '#34d399', fontWeight: 600 }}>NPR {item.newRate.toLocaleString()}</span>
+                    <span style={{ color: 'var(--theme-red)', fontWeight: 600 }}>NPR {item.oldRate.toLocaleString()}</span>
+                    <span style={{ color: 'var(--theme-text2)' }}> → </span>
+                    <span style={{ color: 'var(--theme-green)', fontWeight: 600 }}>NPR {item.newRate.toLocaleString()}</span>
                   </div>
                 </label>
               ))}
@@ -448,7 +448,7 @@ export default function Purchases() {
 
       {/* Locked banner */}
       {isLocked && (
-        <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#f87171' }}>
+        <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--theme-red)' }}>
           🔒 <strong>This period is closed.</strong> Data is read-only. Contact your admin to re-open if needed.
         </div>
       )}
@@ -480,7 +480,7 @@ export default function Purchases() {
         </div>
         <div className="stat-card">
           <div className="stat-label">Returns</div>
-          <div className="stat-value" style={{ fontSize: 16, color: returnTotal > 0 ? '#f87171' : '#6b7280' }}>
+          <div className="stat-value" style={{ fontSize: 16, color: returnTotal > 0 ? 'var(--theme-red)' : 'var(--theme-text2)' }}>
             {returnTotal > 0 ? `−NPR ${returnTotal.toLocaleString('en-NP', { maximumFractionDigits: 0 })}` : '—'}
           </div>
           <div className="stat-sub">{returns.length} entr{returns.length !== 1 ? 'ies' : 'y'}</div>
@@ -498,7 +498,7 @@ export default function Purchases() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid #2a2f3d', marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid var(--theme-border)', marginBottom: 24 }}>
         <div style={{ display: 'flex', gap: 4 }}>
           {[
             { id: 'purchases', label: `Purchases (${purchases.length})` },
@@ -509,8 +509,8 @@ export default function Purchases() {
               setActiveTab(tab.id); setShowForm(false); setShowReturnForm(false)
             }} style={{
               background: 'none', border: 'none', cursor: 'pointer', padding: '10px 20px', fontSize: 13, fontWeight: 500,
-              color: activeTab === tab.id ? '#c9a84c' : '#6b7280',
-              borderBottom: activeTab === tab.id ? '2px solid #c9a84c' : '2px solid transparent',
+              color: activeTab === tab.id ? 'var(--theme-accent)' : 'var(--theme-text2)',
+              borderBottom: activeTab === tab.id ? '2px solid var(--theme-accent)' : '2px solid transparent',
               marginBottom: -1
             }}>{tab.label}</button>
           ))}
@@ -518,7 +518,7 @@ export default function Purchases() {
         {!isLocked && activeTab !== 'register' && (
           <button
             className="btn btn-ghost"
-            style={{ fontSize: 12, padding: '5px 12px', marginBottom: 4, color: '#f87171', borderColor: 'rgba(248,113,113,0.35)', background: 'rgba(248,113,113,0.07)' }}
+            style={{ fontSize: 12, padding: '5px 12px', marginBottom: 4, color: 'var(--theme-red)', borderColor: 'rgba(248,113,113,0.35)', background: 'rgba(248,113,113,0.07)' }}
             onClick={activeTab === 'purchases' ? deleteAllPurchases : deleteAllReturns}
             disabled={activeTab === 'purchases' ? purchases.length === 0 : returns.length === 0}
           >
@@ -558,24 +558,24 @@ export default function Purchases() {
                 </div>
               </div>
 
-              <div style={{ borderTop: '1px solid #2a2f3d', marginBottom: 16 }} />
+              <div style={{ borderTop: '1px solid var(--theme-border)', marginBottom: 16 }} />
 
               {/* Line items table — mirrors vendor bill: Item | Qty | NetRate | NetAmt | VAT */}
               <div className="table-wrap">
                 <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
                   <thead>
                     <tr>
-                      <th style={{ textAlign: 'left', fontSize: 11, color: '#6b7280', padding: '0 8px 10px 0', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                      <th style={{ textAlign: 'left', fontSize: 11, color: 'var(--theme-text2)', padding: '0 8px 10px 0', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
                         <Tip text="Select the item. Expiry date and shelf-life days appear below the dropdown." width={230}>Item *</Tip>
                       </th>
-                      <th style={{ textAlign: 'right', fontSize: 11, color: '#6b7280', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 100 }}>Qty *</th>
-                      <th style={{ textAlign: 'right', fontSize: 11, color: '#6b7280', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 120 }}>
+                      <th style={{ textAlign: 'right', fontSize: 11, color: 'var(--theme-text2)', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 100 }}>Qty *</th>
+                      <th style={{ textAlign: 'right', fontSize: 11, color: 'var(--theme-text2)', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 120 }}>
                         <Tip text="Enter the ex-VAT rate per unit (NetRate on the vendor bill). For VAT items the amount column will show the VAT-inclusive total." width={260}>Rate (NPR) *</Tip>
                       </th>
-                      <th style={{ textAlign: 'right', fontSize: 11, color: '#6b7280', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 120 }}>
+                      <th style={{ textAlign: 'right', fontSize: 11, color: 'var(--theme-text2)', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 120 }}>
                         <Tip text="Amount = Qty × Rate. For VAT items: Qty × Rate × 1.13 (what you actually pay)." width={240}>Amount</Tip>
                       </th>
-                      <th style={{ textAlign: 'center', fontSize: 11, color: '#6b7280', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 50 }}>
+                      <th style={{ textAlign: 'center', fontSize: 11, color: 'var(--theme-text2)', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 50 }}>
                         <Tip text="Tick if this item attracts 13% VAT. Enter the ex-VAT NetRate — the Amount column will show what you pay including VAT." width={250}>VAT</Tip>
                       </th>
                       <th style={{ width: 32 }}></th>
@@ -589,7 +589,7 @@ export default function Purchases() {
                       const lineBase = (parseFloat(line.qty) || 0) * (parseFloat(line.rate) || 0)
                       const lineAmount = line.vat_inclusive ? lineBase * 1.13 : lineBase
                       return (
-                        <tr key={line._key} style={{ borderBottom: '1px solid #1a1f2e' }}>
+                        <tr key={line._key} style={{ borderBottom: '1px solid var(--theme-card)' }}>
                           <td style={{ padding: '6px 8px 6px 0', verticalAlign: 'top' }}>
                             <SearchableSelect
                               value={line.item_id}
@@ -598,30 +598,30 @@ export default function Purchases() {
                               placeholder="— Select item —"
                             />
                             <div style={{ display: 'flex', gap: 6, marginTop: 5, alignItems: 'center' }}>
-                              <span style={{ fontSize: 10, color: '#4b5563', whiteSpace: 'nowrap' }}>Expiry</span>
+                              <span style={{ fontSize: 10, color: 'var(--theme-text3)', whiteSpace: 'nowrap' }}>Expiry</span>
                               <input type="date" value={line.expiry_date}
                                 onChange={e => updateBillLine(line._key, 'expiry_date', e.target.value)}
-                                style={{ background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 4, padding: '3px 6px', fontSize: 11, color: line.expiry_date ? '#9ca3af' : '#4b5563', outline: 'none', flex: 1 }} />
-                              <span style={{ fontSize: 10, color: '#4b5563', whiteSpace: 'nowrap' }}>Shelf life</span>
+                                style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 4, padding: '3px 6px', fontSize: 11, color: line.expiry_date ? 'var(--theme-text3)' : 'var(--theme-text3)', outline: 'none', flex: 1 }} />
+                              <span style={{ fontSize: 10, color: 'var(--theme-text3)', whiteSpace: 'nowrap' }}>Shelf life</span>
                               <input type="number" min="0" value={line.shelf_life} placeholder="days"
                                 onChange={e => updateBillLine(line._key, 'shelf_life', e.target.value)}
                                 title="Enter days to auto-fill expiry date"
-                                style={{ background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 4, padding: '3px 6px', fontSize: 11, color: '#9ca3af', outline: 'none', width: 52, textAlign: 'right' }} />
+                                style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 4, padding: '3px 6px', fontSize: 11, color: 'var(--theme-text3)', outline: 'none', width: 52, textAlign: 'right' }} />
                             </div>
                           </td>
                           <td style={{ padding: '6px 8px', verticalAlign: 'top' }}>
                             <input type="number" min="0" step="any" value={line.qty} placeholder="0"
                               onChange={e => updateBillLine(line._key, 'qty', e.target.value)}
-                              style={{ background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: '100%', textAlign: 'right' }} />
-                            {inputUnit && <div style={{ fontSize: 10, color: '#6b7280', textAlign: 'right', marginTop: 2 }}>{inputUnit}</div>}
-                            {cf > 1 && line.qty && <div style={{ fontSize: 10, color: '#9ca3af', textAlign: 'right' }}>= {(parseFloat(line.qty) * cf).toLocaleString()} {selItem?.uom}</div>}
+                              style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none', width: '100%', textAlign: 'right' }} />
+                            {inputUnit && <div style={{ fontSize: 10, color: 'var(--theme-text2)', textAlign: 'right', marginTop: 2 }}>{inputUnit}</div>}
+                            {cf > 1 && line.qty && <div style={{ fontSize: 10, color: 'var(--theme-text3)', textAlign: 'right' }}>= {(parseFloat(line.qty) * cf).toLocaleString()} {selItem?.uom}</div>}
                           </td>
                           <td style={{ padding: '6px 8px', verticalAlign: 'top' }}>
                             <input type="number" min="0" step="any" value={line.rate} placeholder="0"
                               onChange={e => updateBillLine(line._key, 'rate', e.target.value)}
-                              style={{ background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: '100%', textAlign: 'right' }} />
+                              style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none', width: '100%', textAlign: 'right' }} />
                             {line.vat_inclusive && parseFloat(line.rate) > 0 && (
-                              <div style={{ fontSize: 10, color: '#fbbf24', textAlign: 'right', marginTop: 2 }}>
+                              <div style={{ fontSize: 10, color: 'var(--theme-amber)', textAlign: 'right', marginTop: 2 }}>
                                 +VAT: {(parseFloat(line.rate) * 0.13).toFixed(2)} → {(parseFloat(line.rate) * 1.13).toFixed(2)}
                               </div>
                             )}
@@ -629,21 +629,21 @@ export default function Purchases() {
                           <td style={{ padding: '6px 8px', verticalAlign: 'top', textAlign: 'right' }}>
                             {lineAmount > 0 && (
                               <>
-                                <div style={{ fontSize: 13, color: '#c9a84c', fontWeight: 600 }}>
+                                <div style={{ fontSize: 13, color: 'var(--theme-accent)', fontWeight: 600 }}>
                                   {lineAmount.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </div>
-                                {line.vat_inclusive && <div style={{ fontSize: 10, color: '#fbbf24', marginTop: 1 }}>incl. VAT</div>}
+                                {line.vat_inclusive && <div style={{ fontSize: 10, color: 'var(--theme-amber)', marginTop: 1 }}>incl. VAT</div>}
                               </>
                             )}
                           </td>
                           <td style={{ padding: '6px 8px', verticalAlign: 'top', textAlign: 'center' }}>
                             <input type="checkbox" checked={line.vat_inclusive}
                               onChange={e => updateBillLine(line._key, 'vat_inclusive', e.target.checked)}
-                              style={{ width: 16, height: 16, accentColor: '#c9a84c', cursor: 'pointer', marginTop: 10 }} />
+                              style={{ width: 16, height: 16, accentColor: 'var(--theme-accent)', cursor: 'pointer', marginTop: 10 }} />
                           </td>
                           <td style={{ padding: '6px 0', verticalAlign: 'top', textAlign: 'right' }}>
                             <button onClick={() => removeBillLine(line._key)}
-                              style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: 18, padding: '4px', lineHeight: 1 }}>×</button>
+                              style={{ background: 'none', border: 'none', color: 'var(--theme-text2)', cursor: 'pointer', fontSize: 18, padding: '4px', lineHeight: 1 }}>×</button>
                           </td>
                         </tr>
                       )
@@ -663,29 +663,29 @@ export default function Purchases() {
                   if (subTotal === 0) return null
                   return (
                     <div style={{ textAlign: 'right', fontSize: 13, minWidth: 280 }}>
-                      <div style={{ color: '#9ca3af', marginBottom: 3 }}>
-                        Subtotal (ex-VAT): <span style={{ color: '#e8e0d0', fontWeight: 600, marginLeft: 8 }}>NPR {subTotal.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <div style={{ color: 'var(--theme-text3)', marginBottom: 3 }}>
+                        Subtotal (ex-VAT): <span style={{ color: 'var(--theme-text1)', fontWeight: 600, marginLeft: 8 }}>NPR {subTotal.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </div>
                       {vatTotal > 0 && (
-                        <div style={{ color: '#9ca3af', marginBottom: 3 }}>
-                          VAT (13%): <span style={{ color: '#fbbf24', fontWeight: 600, marginLeft: 8 }}>NPR {vatTotal.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <div style={{ color: 'var(--theme-text3)', marginBottom: 3 }}>
+                          VAT (13%): <span style={{ color: 'var(--theme-amber)', fontWeight: 600, marginLeft: 8 }}>NPR {vatTotal.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                       )}
-                      <div style={{ color: '#9ca3af', marginBottom: 3 }}>
-                        Gross Total: <span style={{ color: '#e8e0d0', fontWeight: 600, marginLeft: 8 }}>NPR {grossTotal.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <div style={{ color: 'var(--theme-text3)', marginBottom: 3 }}>
+                        Gross Total: <span style={{ color: 'var(--theme-text1)', fontWeight: 600, marginLeft: 8 }}>NPR {grossTotal.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginBottom: 6 }}>
-                        <span style={{ color: '#9ca3af', fontSize: 12 }}><Tip text="Promo or trade discount given by the vendor on the total bill. Stored against all items on this bill." width={240}>Discount (NPR):</Tip></span>
-                        <span style={{ color: '#f87171', fontSize: 12 }}>−</span>
+                        <span style={{ color: 'var(--theme-text3)', fontSize: 12 }}><Tip text="Promo or trade discount given by the vendor on the total bill. Stored against all items on this bill." width={240}>Discount (NPR):</Tip></span>
+                        <span style={{ color: 'var(--theme-red)', fontSize: 12 }}>−</span>
                         <input
                           type="number" min="0" step="any"
                           value={billHeader.discount}
                           onChange={e => setBillHeader(h => ({ ...h, discount: e.target.value }))}
                           placeholder="0.00"
-                          style={{ background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 5, padding: '5px 8px', fontSize: 12, color: '#f87171', outline: 'none', width: 90, textAlign: 'right' }}
+                          style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '5px 8px', fontSize: 12, color: 'var(--theme-red)', outline: 'none', width: 90, textAlign: 'right' }}
                         />
                       </div>
-                      <div style={{ color: '#c9a84c', fontWeight: 700, fontSize: 14, borderTop: '1px solid #2a2f3d', paddingTop: 6 }}>
+                      <div style={{ color: 'var(--theme-accent)', fontWeight: 700, fontSize: 14, borderTop: '1px solid var(--theme-border)', paddingTop: 6 }}>
                         Grand Total: NPR {grandTotal.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
                     </div>
@@ -693,7 +693,7 @@ export default function Purchases() {
                 })()}
               </div>
 
-              {error && <p style={{ color: '#f87171', fontSize: 13, margin: '12px 0 0' }}>{error}</p>}
+              {error && <p style={{ color: 'var(--theme-red)', fontSize: 13, margin: '12px 0 0' }}>{error}</p>}
               <div className="form-actions">
                 <button className="btn btn-ghost" onClick={() => { setShowForm(false); setEditingGroupId(null) }}>Cancel</button>
                 <button className="btn btn-primary" onClick={saveBill} disabled={saving}>
@@ -716,13 +716,13 @@ export default function Purchases() {
             {(filterDay !== 'all' || filterItem !== 'all') && (
               <button className="btn btn-ghost" style={{ fontSize: 12, padding: '6px 12px' }} onClick={() => { setFilterDay('all'); setFilterItem('all') }}>Clear Filters</button>
             )}
-            <span style={{ fontSize: 13, color: '#6b7280' }}>{filtered.length} entr{filtered.length !== 1 ? 'ies' : 'y'}</span>
+            <span style={{ fontSize: 13, color: 'var(--theme-text2)' }}>{filtered.length} entr{filtered.length !== 1 ? 'ies' : 'y'}</span>
           </div>
 
           {/* Purchases table */}
           <div className="card">
             {loading ? (
-              <p style={{ color: '#6b7280', fontSize: 13 }}>Loading…</p>
+              <p style={{ color: 'var(--theme-text2)', fontSize: 13 }}>Loading…</p>
             ) : purchases.length === 0 ? (
               <div className="empty-state">
                 <div className="empty-state-icon">↓</div>
@@ -754,13 +754,13 @@ export default function Purchases() {
                         const discountAmt  = parseFloat(first.discount_amount) || 0
                         return [
                           // Group header row
-                          <tr key={`gh-${gid}`} style={{ background: 'rgba(201,168,76,0.04)', borderTop: gIdx > 0 ? '2px solid #1a1f2e' : undefined }}>
-                            <td style={{ fontWeight: 700, color: '#c9a84c', fontSize: 14, borderRight: '1px solid #2a2f3d', verticalAlign: 'middle', paddingTop: 10, paddingBottom: 10 }}>
+                          <tr key={`gh-${gid}`} style={{ background: 'rgba(201,168,76,0.04)', borderTop: gIdx > 0 ? '2px solid var(--theme-card)' : undefined }}>
+                            <td style={{ fontWeight: 700, color: 'var(--theme-accent)', fontSize: 14, borderRight: '1px solid var(--theme-border)', verticalAlign: 'middle', paddingTop: 10, paddingBottom: 10 }}>
                               {gIdx === 0 ? (
                                 <>
                                   {day}
                                   {selectedPeriod && (
-                                    <div style={{ fontSize: 10, fontWeight: 400, color: '#9ca3af', marginTop: 2 }}>
+                                    <div style={{ fontSize: 10, fontWeight: 400, color: 'var(--theme-text3)', marginTop: 2 }}>
                                       {formatAd(bsToAd(selectedPeriod.bs_year, selectedPeriod.bs_month, parseInt(day)))}
                                     </div>
                                   )}
@@ -768,15 +768,15 @@ export default function Purchases() {
                               ) : null}
                             </td>
                             <td colSpan={3} style={{ verticalAlign: 'middle' }}>
-                              <span style={{ fontWeight: 600, color: '#e8e0d0' }}>{first.vendors?.name || <span style={{ color: '#6b7280' }}>No Vendor</span>}</span>
-                              {first.invoice_ref && <span style={{ color: '#6b7280', fontSize: 12, marginLeft: 10 }}>#{first.invoice_ref}</span>}
-                              <span style={{ color: '#4b5563', fontSize: 11, marginLeft: 10 }}>{groupEntries.length} item{groupEntries.length !== 1 ? 's' : ''}</span>
+                              <span style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{first.vendors?.name || <span style={{ color: 'var(--theme-text2)' }}>No Vendor</span>}</span>
+                              {first.invoice_ref && <span style={{ color: 'var(--theme-text2)', fontSize: 12, marginLeft: 10 }}>#{first.invoice_ref}</span>}
+                              <span style={{ color: 'var(--theme-text3)', fontSize: 11, marginLeft: 10 }}>{groupEntries.length} item{groupEntries.length !== 1 ? 's' : ''}</span>
                             </td>
                             <td colSpan={3}></td>
-                            <td style={{ textAlign: 'right', fontWeight: 700, color: '#c9a84c', fontSize: 13, verticalAlign: 'middle' }}>
+                            <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-accent)', fontSize: 13, verticalAlign: 'middle' }}>
                               {(groupTotal + vatAmount - discountAmt).toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              {vatAmount > 0 && <div style={{ fontSize: 10, color: '#fbbf24', fontWeight: 400 }}>+VAT: {vatAmount.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>}
-                              {discountAmt > 0 && <div style={{ fontSize: 10, color: '#f87171', fontWeight: 400 }}>−Disc: {discountAmt.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>}
+                              {vatAmount > 0 && <div style={{ fontSize: 10, color: 'var(--theme-amber)', fontWeight: 400 }}>+VAT: {vatAmount.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>}
+                              {discountAmt > 0 && <div style={{ fontSize: 10, color: 'var(--theme-red)', fontWeight: 400 }}>−Disc: {discountAmt.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>}
                             </td>
                             <td></td>
                             <td style={{ textAlign: 'right', verticalAlign: 'middle' }}>
@@ -793,10 +793,10 @@ export default function Purchases() {
                           </tr>,
                           // Item sub-rows
                           ...groupEntries.map(entry => (
-                            <tr key={entry.id} style={{ background: 'rgba(0,0,0,0.12)', borderBottom: '1px solid #1a1f2e' }}>
+                            <tr key={entry.id} style={{ background: 'rgba(0,0,0,0.12)', borderBottom: '1px solid var(--theme-card)' }}>
                               <td></td>
                               <td style={{ fontWeight: 500, color: '#b8b0a0', paddingLeft: 20, fontSize: 13 }}>{entry.items?.name}</td>
-                              <td>{entry.items?.categories?.name ? <span className="badge badge-yellow">{entry.items.categories.name}</span> : <span style={{ color: '#9ca3af' }}>—</span>}</td>
+                              <td>{entry.items?.categories?.name ? <span className="badge badge-yellow">{entry.items.categories.name}</span> : <span style={{ color: 'var(--theme-text3)' }}>—</span>}</td>
                               <td></td>
                               {(() => {
                                 const cf = getCf(entry.items)
@@ -807,21 +807,21 @@ export default function Purchases() {
                                   <>
                                     <td style={{ textAlign: 'right' }}>
                                       {Number(displayQty).toLocaleString(undefined, { maximumFractionDigits: 3 })}
-                                      {cf > 1 && <div style={{ fontSize: 10, color: '#6b7280' }}>{Number(entry.qty).toLocaleString()} {entry.items?.uom}</div>}
+                                      {cf > 1 && <div style={{ fontSize: 10, color: 'var(--theme-text2)' }}>{Number(entry.qty).toLocaleString()} {entry.items?.uom}</div>}
                                     </td>
-                                    <td style={{ color: '#6b7280' }}>{displayUnit}</td>
+                                    <td style={{ color: 'var(--theme-text2)' }}>{displayUnit}</td>
                                     <td style={{ textAlign: 'right' }}>
                                       {Number(displayRate).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                                      {cf > 1 && <div style={{ fontSize: 10, color: '#6b7280' }}>NPR {Number(entry.rate).toFixed(4)}/{entry.items?.uom}</div>}
+                                      {cf > 1 && <div style={{ fontSize: 10, color: 'var(--theme-text2)' }}>NPR {Number(entry.rate).toFixed(4)}/{entry.items?.uom}</div>}
                                     </td>
                                   </>
                                 )
                               })()}
-                              <td style={{ textAlign: 'right', color: '#c9a84c' }}>
+                              <td style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>
                                 {(entry.qty * entry.rate).toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
-                              <td style={{ fontSize: 12, color: '#6b7280' }}>
-                                {entry.expiry_date ? <span style={{ color: '#c9a84c', fontSize: 11 }}>{entry.expiry_date}</span> : '—'}
+                              <td style={{ fontSize: 12, color: 'var(--theme-text2)' }}>
+                                {entry.expiry_date ? <span style={{ color: 'var(--theme-accent)', fontSize: 11 }}>{entry.expiry_date}</span> : '—'}
                               </td>
                               <td></td>
                             </tr>
@@ -829,9 +829,9 @@ export default function Purchases() {
                         ]
                       })
                     })}
-                    <tr style={{ borderTop: '2px solid #2a2f3d' }}>
-                      <td colSpan={7} style={{ fontWeight: 700, color: '#6b7280', paddingTop: 12 }}>Total</td>
-                      <td style={{ textAlign: 'right', fontWeight: 700, color: '#c9a84c', fontSize: 15, paddingTop: 12 }}>
+                    <tr style={{ borderTop: '2px solid var(--theme-border)' }}>
+                      <td colSpan={7} style={{ fontWeight: 700, color: 'var(--theme-text2)', paddingTop: 12 }}>Total</td>
+                      <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-accent)', fontSize: 15, paddingTop: 12 }}>
                         NPR {filteredValue.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td colSpan={2}></td>
@@ -850,7 +850,7 @@ export default function Purchases() {
       {activeTab === 'returns' && (
         <>
           {purchases.length === 0 && (
-            <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: '#c9a84c' }}>
+            <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: 'var(--theme-accent)' }}>
               No purchases exist for this period yet. Add purchases first before recording returns.
             </div>
           )}
@@ -896,14 +896,14 @@ export default function Purchases() {
                           placeholder={maxInInputUnits ? `Max ${Number(maxInInputUnits).toLocaleString(undefined, { maximumFractionDigits: 3 })}` : '0'}
                         />
                         {linked && (
-                          <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>
+                          <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginTop: 4 }}>
                             Original: {cf > 1
                               ? `${(linked.qty / cf).toLocaleString(undefined, { maximumFractionDigits: 3 })} ${linked.items.purchase_unit} (${Number(linked.qty).toLocaleString()} ${linked.items?.uom})`
                               : `${Number(linked.qty).toLocaleString()} ${linked.items?.uom}`}
                           </div>
                         )}
                         {cf > 1 && returnForm.qty && (
-                          <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
+                          <div style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 2 }}>
                             = {(parseFloat(returnForm.qty) * cf).toLocaleString()} {linked?.items?.uom}
                           </div>
                         )}
@@ -932,20 +932,20 @@ export default function Purchases() {
                 const baseRetQty = returnForm.qty ? parseFloat(returnForm.qty) * cf : 0
                 const retValue = baseRetQty * linked.rate
                 return (
-                  <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.15)', borderRadius: 6, fontSize: 13, color: '#6b7280', display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-                    <span>Rate: <strong style={{ color: '#e8e0d0' }}>NPR {Number(displayRate).toLocaleString(undefined, { maximumFractionDigits: 2 })}/{displayRateUnit}</strong></span>
-                    <span>Vendor: <strong style={{ color: '#e8e0d0' }}>{linked.vendors?.name || '—'}</strong></span>
-                    <span>Payment: <strong style={{ color: '#e8e0d0' }}>{linked.payment_method || 'Cash'}</strong></span>
-                    {retValue > 0 && <span>Return Value: <strong style={{ color: '#f87171' }}>−NPR {retValue.toLocaleString('en-NP', { maximumFractionDigits: 0 })}</strong></span>}
-                    <span style={{ color: '#9ca3af', fontSize: 11 }}>Rate, vendor & payment inherited from original purchase</span>
+                  <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.15)', borderRadius: 6, fontSize: 13, color: 'var(--theme-text2)', display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                    <span>Rate: <strong style={{ color: 'var(--theme-text1)' }}>NPR {Number(displayRate).toLocaleString(undefined, { maximumFractionDigits: 2 })}/{displayRateUnit}</strong></span>
+                    <span>Vendor: <strong style={{ color: 'var(--theme-text1)' }}>{linked.vendors?.name || '—'}</strong></span>
+                    <span>Payment: <strong style={{ color: 'var(--theme-text1)' }}>{linked.payment_method || 'Cash'}</strong></span>
+                    {retValue > 0 && <span>Return Value: <strong style={{ color: 'var(--theme-red)' }}>−NPR {retValue.toLocaleString('en-NP', { maximumFractionDigits: 0 })}</strong></span>}
+                    <span style={{ color: 'var(--theme-text3)', fontSize: 11 }}>Rate, vendor & payment inherited from original purchase</span>
                   </div>
                 )
               })()}
 
-              {returnError && <p style={{ color: '#f87171', fontSize: 13, margin: '10px 0 0' }}>{returnError}</p>}
+              {returnError && <p style={{ color: 'var(--theme-red)', fontSize: 13, margin: '10px 0 0' }}>{returnError}</p>}
               <div className="form-actions">
                 <button className="btn btn-ghost" onClick={() => { setShowReturnForm(false); setEditingReturnId(null) }}>Cancel</button>
-                <button className="btn btn-primary" style={{ background: '#7f1d1d', borderColor: '#f87171' }} onClick={saveReturn} disabled={returnSaving}>
+                <button className="btn btn-primary" style={{ background: '#7f1d1d', borderColor: 'var(--theme-red)' }} onClick={saveReturn} disabled={returnSaving}>
                   {returnSaving ? 'Saving…' : editingReturnId ? 'Update Return' : 'Record Return'}
                 </button>
               </div>
@@ -974,9 +974,9 @@ export default function Purchases() {
                   <tbody>
                     {returns.map(ret => (
                       <tr key={ret.id}>
-                        <td style={{ fontWeight: 700, color: '#c9a84c' }}>{ret.bs_day || '—'}</td>
-                        <td style={{ fontWeight: 600, color: '#e8e0d0' }}>{ret.items?.name}</td>
-                        <td style={{ color: '#6b7280' }}>{ret.vendors?.name || <span style={{ color: '#9ca3af' }}>—</span>}</td>
+                        <td style={{ fontWeight: 700, color: 'var(--theme-accent)' }}>{ret.bs_day || '—'}</td>
+                        <td style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{ret.items?.name}</td>
+                        <td style={{ color: 'var(--theme-text2)' }}>{ret.vendors?.name || <span style={{ color: 'var(--theme-text3)' }}>—</span>}</td>
                         {(() => {
                           const cf = getCf(ret.items)
                           const displayQty  = cf > 1 ? ret.qty / cf : ret.qty
@@ -984,16 +984,16 @@ export default function Purchases() {
                           const displayRate = cf > 1 ? ret.rate * cf : ret.rate
                           return (
                             <>
-                              <td style={{ textAlign: 'right', color: '#f87171', fontWeight: 600 }}>
+                              <td style={{ textAlign: 'right', color: 'var(--theme-red)', fontWeight: 600 }}>
                                 −{Number(displayQty).toLocaleString(undefined, { maximumFractionDigits: 3 })}
-                                {cf > 1 && <div style={{ fontSize: 10, color: '#9ca3af' }}>{Number(ret.qty).toLocaleString()} {ret.items?.uom}</div>}
+                                {cf > 1 && <div style={{ fontSize: 10, color: 'var(--theme-text3)' }}>{Number(ret.qty).toLocaleString()} {ret.items?.uom}</div>}
                               </td>
-                              <td style={{ color: '#6b7280' }}>{displayUnit}</td>
+                              <td style={{ color: 'var(--theme-text2)' }}>{displayUnit}</td>
                               <td style={{ textAlign: 'right' }}>{Number(displayRate).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
                             </>
                           )
                         })()}
-                        <td style={{ textAlign: 'right', color: '#f87171', fontWeight: 700 }}>
+                        <td style={{ textAlign: 'right', color: 'var(--theme-red)', fontWeight: 700 }}>
                           −NPR {(ret.qty * ret.rate).toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                         <td>
@@ -1001,7 +1001,7 @@ export default function Purchases() {
                             {ret.payment_method || 'Cash'}
                           </span>
                         </td>
-                        <td style={{ fontSize: 12, color: '#6b7280' }}>{ret.notes || '—'}</td>
+                        <td style={{ fontSize: 12, color: 'var(--theme-text2)' }}>{ret.notes || '—'}</td>
                         <td style={{ textAlign: 'right' }}>
                           {!isLocked && (
                             <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
@@ -1012,9 +1012,9 @@ export default function Purchases() {
                         </td>
                       </tr>
                     ))}
-                    <tr style={{ borderTop: '2px solid #2a2f3d' }}>
-                      <td colSpan={6} style={{ fontWeight: 700, color: '#6b7280', paddingTop: 12 }}>Total Returns</td>
-                      <td style={{ textAlign: 'right', fontWeight: 700, color: '#f87171', fontSize: 15, paddingTop: 12 }}>
+                    <tr style={{ borderTop: '2px solid var(--theme-border)' }}>
+                      <td colSpan={6} style={{ fontWeight: 700, color: 'var(--theme-text2)', paddingTop: 12 }}>Total Returns</td>
+                      <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-red)', fontSize: 15, paddingTop: 12 }}>
                         −NPR {returnTotal.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td colSpan={3}></td>
@@ -1074,15 +1074,15 @@ export default function Purchases() {
           XLSX.writeFile(wb, `Purchase-Register-${BS_MONTHS[selectedPeriod.bs_month - 1]}-${selectedPeriod.bs_year}.xlsx`)
         }
 
-        const thStyle = { fontSize: 11, color: '#6b7280', padding: '6px 8px', textTransform: 'uppercase', letterSpacing: '0.05em', background: '#13172100', borderBottom: '2px solid #2a2f3d', whiteSpace: 'nowrap', textAlign: 'right' }
-        const tdStyle = { padding: '5px 8px', fontSize: 12, borderBottom: '1px solid #1a1f2e', textAlign: 'right', whiteSpace: 'nowrap' }
+        const thStyle = { fontSize: 11, color: 'var(--theme-text2)', padding: '6px 8px', textTransform: 'uppercase', letterSpacing: '0.05em', background: 'var(--theme-bg)00', borderBottom: '2px solid var(--theme-border)', whiteSpace: 'nowrap', textAlign: 'right' }
+        const tdStyle = { padding: '5px 8px', fontSize: 12, borderBottom: '1px solid var(--theme-card)', textAlign: 'right', whiteSpace: 'nowrap' }
 
         return (
           <div className="card" style={{ padding: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px 10px' }}>
               <div>
-                <span style={{ fontWeight: 700, fontSize: 14, color: '#e8e0d0' }}>Daily Purchase Register</span>
-                <span style={{ fontSize: 12, color: '#6b7280', marginLeft: 12 }}>{BS_MONTHS[selectedPeriod.bs_month - 1]} {selectedPeriod.bs_year} · {purchases.length} entries</span>
+                <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--theme-text1)' }}>Daily Purchase Register</span>
+                <span style={{ fontSize: 12, color: 'var(--theme-text2)', marginLeft: 12 }}>{BS_MONTHS[selectedPeriod.bs_month - 1]} {selectedPeriod.bs_year} · {purchases.length} entries</span>
               </div>
               <button className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 14px' }} onClick={exportRegisterExcel} disabled={purchases.length === 0}>
                 Export Excel
@@ -1102,7 +1102,7 @@ export default function Purchases() {
                       <th style={{ ...thStyle, textAlign: 'left', minWidth: 160 }}>Item Name</th>
                       <th style={{ ...thStyle, width: 48 }}>UOM</th>
                       {days.map(d => (
-                        <th key={d} style={{ ...thStyle, width: 52, color: d % 2 === 0 ? '#6b7280' : '#9ca3af' }}>{d}</th>
+                        <th key={d} style={{ ...thStyle, width: 52, color: d % 2 === 0 ? 'var(--theme-text2)' : 'var(--theme-text3)' }}>{d}</th>
                       ))}
                     </tr>
                   </thead>
@@ -1111,20 +1111,20 @@ export default function Purchases() {
                       <>
                         {/* Category header */}
                         <tr key={`cat-${cat}`} style={{ background: 'rgba(201,168,76,0.06)' }}>
-                          <td colSpan={3 + numDays} style={{ padding: '6px 10px', fontWeight: 700, fontSize: 11, color: '#c9a84c', letterSpacing: '0.08em', textTransform: 'uppercase', borderBottom: '1px solid #2a2f3d' }}>
+                          <td colSpan={3 + numDays} style={{ padding: '6px 10px', fontWeight: 700, fontSize: 11, color: 'var(--theme-accent)', letterSpacing: '0.08em', textTransform: 'uppercase', borderBottom: '1px solid var(--theme-border)' }}>
                             {cat}
                           </td>
                         </tr>
                         {byCategory[cat].map((item, idx) => {
                           return (
                             <tr key={item.id} style={{ background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
-                              <td style={{ ...tdStyle, textAlign: 'center', color: '#4b5563' }}>{idx + 1}</td>
-                              <td style={{ ...tdStyle, textAlign: 'left', color: '#e8e0d0', fontWeight: 500 }}>{item.name}</td>
-                              <td style={{ ...tdStyle, color: '#6b7280' }}>{item.uom}</td>
+                              <td style={{ ...tdStyle, textAlign: 'center', color: 'var(--theme-text3)' }}>{idx + 1}</td>
+                              <td style={{ ...tdStyle, textAlign: 'left', color: 'var(--theme-text1)', fontWeight: 500 }}>{item.name}</td>
+                              <td style={{ ...tdStyle, color: 'var(--theme-text2)' }}>{item.uom}</td>
                               {days.map(d => {
                                 const qty = dayMatrix[item.id]?.[d]
                                 return (
-                                  <td key={d} style={{ ...tdStyle, color: qty ? '#e8e0d0' : '#2a2f3d', background: qty ? 'rgba(201,168,76,0.06)' : undefined, fontWeight: qty ? 600 : 400 }}>
+                                  <td key={d} style={{ ...tdStyle, color: qty ? 'var(--theme-text1)' : 'var(--theme-border)', background: qty ? 'rgba(201,168,76,0.06)' : undefined, fontWeight: qty ? 600 : 400 }}>
                                     {qty ? qty.toLocaleString('en-NP', { maximumFractionDigits: 2 }) : '·'}
                                   </td>
                                 )

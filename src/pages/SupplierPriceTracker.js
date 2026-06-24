@@ -216,7 +216,7 @@ export default function SupplierPriceTracker() {
     return (
       <div className="page-header">
         <h1 className="page-title">Price Tracker</h1>
-        <p style={{ color: '#6b7280', fontSize: 13, marginTop: 12 }}>Loading…</p>
+        <p style={{ color: 'var(--theme-text2)', fontSize: 13, marginTop: 12 }}>Loading…</p>
       </div>
     )
   }
@@ -244,7 +244,7 @@ export default function SupplierPriceTracker() {
         <div className="card no-print" style={{ marginBottom: 16, borderColor: 'rgba(201,168,76,0.4)', background: 'rgba(201,168,76,0.05)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
             <div>
-              <p style={{ fontSize: 13, color: '#c9a84c', margin: '0 0 6px', fontWeight: 600 }}>
+              <p style={{ fontSize: 13, color: 'var(--theme-accent)', margin: '0 0 6px', fontWeight: 600 }}>
                 ⚠ Rate updated — {affectedRecipes.recipes.length} recipe{affectedRecipes.recipes.length !== 1 ? 's' : ''} affected for {affectedRecipes.itemName}
               </p>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -285,9 +285,9 @@ export default function SupplierPriceTracker() {
           <option value="nodata">No Data</option>
         </select>
 
-        <span style={{ fontSize: 13, color: '#6b7280', marginLeft: 4 }}>
+        <span style={{ fontSize: 13, color: 'var(--theme-text2)', marginLeft: 4 }}>
           {filteredKeys.length} item{filteredKeys.length !== 1 ? 's' : ''}
-          {risingCount > 0 && <span style={{ color: '#f87171', marginLeft: 8 }}>· {risingCount} ↑ rising</span>}
+          {risingCount > 0 && <span style={{ color: 'var(--theme-red)', marginLeft: 8 }}>· {risingCount} ↑ rising</span>}
         </span>
       </div>
 
@@ -355,24 +355,24 @@ export default function SupplierPriceTracker() {
                       style={{ background: trend === 'up' ? 'rgba(248,113,113,0.03)' : 'transparent', cursor: 'pointer' }}
                       onClick={() => setExpandedItems(prev => ({ ...prev, [key]: !prev[key] }))}
                     >
-                      <td style={{ textAlign: 'center', color: '#6b7280', fontSize: 12, userSelect: 'none' }}>
+                      <td style={{ textAlign: 'center', color: 'var(--theme-text2)', fontSize: 12, userSelect: 'none' }}>
                         {isExpanded ? '▾' : '▸'}
                       </td>
                       {selectedVendorId === 'all' && (
-                        <td style={{ fontSize: 12, color: '#6b7280' }}>{vendor?.name || '—'}</td>
+                        <td style={{ fontSize: 12, color: 'var(--theme-text2)' }}>{vendor?.name || '—'}</td>
                       )}
                       <td>
-                        <div style={{ fontWeight: 600, color: '#e8e0d0' }}>{item.name}</div>
-                        {item.item_code && <div style={{ fontSize: 11, color: '#9ca3af', fontFamily: 'monospace' }}>{item.item_code}</div>}
+                        <div style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{item.name}</div>
+                        {item.item_code && <div style={{ fontSize: 11, color: 'var(--theme-text3)', fontFamily: 'monospace' }}>{item.item_code}</div>}
                       </td>
-                      <td style={{ fontSize: 12, color: '#6b7280' }}>{item.categories?.name || '—'}</td>
-                      <td style={{ color: '#6b7280' }}>{item.uom}</td>
+                      <td style={{ fontSize: 12, color: 'var(--theme-text2)' }}>{item.categories?.name || '—'}</td>
+                      <td style={{ color: 'var(--theme-text2)' }}>{item.uom}</td>
                       <td style={{ textAlign: 'right' }}>
-                        <span style={{ color: rateMismatch ? '#c9a84c' : '#e8e0d0', fontWeight: 600 }}
+                        <span style={{ color: rateMismatch ? 'var(--theme-accent)' : 'var(--theme-text1)', fontWeight: 600 }}
                           title={rateMismatch ? 'Master rate differs from last purchase by >5%' : ''}>
                           {masterRate > 0 ? masterRate.toFixed(4) : '—'}
                         </span>
-                        {rateMismatch && <span style={{ fontSize: 10, color: '#c9a84c', marginLeft: 4 }}>⚠</span>}
+                        {rateMismatch && <span style={{ fontSize: 10, color: 'var(--theme-accent)', marginLeft: 4 }}>⚠</span>}
                       </td>
                       <td className="no-print" style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                         {isEditing ? (
@@ -385,9 +385,9 @@ export default function SupplierPriceTracker() {
                               autoFocus
                               style={{
                                 width: 90, textAlign: 'right',
-                                background: '#0f1117', border: '1px solid #c9a84c',
+                                background: 'var(--theme-bg)', border: '1px solid var(--theme-accent)',
                                 borderRadius: 4, padding: '4px 8px', fontSize: 13,
-                                color: '#e8e0d0', outline: 'none'
+                                color: 'var(--theme-text1)', outline: 'none'
                               }}
                             />
                             <button className="btn btn-primary" style={{ fontSize: 11, padding: '4px 8px' }}
@@ -406,15 +406,15 @@ export default function SupplierPriceTracker() {
                           </button>
                         )}
                       </td>
-                      <td style={{ textAlign: 'right', color: trend === 'up' ? '#f87171' : trend === 'down' ? '#34d399' : '#d1d5db' }}>
+                      <td style={{ textAlign: 'right', color: trend === 'up' ? 'var(--theme-red)' : trend === 'down' ? 'var(--theme-green)' : '#d1d5db' }}>
                         {lastEntry ? lastEntry.perUomRate.toFixed(4) : '—'}
                       </td>
-                      <td style={{ color: '#6b7280', fontSize: 12 }}>{lastEntry?.period_label || '—'}</td>
+                      <td style={{ color: 'var(--theme-text2)', fontSize: 12 }}>{lastEntry?.period_label || '—'}</td>
                       <td>{trendBadge(trend)}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 600, color: pct == null ? '#6b7280' : pct > 0 ? '#f87171' : pct < 0 ? '#34d399' : '#6b7280' }}>
+                      <td style={{ textAlign: 'right', fontWeight: 600, color: pct == null ? 'var(--theme-text2)' : pct > 0 ? 'var(--theme-red)' : pct < 0 ? 'var(--theme-green)' : 'var(--theme-text2)' }}>
                         {pct != null ? `${pct > 0 ? '+' : ''}${pct.toFixed(1)}%` : '—'}
                       </td>
-                      <td style={{ textAlign: 'right', color: '#6b7280' }}>{history.length}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>{history.length}</td>
                     </tr>
 
                     {/* Expanded history rows */}
@@ -423,22 +423,22 @@ export default function SupplierPriceTracker() {
                       const prevRate = isFirst ? null : history[idx - 1].perUomRate
                       const entryPct = prevRate ? ((entry.perUomRate - prevRate) / prevRate) * 100 : null
                       return (
-                        <tr key={`hist-${key}-${idx}`} style={{ background: '#0f1117' }}>
+                        <tr key={`hist-${key}-${idx}`} style={{ background: 'var(--theme-bg)' }}>
                           <td></td>
                           {selectedVendorId === 'all' && <td></td>}
-                          <td colSpan={3} style={{ paddingLeft: 32, fontSize: 12, color: '#9ca3af' }}>
+                          <td colSpan={3} style={{ paddingLeft: 32, fontSize: 12, color: 'var(--theme-text3)' }}>
                             {entry.period_label}
-                            {entry.bs_day > 1 && <span style={{ marginLeft: 6, color: '#374151' }}>Day {entry.bs_day}</span>}
+                            {entry.bs_day > 1 && <span style={{ marginLeft: 6, color: 'var(--theme-text3)' }}>Day {entry.bs_day}</span>}
                           </td>
                           <td colSpan={2}></td>
                           <td className="no-print"></td>
-                          <td style={{ textAlign: 'right', fontSize: 12, color: '#6b7280' }}>
+                          <td style={{ textAlign: 'right', fontSize: 12, color: 'var(--theme-text2)' }}>
                             {entry.perUomRate.toFixed(4)}
                           </td>
-                          <td style={{ fontSize: 12, color: '#9ca3af' }}>Qty: {entry.qty}</td>
+                          <td style={{ fontSize: 12, color: 'var(--theme-text3)' }}>Qty: {entry.qty}</td>
                           <td></td>
-                          <td style={{ textAlign: 'right', fontSize: 12, fontWeight: 600, color: entryPct == null ? '#9ca3af' : entryPct > 0 ? '#f87171' : entryPct < 0 ? '#34d399' : '#9ca3af' }}>
-                            {entryPct != null ? `${entryPct > 0 ? '+' : ''}${entryPct.toFixed(1)}%` : <span style={{ color: '#374151' }}>first</span>}
+                          <td style={{ textAlign: 'right', fontSize: 12, fontWeight: 600, color: entryPct == null ? 'var(--theme-text3)' : entryPct > 0 ? 'var(--theme-red)' : entryPct < 0 ? 'var(--theme-green)' : 'var(--theme-text3)' }}>
+                            {entryPct != null ? `${entryPct > 0 ? '+' : ''}${entryPct.toFixed(1)}%` : <span style={{ color: 'var(--theme-text3)' }}>first</span>}
                           </td>
                           <td></td>
                         </tr>
@@ -453,7 +453,7 @@ export default function SupplierPriceTracker() {
         )}
       </div>
 
-      <p className="no-print" style={{ marginTop: 10, fontSize: 12, color: '#9ca3af' }}>
+      <p className="no-print" style={{ marginTop: 10, fontSize: 12, color: 'var(--theme-text3)' }}>
         Click any row to expand full purchase history. Rates are per UOM. "Update Rate" sets the item master cost used in recipe costing.
       </p>
     </div>

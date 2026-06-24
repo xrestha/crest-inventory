@@ -169,7 +169,7 @@ export default function Vendors() {
               />
             </div>
           </div>
-          {error && <p style={{ color: '#f87171', fontSize: 13, margin: '12px 0 0' }}>{error}</p>}
+          {error && <p style={{ color: 'var(--theme-red)', fontSize: 13, margin: '12px 0 0' }}>{error}</p>}
           <div className="form-actions">
             <button className="btn btn-ghost" onClick={() => setShowForm(false)}>Cancel</button>
             <button className="btn btn-primary" onClick={save} disabled={saving}>
@@ -185,12 +185,12 @@ export default function Vendors() {
           onChange={e => setSearch(e.target.value)}
           placeholder="Search vendor name or code…"
           style={{
-            background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 6,
-            padding: '8px 12px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: 280
+            background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6,
+            padding: '8px 12px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none', width: 280
           }}
         />
         {search && (
-          <span style={{ marginLeft: 10, fontSize: 12, color: '#6b7280' }}>
+          <span style={{ marginLeft: 10, fontSize: 12, color: 'var(--theme-text2)' }}>
             {vendors.filter(v => v.name.toLowerCase().includes(search.toLowerCase()) || (v.vendor_code || '').toLowerCase().includes(search.toLowerCase())).length} matched
           </span>
         )}
@@ -198,7 +198,7 @@ export default function Vendors() {
 
       <div className="card">
         {loading ? (
-          <p style={{ color: '#6b7280', fontSize: 13 }}>Loading…</p>
+          <p style={{ color: 'var(--theme-text2)', fontSize: 13 }}>Loading…</p>
         ) : vendors.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">⊙</div>
@@ -226,15 +226,15 @@ export default function Vendors() {
                   (v.vendor_code || '').toLowerCase().includes(search.toLowerCase())
                 ).map(v => (
                   <tr key={v.id}>
-                    <td style={{ color: '#c9a84c', fontFamily: 'monospace', fontSize: 12, whiteSpace: 'nowrap' }}>
+                    <td style={{ color: 'var(--theme-accent)', fontFamily: 'monospace', fontSize: 12, whiteSpace: 'nowrap' }}>
                       {v.vendor_code || '—'}
                     </td>
-                    <td style={{ fontWeight: 600, color: '#e8e0d0' }}>{v.name}</td>
-                    <td>{v.contact_person || <span style={{ color: '#9ca3af' }}>—</span>}</td>
-                    <td>{v.phone || <span style={{ color: '#9ca3af' }}>—</span>}</td>
-                    <td>{v.pan_vat_no || <span style={{ color: '#9ca3af' }}>—</span>}</td>
+                    <td style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{v.name}</td>
+                    <td>{v.contact_person || <span style={{ color: 'var(--theme-text3)' }}>—</span>}</td>
+                    <td>{v.phone || <span style={{ color: 'var(--theme-text3)' }}>—</span>}</td>
+                    <td>{v.pan_vat_no || <span style={{ color: 'var(--theme-text3)' }}>—</span>}</td>
                     <td style={{ maxWidth: 220, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {v.address || <span style={{ color: '#9ca3af' }}>—</span>}
+                      {v.address || <span style={{ color: 'var(--theme-text3)' }}>—</span>}
                     </td>
                     <td>
                       <span className={`badge ${v.is_active ? 'badge-green' : 'badge-red'}`}>

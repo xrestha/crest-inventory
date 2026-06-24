@@ -124,6 +124,21 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S133 — 2026-06-24 — Content-page light-theme migration (36 pages)
+
+Closed the gap noted in S132: content pages used hardcoded inline hex, so the light themes (Latte, Rosé Dawn, Solarized, Light) only restyled the chrome + Dashboard while inner page content stayed dark. Swept **36 page files** to map their semantic inline colors onto the theme CSS variables.
+
+- **Semantic mapping applied** across all `src/pages/*.js` except the two Recharts files: gold `#c9a84c`→`var(--theme-accent)`, red `#f87171`→`var(--theme-red)`, green `#34d399`→`var(--theme-green)`, amber `#fbbf24`→`var(--theme-amber)`, primary text `#e8e0d0`→`var(--theme-text1)`, muted `#6b7280`→`var(--theme-text2)`, dim `#9ca3af`/`#4b5563`/`#374151`→`var(--theme-text3)`, border `#2a2f3d`→`var(--theme-border)`, `#1e2330`→`var(--theme-border-lt)`, bg darks (`#0f1117`/`#13171f`/`#141820`/`#131721`)→`var(--theme-bg)`, card darks (`#181c27`/`#1a1f2e`/`#161b27`/`#1f2937`)→`var(--theme-card)`.
+- **Excluded (intentional):** [Dashboard.js](src/pages/Dashboard.js) (already migrated in S131; its remaining hex are Recharts SVG props) and [BestSellers.js](src/pages/BestSellers.js) (charts) — because **CSS `var()` does not resolve inside SVG presentation attributes** (Recharts `fill`/`stroke`/`tick`). Verified no `var()` landed inside any SVG attr.
+- **Left as literal hex (correct):** mid-tone categorical/series accent colors (`#a78bfa`, `#60a5fa`, `#818cf8`, `#f59e0b`, `#22d3ee`, `#f472b6`, `#fb923c`, `#f97316`) used for badges/legend dots — they read fine on both light and dark backgrounds. Translucent `rgba()` badge fills also kept (they tint correctly on either theme).
+- Pure 1:1 swap (1380 insertions / 1380 deletions, no structural change); `$env:CI='true'; npm run build` → **Compiled successfully**, 0 warnings.
+
+**Result:** light themes now restyle inner page content (tables, stat values, labels, status colors) — not just the chrome. Now app-wide.
+
+**Files:** 36 × `src/pages/*.js` (AdminClients, AnnualSummary, AuditLog, BudgetVsActual, DeadStock, FifoReport, Help, Items, Login, MenuEngineering, MonthlySummary, OutstandingPayables, Overheads, PaymentReport, PeriodComparison, Periods, Placeholders, Pricing, PurchaseOrders, Purchases, RecipeMargin, Recipes, ReorderReport, Requisitions, Sales, Settings, ShrinkageReport, Stock, StockReport, SupplierPriceTracker, TheoreticalVariance, Variance, VatReport, VendorReport, Vendors, WastageReport)
+
+---
+
 ### S132 — 2026-06-24 — Trending theme palettes + sidebar follows theme
 
 Reworked the preset set and made the sidebar theme-aware (it was staying dark on every preset).

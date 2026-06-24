@@ -461,7 +461,7 @@ export default function Stock() {
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <select
-            style={{ background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: '#e8e0d0', outline: 'none' }}
+            style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none' }}
             value={selectedPeriod?.id || ''}
             onChange={e => handlePeriodChange(e.target.value)}
           >
@@ -475,30 +475,30 @@ export default function Stock() {
       </div>
 
       {isLocked && (
-        <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#f87171' }}>
+        <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--theme-red)' }}>
           🔒 <strong>This period is closed.</strong> Data is read-only. Contact your admin to re-open if needed.
         </div>
       )}
 
       {!isOnline && (
-        <div style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.25)', borderRadius: 8, padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#fbbf24' }}>
+        <div style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.25)', borderRadius: 8, padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--theme-amber)' }}>
           <span>📵</span>
           <span><strong>Offline</strong> — entries are saved locally and will sync when you reconnect.</span>
           {pendingSync > 0 && <span style={{ marginLeft: 'auto', background: 'rgba(251,191,36,0.15)', borderRadius: 20, padding: '2px 10px', fontWeight: 600 }}>{pendingSync} pending</span>}
         </div>
       )}
       {syncing && (
-        <div style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.2)', borderRadius: 8, padding: '10px 16px', marginBottom: 16, fontSize: 13, color: '#34d399' }}>
+        <div style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.2)', borderRadius: 8, padding: '10px 16px', marginBottom: 16, fontSize: 13, color: 'var(--theme-green)' }}>
           ⟳ Syncing {pendingSync} {pendingSync === 1 ? 'entry' : 'entries'}…
         </div>
       )}
 
-      <div className="no-print" style={{ display: 'flex', gap: 4, marginBottom: 24, borderBottom: '1px solid #2a2f3d', paddingBottom: 0 }}>
+      <div className="no-print" style={{ display: 'flex', gap: 4, marginBottom: 24, borderBottom: '1px solid var(--theme-border)', paddingBottom: 0 }}>
         {TABS.map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
             background: 'none', border: 'none', cursor: 'pointer', padding: '10px 20px', fontSize: 13, fontWeight: 500,
-            color: activeTab === tab.id ? '#c9a84c' : '#6b7280',
-            borderBottom: activeTab === tab.id ? '2px solid #c9a84c' : '2px solid transparent',
+            color: activeTab === tab.id ? 'var(--theme-accent)' : 'var(--theme-text2)',
+            borderBottom: activeTab === tab.id ? '2px solid var(--theme-accent)' : '2px solid transparent',
             marginBottom: -1, transition: 'color 0.12s'
           }}>{tab.label}</button>
         ))}
@@ -520,14 +520,14 @@ export default function Stock() {
               }
               const fmt = v => v.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
               const thStyle = { textAlign: 'right', whiteSpace: 'nowrap' }
-              const tdStyle = (color) => ({ textAlign: 'right', color: color || '#e8e0d0', whiteSpace: 'nowrap' })
+              const tdStyle = (color) => ({ textAlign: 'right', color: color || 'var(--theme-text1)', whiteSpace: 'nowrap' })
               return (
                 <div className="card" style={{ marginBottom: 24 }}>
                   <div className="table-wrap">
                     <table className="data-table">
                       <thead>
                         <tr>
-                          <th style={{ width: 36, textAlign: 'center', color: '#6b7280' }}>S.No</th>
+                          <th style={{ width: 36, textAlign: 'center', color: 'var(--theme-text2)' }}>S.No</th>
                           <th>Category</th>
                           <th style={thStyle}>Opening Stock (NPR)</th>
                           <th style={thStyle}>Production / Purchase (NPR)</th>
@@ -542,28 +542,28 @@ export default function Stock() {
                           const s = summary[c.name] || { opening: 0, purchases: 0, closing: 0, wastage: 0, staffMeals: 0, cogs: 0 }
                           return (
                             <tr key={c.id}>
-                              <td style={{ textAlign: 'center', color: '#6b7280' }}>{idx + 1}</td>
-                              <td style={{ fontWeight: 600, color: '#e8e0d0' }}>{c.name}</td>
-                              <td style={tdStyle('#9ca3af')}>{s.opening > 0 ? fmt(s.opening) : '—'}</td>
-                              <td style={tdStyle('#c9a84c')}>{s.purchases > 0 ? fmt(s.purchases) : '—'}</td>
-                              <td style={tdStyle('#34d399')}>{s.closing > 0 ? fmt(s.closing) : '—'}</td>
-                              <td style={tdStyle('#f87171')}>{s.wastage > 0 ? fmt(s.wastage) : '—'}</td>
+                              <td style={{ textAlign: 'center', color: 'var(--theme-text2)' }}>{idx + 1}</td>
+                              <td style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{c.name}</td>
+                              <td style={tdStyle('var(--theme-text3)')}>{s.opening > 0 ? fmt(s.opening) : '—'}</td>
+                              <td style={tdStyle('var(--theme-accent)')}>{s.purchases > 0 ? fmt(s.purchases) : '—'}</td>
+                              <td style={tdStyle('var(--theme-green)')}>{s.closing > 0 ? fmt(s.closing) : '—'}</td>
+                              <td style={tdStyle('var(--theme-red)')}>{s.wastage > 0 ? fmt(s.wastage) : '—'}</td>
                               <td style={tdStyle('#a78bfa')}>{(s.staffMeals || 0) > 0 ? fmt(s.staffMeals) : '—'}</td>
-                              <td style={{ textAlign: 'right', fontWeight: 600, color: s.cogs < 0 ? '#f87171' : '#e8e0d0', whiteSpace: 'nowrap' }}>{fmt(s.cogs)}</td>
+                              <td style={{ textAlign: 'right', fontWeight: 600, color: s.cogs < 0 ? 'var(--theme-red)' : 'var(--theme-text1)', whiteSpace: 'nowrap' }}>{fmt(s.cogs)}</td>
                             </tr>
                           )
                         })}
                       </tbody>
                       <tfoot>
-                        <tr style={{ borderTop: '2px solid #2a2f3d' }}>
+                        <tr style={{ borderTop: '2px solid var(--theme-border)' }}>
                           <td></td>
-                          <td style={{ fontWeight: 700, color: '#c9a84c' }}>Totals</td>
-                          <td style={{ textAlign: 'right', fontWeight: 700, color: '#9ca3af', whiteSpace: 'nowrap' }}>{fmt(totals.opening)}</td>
-                          <td style={{ textAlign: 'right', fontWeight: 700, color: '#c9a84c', whiteSpace: 'nowrap' }}>{fmt(totals.purchases)}</td>
-                          <td style={{ textAlign: 'right', fontWeight: 700, color: '#34d399', whiteSpace: 'nowrap' }}>{fmt(totals.closing)}</td>
-                          <td style={{ textAlign: 'right', fontWeight: 700, color: '#f87171', whiteSpace: 'nowrap' }}>{fmt(totals.wastage)}</td>
+                          <td style={{ fontWeight: 700, color: 'var(--theme-accent)' }}>Totals</td>
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-text3)', whiteSpace: 'nowrap' }}>{fmt(totals.opening)}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-accent)', whiteSpace: 'nowrap' }}>{fmt(totals.purchases)}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-green)', whiteSpace: 'nowrap' }}>{fmt(totals.closing)}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-red)', whiteSpace: 'nowrap' }}>{fmt(totals.wastage)}</td>
                           <td style={{ textAlign: 'right', fontWeight: 700, color: '#a78bfa', whiteSpace: 'nowrap' }}>{fmt(totals.staffMeals)}</td>
-                          <td style={{ textAlign: 'right', fontWeight: 700, color: '#c9a84c', whiteSpace: 'nowrap' }}>{fmt(totals.cogs)}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-accent)', whiteSpace: 'nowrap' }}>{fmt(totals.cogs)}</td>
                         </tr>
                       </tfoot>
                     </table>
@@ -586,18 +586,18 @@ export default function Stock() {
                     <th>UOM</th>
                     <th style={{ textAlign: 'right' }}>Opening</th>
                     <th style={{ textAlign: 'right' }}>Purchased</th>
-                    <th style={{ textAlign: 'right', color: '#f87171' }}>Returned</th>
+                    <th style={{ textAlign: 'right', color: 'var(--theme-red)' }}>Returned</th>
                     <th style={{ textAlign: 'right' }}>Wastage</th>
                     <th style={{ textAlign: 'right', color: '#a78bfa' }}><Tip text="Staff & complimentary consumption recorded this period. Deducted from Used separately from wastage." width={240}>Staff Meals</Tip></th>
                     <th style={{ textAlign: 'right' }}>Closing</th>
                     <th style={{ textAlign: 'right' }}><Tip text="Opening + Purchased − Returned − Wastage − Staff Meals − Closing. What was actually consumed this period." width={240}>Used</Tip></th>
                     <th style={{ textAlign: 'right', color: '#a78bfa' }}><Tip text="Total qty issued from the store via requisition slips this period. Should align with Used quantity." width={240}>Requisitioned</Tip></th>
-                    <th style={{ textAlign: 'right', color: '#9ca3af', borderLeft: '1px solid #2a2f3d' }}>Open. Value</th>
-                    <th style={{ textAlign: 'right', color: '#c9a84c' }}>Purch. Value</th>
-                    <th style={{ textAlign: 'right', color: '#f87171' }}>Wastage Value</th>
+                    <th style={{ textAlign: 'right', color: 'var(--theme-text3)', borderLeft: '1px solid var(--theme-border)' }}>Open. Value</th>
+                    <th style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>Purch. Value</th>
+                    <th style={{ textAlign: 'right', color: 'var(--theme-red)' }}>Wastage Value</th>
                     <th style={{ textAlign: 'right', color: '#a78bfa' }}>Staff Meals Value</th>
-                    <th style={{ textAlign: 'right', color: '#34d399' }}>Close Value</th>
-                    <th style={{ textAlign: 'right', color: '#c9a84c' }}>COGS (NPR)</th>
+                    <th style={{ textAlign: 'right', color: 'var(--theme-green)' }}>Close Value</th>
+                    <th style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>COGS (NPR)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -617,27 +617,27 @@ export default function Stock() {
                       : '—'
                     return (
                       <tr key={item.id} style={{ opacity: hasData ? 1 : 0.4 }}>
-                        <td style={{ fontWeight: 600, color: '#e8e0d0' }}>{item.name}</td>
+                        <td style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{item.name}</td>
                         <td><span className="badge badge-yellow">{item.categories?.name}</span></td>
-                        <td style={{ color: '#6b7280' }}>{item.uom}</td>
+                        <td style={{ color: 'var(--theme-text2)' }}>{item.uom}</td>
                         <td style={{ textAlign: 'right' }}>{row.opening !== '' ? Number(row.opening).toLocaleString() : '—'}</td>
-                        <td style={{ textAlign: 'right', color: '#c9a84c' }}>{purchases[item.id] ? Number(purchases[item.id]).toLocaleString() : '—'}</td>
-                        <td style={{ textAlign: 'right', color: '#f87171' }}>{returned > 0 ? `−${Number(returned).toLocaleString()}` : '—'}</td>
-                        <td style={{ textAlign: 'right', color: '#f87171' }}>{row.wastage ? Number(row.wastage).toLocaleString() : '—'}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>{purchases[item.id] ? Number(purchases[item.id]).toLocaleString() : '—'}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--theme-red)' }}>{returned > 0 ? `−${Number(returned).toLocaleString()}` : '—'}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--theme-red)' }}>{row.wastage ? Number(row.wastage).toLocaleString() : '—'}</td>
                         <td style={{ textAlign: 'right', color: '#a78bfa' }}>{staffQty > 0 ? Number(staffQty).toLocaleString() : '—'}</td>
-                        <td style={{ textAlign: 'right', color: '#34d399' }}>{row.closing !== '' ? Number(row.closing).toLocaleString() : '—'}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 600, color: used < 0 ? '#f87171' : '#e8e0d0' }}>
+                        <td style={{ textAlign: 'right', color: 'var(--theme-green)' }}>{row.closing !== '' ? Number(row.closing).toLocaleString() : '—'}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 600, color: used < 0 ? 'var(--theme-red)' : 'var(--theme-text1)' }}>
                           {hasData ? Number(used).toLocaleString() : '—'}
                         </td>
                         <td style={{ textAlign: 'right', color: '#a78bfa' }}>
                           {requisitioned[item.id] ? Number(requisitioned[item.id]).toLocaleString() : '—'}
                         </td>
-                        <td style={{ textAlign: 'right', color: '#9ca3af', borderLeft: '1px solid #2a2f3d' }}>{fmtVal(openQty)}</td>
-                        <td style={{ textAlign: 'right', color: '#c9a84c' }}>{fmtVal(purchQty)}</td>
-                        <td style={{ textAlign: 'right', color: '#f87171' }}>{fmtVal(wastQty)}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--theme-text3)', borderLeft: '1px solid var(--theme-border)' }}>{fmtVal(openQty)}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>{fmtVal(purchQty)}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--theme-red)' }}>{fmtVal(wastQty)}</td>
                         <td style={{ textAlign: 'right', color: '#a78bfa' }}>{fmtVal(staffQty)}</td>
-                        <td style={{ textAlign: 'right', color: '#34d399' }}>{fmtVal(closeQty)}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 700, color: used < 0 ? '#f87171' : '#c9a84c' }}>
+                        <td style={{ textAlign: 'right', color: 'var(--theme-green)' }}>{fmtVal(closeQty)}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: used < 0 ? 'var(--theme-red)' : 'var(--theme-accent)' }}>
                           {hasData ? fmtVal(used) : '—'}
                         </td>
                       </tr>
@@ -656,11 +656,11 @@ export default function Stock() {
           <div className="no-print" style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', gap: 12 }}>
               <input
-                style={{ background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: 200 }}
+                style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none', width: 200 }}
                 placeholder="Search items…" value={search} onChange={e => setSearch(e.target.value)}
               />
               <select
-                style={{ background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: '#e8e0d0', outline: 'none' }}
+                style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none' }}
                 value={filterCat} onChange={e => setFilterCat(e.target.value)}
               >
                 <option value="all">All Categories</option>
@@ -670,14 +670,14 @@ export default function Stock() {
             <button className="btn btn-primary" onClick={() => window.print()}>🖨 Print Sheet</button>
           </div>
 
-          <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: '#c9a84c' }} className="no-print">
+          <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: 'var(--theme-accent)' }} className="no-print">
             System Ref Qty = Opening Stock + Purchases − Returns recorded this period. ★ marks high-value, fast-moving items — count these first and double-check the figures.
           </div>
 
           <div className="card print-sheet">
             <div className="print-sheet-header">
-              <h2 style={{ margin: '0 0 2px', fontSize: 18, color: '#e8e0d0' }}>Physical Stock Count Sheet</h2>
-              <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>
+              <h2 style={{ margin: '0 0 2px', fontSize: 18, color: 'var(--theme-text1)' }}>Physical Stock Count Sheet</h2>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--theme-text2)' }}>
                 Period: {periodLabel} &nbsp;·&nbsp; Printed: {new Date().toLocaleDateString('en-GB')}
               </p>
             </div>
@@ -689,7 +689,7 @@ export default function Stock() {
                 .filter(g => g.catItems.length > 0)
               const uncategorized = visible.filter(i => !i.category_id)
               if (uncategorized.length > 0) grouped.push({ category: { id: 'none', name: 'Uncategorized' }, catItems: uncategorized })
-              if (grouped.length === 0) return <p style={{ color: '#6b7280', fontSize: 13 }}>No items match the current filters.</p>
+              if (grouped.length === 0) return <p style={{ color: 'var(--theme-text2)', fontSize: 13 }}>No items match the current filters.</p>
               return grouped.map(({ category, catItems }) => (
                 <div key={category.id} className="print-sheet-section">
                   <h3 className="print-sheet-cat">{category.name}</h3>
@@ -706,9 +706,9 @@ export default function Stock() {
                     <tbody>
                       {catItems.map(item => (
                         <tr key={item.id}>
-                          <td style={{ textAlign: 'center', color: '#c9a84c' }}>{flagged.has(item.id) ? '★' : ''}</td>
-                          <td style={{ fontWeight: 600, color: '#e8e0d0' }}>{item.name}</td>
-                          <td style={{ color: '#6b7280' }}>{item.uom}</td>
+                          <td style={{ textAlign: 'center', color: 'var(--theme-accent)' }}>{flagged.has(item.id) ? '★' : ''}</td>
+                          <td style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{item.name}</td>
+                          <td style={{ color: 'var(--theme-text2)' }}>{item.uom}</td>
                           <td style={{ textAlign: 'right' }}>{Number(getSystemRefQty(item.id)).toLocaleString()}</td>
                           <td className="print-sheet-blank"></td>
                         </tr>
@@ -725,9 +725,9 @@ export default function Stock() {
       {/* Daily Wastage Tab */}
       {activeTab === 'daily_wastage' && (() => {
         if (!selectedPeriod) {
-          return <div className="card" style={{ padding: 28, textAlign: 'center', color: '#6b7280' }}>No period selected.</div>
+          return <div className="card" style={{ padding: 28, textAlign: 'center', color: 'var(--theme-text2)' }}>No period selected.</div>
         }
-        const winp = { background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 6, padding: '8px 10px', fontSize: 13, color: '#e8e0d0', outline: 'none', fontFamily: 'inherit' }
+        const winp = { background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '8px 10px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none', fontFamily: 'inherit' }
         const dayCount = daysInBsMonth(selectedPeriod.bs_year, selectedPeriod.bs_month)
         const days = Array.from({ length: dayCount }, (_, i) => i + 1)
         const adLabel = d => { try { return formatAd(bsToAd(selectedPeriod.bs_year, selectedPeriod.bs_month, d)) } catch { return '' } }
@@ -741,21 +741,21 @@ export default function Stock() {
         const fmtNpr = n => `NPR ${Math.round(n).toLocaleString('en-NP')}`
         return (
           <div>
-            <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: '#c9a84c' }}>
+            <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: 'var(--theme-accent)' }}>
               Log spoilage and waste as it happens, by day and reason. These entries roll into the period's total wastage and COGS — alongside the monthly catch-all on the Wastage tab.
             </div>
 
             {/* Day selector + month total */}
             <div className="card" style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 12, color: '#6b7280' }}>Day</span>
+                <span style={{ fontSize: 12, color: 'var(--theme-text2)' }}>Day</span>
                 <select style={winp} value={wDay} onChange={e => setWDay(parseInt(e.target.value, 10))}>
                   {days.map(d => <option key={d} value={d}>{d} · {adLabel(d)}</option>)}
                 </select>
               </div>
               <div style={{ flex: 1 }} />
-              <span style={{ fontSize: 12, color: '#6b7280' }}>
-                Month total: <span style={{ color: '#f87171', fontWeight: 700 }}>{monthValue > 0 ? fmtNpr(monthValue) : '—'}</span>
+              <span style={{ fontSize: 12, color: 'var(--theme-text2)' }}>
+                Month total: <span style={{ color: 'var(--theme-red)', fontWeight: 700 }}>{monthValue > 0 ? fmtNpr(monthValue) : '—'}</span>
               </span>
             </div>
 
@@ -763,7 +763,7 @@ export default function Stock() {
             {!isLocked && (
               <div className="card" style={{ marginBottom: 14, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
                 <div style={{ flex: '2 1 220px' }}>
-                  <label style={{ display: 'block', fontSize: 11, color: '#6b7280', marginBottom: 5 }}>Item</label>
+                  <label style={{ display: 'block', fontSize: 11, color: 'var(--theme-text2)', marginBottom: 5 }}>Item</label>
                   <SearchableSelect
                     value={wEntry.item_id}
                     onChange={v => setWEntry(w => ({ ...w, item_id: v }))}
@@ -772,11 +772,11 @@ export default function Stock() {
                   />
                 </div>
                 <div style={{ flex: '0 1 110px' }}>
-                  <label style={{ display: 'block', fontSize: 11, color: '#6b7280', marginBottom: 5 }}>Qty</label>
+                  <label style={{ display: 'block', fontSize: 11, color: 'var(--theme-text2)', marginBottom: 5 }}>Qty</label>
                   <input type="number" min="0" step="any" style={{ ...winp, width: '100%', textAlign: 'right' }} value={wEntry.qty} onChange={e => setWEntry(w => ({ ...w, qty: e.target.value }))} placeholder="0" />
                 </div>
                 <div style={{ flex: '1 1 150px' }}>
-                  <label style={{ display: 'block', fontSize: 11, color: '#6b7280', marginBottom: 5 }}>
+                  <label style={{ display: 'block', fontSize: 11, color: 'var(--theme-text2)', marginBottom: 5 }}>
                     <Tip text="Why the stock was lost. Used to group wastage by cause in the Wastage Report." width={240}>Reason</Tip>
                   </label>
                   <select style={{ ...winp, width: '100%' }} value={wEntry.reason} onChange={e => setWEntry(w => ({ ...w, reason: e.target.value }))}>
@@ -806,13 +806,13 @@ export default function Stock() {
                   </thead>
                   <tbody>
                     {dayEntries.length === 0 ? (
-                      <tr><td colSpan={5} style={{ textAlign: 'center', color: '#6b7280', padding: 24 }}>No wastage logged for Day {wDay}.</td></tr>
+                      <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--theme-text2)', padding: 24 }}>No wastage logged for Day {wDay}.</td></tr>
                     ) : dayEntries.map(r => (
                       <tr key={r.id}>
-                        <td style={{ fontWeight: 600, color: '#e8e0d0' }}>{r.items?.name || '—'}</td>
+                        <td style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{r.items?.name || '—'}</td>
                         <td><span className="badge badge-yellow">{r.reason || 'Other'}</span></td>
-                        <td style={{ textAlign: 'right', color: '#f87171' }}>{Number(r.qty).toLocaleString()} {r.items?.uom || ''}</td>
-                        <td style={{ textAlign: 'right', color: '#f87171', fontWeight: 600 }}>{valOf(r) > 0 ? fmtNpr(valOf(r)) : '—'}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--theme-red)' }}>{Number(r.qty).toLocaleString()} {r.items?.uom || ''}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--theme-red)', fontWeight: 600 }}>{valOf(r) > 0 ? fmtNpr(valOf(r)) : '—'}</td>
                         <td style={{ textAlign: 'right' }}>
                           {!isLocked && <button className="btn btn-danger" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => deleteDailyWastage(r.id)} disabled={wBusy}>Del</button>}
                         </td>
@@ -821,10 +821,10 @@ export default function Stock() {
                   </tbody>
                   {dayEntries.length > 0 && (
                     <tfoot>
-                      <tr style={{ borderTop: '2px solid #2a2f3d' }}>
-                        <td colSpan={2} style={{ fontWeight: 700, color: '#6b7280', paddingTop: 12 }}>Day {wDay} total</td>
-                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#f87171', paddingTop: 12 }}>{Number(dayQty).toLocaleString()}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#f87171', fontSize: 14, paddingTop: 12 }}>{fmtNpr(dayValue)}</td>
+                      <tr style={{ borderTop: '2px solid var(--theme-border)' }}>
+                        <td colSpan={2} style={{ fontWeight: 700, color: 'var(--theme-text2)', paddingTop: 12 }}>Day {wDay} total</td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-red)', paddingTop: 12 }}>{Number(dayQty).toLocaleString()}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-red)', fontSize: 14, paddingTop: 12 }}>{fmtNpr(dayValue)}</td>
                         <td></td>
                       </tr>
                     </tfoot>
@@ -836,9 +836,9 @@ export default function Stock() {
             {/* Month strip — days with wastage */}
             {Object.keys(perDay).length > 0 && (
               <div className="card" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 4 }}>Days with wastage</span>
+                <span style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 4 }}>Days with wastage</span>
                 {Object.keys(perDay).map(Number).sort((a, b) => a - b).map(d => (
-                  <button key={d} onClick={() => setWDay(d)} className="btn btn-ghost" style={{ fontSize: 11, padding: '5px 10px', borderColor: d === wDay ? 'rgba(201,168,76,0.5)' : '#2a2f3d', color: d === wDay ? '#c9a84c' : '#9ca3af' }}>
+                  <button key={d} onClick={() => setWDay(d)} className="btn btn-ghost" style={{ fontSize: 11, padding: '5px 10px', borderColor: d === wDay ? 'rgba(201,168,76,0.5)' : 'var(--theme-border)', color: d === wDay ? 'var(--theme-accent)' : 'var(--theme-text3)' }}>
                     Day {d} · {fmtNpr(perDay[d])}
                   </button>
                 ))}
@@ -860,14 +860,14 @@ export default function Stock() {
         }, 0)
         return (
           <>
-            <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: '#c9a84c' }}>
+            <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: 'var(--theme-accent)' }}>
               {TABS.find(t => t.id === activeTab)?.desc} — enter quantities in the item's UOM, then click Save All.
             </div>
 
             {isMobile ? (
               <div style={{ marginBottom: 12 }}>
                 <input
-                  style={{ background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: '100%', marginBottom: 10 }}
+                  style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none', width: '100%', marginBottom: 10 }}
                   placeholder="Search items…" value={search} onChange={e => setSearch(e.target.value)}
                 />
                 <div className="mobile-cat-strip">
@@ -881,11 +881,11 @@ export default function Stock() {
               <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', gap: 12 }}>
                   <input
-                    style={{ background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: 200 }}
+                    style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none', width: 200 }}
                     placeholder="Search items…" value={search} onChange={e => setSearch(e.target.value)}
                   />
                   <select
-                    style={{ background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: '#e8e0d0', outline: 'none' }}
+                    style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none' }}
                     value={filterCat} onChange={e => setFilterCat(e.target.value)}
                   >
                     <option value="all">All Categories</option>
@@ -893,7 +893,7 @@ export default function Stock() {
                   </select>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="btn btn-ghost" style={{ color: '#f87171', borderColor: 'rgba(248,113,113,0.3)' }} onClick={clearAll} disabled={saveAllLoading || isLocked}>Clear All</button>
+                  <button className="btn btn-ghost" style={{ color: 'var(--theme-red)', borderColor: 'rgba(248,113,113,0.3)' }} onClick={clearAll} disabled={saveAllLoading || isLocked}>Clear All</button>
                   <button className="btn btn-primary" onClick={saveAll} disabled={saveAllLoading || isLocked}>
                     {saveAllLoading ? 'Saving…' : saved ? '✓ Saved' : 'Save All'}
                   </button>
@@ -930,7 +930,7 @@ export default function Stock() {
                           <span className="mobile-stock-ref">Purchased: {Number(purchases[item.id]).toLocaleString()}</span>
                         )}
                         {returned > 0 && (
-                          <span className="mobile-stock-ref" style={{ color: '#f87171' }}>Returned: −{Number(returned).toLocaleString()}</span>
+                          <span className="mobile-stock-ref" style={{ color: 'var(--theme-red)' }}>Returned: −{Number(returned).toLocaleString()}</span>
                         )}
                       </div>
                       <div className="mobile-stock-card-input-row">
@@ -947,24 +947,24 @@ export default function Stock() {
                         {lineValue != null && (
                           <span className="mobile-stock-value">NPR {lineValue.toLocaleString('en-NP')}</span>
                         )}
-                        {saving[item.id] && <span style={{ fontSize: 11, color: '#6b7280' }}>…</span>}
+                        {saving[item.id] && <span style={{ fontSize: 11, color: 'var(--theme-text2)' }}>…</span>}
                       </div>
                     </div>
                   )
                 })}
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', marginTop: 10, background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 8, fontWeight: 700 }}>
-                <span style={{ color: '#6b7280', fontSize: 13 }}>Total — {visible.length} item{visible.length !== 1 ? 's' : ''}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', marginTop: 10, background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 8, fontWeight: 700 }}>
+                <span style={{ color: 'var(--theme-text2)', fontSize: 13 }}>Total — {visible.length} item{visible.length !== 1 ? 's' : ''}</span>
                 <span style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-                  <span style={{ color: '#e8e0d0', fontSize: 13 }}>{totalQty > 0 ? Number(totalQty).toLocaleString() : '—'}</span>
-                  <span style={{ color: '#c9a84c', fontSize: 14 }}>{totalValue > 0 ? `NPR ${Math.round(totalValue).toLocaleString('en-NP')}` : '—'}</span>
+                  <span style={{ color: 'var(--theme-text1)', fontSize: 13 }}>{totalQty > 0 ? Number(totalQty).toLocaleString() : '—'}</span>
+                  <span style={{ color: 'var(--theme-accent)', fontSize: 14 }}>{totalValue > 0 ? `NPR ${Math.round(totalValue).toLocaleString('en-NP')}` : '—'}</span>
                 </span>
               </div>
               </>
             ) : (
               <div className="card">
                 {loading ? (
-                  <p style={{ color: '#6b7280', fontSize: 13 }}>Loading…</p>
+                  <p style={{ color: 'var(--theme-text2)', fontSize: 13 }}>Loading…</p>
                 ) : (
                   <div className="table-wrap">
                     <table className="data-table">
@@ -973,12 +973,12 @@ export default function Stock() {
                           <th>Item</th>
                           <th>Category</th>
                           <th style={{ textAlign: 'right' }}>UOM</th>
-                          <th style={{ textAlign: 'right', color: '#c9a84c' }}>
+                          <th style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>
                             {activeTab === 'opening' ? 'Opening Qty' : activeTab === 'closing' ? 'Physical Count' : activeTab === 'staff_meal' ? 'Staff Meals Qty' : 'Wastage Qty'}
                           </th>
                           <th style={{ textAlign: 'right' }}>Purchased</th>
-                          <th style={{ textAlign: 'right', color: '#f87171' }}>Returned</th>
-                          <th style={{ textAlign: 'right', color: '#c9a84c' }}>
+                          <th style={{ textAlign: 'right', color: 'var(--theme-red)' }}>Returned</th>
+                          <th style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>
                             <Tip text="Qty entered × unit rate (per_uom_rate). Gives the NPR value of this item's stock entry." width={220}>Value (NPR)</Tip>
                           </th>
                           <th></th>
@@ -995,9 +995,9 @@ export default function Stock() {
                           const lineValue = rate > 0 && qty > 0 ? Math.round(qty * rate) : null
                           return (
                             <tr key={item.id}>
-                              <td style={{ fontWeight: 600, color: '#e8e0d0' }}>{item.name}</td>
+                              <td style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{item.name}</td>
                               <td><span className="badge badge-yellow">{item.categories?.name}</span></td>
-                              <td style={{ textAlign: 'right', color: '#6b7280' }}>{item.uom}</td>
+                              <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>{item.uom}</td>
                               <td style={{ textAlign: 'right', width: 140 }}>
                                 <input
                                   type="number" min="0"
@@ -1007,40 +1007,40 @@ export default function Stock() {
                                   placeholder="0"
                                   disabled={isLocked}
                                   style={{
-                                    background: '#0f1117', border: '1px solid #2a2f3d',
+                                    background: 'var(--theme-bg)', border: '1px solid var(--theme-border)',
                                     borderRadius: 5, padding: '6px 10px', fontSize: 13,
-                                    color: '#e8e0d0', outline: 'none', width: 110,
+                                    color: 'var(--theme-text1)', outline: 'none', width: 110,
                                     textAlign: 'right',
-                                    borderColor: val > 0 ? 'rgba(201,168,76,0.4)' : '#2a2f3d'
+                                    borderColor: val > 0 ? 'rgba(201,168,76,0.4)' : 'var(--theme-border)'
                                   }}
                                 />
                               </td>
-                              <td style={{ textAlign: 'right', color: '#6b7280', fontSize: 13 }}>
+                              <td style={{ textAlign: 'right', color: 'var(--theme-text2)', fontSize: 13 }}>
                                 {purchases[item.id] ? `${Number(purchases[item.id]).toLocaleString()} ${item.uom}` : '—'}
                               </td>
-                              <td style={{ textAlign: 'right', color: returned > 0 ? '#f87171' : '#9ca3af', fontSize: 13 }}>
+                              <td style={{ textAlign: 'right', color: returned > 0 ? 'var(--theme-red)' : 'var(--theme-text3)', fontSize: 13 }}>
                                 {returned > 0 ? `−${Number(returned).toLocaleString()} ${item.uom}` : '—'}
                               </td>
-                              <td style={{ textAlign: 'right', color: '#c9a84c', fontSize: 13, fontWeight: lineValue ? 600 : 400 }}>
+                              <td style={{ textAlign: 'right', color: 'var(--theme-accent)', fontSize: 13, fontWeight: lineValue ? 600 : 400 }}>
                                 {lineValue != null ? `NPR ${lineValue.toLocaleString('en-NP')}` : '—'}
                               </td>
                               <td style={{ width: 40, textAlign: 'center' }}>
-                                {isSaving && <span style={{ fontSize: 11, color: '#6b7280' }}>…</span>}
+                                {isSaving && <span style={{ fontSize: 11, color: 'var(--theme-text2)' }}>…</span>}
                               </td>
                             </tr>
                           )
                         })}
                       </tbody>
                       <tfoot>
-                        <tr style={{ borderTop: '2px solid #2a2f3d' }}>
-                          <td colSpan={3} style={{ fontWeight: 700, color: '#6b7280', paddingTop: 12 }}>
+                        <tr style={{ borderTop: '2px solid var(--theme-border)' }}>
+                          <td colSpan={3} style={{ fontWeight: 700, color: 'var(--theme-text2)', paddingTop: 12 }}>
                             Total — {visible.length} item{visible.length !== 1 ? 's' : ''}
                           </td>
-                          <td style={{ textAlign: 'right', fontWeight: 700, color: '#e8e0d0', paddingTop: 12 }}>
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-text1)', paddingTop: 12 }}>
                             {totalQty > 0 ? Number(totalQty).toLocaleString() : '—'}
                           </td>
                           <td colSpan={2}></td>
-                          <td style={{ textAlign: 'right', fontWeight: 700, color: '#c9a84c', fontSize: 14, paddingTop: 12 }}>
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-accent)', fontSize: 14, paddingTop: 12 }}>
                             {totalValue > 0 ? `NPR ${Math.round(totalValue).toLocaleString('en-NP')}` : '—'}
                           </td>
                           <td></td>

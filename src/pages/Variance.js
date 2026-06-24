@@ -179,14 +179,14 @@ export default function Variance() {
             <div className="stat-label">
               <Tip text="Items where actual usage differs from theoretical by more than 10%. These need investigation." width={230}>Flagged Items</Tip>
             </div>
-            <div className="stat-value" style={{ color: summary.flaggedCount > 0 ? '#f87171' : '#34d399' }}>{summary.flaggedCount}</div>
+            <div className="stat-value" style={{ color: summary.flaggedCount > 0 ? 'var(--theme-red)' : 'var(--theme-green)' }}>{summary.flaggedCount}</div>
             <div className="stat-sub">&gt;10% variance</div>
           </div>
           <div className="stat-card">
             <div className="stat-label">
               <Tip text="Sum of (over-used qty × item rate) across all items. This is the NPR value of stock you can't account for." width={240}>Total Variance Value</Tip>
             </div>
-            <div className="stat-value gold" style={{ fontSize: 18, color: summary.totalVarianceValue > 0 ? '#f87171' : '#34d399' }}>
+            <div className="stat-value gold" style={{ fontSize: 18, color: summary.totalVarianceValue > 0 ? 'var(--theme-red)' : 'var(--theme-green)' }}>
               NPR {Math.abs(summary.totalVarianceValue).toLocaleString('en-NP', { maximumFractionDigits: 0 })}
             </div>
             <div className="stat-sub">{summary.totalVarianceValue > 0 ? 'Over-used (potential loss)' : 'Under-used'}</div>
@@ -203,10 +203,10 @@ export default function Variance() {
         </div>
       )}
 
-      <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.15)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>
-        <strong style={{ color: '#c9a84c' }}>How to read this:</strong> Theoretical = what should have been used based on sales × recipe qty. Actual = Opening + Net Purchases (after returns) − Closing − Wastage.
-        <span style={{ color: '#f87171' }}> Over variance</span> = more used than sold (waste, theft, over-portioning).
-        <span style={{ color: '#c9a84c' }}> Under variance</span> = less used than expected (under-portioning or data gap).
+      <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.15)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: 'var(--theme-text2)', lineHeight: 1.6 }}>
+        <strong style={{ color: 'var(--theme-accent)' }}>How to read this:</strong> Theoretical = what should have been used based on sales × recipe qty. Actual = Opening + Net Purchases (after returns) − Closing − Wastage.
+        <span style={{ color: 'var(--theme-red)' }}> Over variance</span> = more used than sold (waste, theft, over-portioning).
+        <span style={{ color: 'var(--theme-accent)' }}> Under variance</span> = less used than expected (under-portioning or data gap).
       </div>
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -222,12 +222,12 @@ export default function Variance() {
           <option value="under">Under variance only</option>
           <option value="ok">OK only</option>
         </select>
-        <span style={{ fontSize: 13, color: '#6b7280' }}>{filtered.length} items</span>
+        <span style={{ fontSize: 13, color: 'var(--theme-text2)' }}>{filtered.length} items</span>
       </div>
 
       <div className="card">
         {loading ? (
-          <p style={{ color: '#6b7280', fontSize: 13 }}>Building report…</p>
+          <p style={{ color: 'var(--theme-text2)', fontSize: 13 }}>Building report…</p>
         ) : filtered.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">△</div>
@@ -255,18 +255,18 @@ export default function Variance() {
               </thead>
               <tbody>
                 {filtered.sort((a, b) => Math.abs(b.value) - Math.abs(a.value)).map(row => {
-                  const varColor = row.variance > 0 ? '#f87171' : row.variance < 0 ? '#c9a84c' : '#6b7280'
+                  const varColor = row.variance > 0 ? 'var(--theme-red)' : row.variance < 0 ? 'var(--theme-accent)' : 'var(--theme-text2)'
                   return (
                     <tr key={row.item.id} style={{ background: row.flag === 'over' ? 'rgba(248,113,113,0.03)' : 'transparent' }}>
-                      <td style={{ fontWeight: 600, color: '#e8e0d0' }}>{row.item.name}</td>
+                      <td style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{row.item.name}</td>
                       <td><span className="badge badge-yellow">{row.category}</span></td>
-                      <td style={{ color: '#6b7280' }}>{row.item.uom}</td>
-                      <td style={{ textAlign: 'right', color: '#6b7280' }}>{row.openQty > 0 ? row.openQty.toLocaleString() : '—'}</td>
-                      <td style={{ textAlign: 'right', color: '#c9a84c' }}>{row.purchQty !== 0 ? row.purchQty.toLocaleString() : '—'}</td>
-                      <td style={{ textAlign: 'right', color: '#f87171' }}>{row.wasteQty > 0 ? row.wasteQty.toLocaleString() : '—'}</td>
-                      <td style={{ textAlign: 'right', color: '#34d399' }}>{row.closeQty > 0 ? row.closeQty.toLocaleString() : '—'}</td>
+                      <td style={{ color: 'var(--theme-text2)' }}>{row.item.uom}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>{row.openQty > 0 ? row.openQty.toLocaleString() : '—'}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>{row.purchQty !== 0 ? row.purchQty.toLocaleString() : '—'}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--theme-red)' }}>{row.wasteQty > 0 ? row.wasteQty.toLocaleString() : '—'}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--theme-green)' }}>{row.closeQty > 0 ? row.closeQty.toLocaleString() : '—'}</td>
                       <td style={{ textAlign: 'right', fontWeight: 600 }}>{row.actualUsed !== 0 ? Number(row.actualUsed.toFixed(3)).toLocaleString() : '—'}</td>
-                      <td style={{ textAlign: 'right', color: '#6b7280' }}>{row.theoreticalUsed > 0 ? Number(row.theoreticalUsed.toFixed(3)).toLocaleString() : '—'}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>{row.theoreticalUsed > 0 ? Number(row.theoreticalUsed.toFixed(3)).toLocaleString() : '—'}</td>
                       <td style={{ textAlign: 'right', fontWeight: 700, color: varColor }}>
                         {row.variance !== 0 ? (row.variance > 0 ? '+' : '') + Number(row.variance.toFixed(3)).toLocaleString() : '—'}
                       </td>

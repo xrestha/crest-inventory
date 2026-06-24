@@ -174,19 +174,19 @@ export default function DeadStock() {
       <div className="stat-grid no-print" style={{ marginBottom: 20 }}>
         <div className="stat-card">
           <div className="stat-label">Dead Stock Items</div>
-          <div className="stat-value" style={{ color: '#f87171' }}>{deadCount}</div>
+          <div className="stat-value" style={{ color: 'var(--theme-red)' }}>{deadCount}</div>
           <div className="stat-label" style={{ marginTop: 4 }}>Zero consumption</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Slow Movers</div>
-          <div className="stat-value" style={{ color: '#fbbf24' }}>{slowCount}</div>
+          <div className="stat-value" style={{ color: 'var(--theme-amber)' }}>{slowCount}</div>
           <div className="stat-label" style={{ marginTop: 4 }}>Used &lt;20% of available</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">
             <Tip text="Total closing stock value of all dead and slow-moving items — capital currently tied up in idle inventory." width={260}>Value at Risk</Tip>
           </div>
-          <div className="stat-value" style={{ color: '#f87171' }}>{fmt(totalValueAtRisk)}</div>
+          <div className="stat-value" style={{ color: 'var(--theme-red)' }}>{fmt(totalValueAtRisk)}</div>
         </div>
       </div>
 
@@ -250,11 +250,11 @@ export default function DeadStock() {
                   <td style={{ textAlign: 'right' }}>{fmtQty(r.wasted)}</td>
                   <td style={{ textAlign: 'right' }}>{fmtQty(r.used)}</td>
                   <td style={{ textAlign: 'right' }}>{fmtQty(r.closing)}</td>
-                  <td style={{ textAlign: 'right', color: '#f87171', fontWeight: 600 }}>{fmt(r.valueAtRisk)}</td>
+                  <td style={{ textAlign: 'right', color: 'var(--theme-red)', fontWeight: 600 }}>{fmt(r.valueAtRisk)}</td>
                   <td>
                     <span style={{
                       fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
-                      color:      r.status === 'Dead' ? '#f87171' : '#fbbf24',
+                      color:      r.status === 'Dead' ? 'var(--theme-red)' : 'var(--theme-amber)',
                       background: r.status === 'Dead' ? 'rgba(248,113,113,0.1)' : 'rgba(251,191,36,0.1)',
                       border:     `1px solid ${r.status === 'Dead' ? 'rgba(248,113,113,0.25)' : 'rgba(251,191,36,0.25)'}`,
                     }}>

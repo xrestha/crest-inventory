@@ -24,9 +24,9 @@ const TABLE_LABELS = {
 }
 
 const ACTION_STYLE = {
-  INSERT: { label: 'Added',   color: '#34d399', bg: 'rgba(52,211,153,0.12)' },
+  INSERT: { label: 'Added',   color: 'var(--theme-green)', bg: 'rgba(52,211,153,0.12)' },
   UPDATE: { label: 'Updated', color: '#60a5fa', bg: 'rgba(96,165,250,0.12)' },
-  DELETE: { label: 'Deleted', color: '#f87171', bg: 'rgba(248,113,113,0.12)' },
+  DELETE: { label: 'Deleted', color: 'var(--theme-red)', bg: 'rgba(248,113,113,0.12)' },
 }
 
 
@@ -195,7 +195,7 @@ export default function AuditLog() {
           {logs.length > 0 && (
             <button
               className="btn btn-ghost"
-              style={{ fontSize: 12, color: '#f87171', borderColor: 'rgba(248,113,113,0.3)' }}
+              style={{ fontSize: 12, color: 'var(--theme-red)', borderColor: 'rgba(248,113,113,0.3)' }}
               onClick={clearLogs}
             >
               ✕ Clear Logs
@@ -209,36 +209,36 @@ export default function AuditLog() {
       <div style={{ marginBottom: 20 }}>
         <button
           onClick={() => setHelpOpen(o => !o)}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, color: '#6b7280', fontSize: 13, padding: 0 }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--theme-text2)', fontSize: 13, padding: 0 }}
         >
           <span style={{ fontSize: 15 }}>{helpOpen ? '▾' : '▸'}</span>
           What does the Audit Log record?
         </button>
         {helpOpen && (
-          <div style={{ marginTop: 12, background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 8, overflow: 'hidden' }}>
+          <div style={{ marginTop: 12, background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 8, overflow: 'hidden' }}>
             <div className="table-wrap">
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid #2a2f3d' }}>
-                  <th style={{ textAlign: 'left', padding: '8px 14px', color: '#6b7280', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Area</th>
-                  <th style={{ textAlign: 'left', padding: '8px 14px', color: '#6b7280', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Operations tracked</th>
-                  <th style={{ textAlign: 'left', padding: '8px 14px', color: '#6b7280', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Notes</th>
+                <tr style={{ borderBottom: '1px solid var(--theme-border)' }}>
+                  <th style={{ textAlign: 'left', padding: '8px 14px', color: 'var(--theme-text2)', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Area</th>
+                  <th style={{ textAlign: 'left', padding: '8px 14px', color: 'var(--theme-text2)', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Operations tracked</th>
+                  <th style={{ textAlign: 'left', padding: '8px 14px', color: 'var(--theme-text2)', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Notes</th>
                 </tr>
               </thead>
               <tbody>
                 {HELP_ITEMS.map((h, i) => (
-                  <tr key={h.area} style={{ borderBottom: i < HELP_ITEMS.length - 1 ? '1px solid #1e2330' : 'none' }}>
-                    <td style={{ padding: '9px 14px', color: '#e8e0d0', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                      <span style={{ marginRight: 7, color: '#c9a84c' }}>{h.icon}</span>{h.area}
+                  <tr key={h.area} style={{ borderBottom: i < HELP_ITEMS.length - 1 ? '1px solid var(--theme-border-lt)' : 'none' }}>
+                    <td style={{ padding: '9px 14px', color: 'var(--theme-text1)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                      <span style={{ marginRight: 7, color: 'var(--theme-accent)' }}>{h.icon}</span>{h.area}
                     </td>
-                    <td style={{ padding: '9px 14px', color: '#34d399', fontFamily: 'monospace', fontSize: 12 }}>{h.ops}</td>
-                    <td style={{ padding: '9px 14px', color: '#9ca3af' }}>{h.note}</td>
+                    <td style={{ padding: '9px 14px', color: 'var(--theme-green)', fontFamily: 'monospace', fontSize: 12 }}>{h.ops}</td>
+                    <td style={{ padding: '9px 14px', color: 'var(--theme-text3)' }}>{h.note}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
             </div>
-            <div style={{ padding: '10px 14px', borderTop: '1px solid #2a2f3d', color: '#6b7280', fontSize: 12 }}>
+            <div style={{ padding: '10px 14px', borderTop: '1px solid var(--theme-border)', color: 'var(--theme-text2)', fontSize: 12 }}>
               Logs are written by database triggers — they capture all changes regardless of which user or device made them. HR and client-login changes are tracked; sales, vendors, and recipes are not.
             </div>
           </div>
@@ -260,7 +260,7 @@ export default function AuditLog() {
           <option value="30d">Last 30 days</option>
           <option value="all">All time</option>
         </select>
-        <span style={{ fontSize: 13, color: '#6b7280' }}>
+        <span style={{ fontSize: 13, color: 'var(--theme-text2)' }}>
           {loading ? 'Loading…' : `${logs.length} entries`}
         </span>
       </div>
@@ -281,25 +281,25 @@ export default function AuditLog() {
             <tbody>
               {!loading && logs.length === 0 && (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', color: '#6b7280', padding: 32 }}>
+                  <td colSpan={6} style={{ textAlign: 'center', color: 'var(--theme-text2)', padding: 32 }}>
                     No entries found for the selected filters.
                   </td>
                 </tr>
               )}
               {logs.map(log => {
-                const act = ACTION_STYLE[log.action] || { label: log.action, color: '#6b7280', bg: 'rgba(107,114,128,0.12)' }
+                const act = ACTION_STYLE[log.action] || { label: log.action, color: 'var(--theme-text2)', bg: 'rgba(107,114,128,0.12)' }
                 return (
                   <tr key={log.id}>
-                    <td style={{ fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}>{fmtTime(log.created_at)}</td>
-                    <td style={{ fontWeight: 600, color: '#e8e0d0' }}>{log.client_name || '—'}</td>
-                    <td style={{ color: '#9ca3af', fontSize: 13 }}>{log.user_name || '—'}</td>
+                    <td style={{ fontSize: 12, color: 'var(--theme-text2)', whiteSpace: 'nowrap' }}>{fmtTime(log.created_at)}</td>
+                    <td style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{log.client_name || '—'}</td>
+                    <td style={{ color: 'var(--theme-text3)', fontSize: 13 }}>{log.user_name || '—'}</td>
                     <td style={{ textAlign: 'center' }}>
                       <span style={{ fontSize: 11, fontWeight: 700, color: act.color, background: act.bg, padding: '2px 10px', borderRadius: 10, whiteSpace: 'nowrap' }}>
                         {act.label}
                       </span>
                     </td>
-                    <td style={{ color: '#c9a84c', fontSize: 13 }}>{TABLE_LABELS[log.table_name] || log.table_name}</td>
-                    <td style={{ fontSize: 13, color: '#9ca3af' }}>{getSummary(log)}</td>
+                    <td style={{ color: 'var(--theme-accent)', fontSize: 13 }}>{TABLE_LABELS[log.table_name] || log.table_name}</td>
+                    <td style={{ fontSize: 13, color: 'var(--theme-text3)' }}>{getSummary(log)}</td>
                   </tr>
                 )
               })}

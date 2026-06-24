@@ -5,10 +5,10 @@ import Tip from '../components/Tip'
 
 function shrinkageStatus(count, covered) {
   const ratio = covered > 0 ? count / covered : 0
-  if (ratio >= 0.67 && count >= 2) return { label: 'Consistent', color: '#f87171', bg: 'rgba(248,113,113,0.1)' }
+  if (ratio >= 0.67 && count >= 2) return { label: 'Consistent', color: 'var(--theme-red)', bg: 'rgba(248,113,113,0.1)' }
   if (count >= 2)                  return { label: 'Occasional', color: '#f97316', bg: 'rgba(249,115,22,0.1)'  }
-  if (count === 1)                 return { label: 'Once',       color: '#c9a84c', bg: 'rgba(201,168,76,0.1)'  }
-  return                                  { label: 'Clear',      color: '#34d399', bg: 'rgba(52,211,153,0.1)'  }
+  if (count === 1)                 return { label: 'Once',       color: 'var(--theme-accent)', bg: 'rgba(201,168,76,0.1)'  }
+  return                                  { label: 'Clear',      color: 'var(--theme-green)', bg: 'rgba(52,211,153,0.1)'  }
 }
 
 export default function ShrinkageReport() {
@@ -190,9 +190,9 @@ export default function ShrinkageReport() {
         </select>
       </div>
 
-      <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.15)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>
-        <strong style={{ color: '#c9a84c' }}>What this shows:</strong> Items where actual usage consistently exceeded theoretical (recipe-based) usage across multiple closed periods.
-        Unlike wastage — which is <em style={{ color: '#e8e0d0' }}>logged</em> — shrinkage is <em style={{ color: '#f87171' }}>unexplained</em>. Possible causes: theft, over-portioning, unlogged spillage, or data entry errors.
+      <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.15)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: 'var(--theme-text2)', lineHeight: 1.6 }}>
+        <strong style={{ color: 'var(--theme-accent)' }}>What this shows:</strong> Items where actual usage consistently exceeded theoretical (recipe-based) usage across multiple closed periods.
+        Unlike wastage — which is <em style={{ color: 'var(--theme-text1)' }}>logged</em> — shrinkage is <em style={{ color: 'var(--theme-red)' }}>unexplained</em>. Possible causes: theft, over-portioning, unlogged spillage, or data entry errors.
         Only items linked to recipes (with sales data) are analysed.
       </div>
 
@@ -207,21 +207,21 @@ export default function ShrinkageReport() {
             <div className="stat-label">
               <Tip text="Items over-used in 67%+ of monitored periods — your highest-risk items." width={240}>Consistent Shrinkage</Tip>
             </div>
-            <div className="stat-value" style={{ color: summary.consistent > 0 ? '#f87171' : '#34d399' }}>{summary.consistent}</div>
+            <div className="stat-value" style={{ color: summary.consistent > 0 ? 'var(--theme-red)' : 'var(--theme-green)' }}>{summary.consistent}</div>
             <div className="stat-sub">items</div>
           </div>
           <div className="stat-card">
             <div className="stat-label">
               <Tip text="Items with at least one period of unexplained over-use vs theoretical usage." width={220}>Any Shrinkage</Tip>
             </div>
-            <div className="stat-value" style={{ color: summary.anyFlagged > 0 ? '#f97316' : '#34d399' }}>{summary.anyFlagged}</div>
+            <div className="stat-value" style={{ color: summary.anyFlagged > 0 ? '#f97316' : 'var(--theme-green)' }}>{summary.anyFlagged}</div>
             <div className="stat-sub">of {summary.totalTracked} recipe-covered items</div>
           </div>
           <div className="stat-card">
             <div className="stat-label">
               <Tip text="Total NPR value of unexplained loss across all periods analysed (qty × item rate)." width={240}>Total Loss Value</Tip>
             </div>
-            <div className="stat-value" style={{ fontSize: 16, color: summary.totalLossVal > 0 ? '#f87171' : '#6b7280' }}>
+            <div className="stat-value" style={{ fontSize: 16, color: summary.totalLossVal > 0 ? 'var(--theme-red)' : 'var(--theme-text2)' }}>
               {summary.totalLossVal > 0 ? fmt(summary.totalLossVal) : '—'}
             </div>
             <div className="stat-sub">across all analysed periods</div>
@@ -239,12 +239,12 @@ export default function ShrinkageReport() {
           <option value="consistent">Consistent only</option>
           <option value="all">All tracked items</option>
         </select>
-        <span style={{ fontSize: 13, color: '#6b7280' }}>{filtered.length} items</span>
+        <span style={{ fontSize: 13, color: 'var(--theme-text2)' }}>{filtered.length} items</span>
       </div>
 
       <div className="card">
         {loading ? (
-          <p style={{ color: '#6b7280', fontSize: 13 }}>Analysing {periodCount} closed periods…</p>
+          <p style={{ color: 'var(--theme-text2)', fontSize: 13 }}>Analysing {periodCount} closed periods…</p>
         ) : filtered.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">✓</div>
@@ -280,17 +280,17 @@ export default function ShrinkageReport() {
               <tbody>
                 {filtered.map(row => (
                   <tr key={row.item.id} style={{ background: row.status.label === 'Consistent' ? 'rgba(248,113,113,0.03)' : 'transparent' }}>
-                    <td style={{ fontWeight: 600, color: '#e8e0d0' }}>{row.item.name}</td>
+                    <td style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{row.item.name}</td>
                     <td><span className="badge badge-yellow">{row.category}</span></td>
-                    <td style={{ color: '#6b7280' }}>{row.item.uom}</td>
-                    <td style={{ textAlign: 'right', fontWeight: 700, color: row.shrinkCount > 0 ? row.status.color : '#6b7280' }}>
+                    <td style={{ color: 'var(--theme-text2)' }}>{row.item.uom}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700, color: row.shrinkCount > 0 ? row.status.color : 'var(--theme-text2)' }}>
                       {row.shrinkCount > 0 ? row.shrinkCount : '—'}
                     </td>
-                    <td style={{ textAlign: 'right', color: '#6b7280' }}>{row.coveredPeriods}</td>
-                    <td style={{ textAlign: 'right', color: row.shrinkCount > 0 ? '#f87171' : '#6b7280' }}>
+                    <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>{row.coveredPeriods}</td>
+                    <td style={{ textAlign: 'right', color: row.shrinkCount > 0 ? 'var(--theme-red)' : 'var(--theme-text2)' }}>
                       {row.avgShrinkQty > 0 ? Number(row.avgShrinkQty.toFixed(3)).toLocaleString() : '—'}
                     </td>
-                    <td style={{ textAlign: 'right', fontWeight: 700, color: row.totalShrinkValue > 0 ? '#f87171' : '#6b7280' }}>
+                    <td style={{ textAlign: 'right', fontWeight: 700, color: row.totalShrinkValue > 0 ? 'var(--theme-red)' : 'var(--theme-text2)' }}>
                       {row.totalShrinkValue > 0 ? fmt(row.totalShrinkValue) : '—'}
                     </td>
                     <td>

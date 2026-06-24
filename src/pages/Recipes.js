@@ -627,32 +627,32 @@ export default function Recipes() {
           {/* Search bar */}
           <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center' }}>
             <input
-              style={{ background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: 240 }}
+              style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none', width: 240 }}
               placeholder="Search recipes…" value={search} onChange={e => setSearch(e.target.value)} />
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
               <Tip text="Find every recipe that uses an ingredient — e.g. type 'milk' to list all dishes containing it. Also matches ingredients hidden inside sub-recipes (e.g. 'coffee' finds a Flat White via its Doppio)." width={300}>
-                <span style={{ fontSize: 13, color: '#6b7280' }}>ⓘ</span>
+                <span style={{ fontSize: 13, color: 'var(--theme-text2)' }}>ⓘ</span>
               </Tip>
               <div style={{ position: 'relative' }}>
                 <input
-                  style={{ background: '#181c27', border: `1px solid ${ingQ ? 'rgba(201,168,76,0.5)' : '#2a2f3d'}`, borderRadius: 6, padding: '8px 12px 8px 30px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: 260 }}
+                  style={{ background: 'var(--theme-card)', border: `1px solid ${ingQ ? 'rgba(201,168,76,0.5)' : 'var(--theme-border)'}`, borderRadius: 6, padding: '8px 12px 8px 30px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none', width: 260 }}
                   placeholder="Find ingredient in recipes…" value={ingSearch} onChange={e => setIngSearch(e.target.value)} />
-                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: '#6b7280', pointerEvents: 'none' }}>🔍</span>
+                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: 'var(--theme-text2)', pointerEvents: 'none' }}>🔍</span>
                 {ingSearch && (
                   <button onClick={() => setIngSearch('')} title="Clear"
-                    style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: '0 4px' }}>×</button>
+                    style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--theme-text3)', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: '0 4px' }}>×</button>
                 )}
               </div>
             </div>
           </div>
           {ingQ && (
-            <div style={{ fontSize: 12, color: '#c9a84c', margin: '-8px 0 14px' }}>
+            <div style={{ fontSize: 12, color: 'var(--theme-accent)', margin: '-8px 0 14px' }}>
               Showing recipes that use an ingredient matching "<strong>{ingSearch}</strong>" ({filtered.length} found).
             </div>
           )}
 
           {/* Tab bar */}
-          <div style={{ display: 'flex', gap: 2, marginBottom: 0, borderBottom: '1px solid #2a2f3d' }}>
+          <div style={{ display: 'flex', gap: 2, marginBottom: 0, borderBottom: '1px solid var(--theme-border)' }}>
             {tabs.map(tab => {
               const isActive = activeTab === tab.key
               const isSubTab = tab.key === 'sub-recipes'
@@ -661,17 +661,17 @@ export default function Recipes() {
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
                   style={{
-                    background: isActive ? '#2a2f3d' : 'transparent',
+                    background: isActive ? 'var(--theme-border)' : 'transparent',
                     border: 'none',
                     borderBottom: isActive
-                      ? `2px solid ${isSubTab ? '#c9a84c' : '#6366f1'}`
+                      ? `2px solid ${isSubTab ? 'var(--theme-accent)' : '#6366f1'}`
                       : '2px solid transparent',
                     padding: '10px 16px',
                     fontSize: 13,
                     fontWeight: isActive ? 600 : 400,
                     color: isActive
-                      ? (isSubTab ? '#c9a84c' : '#e8e0d0')
-                      : '#6b7280',
+                      ? (isSubTab ? 'var(--theme-accent)' : 'var(--theme-text1)')
+                      : 'var(--theme-text2)',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -683,8 +683,8 @@ export default function Recipes() {
                 >
                   {tab.label}
                   <span style={{
-                    background: isActive ? (isSubTab ? 'rgba(201,168,76,0.15)' : 'rgba(99,102,241,0.15)') : '#2a2f3d',
-                    color: isActive ? (isSubTab ? '#c9a84c' : '#818cf8') : '#9ca3af',
+                    background: isActive ? (isSubTab ? 'rgba(201,168,76,0.15)' : 'rgba(99,102,241,0.15)') : 'var(--theme-border)',
+                    color: isActive ? (isSubTab ? 'var(--theme-accent)' : '#818cf8') : 'var(--theme-text3)',
                     borderRadius: 10,
                     fontSize: 11,
                     fontWeight: 600,
@@ -702,7 +702,7 @@ export default function Recipes() {
           {/* Tab content */}
           <div className="card" style={{ borderRadius: '0 6px 6px 6px', marginTop: 0 }}>
             {loading ? (
-              <p style={{ color: '#6b7280', fontSize: 13 }}>Loading…</p>
+              <p style={{ color: 'var(--theme-text2)', fontSize: 13 }}>Loading…</p>
             ) : tabFiltered.length === 0 ? (
               <div className="empty-state">
                 <div className="empty-state-icon">◈</div>
@@ -736,16 +736,16 @@ export default function Recipes() {
                       const costPerUnit = cost / yieldQty
                       return (
                         <tr key={recipe.id}>
-                          <td style={{ color: '#c9a84c', fontFamily: 'monospace', fontSize: 12, whiteSpace: 'nowrap' }}>
+                          <td style={{ color: 'var(--theme-accent)', fontFamily: 'monospace', fontSize: 12, whiteSpace: 'nowrap' }}>
                             {recipe.recipe_code || '—'}
                           </td>
-                          <td style={{ fontWeight: 600, color: '#c9a84c', cursor: 'pointer' }} onClick={() => openDetail(recipe)}>
+                          <td style={{ fontWeight: 600, color: 'var(--theme-accent)', cursor: 'pointer' }} onClick={() => openDetail(recipe)}>
                             ⚙ {recipe.name}
                           </td>
-                          <td style={{ color: '#6b7280' }}>{(recipe.recipe_ingredients || []).length} items</td>
-                          <td style={{ textAlign: 'right', color: '#c9a84c' }}>NPR {cost.toFixed(2)}</td>
-                          <td style={{ textAlign: 'right', color: '#6b7280' }}>{recipe.yield_qty} {recipe.yield_uom}</td>
-                          <td style={{ textAlign: 'right', fontWeight: 700, color: '#e8e0d0' }}>
+                          <td style={{ color: 'var(--theme-text2)' }}>{(recipe.recipe_ingredients || []).length} items</td>
+                          <td style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>NPR {cost.toFixed(2)}</td>
+                          <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>{recipe.yield_qty} {recipe.yield_uom}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-text1)' }}>
                             NPR {costPerUnit.toFixed(2)} / {recipe.yield_uom}
                           </td>
                           <td style={{ textAlign: 'right' }}>
@@ -781,19 +781,19 @@ export default function Recipes() {
                       const cost = calcRecipeCost(recipe, recipes)
                       const price = parseFloat(recipe.selling_price) || 0
                       const fcPct = price > 0 ? (cost / price) * 100 : null
-                      const fcColor = fcPct == null ? '#6b7280' : fcPct <= 30 ? '#34d399' : fcPct <= 38 ? '#c9a84c' : '#f87171'
+                      const fcColor = fcPct == null ? 'var(--theme-text2)' : fcPct <= 30 ? 'var(--theme-green)' : fcPct <= 38 ? 'var(--theme-accent)' : 'var(--theme-red)'
                       const subIngCount = (recipe.recipe_ingredients || []).filter(ri => ri.sub_recipe_id).length
                       return (
                         <tr key={recipe.id}>
-                          <td style={{ fontWeight: 600, color: '#e8e0d0', cursor: 'pointer' }} onClick={() => openDetail(recipe)}>
+                          <td style={{ fontWeight: 600, color: 'var(--theme-text1)', cursor: 'pointer' }} onClick={() => openDetail(recipe)}>
                             {recipe.name}
-                            {subIngCount > 0 && <span style={{ fontSize: 10, color: '#c9a84c', marginLeft: 6 }}>⚙ {subIngCount} sub</span>}
+                            {subIngCount > 0 && <span style={{ fontSize: 10, color: 'var(--theme-accent)', marginLeft: 6 }}>⚙ {subIngCount} sub</span>}
                           </td>
                           {activeTab === 'all' && <td><span className="badge badge-yellow">{recipe.category}</span></td>}
-                          <td style={{ color: '#6b7280' }}>{(recipe.recipe_ingredients || []).length} items</td>
-                          <td style={{ textAlign: 'right', color: '#c9a84c' }}>NPR {cost.toFixed(2)}</td>
+                          <td style={{ color: 'var(--theme-text2)' }}>{(recipe.recipe_ingredients || []).length} items</td>
+                          <td style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>NPR {cost.toFixed(2)}</td>
                           <td style={{ textAlign: 'right' }}>
-                            {recipe.selling_price ? `NPR ${Number(recipe.selling_price).toFixed(2)}` : <span style={{ color: '#9ca3af' }}>—</span>}
+                            {recipe.selling_price ? `NPR ${Number(recipe.selling_price).toFixed(2)}` : <span style={{ color: 'var(--theme-text3)' }}>—</span>}
                           </td>
                           <td style={{ textAlign: 'right', fontWeight: 700, color: fcColor }}>
                             {fcPct != null ? `${fcPct.toFixed(1)}%` : '—'}
@@ -821,7 +821,7 @@ export default function Recipes() {
         <div>
           {/* Recipe details */}
           <div className="card" style={{ marginBottom: 20 }}>
-            <h3 style={{ margin: '0 0 18px', fontSize: 14, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Recipe Details</h3>
+            <h3 style={{ margin: '0 0 18px', fontSize: 14, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Recipe Details</h3>
             <div style={{ display: 'grid', gridTemplateColumns: isSubRecipeForm ? '2fr 1fr 1fr 1fr' : '2fr 1fr 1fr 1fr', gap: 16 }}>
               <div className="form-field">
                 <label>Recipe / Dish Name *</label>
@@ -864,7 +864,7 @@ export default function Recipes() {
                         placeholder="e.g. 500"
                       />
                       {recipeForm.selling_price && (
-                        <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>
+                        <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginTop: 4 }}>
                           Ex-VAT stored: NPR {parseFloat(recipeForm.selling_price).toFixed(2)}
                         </div>
                       )}
@@ -887,7 +887,7 @@ export default function Recipes() {
                         placeholder="30"
                       />
                       {recipeForm.target_fc_pct && (
-                        <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>
+                        <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginTop: 4 }}>
                           Suggested price targets {recipeForm.target_fc_pct}% food cost
                         </div>
                       )}
@@ -906,40 +906,40 @@ export default function Recipes() {
               display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px,1fr))', gap: 16
             }}>
               <div>
-                <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
+                <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
                   {isSubRecipeForm ? 'Total Batch Cost' : 'Food Cost'}
                 </div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: '#c9a84c' }}>NPR {liveCost.toFixed(2)}</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--theme-accent)' }}>NPR {liveCost.toFixed(2)}</div>
               </div>
               {isSubRecipeForm && liveCostPerUnit != null && (
                 <div>
-                  <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Cost per {recipeForm.yield_uom || 'unit'}</div>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: '#34d399' }}>NPR {liveCostPerUnit.toFixed(2)}</div>
-                  <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Yield: {recipeForm.yield_qty} {recipeForm.yield_uom}</div>
+                  <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Cost per {recipeForm.yield_uom || 'unit'}</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--theme-green)' }}>NPR {liveCostPerUnit.toFixed(2)}</div>
+                  <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginTop: 2 }}>Yield: {recipeForm.yield_qty} {recipeForm.yield_uom}</div>
                 </div>
               )}
               {!isSubRecipeForm && livePrice > 0 && (
                 <div>
-                  <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Food Cost %</div>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: liveFcPct <= 30 ? '#34d399' : liveFcPct <= 38 ? '#c9a84c' : '#f87171' }}>
+                  <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Food Cost %</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: liveFcPct <= 30 ? 'var(--theme-green)' : liveFcPct <= 38 ? 'var(--theme-accent)' : 'var(--theme-red)' }}>
                     {liveFcPct?.toFixed(1)}%
                   </div>
-                  <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
+                  <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginTop: 2 }}>
                     {liveFcPct <= 30 ? '✓ Good' : liveFcPct <= 38 ? '⚠ Acceptable' : '✗ Too high'}
                   </div>
                 </div>
               )}
               {!isSubRecipeForm && livePrice > 0 && (
                 <div>
-                  <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Menu Price (incl. VAT)</div>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: '#e8e0d0' }}>NPR {livePriceWithVat.toFixed(0)}</div>
+                  <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Menu Price (incl. VAT)</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--theme-text1)' }}>NPR {livePriceWithVat.toFixed(0)}</div>
                 </div>
               )}
               {suggestedPrice && (
                 <div>
-                  <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Suggested @ {recipeForm.target_fc_pct || 30}% FC</div>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: '#34d399' }}>NPR {suggestedPrice}</div>
-                  <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>incl. {(liveVat*100).toFixed(0)}% VAT, rounded</div>
+                  <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Suggested @ {recipeForm.target_fc_pct || 30}% FC</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--theme-green)' }}>NPR {suggestedPrice}</div>
+                  <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginTop: 2 }}>incl. {(liveVat*100).toFixed(0)}% VAT, rounded</div>
                 </div>
               )}
             </div>
@@ -956,9 +956,9 @@ export default function Recipes() {
                 🍽 {isSubRecipeForm ? 'total batch' : 'per portion'}
               </span>
               {NUTRIENTS.map(def => (
-                <span key={def.key} style={{ color: '#e8e0d0' }}>{def.label} <strong>{fmtNutrient(def, liveNutri.perPortion[def.key])}</strong></span>
+                <span key={def.key} style={{ color: 'var(--theme-text1)' }}>{def.label} <strong>{fmtNutrient(def, liveNutri.perPortion[def.key])}</strong></span>
               ))}
-              <span style={{ color: liveNutri.coverage.have < liveNutri.coverage.total ? '#c9a84c' : '#6b7280', fontSize: 12 }}>
+              <span style={{ color: liveNutri.coverage.have < liveNutri.coverage.total ? 'var(--theme-accent)' : 'var(--theme-text2)', fontSize: 12 }}>
                 · data {liveNutri.coverage.have}/{liveNutri.coverage.total}
               </span>
             </div>
@@ -967,7 +967,7 @@ export default function Recipes() {
           {/* Ingredients */}
           <div className="card" style={{ marginBottom: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-              <h3 style={{ margin: 0, fontSize: 14, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Ingredients</h3>
+              <h3 style={{ margin: 0, fontSize: 14, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Ingredients</h3>
               <div style={{ display: 'flex', gap: 8 }}>
                 {showNutrition && (
                   <button className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 12px', color: '#818cf8', borderColor: 'rgba(99,102,241,0.3)' }} onClick={autoFillNutrition} disabled={autoFillBusy}>
@@ -984,12 +984,12 @@ export default function Recipes() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  <th style={{ textAlign: 'left', fontSize: 11, color: '#6b7280', padding: '0 0 10px', letterSpacing: '0.08em', textTransform: 'uppercase', width: 100 }}>Type</th>
-                  <th style={{ textAlign: 'left', fontSize: 11, color: '#6b7280', padding: '0 12px 10px 8px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Ingredient</th>
-                  <th style={{ textAlign: 'right', fontSize: 11, color: '#6b7280', padding: '0 12px 10px', letterSpacing: '0.08em', textTransform: 'uppercase', width: 130 }}>Qty per Portion</th>
-                  <th style={{ textAlign: 'left', fontSize: 11, color: '#6b7280', padding: '0 12px 10px', letterSpacing: '0.08em', textTransform: 'uppercase', width: 70 }}>UOM</th>
-                  <th style={{ textAlign: 'right', fontSize: 11, color: '#6b7280', padding: '0 12px 10px', letterSpacing: '0.08em', textTransform: 'uppercase', width: 110 }}>Cost</th>
-                  {showNutrition && <th style={{ textAlign: 'center', fontSize: 11, color: '#6b7280', padding: '0 12px 10px', letterSpacing: '0.08em', textTransform: 'uppercase', width: 90 }}>Nutrition</th>}
+                  <th style={{ textAlign: 'left', fontSize: 11, color: 'var(--theme-text2)', padding: '0 0 10px', letterSpacing: '0.08em', textTransform: 'uppercase', width: 100 }}>Type</th>
+                  <th style={{ textAlign: 'left', fontSize: 11, color: 'var(--theme-text2)', padding: '0 12px 10px 8px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Ingredient</th>
+                  <th style={{ textAlign: 'right', fontSize: 11, color: 'var(--theme-text2)', padding: '0 12px 10px', letterSpacing: '0.08em', textTransform: 'uppercase', width: 130 }}>Qty per Portion</th>
+                  <th style={{ textAlign: 'left', fontSize: 11, color: 'var(--theme-text2)', padding: '0 12px 10px', letterSpacing: '0.08em', textTransform: 'uppercase', width: 70 }}>UOM</th>
+                  <th style={{ textAlign: 'right', fontSize: 11, color: 'var(--theme-text2)', padding: '0 12px 10px', letterSpacing: '0.08em', textTransform: 'uppercase', width: 110 }}>Cost</th>
+                  {showNutrition && <th style={{ textAlign: 'center', fontSize: 11, color: 'var(--theme-text2)', padding: '0 12px 10px', letterSpacing: '0.08em', textTransform: 'uppercase', width: 90 }}>Nutrition</th>}
                   <th style={{ width: 36 }}></th>
                 </tr>
               </thead>
@@ -1020,7 +1020,7 @@ export default function Recipes() {
                         <select
                           value={ing.type}
                           onChange={e => setIngType(ing._key, e.target.value)}
-                          style={{ background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 5, padding: '7px 8px', fontSize: 12, color: ing.type === 'sub_recipe' ? '#c9a84c' : '#6b7280', outline: 'none', width: 95 }}
+                          style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '7px 8px', fontSize: 12, color: ing.type === 'sub_recipe' ? 'var(--theme-accent)' : 'var(--theme-text2)', outline: 'none', width: 95 }}
                         >
                           <option value="item">Item</option>
                           <option value="sub_recipe">⚙ Sub-Recipe</option>
@@ -1047,10 +1047,10 @@ export default function Recipes() {
                         <input type="number" min="0" value={ing.qty_per_portion}
                           onChange={e => updateIng(ing._key, 'qty_per_portion', e.target.value)}
                           placeholder="0"
-                          style={{ background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: 100, textAlign: 'right' }} />
+                          style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none', width: 100, textAlign: 'right' }} />
                       </td>
-                      <td style={{ padding: '6px 12px', color: ing.type === 'sub_recipe' ? '#c9a84c' : '#6b7280', fontSize: 13 }}>{uomLabel}</td>
-                      <td style={{ padding: '6px 12px', textAlign: 'right', color: '#c9a84c', fontSize: 13, fontWeight: 600 }}>
+                      <td style={{ padding: '6px 12px', color: ing.type === 'sub_recipe' ? 'var(--theme-accent)' : 'var(--theme-text2)', fontSize: 13 }}>{uomLabel}</td>
+                      <td style={{ padding: '6px 12px', textAlign: 'right', color: 'var(--theme-accent)', fontSize: 13, fontWeight: 600 }}>
                         {cost != null ? `NPR ${cost.toFixed(2)}` : '—'}
                       </td>
                       {showNutrition && (
@@ -1060,18 +1060,18 @@ export default function Recipes() {
                             const has = hasNutrition(it?.nutrition)
                             return (
                               <button onClick={() => openNutriEditor(ing.item_id)}
-                                style={{ background: 'none', border: `1px solid ${has ? 'rgba(52,211,153,0.4)' : '#2a2f3d'}`, borderRadius: 5, padding: '4px 8px', fontSize: 11, color: has ? '#34d399' : '#6b7280', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                style={{ background: 'none', border: `1px solid ${has ? 'rgba(52,211,153,0.4)' : 'var(--theme-border)'}`, borderRadius: 5, padding: '4px 8px', fontSize: 11, color: has ? 'var(--theme-green)' : 'var(--theme-text2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                                 {has ? '● Edit' : '+ Add'}
                               </button>
                             )
                           })() : (
-                            <span style={{ color: '#6b7280', fontSize: 11 }}>{ing.type === 'sub_recipe' ? 'auto' : '—'}</span>
+                            <span style={{ color: 'var(--theme-text2)', fontSize: 11 }}>{ing.type === 'sub_recipe' ? 'auto' : '—'}</span>
                           )}
                         </td>
                       )}
                       <td style={{ padding: '6px 0', textAlign: 'right' }}>
                         <button onClick={() => removeRow(ing._key)}
-                          style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: 16, padding: '0 4px' }}>×</button>
+                          style={{ background: 'none', border: 'none', color: 'var(--theme-text3)', cursor: 'pointer', fontSize: 16, padding: '0 4px' }}>×</button>
                       </td>
                     </tr>
                   )
@@ -1081,7 +1081,7 @@ export default function Recipes() {
             </div>
           </div>
 
-          {error && <p style={{ color: '#f87171', fontSize: 13, margin: '0 0 16px' }}>{error}</p>}
+          {error && <p style={{ color: 'var(--theme-red)', fontSize: 13, margin: '0 0 16px' }}>{error}</p>}
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
             <button className="btn btn-ghost" onClick={() => setView('list')}>Cancel</button>
             <button className="btn btn-primary" onClick={save} disabled={saving}>
@@ -1100,7 +1100,7 @@ export default function Recipes() {
         const fcPct = price > 0 ? (cost / price) * 100 : null
         const yieldQty = parseFloat(selectedRecipe.yield_qty) || 1
         const costPerUnit = cost / yieldQty
-        const fcColor = fcPct == null ? '#6b7280' : fcPct <= 30 ? '#34d399' : fcPct <= 38 ? '#c9a84c' : '#f87171'
+        const fcColor = fcPct == null ? 'var(--theme-text2)' : fcPct <= 30 ? 'var(--theme-green)' : fcPct <= 38 ? 'var(--theme-accent)' : 'var(--theme-red)'
         const nutri = showNutrition ? calcRecipeNutrition(selectedRecipe, recipes) : null
         // Sub-recipes show the whole batch (mirrors "Total Batch Cost"); the per-unit value
         // still rolls up into parent recipes via calcSubRecipeNutritionPerUnit.
@@ -1112,21 +1112,21 @@ export default function Recipes() {
           <div className="no-print">
           <div>
             {isSubRec && (
-              <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: '#c9a84c' }}>
+              <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: 'var(--theme-accent)' }}>
                 ⚙ Sub-Recipe — Yield: {selectedRecipe.yield_qty} {selectedRecipe.yield_uom} · Cost per {selectedRecipe.yield_uom}: NPR {costPerUnit.toFixed(2)}
               </div>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px,1fr))', gap: 14, marginBottom: 24 }}>
               {(isSubRec ? [
-                { label: 'Total Batch Cost', value: `NPR ${cost.toFixed(2)}`, color: '#c9a84c' },
-                { label: `Cost per ${selectedRecipe.yield_uom}`, value: `NPR ${costPerUnit.toFixed(2)}`, color: '#34d399' },
-                { label: 'Yield', value: `${selectedRecipe.yield_qty} ${selectedRecipe.yield_uom}`, color: '#e8e0d0' },
+                { label: 'Total Batch Cost', value: `NPR ${cost.toFixed(2)}`, color: 'var(--theme-accent)' },
+                { label: `Cost per ${selectedRecipe.yield_uom}`, value: `NPR ${costPerUnit.toFixed(2)}`, color: 'var(--theme-green)' },
+                { label: 'Yield', value: `${selectedRecipe.yield_qty} ${selectedRecipe.yield_uom}`, color: 'var(--theme-text1)' },
               ] : [
-                { label: 'Food Cost', value: `NPR ${cost.toFixed(2)}`, color: '#c9a84c' },
+                { label: 'Food Cost', value: `NPR ${cost.toFixed(2)}`, color: 'var(--theme-accent)' },
                 { label: 'Food Cost %', value: fcPct != null ? `${fcPct.toFixed(1)}%` : '—', color: fcColor },
-                { label: 'Selling Price (ex. VAT)', value: price ? `NPR ${price.toFixed(2)}` : '—', color: '#e8e0d0' },
-                { label: `Menu Price (incl. ${(vat*100).toFixed(0)}% VAT)`, value: price ? `NPR ${(price*(1+vat)).toFixed(0)}` : '—', color: '#e8e0d0' },
-                { label: `Suggested @ ${selectedRecipe.target_fc_pct || 30}% FC`, value: `NPR ${getSuggestedPrice(cost, vat, (parseFloat(selectedRecipe.target_fc_pct) || 30) / 100)}`, color: '#34d399' },
+                { label: 'Selling Price (ex. VAT)', value: price ? `NPR ${price.toFixed(2)}` : '—', color: 'var(--theme-text1)' },
+                { label: `Menu Price (incl. ${(vat*100).toFixed(0)}% VAT)`, value: price ? `NPR ${(price*(1+vat)).toFixed(0)}` : '—', color: 'var(--theme-text1)' },
+                { label: `Suggested @ ${selectedRecipe.target_fc_pct || 30}% FC`, value: `NPR ${getSuggestedPrice(cost, vat, (parseFloat(selectedRecipe.target_fc_pct) || 30) / 100)}`, color: 'var(--theme-green)' },
               ]).map(s => (
                 <div key={s.label} className="stat-card">
                   <div className="stat-label">{s.label}</div>
@@ -1148,31 +1148,31 @@ export default function Recipes() {
                   background: 'rgba(52,211,153,0.06)', border: '1px solid rgba(52,211,153,0.2)',
                   borderRadius: 8, padding: '16px 20px', marginBottom: 20
                 }}>
-                  <div style={{ fontSize: 11, color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 14, fontWeight: 600 }}>
+                  <div style={{ fontSize: 11, color: 'var(--theme-green)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 14, fontWeight: 600 }}>
                     ⚖ True Cost with Overheads
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px,1fr))', gap: 16 }}>
                     <div>
-                      <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Overhead / Portion</div>
-                      <div style={{ fontSize: 18, fontWeight: 700, color: '#34d399' }}>NPR {ohPerPortion.toFixed(2)}</div>
-                      <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>NPR {overheadData.totalOverheads.toLocaleString()} ÷ {overheadData.totalCovers} covers</div>
+                      <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Overhead / Portion</div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--theme-green)' }}>NPR {ohPerPortion.toFixed(2)}</div>
+                      <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginTop: 2 }}>NPR {overheadData.totalOverheads.toLocaleString()} ÷ {overheadData.totalCovers} covers</div>
                     </div>
                     <div>
-                      <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>True Cost / Portion</div>
-                      <div style={{ fontSize: 18, fontWeight: 700, color: '#c9a84c' }}>NPR {trueCost.toFixed(2)}</div>
-                      <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Food + Overhead</div>
+                      <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>True Cost / Portion</div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--theme-accent)' }}>NPR {trueCost.toFixed(2)}</div>
+                      <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginTop: 2 }}>Food + Overhead</div>
                     </div>
                     <div>
-                      <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>True Net Margin %</div>
-                      <div style={{ fontSize: 18, fontWeight: 700, color: trueNetMargin >= 20 ? '#34d399' : '#f87171' }}>
+                      <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>True Net Margin %</div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: trueNetMargin >= 20 ? 'var(--theme-green)' : 'var(--theme-red)' }}>
                         {trueNetMargin != null ? `${trueNetMargin.toFixed(1)}%` : '—'}
                       </div>
-                      <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{trueNetMargin >= 20 ? '✓ Healthy' : '✗ Below 20%'}</div>
+                      <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginTop: 2 }}>{trueNetMargin >= 20 ? '✓ Healthy' : '✗ Below 20%'}</div>
                     </div>
                     <div>
-                      <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Suggested Price @ 20% margin</div>
-                      <div style={{ fontSize: 18, fontWeight: 700, color: '#34d399' }}>NPR {suggestedVat}</div>
-                      <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>incl. {(vat*100).toFixed(0)}% VAT, rounded to ÷5</div>
+                      <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Suggested Price @ 20% margin</div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--theme-green)' }}>NPR {suggestedVat}</div>
+                      <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginTop: 2 }}>incl. {(vat*100).toFixed(0)}% VAT, rounded to ÷5</div>
                     </div>
                   </div>
                 </div>
@@ -1189,7 +1189,7 @@ export default function Recipes() {
                   <div style={{ fontSize: 11, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600 }}>
                     🍽 Nutrition ({nutriLabel})
                   </div>
-                  <div style={{ fontSize: 11, color: nutri.coverage.have < nutri.coverage.total ? '#c9a84c' : '#6b7280' }}>
+                  <div style={{ fontSize: 11, color: nutri.coverage.have < nutri.coverage.total ? 'var(--theme-accent)' : 'var(--theme-text2)' }}>
                     <Tip width={260} text="How many ingredients have nutrition data entered. Missing ingredients contribute 0, so values below 100% are underestimates. Add data on each item's Nutrition tab.">
                       Data: {nutri.coverage.have}/{nutri.coverage.total} ingredients
                     </Tip>
@@ -1198,21 +1198,21 @@ export default function Recipes() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px,1fr))', gap: 16 }}>
                   {NUTRIENTS.map(def => (
                     <div key={def.key}>
-                      <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>{def.label}</div>
-                      <div style={{ fontSize: 18, fontWeight: 700, color: '#e8e0d0' }}>{fmtNutrient(def, nutriValues[def.key])}</div>
+                      <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>{def.label}</div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--theme-text1)' }}>{fmtNutrient(def, nutriValues[def.key])}</div>
                     </div>
                   ))}
                 </div>
                 <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Allergens</span>
+                  <span style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Allergens</span>
                   {nutri.allergens.length > 0
                     ? nutri.allergens.map(a => (
-                        <span key={a} className="badge" style={{ background: 'rgba(248,113,113,0.12)', color: '#f87171', textTransform: 'capitalize' }}>{a}</span>
+                        <span key={a} className="badge" style={{ background: 'rgba(248,113,113,0.12)', color: 'var(--theme-red)', textTransform: 'capitalize' }}>{a}</span>
                       ))
-                    : <span style={{ fontSize: 12, color: '#6b7280' }}>None tagged</span>}
+                    : <span style={{ fontSize: 12, color: 'var(--theme-text2)' }}>None tagged</span>}
                 </div>
                 {nutri.coverage.have < nutri.coverage.total && (
-                  <div style={{ fontSize: 11, color: '#c9a84c', marginTop: 10 }}>
+                  <div style={{ fontSize: 11, color: 'var(--theme-accent)', marginTop: 10 }}>
                     ⚠ {nutri.coverage.total - nutri.coverage.have} ingredient(s) missing nutrition data — values are estimates.
                   </div>
                 )}
@@ -1255,37 +1255,37 @@ export default function Recipes() {
                     const pctOfDish = cost > 0 ? (itemCost / cost) * 100 : 0
                     return (
                       <tr key={ri.id}>
-                        <td style={{ fontWeight: 600, color: ri.sub_recipe_id ? '#c9a84c' : '#e8e0d0' }}>
+                        <td style={{ fontWeight: 600, color: ri.sub_recipe_id ? 'var(--theme-accent)' : 'var(--theme-text1)' }}>
                           {ri.items?.item_code && (
-                            <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#c9a84c', marginRight: 7, fontWeight: 400 }}>{ri.items.item_code}</span>
+                            <span style={{ fontSize: 10, fontFamily: 'monospace', color: 'var(--theme-accent)', marginRight: 7, fontWeight: 400 }}>{ri.items.item_code}</span>
                           )}
                           {ri.sub_recipe?.recipe_code && (
-                            <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#c9a84c', marginRight: 7, fontWeight: 400 }}>{ri.sub_recipe.recipe_code}</span>
+                            <span style={{ fontSize: 10, fontFamily: 'monospace', color: 'var(--theme-accent)', marginRight: 7, fontWeight: 400 }}>{ri.sub_recipe.recipe_code}</span>
                           )}
                           {name}
                         </td>
                         <td><span className={`badge ${ri.sub_recipe_id ? 'badge-yellow' : 'badge-gray'}`}>{ri.sub_recipe_id ? 'Sub-Recipe' : 'Item'}</span></td>
                         <td style={{ textAlign: 'right' }}>{ri.qty_per_portion}</td>
-                        <td style={{ color: '#6b7280' }}>{uom}</td>
-                        <td style={{ textAlign: 'right', color: yieldPct != null && yieldPct < 100 ? '#f87171' : '#6b7280' }}>
+                        <td style={{ color: 'var(--theme-text2)' }}>{uom}</td>
+                        <td style={{ textAlign: 'right', color: yieldPct != null && yieldPct < 100 ? 'var(--theme-red)' : 'var(--theme-text2)' }}>
                           {yieldPct != null ? `${yieldPct.toFixed(0)}%` : '—'}
                         </td>
-                        <td style={{ textAlign: 'right', color: '#6b7280' }}>NPR {unitRate.toFixed(2)}</td>
-                        <td style={{ textAlign: 'right', color: '#c9a84c', fontWeight: 600 }}>NPR {itemCost.toFixed(2)}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>NPR {unitRate.toFixed(2)}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--theme-accent)', fontWeight: 600 }}>NPR {itemCost.toFixed(2)}</td>
                         <td style={{ textAlign: 'right' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
-                            <div style={{ width: 60, height: 4, background: '#2a2f3d', borderRadius: 2 }}>
-                              <div style={{ width: `${Math.min(pctOfDish,100)}%`, height: '100%', background: '#c9a84c', borderRadius: 2 }} />
+                            <div style={{ width: 60, height: 4, background: 'var(--theme-border)', borderRadius: 2 }}>
+                              <div style={{ width: `${Math.min(pctOfDish,100)}%`, height: '100%', background: 'var(--theme-accent)', borderRadius: 2 }} />
                             </div>
-                            <span style={{ fontSize: 12, color: '#6b7280', minWidth: 36 }}>{pctOfDish.toFixed(1)}%</span>
+                            <span style={{ fontSize: 12, color: 'var(--theme-text2)', minWidth: 36 }}>{pctOfDish.toFixed(1)}%</span>
                           </div>
                         </td>
                       </tr>
                     )
                   })}
-                  <tr style={{ borderTop: '2px solid #2a2f3d' }}>
-                    <td colSpan={6} style={{ fontWeight: 700, color: '#6b7280', paddingTop: 12 }}>Total</td>
-                    <td style={{ textAlign: 'right', fontWeight: 700, color: '#c9a84c', fontSize: 15, paddingTop: 12 }}>NPR {cost.toFixed(2)}</td>
+                  <tr style={{ borderTop: '2px solid var(--theme-border)' }}>
+                    <td colSpan={6} style={{ fontWeight: 700, color: 'var(--theme-text2)', paddingTop: 12 }}>Total</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-accent)', fontSize: 15, paddingTop: 12 }}>NPR {cost.toFixed(2)}</td>
                     <td></td>
                   </tr>
                 </tbody>
@@ -1590,12 +1590,12 @@ export default function Recipes() {
       {/* ── INLINE NUTRITION EDITOR (per ingredient) ── */}
       {nutriItemId && nutriItem && (
         <Modal onClose={() => setNutriItemId(null)} title={`Nutrition — ${nutriItem.name}`} maxWidth={640}>
-          <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 18px' }}>
-            Enter values <strong style={{ color: '#e8e0d0' }}>per the reference quantity below</strong> (e.g. per {nutriForm.basis_qty} {nutriForm.basis_unit}).
+          <p style={{ fontSize: 13, color: 'var(--theme-text2)', margin: '0 0 18px' }}>
+            Enter values <strong style={{ color: 'var(--theme-text1)' }}>per the reference quantity below</strong> (e.g. per {nutriForm.basis_qty} {nutriForm.basis_unit}).
             {defaultBasisUnit(nutriItem.uom) !== (nutriItem.uom || '').toUpperCase() && (
-              <> This item is used in <strong style={{ color: '#e8e0d0' }}>{nutriItem.uom}</strong> in recipes — that's fine, the conversion to {nutriForm.basis_unit} is automatic.</>
+              <> This item is used in <strong style={{ color: 'var(--theme-text1)' }}>{nutriItem.uom}</strong> in recipes — that's fine, the conversion to {nutriForm.basis_unit} is automatic.</>
             )}
-            {' '}Saved to the ingredient, so it fills <strong style={{ color: '#e8e0d0' }}>every recipe</strong> that uses it.
+            {' '}Saved to the ingredient, so it fills <strong style={{ color: 'var(--theme-text1)' }}>every recipe</strong> that uses it.
           </p>
 
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
@@ -1614,7 +1614,7 @@ export default function Recipes() {
               ⚡ Suggest from library
             </button>
             {nutriForm.source && (
-              <span style={{ fontSize: 11, color: '#34d399', marginBottom: 8 }}>Source: {nutriForm.source}</span>
+              <span style={{ fontSize: 11, color: 'var(--theme-green)', marginBottom: 8 }}>Source: {nutriForm.source}</span>
             )}
           </div>
 
@@ -1626,9 +1626,9 @@ export default function Recipes() {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {nutriMatches.map((s, i) => (
                   <button key={i} className="btn btn-ghost" style={{ fontSize: 12, textAlign: 'left', padding: '7px 11px', lineHeight: 1.35 }} onClick={() => applyNutriSeed(s)}>
-                    <span style={{ display: 'block', color: '#e8e0d0', fontWeight: 600 }}>{s.name}</span>
-                    <span style={{ display: 'block', color: '#6b7280', fontSize: 11 }}>
-                      <span style={{ color: s.source === 'DFTQC Nepal' ? '#34d399' : s.source === 'IFCT 2017' ? '#c9a84c' : '#9ca3af' }}>{s.source}</span>
+                    <span style={{ display: 'block', color: 'var(--theme-text1)', fontWeight: 600 }}>{s.name}</span>
+                    <span style={{ display: 'block', color: 'var(--theme-text2)', fontSize: 11 }}>
+                      <span style={{ color: s.source === 'DFTQC Nepal' ? 'var(--theme-green)' : s.source === 'IFCT 2017' ? 'var(--theme-accent)' : 'var(--theme-text3)' }}>{s.source}</span>
                       {' · '}{s.energy_kcal} kcal · P{s.protein_g} C{s.carbs_g} F{s.fat_g} /100{s.unit}
                     </span>
                   </button>
@@ -1639,7 +1639,7 @@ export default function Recipes() {
 
           {/* Open Food Facts — branded / packaged products */}
           <div style={{ marginBottom: 16, padding: '12px 14px', background: 'rgba(52,211,153,0.05)', border: '1px solid rgba(52,211,153,0.18)', borderRadius: 8 }}>
-            <div style={{ fontSize: 11, color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+            <div style={{ fontSize: 11, color: 'var(--theme-green)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
               <Tip width={280} text="For branded / packaged goods (sauces, drinks, snacks). Search by product name or paste a barcode. Pulls nutrition per 100 g from the Open Food Facts database.">Fetch from Open Food Facts</Tip>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -1648,25 +1648,25 @@ export default function Recipes() {
                 onChange={e => setOffQuery(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); fetchFromOFF() } }}
                 placeholder="Product name or barcode…"
-                style={{ flex: 1, minWidth: 180, background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: '#e8e0d0', outline: 'none' }}
+                style={{ flex: 1, minWidth: 180, background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none' }}
               />
               <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={fetchFromOFF} disabled={offBusy || !offQuery.trim()}>
                 {offBusy ? 'Searching…' : '🔍 Fetch'}
               </button>
             </div>
-            {offError && <p style={{ color: '#c9a84c', fontSize: 12, margin: '8px 0 0' }}>{offError}</p>}
+            {offError && <p style={{ color: 'var(--theme-accent)', fontSize: 12, margin: '8px 0 0' }}>{offError}</p>}
             {offResults.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
                 {offResults.map((r, i) => (
                   <button key={i} className="btn btn-ghost" style={{ fontSize: 12, textAlign: 'left', padding: '7px 11px', lineHeight: 1.35 }} onClick={() => applyOffResult(r)}>
-                    <span style={{ display: 'block', color: '#e8e0d0', fontWeight: 600 }}>{r.name}</span>
-                    <span style={{ display: 'block', color: '#6b7280', fontSize: 11 }}>
+                    <span style={{ display: 'block', color: 'var(--theme-text1)', fontWeight: 600 }}>{r.name}</span>
+                    <span style={{ display: 'block', color: 'var(--theme-text2)', fontSize: 11 }}>
                       {r.energy_kcal ?? '–'} kcal · P{r.protein_g ?? '–'} C{r.carbs_g ?? '–'} F{r.fat_g ?? '–'} /100g
                       {r.allergens ? ` · ${r.allergens}` : ''}
                     </span>
                   </button>
                 ))}
-                <span style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>Data from Open Food Facts (ODbL). Crowd-sourced — verify before relying on it.</span>
+                <span style={{ fontSize: 10, color: 'var(--theme-text2)', marginTop: 2 }}>Data from Open Food Facts (ODbL). Crowd-sourced — verify before relying on it.</span>
               </div>
             )}
           </div>
@@ -1689,10 +1689,10 @@ export default function Recipes() {
             </div>
           </div>
 
-          <p style={{ fontSize: 11, color: '#9ca3af', margin: '12px 0 0' }}>
+          <p style={{ fontSize: 11, color: 'var(--theme-text3)', margin: '12px 0 0' }}>
             Library values are reference estimates — verify for branded or prepared items.
           </p>
-          {nutriError && <p style={{ color: '#f87171', fontSize: 13, margin: '10px 0 0' }}>{nutriError}</p>}
+          {nutriError && <p style={{ color: 'var(--theme-red)', fontSize: 13, margin: '10px 0 0' }}>{nutriError}</p>}
           <div className="form-actions" style={{ marginTop: 16, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
             <button className="btn btn-ghost" onClick={() => setNutriItemId(null)}>Cancel</button>
             <button className="btn btn-primary" onClick={saveNutri} disabled={nutriSaving}>

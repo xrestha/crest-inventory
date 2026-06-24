@@ -6,7 +6,7 @@ import * as XLSX from 'xlsx'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 const METHODS = ['Cash', 'Credit', 'FonePay']
-const METHOD_COLORS = { Cash: '#34d399', Credit: '#f87171', FonePay: '#c9a84c' }
+const METHOD_COLORS = { Cash: 'var(--theme-green)', Credit: 'var(--theme-red)', FonePay: 'var(--theme-accent)' }
 
 export default function PaymentReport() {
   const { clientId, profile, loading: authLoading } = useAuth()
@@ -138,7 +138,7 @@ export default function PaymentReport() {
           <div className="stat-label">
             <Tip text="Value of goods returned to suppliers, subtracted from gross to get net spend." width={250}>Total Returns</Tip>
           </div>
-          <div className="stat-value" style={{ fontSize: 17, color: '#f87171' }}>
+          <div className="stat-value" style={{ fontSize: 17, color: 'var(--theme-red)' }}>
             {grandReturn > 0 ? `−NPR ${grandReturn.toLocaleString('en-NP', { maximumFractionDigits: 0 })}` : '—'}
           </div>
         </div>
@@ -161,14 +161,14 @@ export default function PaymentReport() {
       {/* Visual split */}
       {grandNet > 0 && (
         <div className="card" style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 10 }}>Payment Method Split (Net)</div>
+          <div style={{ fontSize: 12, color: 'var(--theme-text2)', marginBottom: 10 }}>Payment Method Split (Net)</div>
           <div style={{ display: 'flex', height: 20, borderRadius: 6, overflow: 'hidden', gap: 2 }}>
             {summary.filter(s => s.net > 0).map(s => (
               <div key={s.method} style={{
                 width: `${(s.net / grandNet) * 100}%`,
                 background: METHOD_COLORS[s.method],
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 10, fontWeight: 700, color: '#0f1117'
+                fontSize: 10, fontWeight: 700, color: 'var(--theme-bg)'
               }}>
                 {((s.net / grandNet) * 100) > 10 ? `${((s.net / grandNet) * 100).toFixed(0)}%` : ''}
               </div>
@@ -178,7 +178,7 @@ export default function PaymentReport() {
             {summary.map(s => (
               <div key={s.method} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <div style={{ width: 10, height: 10, borderRadius: 2, background: METHOD_COLORS[s.method] }} />
-                <span style={{ fontSize: 12, color: '#6b7280' }}>{s.method}</span>
+                <span style={{ fontSize: 12, color: 'var(--theme-text2)' }}>{s.method}</span>
               </div>
             ))}
           </div>
@@ -186,19 +186,19 @@ export default function PaymentReport() {
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid #2a2f3d' }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid var(--theme-border)' }}>
         {['summary', 'daily'].map(m => (
           <button key={m} onClick={() => setViewMode(m)} style={{
             background: 'none', border: 'none', cursor: 'pointer', padding: '10px 20px',
             fontSize: 13, fontWeight: 500,
-            color: viewMode === m ? '#c9a84c' : '#6b7280',
-            borderBottom: viewMode === m ? '2px solid #c9a84c' : '2px solid transparent', marginBottom: -1
+            color: viewMode === m ? 'var(--theme-accent)' : 'var(--theme-text2)',
+            borderBottom: viewMode === m ? '2px solid var(--theme-accent)' : '2px solid transparent', marginBottom: -1
           }}>{m === 'summary' ? 'Method Summary' : 'Daily Breakdown'}</button>
         ))}
       </div>
 
       <div className="card">
-        {loading ? <p style={{ color: '#6b7280', fontSize: 13 }}>Loading…</p> :
+        {loading ? <p style={{ color: 'var(--theme-text2)', fontSize: 13 }}>Loading…</p> :
           viewMode === 'summary' ? (
             <div className="table-wrap">
             <table className="data-table">
@@ -206,7 +206,7 @@ export default function PaymentReport() {
                 <tr>
                   <th>Payment Method</th>
                   <th style={{ textAlign: 'right' }}>Gross Purchases</th>
-                  <th style={{ textAlign: 'right', color: '#f87171' }}>Returns</th>
+                  <th style={{ textAlign: 'right', color: 'var(--theme-red)' }}>Returns</th>
                   <th style={{ textAlign: 'right' }}>
                     <Tip text="Gross purchases − returns for this method." width={220}>Net Amount</Tip>
                   </th>
@@ -221,23 +221,23 @@ export default function PaymentReport() {
                   <tr key={s.method}>
                     <td style={{ fontWeight: 600, color: METHOD_COLORS[s.method] }}>{s.method}</td>
                     <td style={{ textAlign: 'right' }}>NPR {s.gross.toLocaleString('en-NP', { maximumFractionDigits: 0 })}</td>
-                    <td style={{ textAlign: 'right', color: '#f87171' }}>
+                    <td style={{ textAlign: 'right', color: 'var(--theme-red)' }}>
                       {s.returnAmt > 0 ? `−NPR ${s.returnAmt.toLocaleString('en-NP', { maximumFractionDigits: 0 })}` : '—'}
                     </td>
                     <td style={{ textAlign: 'right', fontWeight: 600 }}>NPR {s.net.toLocaleString('en-NP', { maximumFractionDigits: 0 })}</td>
-                    <td style={{ textAlign: 'right', color: '#6b7280' }}>
+                    <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>
                       {grandNet > 0 ? ((s.net / grandNet) * 100).toFixed(1) : 0}%
                     </td>
                     <td style={{ textAlign: 'right' }}>{s.count}</td>
                   </tr>
                 ))}
-                <tr style={{ borderTop: '2px solid #2a2f3d' }}>
+                <tr style={{ borderTop: '2px solid var(--theme-border)' }}>
                   <td style={{ fontWeight: 700, paddingTop: 12 }}>Total</td>
                   <td style={{ textAlign: 'right', fontWeight: 700, paddingTop: 12 }}>NPR {grandGross.toLocaleString('en-NP', { maximumFractionDigits: 0 })}</td>
-                  <td style={{ textAlign: 'right', fontWeight: 700, color: '#f87171', paddingTop: 12 }}>
+                  <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-red)', paddingTop: 12 }}>
                     {grandReturn > 0 ? `−NPR ${grandReturn.toLocaleString('en-NP', { maximumFractionDigits: 0 })}` : '—'}
                   </td>
-                  <td style={{ textAlign: 'right', fontWeight: 700, color: '#c9a84c', paddingTop: 12 }}>NPR {grandNet.toLocaleString('en-NP', { maximumFractionDigits: 0 })}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-accent)', paddingTop: 12 }}>NPR {grandNet.toLocaleString('en-NP', { maximumFractionDigits: 0 })}</td>
                   <td style={{ textAlign: 'right', paddingTop: 12 }}>100%</td>
                   <td style={{ textAlign: 'right', fontWeight: 700, paddingTop: 12 }}>{purchases.length}</td>
                 </tr>
@@ -257,9 +257,9 @@ export default function PaymentReport() {
               <tbody>
                 {dailyByMethod.map(d => (
                   <tr key={d.day}>
-                    <td style={{ fontWeight: 600, color: '#c9a84c' }}>{d.day}</td>
+                    <td style={{ fontWeight: 600, color: 'var(--theme-accent)' }}>{d.day}</td>
                     {METHODS.map(m => (
-                      <td key={m} style={{ textAlign: 'right', color: d.byMethod[m] !== 0 ? METHOD_COLORS[m] : '#9ca3af' }}>
+                      <td key={m} style={{ textAlign: 'right', color: d.byMethod[m] !== 0 ? METHOD_COLORS[m] : 'var(--theme-text3)' }}>
                         {d.byMethod[m] !== 0 ? `NPR ${d.byMethod[m].toLocaleString('en-NP', { maximumFractionDigits: 0 })}` : '—'}
                       </td>
                     ))}

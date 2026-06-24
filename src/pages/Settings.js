@@ -196,35 +196,35 @@ export default function Settings() {
         <div className="card" style={{ marginBottom: 20, display: 'flex', gap: 18, alignItems: 'center' }}>
           {settings.logo_url
             ? <img src={settings.logo_url} alt="logo" style={{ width: 56, height: 56, objectFit: 'contain', borderRadius: 8, flexShrink: 0 }} />
-            : <span style={{ fontSize: 36, color: '#c9a84c', flexShrink: 0 }}>⬡</span>
+            : <span style={{ fontSize: 36, color: 'var(--theme-accent)', flexShrink: 0 }}>⬡</span>
           }
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: '#e8e0d0', fontFamily: 'Georgia, serif' }}>{settings.app_name || '—'}</div>
-            {settings.app_tagline && <div style={{ fontSize: 11, color: '#9ca3af', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 3 }}>{settings.app_tagline}</div>}
-            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 6 }}>Contact your consultant to update branding or logo.</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--theme-text1)', fontFamily: 'Georgia, serif' }}>{settings.app_name || '—'}</div>
+            {settings.app_tagline && <div style={{ fontSize: 11, color: 'var(--theme-text3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 3 }}>{settings.app_tagline}</div>}
+            <div style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 6 }}>Contact your consultant to update branding or logo.</div>
           </div>
         </div>
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 24, borderBottom: '1px solid #2a2f3d' }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 24, borderBottom: '1px solid var(--theme-border)' }}>
         {TABS.map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)} style={{
             background: 'none', border: 'none', cursor: 'pointer',
             padding: '10px 20px', fontSize: 13, fontWeight: 500,
-            color: activeTab === tab ? '#c9a84c' : '#6b7280',
-            borderBottom: activeTab === tab ? '2px solid #c9a84c' : '2px solid transparent',
+            color: activeTab === tab ? 'var(--theme-accent)' : 'var(--theme-text2)',
+            borderBottom: activeTab === tab ? '2px solid var(--theme-accent)' : '2px solid transparent',
             marginBottom: -1
           }}>{tab}</button>
         ))}
       </div>
 
-      {error && <p style={{ color: '#f87171', fontSize: 13, marginBottom: 16 }}>{error}</p>}
+      {error && <p style={{ color: 'var(--theme-red)', fontSize: 13, marginBottom: 16 }}>{error}</p>}
 
       {/* BRANDING */}
       {activeTab === 'Branding' && (
         <div className="card">
-          <h3 style={{ margin: '0 0 20px', fontSize: 14, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          <h3 style={{ margin: '0 0 20px', fontSize: 14, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
             {isAdmin ? 'App Branding' : 'Property Branding'}
           </h3>
           <div className="form-grid form-grid-2">
@@ -248,16 +248,16 @@ export default function Settings() {
 
           {/* Logo upload */}
           <div style={{ marginTop: 20 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, color: '#9ca3af', display: 'block', marginBottom: 10 }}>Logo</label>
+            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--theme-text3)', display: 'block', marginBottom: 10 }}>Logo</label>
             <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-              <div style={{ width: 64, height: 64, borderRadius: 8, border: '1px solid #2a2f3d', background: '#0f1117', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div style={{ width: 64, height: 64, borderRadius: 8, border: '1px solid var(--theme-border)', background: 'var(--theme-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 {form.logo_url
                   ? <img src={form.logo_url} alt="logo" style={{ width: 56, height: 56, objectFit: 'contain', borderRadius: 6 }} />
-                  : <span style={{ fontSize: 26, color: '#c9a84c' }}>⬡</span>
+                  : <span style={{ fontSize: 26, color: 'var(--theme-accent)' }}>⬡</span>
                 }
               </div>
               <div>
-                <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 8px' }}>Square PNG / JPG / SVG · max 2 MB</p>
+                <p style={{ fontSize: 12, color: 'var(--theme-text2)', margin: '0 0 8px' }}>Square PNG / JPG / SVG · max 2 MB</p>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <label style={{ cursor: logoUploading ? 'not-allowed' : 'pointer' }}>
                     <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style={{ display: 'none' }}
@@ -269,26 +269,26 @@ export default function Settings() {
                     </span>
                   </label>
                   {form.logo_url && (
-                    <button className="btn btn-ghost" style={{ fontSize: 11, color: '#f87171', borderColor: 'rgba(248,113,113,0.25)' }} onClick={handleLogoRemove}>
+                    <button className="btn btn-ghost" style={{ fontSize: 11, color: 'var(--theme-red)', borderColor: 'rgba(248,113,113,0.25)' }} onClick={handleLogoRemove}>
                       Remove
                     </button>
                   )}
                 </div>
-                {logoMsg && <p style={{ fontSize: 11, margin: '6px 0 0', color: logoMsg.startsWith('error') ? '#f87171' : '#34d399' }}>{logoMsg.replace(/^(ok|error):/, '')}</p>}
+                {logoMsg && <p style={{ fontSize: 11, margin: '6px 0 0', color: logoMsg.startsWith('error') ? 'var(--theme-red)' : 'var(--theme-green)' }}>{logoMsg.replace(/^(ok|error):/, '')}</p>}
               </div>
             </div>
           </div>
 
-          <div style={{ marginTop: 24, padding: '16px 20px', background: '#0f1117', borderRadius: 8, border: '1px solid #2a2f3d' }}>
-            <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 12px' }}>Preview</p>
+          <div style={{ marginTop: 24, padding: '16px 20px', background: 'var(--theme-bg)', borderRadius: 8, border: '1px solid var(--theme-border)' }}>
+            <p style={{ fontSize: 12, color: 'var(--theme-text2)', margin: '0 0 12px' }}>Preview</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               {form.logo_url
                 ? <img src={form.logo_url} alt="logo" style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: 4 }} />
-                : <span style={{ fontSize: 20, color: '#c9a84c' }}>⬡</span>
+                : <span style={{ fontSize: 20, color: 'var(--theme-accent)' }}>⬡</span>
               }
               <div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#e8e0d0', fontFamily: 'Georgia, serif' }}>{form.app_name || 'App Name'}</div>
-                <div style={{ fontSize: 11, color: '#9ca3af', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{form.app_tagline || 'Tagline'}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--theme-text1)', fontFamily: 'Georgia, serif' }}>{form.app_name || 'App Name'}</div>
+                <div style={{ fontSize: 11, color: 'var(--theme-text3)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{form.app_tagline || 'Tagline'}</div>
               </div>
             </div>
           </div>
@@ -298,8 +298,8 @@ export default function Settings() {
       {/* PROPERTY */}
       {activeTab === 'Property' && (
         <div className="card">
-          <h3 style={{ margin: '0 0 20px', fontSize: 14, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Property Details</h3>
-          <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 20px' }}>These appear on printed reports and the Monthly Summary header.</p>
+          <h3 style={{ margin: '0 0 20px', fontSize: 14, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Property Details</h3>
+          <p style={{ fontSize: 13, color: 'var(--theme-text2)', margin: '0 0 20px' }}>These appear on printed reports and the Monthly Summary header.</p>
           <div className="form-grid form-grid-2">
             {[
               { key: 'property_address', label: 'Address', placeholder: 'e.g. Jhamsikhel, Lalitpur' },
@@ -319,8 +319,8 @@ export default function Settings() {
       {/* THRESHOLDS */}
       {activeTab === 'Thresholds' && (
         <div className="card">
-          <h3 style={{ margin: '0 0 8px', fontSize: 14, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Operational Thresholds</h3>
-          <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 24px' }}>These control when the system flags warnings across reports and the dashboard.</p>
+          <h3 style={{ margin: '0 0 8px', fontSize: 14, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Operational Thresholds</h3>
+          <p style={{ fontSize: 13, color: 'var(--theme-text2)', margin: '0 0 24px' }}>These control when the system flags warnings across reports and the dashboard.</p>
           <div className="form-grid form-grid-2">
             {[
               { key: 'fc_warning_pct', label: 'Food Cost % — Warning threshold', placeholder: '35', suffix: '%', hint: 'Dashboard turns amber above this' },
@@ -332,9 +332,9 @@ export default function Settings() {
                 <label>{f.label}</label>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <input type="number" value={form[f.key] || ''} onChange={e => update(f.key, e.target.value)} placeholder={f.placeholder} style={{ width: 100 }} />
-                  <span style={{ fontSize: 13, color: '#6b7280' }}>{f.suffix}</span>
+                  <span style={{ fontSize: 13, color: 'var(--theme-text2)' }}>{f.suffix}</span>
                 </div>
-                <span style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>{f.hint}</span>
+                <span style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 4 }}>{f.hint}</span>
               </div>
             ))}
           </div>
@@ -344,8 +344,8 @@ export default function Settings() {
       {/* ITEM CODES */}
       {activeTab === 'Item Codes' && (
         <div className="card">
-          <h3 style={{ margin: '0 0 8px', fontSize: 14, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Item Codes</h3>
-          <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 24px' }}>
+          <h3 style={{ margin: '0 0 8px', fontSize: 14, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Item Codes</h3>
+          <p style={{ fontSize: 13, color: 'var(--theme-text2)', margin: '0 0 24px' }}>
             Auto-generated codes for stock sheets, purchase orders, and audit trails. New items are assigned the next number in sequence automatically.
           </p>
           <div className="form-grid form-grid-2">
@@ -357,15 +357,15 @@ export default function Settings() {
                 placeholder="ITM"
                 style={{ maxWidth: 160 }}
               />
-              <span style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>
+              <span style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 4 }}>
                 e.g. "{(form.item_code_prefix || 'ITM').toUpperCase()}" → {(form.item_code_prefix || 'ITM').toUpperCase()}-001, {(form.item_code_prefix || 'ITM').toUpperCase()}-002, …
               </span>
             </div>
           </div>
 
-          <div style={{ marginTop: 24, padding: '16px 20px', background: '#0f1117', borderRadius: 8, border: '1px solid #2a2f3d' }}>
-            <h4 style={{ margin: '0 0 8px', fontSize: 13, color: '#e8e0d0' }}>Regenerate All Codes</h4>
-            <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 12px' }}>
+          <div style={{ marginTop: 24, padding: '16px 20px', background: 'var(--theme-bg)', borderRadius: 8, border: '1px solid var(--theme-border)' }}>
+            <h4 style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--theme-text1)' }}>Regenerate All Codes</h4>
+            <p style={{ fontSize: 12, color: 'var(--theme-text2)', margin: '0 0 12px' }}>
               If items have been deleted, codes may have gaps. Use this to renumber every item sequentially
               from {(form.item_code_prefix || 'ITM').toUpperCase()}-001, alphabetically by name. Save the prefix above first if you've changed it.
             </p>
@@ -373,7 +373,7 @@ export default function Settings() {
               {regenerating ? 'Renumbering…' : '↻ Regenerate All Item Codes'}
             </button>
             {regenerateMsg && (
-              <p style={{ fontSize: 12, color: regenerateMsg.startsWith('Error') ? '#f87171' : '#34d399', margin: '12px 0 0' }}>
+              <p style={{ fontSize: 12, color: regenerateMsg.startsWith('Error') ? 'var(--theme-red)' : 'var(--theme-green)', margin: '12px 0 0' }}>
                 {regenerateMsg}
               </p>
             )}
@@ -384,8 +384,8 @@ export default function Settings() {
       {/* VENDOR CODES */}
       {activeTab === 'Vendor Codes' && (
         <div className="card">
-          <h3 style={{ margin: '0 0 8px', fontSize: 14, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Vendor Codes</h3>
-          <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 24px' }}>
+          <h3 style={{ margin: '0 0 8px', fontSize: 14, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Vendor Codes</h3>
+          <p style={{ fontSize: 13, color: 'var(--theme-text2)', margin: '0 0 24px' }}>
             Auto-generated codes for suppliers — appear on the Vendors list and purchase entries. New vendors are assigned the next number in sequence automatically.
           </p>
           <div className="form-grid form-grid-2">
@@ -397,15 +397,15 @@ export default function Settings() {
                 placeholder="VND"
                 style={{ maxWidth: 160 }}
               />
-              <span style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>
+              <span style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 4 }}>
                 e.g. "{(form.vendor_code_prefix || 'VND').toUpperCase()}" → {(form.vendor_code_prefix || 'VND').toUpperCase()}-001, {(form.vendor_code_prefix || 'VND').toUpperCase()}-002, …
               </span>
             </div>
           </div>
 
-          <div style={{ marginTop: 24, padding: '16px 20px', background: '#0f1117', borderRadius: 8, border: '1px solid #2a2f3d' }}>
-            <h4 style={{ margin: '0 0 8px', fontSize: 13, color: '#e8e0d0' }}>Regenerate All Codes</h4>
-            <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 12px' }}>
+          <div style={{ marginTop: 24, padding: '16px 20px', background: 'var(--theme-bg)', borderRadius: 8, border: '1px solid var(--theme-border)' }}>
+            <h4 style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--theme-text1)' }}>Regenerate All Codes</h4>
+            <p style={{ fontSize: 12, color: 'var(--theme-text2)', margin: '0 0 12px' }}>
               If vendors have been deleted, codes may have gaps. Use this to renumber every vendor sequentially
               from {(form.vendor_code_prefix || 'VND').toUpperCase()}-001, alphabetically by name. Save the prefix above first if you've changed it.
             </p>
@@ -413,7 +413,7 @@ export default function Settings() {
               {regeneratingVnd ? 'Renumbering…' : '↻ Regenerate All Vendor Codes'}
             </button>
             {regenerateMsgVnd && (
-              <p style={{ fontSize: 12, color: regenerateMsgVnd.startsWith('Error') ? '#f87171' : '#34d399', margin: '12px 0 0' }}>
+              <p style={{ fontSize: 12, color: regenerateMsgVnd.startsWith('Error') ? 'var(--theme-red)' : 'var(--theme-green)', margin: '12px 0 0' }}>
                 {regenerateMsgVnd}
               </p>
             )}
@@ -424,8 +424,8 @@ export default function Settings() {
       {/* SUB-RECIPE CODES */}
       {activeTab === 'Sub-Recipe Codes' && (
         <div className="card">
-          <h3 style={{ margin: '0 0 8px', fontSize: 14, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Sub-Recipe Codes</h3>
-          <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 24px' }}>
+          <h3 style={{ margin: '0 0 8px', fontSize: 14, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Sub-Recipe Codes</h3>
+          <p style={{ fontSize: 13, color: 'var(--theme-text2)', margin: '0 0 24px' }}>
             Auto-generated codes for sub-recipes — appear in recipe ingredient rows and the Sub-Recipes tab. New sub-recipes are assigned the next number automatically.
           </p>
           <div className="form-grid form-grid-2">
@@ -437,22 +437,22 @@ export default function Settings() {
                 placeholder="SRC"
                 style={{ maxWidth: 160 }}
               />
-              <span style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>
+              <span style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 4 }}>
                 e.g. "{(form.sub_recipe_code_prefix || 'SRC').toUpperCase()}" → {(form.sub_recipe_code_prefix || 'SRC').toUpperCase()}-001, {(form.sub_recipe_code_prefix || 'SRC').toUpperCase()}-002, …
               </span>
             </div>
           </div>
 
-          <div style={{ marginTop: 24, padding: '16px 20px', background: '#0f1117', borderRadius: 8, border: '1px solid #2a2f3d' }}>
-            <h4 style={{ margin: '0 0 8px', fontSize: 13, color: '#e8e0d0' }}>Regenerate All Codes</h4>
-            <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 12px' }}>
+          <div style={{ marginTop: 24, padding: '16px 20px', background: 'var(--theme-bg)', borderRadius: 8, border: '1px solid var(--theme-border)' }}>
+            <h4 style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--theme-text1)' }}>Regenerate All Codes</h4>
+            <p style={{ fontSize: 12, color: 'var(--theme-text2)', margin: '0 0 12px' }}>
               Renumbers every sub-recipe sequentially from {(form.sub_recipe_code_prefix || 'SRC').toUpperCase()}-001, alphabetically by name. Use this to assign codes to existing sub-recipes or close gaps after deletions.
             </p>
             <button className="btn btn-ghost" onClick={regenerateAllSubRecipeCodes} disabled={regeneratingSrc}>
               {regeneratingSrc ? 'Renumbering…' : '↻ Regenerate All Sub-Recipe Codes'}
             </button>
             {regenerateMsgSrc && (
-              <p style={{ fontSize: 12, color: regenerateMsgSrc.startsWith('Error') ? '#f87171' : '#34d399', margin: '12px 0 0' }}>
+              <p style={{ fontSize: 12, color: regenerateMsgSrc.startsWith('Error') ? 'var(--theme-red)' : 'var(--theme-green)', margin: '12px 0 0' }}>
                 {regenerateMsgSrc}
               </p>
             )}
@@ -463,28 +463,28 @@ export default function Settings() {
       {/* CONTACT */}
       {activeTab === 'Contact' && (
         <div className="card">
-          <h3 style={{ margin: '0 0 8px', fontSize: 14, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Upgrade Contact Details</h3>
-          <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 24px' }}>
+          <h3 style={{ margin: '0 0 8px', fontSize: 14, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Upgrade Contact Details</h3>
+          <p style={{ fontSize: 13, color: 'var(--theme-text2)', margin: '0 0 24px' }}>
             These details appear on the Premium upgrade prompt shown to Basic plan clients.
           </p>
           <div className="form-grid form-grid-2">
             <div className="form-field">
               <label>Phone</label>
               <input value={form.contact_phone || ''} onChange={e => update('contact_phone', e.target.value)} placeholder="e.g. 9809727572" />
-              <span style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>Shown as a clickable call link</span>
+              <span style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 4 }}>Shown as a clickable call link</span>
             </div>
             <div className="form-field">
               <label>Email</label>
               <input type="email" value={form.contact_email || ''} onChange={e => update('contact_email', e.target.value)} placeholder="e.g. info@cresthospitality.com" />
-              <span style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>Shown as a clickable mailto link</span>
+              <span style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 4 }}>Shown as a clickable mailto link</span>
             </div>
             <div className="form-field">
               <label>Website</label>
               <input value={form.contact_website || ''} onChange={e => update('contact_website', e.target.value)} placeholder="e.g. cresthospitality.com" />
-              <span style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>Shown as a clickable external link</span>
+              <span style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 4 }}>Shown as a clickable external link</span>
             </div>
           </div>
-          <div style={{ marginTop: 20, padding: '14px 18px', background: '#0f1117', borderRadius: 8, border: '1px solid #2a2f3d', fontSize: 12, color: '#6b7280' }}>
+          <div style={{ marginTop: 20, padding: '14px 18px', background: 'var(--theme-bg)', borderRadius: 8, border: '1px solid var(--theme-border)', fontSize: 12, color: 'var(--theme-text2)' }}>
             💡 Leave all fields blank to show a generic "Contact your Crest consultant" message instead.
           </div>
         </div>
@@ -496,8 +496,8 @@ export default function Settings() {
 
           {/* Presets */}
           <div className="card">
-            <h3 style={{ margin: '0 0 6px', fontSize: 14, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Preset Themes</h3>
-            <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 20px' }}>Pick a preset — it sets all colors at once. You can fine-tune individual colors below.</p>
+            <h3 style={{ margin: '0 0 6px', fontSize: 14, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Preset Themes</h3>
+            <p style={{ fontSize: 13, color: 'var(--theme-text2)', margin: '0 0 20px' }}>Pick a preset — it sets all colors at once. You can fine-tune individual colors below.</p>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               {Object.entries(PRESETS).map(([key, preset]) => (
                 <button
@@ -506,8 +506,8 @@ export default function Settings() {
                   style={{
                     display: 'flex', alignItems: 'center', gap: 12,
                     padding: '14px 20px', borderRadius: 10, cursor: 'pointer',
-                    border: themeKey === key ? `2px solid ${colors.accent}` : '2px solid #2a2f3d',
-                    background: themeKey === key ? 'rgba(201,168,76,0.08)' : '#181c27',
+                    border: themeKey === key ? `2px solid ${colors.accent}` : '2px solid var(--theme-border)',
+                    background: themeKey === key ? 'rgba(201,168,76,0.08)' : 'var(--theme-card)',
                     minWidth: 180
                   }}
                 >
@@ -523,8 +523,8 @@ export default function Settings() {
                     </div>
                   </div>
                   <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: themeKey === key ? colors.accent : '#e8e0d0' }}>{preset.name}</div>
-                    <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: themeKey === key ? colors.accent : 'var(--theme-text1)' }}>{preset.name}</div>
+                    <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginTop: 2 }}>
                       {preset.description || ''}
                     </div>
                   </div>
@@ -534,7 +534,7 @@ export default function Settings() {
                 </button>
               ))}
               {themeKey === 'custom' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 20px', borderRadius: 10, border: '2px solid #c9a84c', background: 'rgba(201,168,76,0.06)', minWidth: 180 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 20px', borderRadius: 10, border: '2px solid var(--theme-accent)', background: 'rgba(201,168,76,0.06)', minWidth: 180 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                     <div style={{ display: 'flex', gap: 3 }}>
                       <div style={{ width: 14, height: 14, borderRadius: 3, background: colors.bg, border: '1px solid rgba(255,255,255,0.1)' }} />
@@ -546,8 +546,8 @@ export default function Settings() {
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: '#c9a84c' }}>Custom ✓</div>
-                    <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Your custom palette</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--theme-accent)' }}>Custom ✓</div>
+                    <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginTop: 2 }}>Your custom palette</div>
                   </div>
                 </div>
               )}
@@ -556,8 +556,8 @@ export default function Settings() {
 
           {/* Color pickers */}
           <div className="card">
-            <h3 style={{ margin: '0 0 6px', fontSize: 14, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Customize Colors</h3>
-            <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 24px' }}>Click any swatch to pick a color. Changes apply instantly. Start from a preset, then adjust individual colors here.</p>
+            <h3 style={{ margin: '0 0 6px', fontSize: 14, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Customize Colors</h3>
+            <p style={{ fontSize: 13, color: 'var(--theme-text2)', margin: '0 0 24px' }}>Click any swatch to pick a color. Changes apply instantly. Start from a preset, then adjust individual colors here.</p>
 
             {[
               { key: 'bg',          label: 'Page Background',     desc: 'Main app background' },
@@ -571,7 +571,7 @@ export default function Settings() {
               { key: 'green',       label: 'Success / Green',      desc: 'Positive values, open badges, growth' },
               { key: 'red',         label: 'Danger / Red',         desc: 'Errors, warnings, delete actions' },
             ].map(({ key, label, desc }) => (
-              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 0', borderBottom: '1px solid #2a2f3d' }}>
+              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 0', borderBottom: '1px solid var(--theme-border)' }}>
                 <label
                   style={{ position: 'relative', flexShrink: 0, cursor: 'pointer' }}
                   title={`Pick ${label}`}
@@ -591,10 +591,10 @@ export default function Settings() {
                   }} />
                 </label>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#e8e0d0' }}>{label}</div>
-                  <div style={{ fontSize: 11, color: '#6b7280', marginTop: 1 }}>{desc}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--theme-text1)' }}>{label}</div>
+                  <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginTop: 1 }}>{desc}</div>
                 </div>
-                <code style={{ fontSize: 11, color: '#9ca3af', fontFamily: 'monospace', background: '#0f1117', padding: '2px 8px', borderRadius: 4 }}>
+                <code style={{ fontSize: 11, color: 'var(--theme-text3)', fontFamily: 'monospace', background: 'var(--theme-bg)', padding: '2px 8px', borderRadius: 4 }}>
                   {colors[key]}
                 </code>
               </div>
@@ -612,7 +612,7 @@ export default function Settings() {
 
           {/* Live preview */}
           <div className="card">
-            <h3 style={{ margin: '0 0 16px', fontSize: 14, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Live Preview</h3>
+            <h3 style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Live Preview</h3>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
               <div style={{ padding: '10px 20px', borderRadius: 6, background: colors.accent, color: colors.accentText, fontSize: 13, fontWeight: 700 }}>
                 Primary Button
@@ -643,7 +643,7 @@ export default function Settings() {
             </div>
           </div>
 
-          <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>
+          <p style={{ fontSize: 12, color: 'var(--theme-text2)', margin: 0 }}>
             Theme is saved in your browser (localStorage). It applies only to your device — other users on this account see their own theme.
           </p>
         </div>
@@ -653,25 +653,25 @@ export default function Settings() {
       {activeTab === 'Data' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="card">
-            <h3 style={{ margin: '0 0 8px', fontSize: 14, color: '#e8e0d0' }}>Archive Periods</h3>
-            <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 16px' }}>
+            <h3 style={{ margin: '0 0 8px', fontSize: 14, color: 'var(--theme-text1)' }}>Archive Periods</h3>
+            <p style={{ fontSize: 13, color: 'var(--theme-text2)', margin: '0 0 16px' }}>
               Archiving hides closed periods from dropdowns to keep screens clean. Data is never deleted — toggle "Show archived" on any report to access it. Always export before archiving.
             </p>
-            <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>Archive controls are available on the Periods page for each closed period.</p>
+            <p style={{ fontSize: 12, color: 'var(--theme-text3)', margin: 0 }}>Archive controls are available on the Periods page for each closed period.</p>
           </div>
 
           <div className="card">
-            <h3 style={{ margin: '0 0 8px', fontSize: 14, color: '#e8e0d0' }}>Data Export</h3>
-            <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 16px' }}>
+            <h3 style={{ margin: '0 0 8px', fontSize: 14, color: 'var(--theme-text1)' }}>Data Export</h3>
+            <p style={{ fontSize: 13, color: 'var(--theme-text2)', margin: '0 0 16px' }}>
               Export buttons are available on every report page — Monthly Summary, Variance Report, FIFO Report, and Payment Summary all have Export to Excel.
             </p>
-            <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>For a full data dump of all periods, contact your Crest consultant.</p>
+            <p style={{ fontSize: 12, color: 'var(--theme-text3)', margin: 0 }}>For a full data dump of all periods, contact your Crest consultant.</p>
           </div>
 
           {isAdmin && (
             <div className="card" style={{ borderColor: 'rgba(248,113,113,0.2)' }}>
-              <h3 style={{ margin: '0 0 8px', fontSize: 14, color: '#f87171' }}>Danger Zone</h3>
-              <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 16px' }}>
+              <h3 style={{ margin: '0 0 8px', fontSize: 14, color: 'var(--theme-red)' }}>Danger Zone</h3>
+              <p style={{ fontSize: 13, color: 'var(--theme-text2)', margin: '0 0 16px' }}>
                 Destructive actions. These cannot be undone.
               </p>
               <button className="btn btn-danger" style={{ fontSize: 13 }}

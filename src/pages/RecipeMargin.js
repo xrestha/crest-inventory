@@ -7,9 +7,9 @@ import Tip from '../components/Tip'
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 
 function fcColor(pct) {
-  if (pct <= 30) return '#34d399'
-  if (pct <= 38) return '#fbbf24'
-  return '#f87171'
+  if (pct <= 30) return 'var(--theme-green)'
+  if (pct <= 38) return 'var(--theme-amber)'
+  return 'var(--theme-red)'
 }
 
 export default function RecipeMargin() {
@@ -159,7 +159,7 @@ export default function RecipeMargin() {
           <div className="stat-label">
             <Tip text="Sum of (Selling Price − Food Cost) × Qty Sold across all recipes with sales this period." width={280}>Total Contribution</Tip>
           </div>
-          <div className="stat-value" style={{ color: '#34d399' }}>{fmtNPR(totalContrib)}</div>
+          <div className="stat-value" style={{ color: 'var(--theme-green)' }}>{fmtNPR(totalContrib)}</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">
@@ -238,11 +238,11 @@ export default function RecipeMargin() {
                   <td>{r.category}</td>
                   <td style={{ textAlign: 'right' }}>NPR {r.price.toFixed(0)}</td>
                   <td style={{ textAlign: 'right' }}>NPR {r.cost.toFixed(2)}</td>
-                  <td style={{ textAlign: 'right', fontWeight: 600, color: r.margin >= 0 ? '#34d399' : '#f87171' }}>
+                  <td style={{ textAlign: 'right', fontWeight: 600, color: r.margin >= 0 ? 'var(--theme-green)' : 'var(--theme-red)' }}>
                     NPR {r.margin.toFixed(2)}
                   </td>
                   <td style={{ textAlign: 'right' }}>{r.qty ? Number(r.qty).toLocaleString() : '—'}</td>
-                  <td style={{ textAlign: 'right', fontWeight: 600, color: '#c9a84c' }}>
+                  <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--theme-accent)' }}>
                     {r.totalContribution ? fmtNPR(r.totalContribution) : '—'}
                   </td>
                   <td style={{ textAlign: 'right', fontWeight: 700, color: fcColor(r.fcPct) }}>
@@ -255,7 +255,7 @@ export default function RecipeMargin() {
               <tr style={{ fontWeight: 700 }}>
                 <td colSpan={6}>Total ({withSales.length} recipes sold)</td>
                 <td style={{ textAlign: 'right' }}>{withSales.reduce((s, r) => s + r.qty, 0).toLocaleString()}</td>
-                <td style={{ textAlign: 'right', color: '#c9a84c' }}>{fmtNPR(totalContrib)}</td>
+                <td style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>{fmtNPR(totalContrib)}</td>
                 <td style={{ textAlign: 'right', color: fcColor(avgFcPct) }}>{avgFcPct.toFixed(1)}%</td>
               </tr>
             </tfoot>

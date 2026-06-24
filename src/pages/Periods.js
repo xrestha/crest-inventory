@@ -248,7 +248,7 @@ export default function Periods() {
             <p className="page-subtitle">
               Manage BS periods across all properties
               {needsAttention.length > 0 && (
-                <span style={{ marginLeft: 12, color: '#fbbf24', fontWeight: 600 }}>
+                <span style={{ marginLeft: 12, color: 'var(--theme-amber)', fontWeight: 600 }}>
                   · {needsAttention.length} need{needsAttention.length === 1 ? 's' : ''} attention
                 </span>
               )}
@@ -258,7 +258,7 @@ export default function Periods() {
 
         <div className="card" style={{ padding: 0 }}>
           {allLoading ? (
-            <p style={{ padding: 20, color: '#6b7280', fontSize: 13 }}>Loading…</p>
+            <p style={{ padding: 20, color: 'var(--theme-text2)', fontSize: 13 }}>Loading…</p>
           ) : (
             <div className="table-wrap">
               <table className="data-table">
@@ -287,7 +287,7 @@ export default function Periods() {
                         <td>
                           <button
                             onClick={() => { switchAdminClient(c.id, c.name); navigate('/periods') }}
-                            style={{ background: 'none', border: 'none', color: '#e8e0d0', fontWeight: 600, cursor: 'pointer', fontSize: 13, padding: 0, textAlign: 'left' }}
+                            style={{ background: 'none', border: 'none', color: 'var(--theme-text1)', fontWeight: 600, cursor: 'pointer', fontSize: 13, padding: 0, textAlign: 'left' }}
                           >
                             {c.name}
                           </button>
@@ -300,27 +300,27 @@ export default function Periods() {
                                 type="number" value={editAllForm.bs_year}
                                 onChange={e => setEditAllForm(f => ({ ...f, bs_year: e.target.value }))}
                                 min="2070" max="2100"
-                                style={{ width: 90, padding: '4px 8px', fontSize: 13, background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 6, color: '#e8e0d0' }}
+                                style={{ width: 90, padding: '4px 8px', fontSize: 13, background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 6, color: 'var(--theme-text1)' }}
                               />
                               <select
                                 value={editAllForm.bs_month}
                                 onChange={e => setEditAllForm(f => ({ ...f, bs_month: parseInt(e.target.value) }))}
-                                style={{ padding: '4px 8px', fontSize: 13, background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 6, color: '#e8e0d0' }}
+                                style={{ padding: '4px 8px', fontSize: 13, background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 6, color: 'var(--theme-text1)' }}
                               >
                                 {BS_MONTHS.map((m, i) => <option key={i} value={i + 1}>{i + 1} — {m}</option>)}
                               </select>
-                              {editAllError && <span style={{ color: '#f87171', fontSize: 11 }}>{editAllError}</span>}
+                              {editAllError && <span style={{ color: 'var(--theme-red)', fontSize: 11 }}>{editAllError}</span>}
                             </div>
                           </td>
                         ) : (
                           <>
-                            <td style={{ color: expired ? '#fbbf24' : '#e8e0d0' }}>
-                              {openPeriod ? `${BS_MONTHS[openPeriod.bs_month - 1]} ${openPeriod.bs_year}` : <span style={{ color: '#4b5563' }}>—</span>}
+                            <td style={{ color: expired ? 'var(--theme-amber)' : 'var(--theme-text1)' }}>
+                              {openPeriod ? `${BS_MONTHS[openPeriod.bs_month - 1]} ${openPeriod.bs_year}` : <span style={{ color: 'var(--theme-text3)' }}>—</span>}
                             </td>
                             <td>
                               {openPeriod
                                 ? expired
-                                  ? <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4, color: '#fbbf24', background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)' }}>EXPIRED</span>
+                                  ? <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4, color: 'var(--theme-amber)', background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)' }}>EXPIRED</span>
                                   : <span className="badge badge-green">OPEN</span>
                                 : <span className="badge badge-gray">NO PERIOD</span>
                               }
@@ -328,7 +328,7 @@ export default function Periods() {
                           </>
                         )}
 
-                        <td style={{ color: '#6b7280', fontSize: 12 }}>{cp.length}</td>
+                        <td style={{ color: 'var(--theme-text2)', fontSize: 12 }}>{cp.length}</td>
                         <td style={{ textAlign: 'right' }}>
                           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
                             {isEditingThis ? (
@@ -343,21 +343,21 @@ export default function Periods() {
                                 </button>
                               </>
                             ) : isWorking ? (
-                              <span style={{ fontSize: 12, color: '#6b7280' }}>Working…</span>
+                              <span style={{ fontSize: 12, color: 'var(--theme-text2)' }}>Working…</span>
                             ) : (
                               <>
                                 {openPeriod && (
                                   <button
                                     title="Edit period"
                                     onClick={() => { setEditingAllClientId(c.id); setEditAllForm({ bs_year: openPeriod.bs_year, bs_month: openPeriod.bs_month }); setEditAllError('') }}
-                                    style={{ fontSize: 13, padding: '4px 9px', borderRadius: 5, cursor: 'pointer', background: 'rgba(201,168,76,0.07)', border: '1px solid rgba(201,168,76,0.35)', color: '#c9a84c' }}
+                                    style={{ fontSize: 13, padding: '4px 9px', borderRadius: 5, cursor: 'pointer', background: 'rgba(201,168,76,0.07)', border: '1px solid rgba(201,168,76,0.35)', color: 'var(--theme-accent)' }}
                                   >✏</button>
                                 )}
                                 {openPeriod ? (
                                   <>
                                     <button
                                       onClick={() => adminCloseAndAdvance(openPeriod, c.id)}
-                                      style={{ fontSize: 11, fontWeight: 600, padding: '4px 12px', borderRadius: 5, cursor: 'pointer', background: 'rgba(248,113,113,0.07)', border: '1px solid rgba(248,113,113,0.3)', color: '#f87171' }}
+                                      style={{ fontSize: 11, fontWeight: 600, padding: '4px 12px', borderRadius: 5, cursor: 'pointer', background: 'rgba(248,113,113,0.07)', border: '1px solid rgba(248,113,113,0.3)', color: 'var(--theme-red)' }}
                                     >
                                       Close & Start Next
                                     </button>
@@ -372,7 +372,7 @@ export default function Periods() {
                                 ) : (
                                   <button
                                     onClick={() => adminCreatePeriod(c.id)}
-                                    style={{ fontSize: 11, fontWeight: 600, padding: '4px 12px', borderRadius: 5, cursor: 'pointer', background: 'rgba(52,211,153,0.07)', border: '1px solid rgba(52,211,153,0.3)', color: '#34d399' }}
+                                    style={{ fontSize: 11, fontWeight: 600, padding: '4px 12px', borderRadius: 5, cursor: 'pointer', background: 'rgba(52,211,153,0.07)', border: '1px solid rgba(52,211,153,0.3)', color: 'var(--theme-green)' }}
                                   >
                                     + Create Period
                                   </button>
@@ -416,7 +416,7 @@ export default function Periods() {
 
       {isAdmin && showForm && (
         <div className="card" style={{ marginBottom: 24 }}>
-          <h3 style={{ margin: '0 0 20px', fontSize: 15, color: '#e8e0d0' }}>Create Period</h3>
+          <h3 style={{ margin: '0 0 20px', fontSize: 15, color: 'var(--theme-text1)' }}>Create Period</h3>
           <div className="form-grid form-grid-2" style={{ maxWidth: 400 }}>
             <div className="form-field">
               <label>BS Year</label>
@@ -436,7 +436,7 @@ export default function Periods() {
               </select>
             </div>
           </div>
-          {error && <p style={{ color: '#f87171', fontSize: 13, margin: '12px 0 0' }}>{error}</p>}
+          {error && <p style={{ color: 'var(--theme-red)', fontSize: 13, margin: '12px 0 0' }}>{error}</p>}
           <div className="form-actions">
             <button className="btn btn-ghost" onClick={() => setShowForm(false)}>Cancel</button>
             <button className="btn btn-primary" onClick={createPeriod} disabled={creating}>
@@ -450,10 +450,10 @@ export default function Periods() {
         <div className="card" style={{ marginBottom: 16, borderColor: 'rgba(251,191,36,0.35)', background: 'rgba(251,191,36,0.04)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
             <div>
-              <p style={{ color: '#fbbf24', margin: 0, fontSize: 14, fontWeight: 600 }}>
+              <p style={{ color: 'var(--theme-amber)', margin: 0, fontSize: 14, fontWeight: 600 }}>
                 ◷ {BS_MONTHS[openPeriod.bs_month - 1]} {openPeriod.bs_year} has ended
               </p>
-              <p style={{ color: '#6b7280', margin: '4px 0 0', fontSize: 12 }}>
+              <p style={{ color: 'var(--theme-text2)', margin: '4px 0 0', fontSize: 12 }}>
                 Finish your month-end stock count, then close this period and open {BS_MONTHS[nextAdvMonth - 1]}.
               </p>
             </div>
@@ -461,7 +461,7 @@ export default function Periods() {
               onClick={() => closeAndAdvance(openPeriod)}
               style={{
                 flexShrink: 0, background: 'rgba(251,191,36,0.12)',
-                border: '1px solid rgba(251,191,36,0.4)', color: '#fbbf24',
+                border: '1px solid rgba(251,191,36,0.4)', color: 'var(--theme-amber)',
                 borderRadius: 6, padding: '8px 18px', cursor: 'pointer',
                 fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap'
               }}
@@ -474,7 +474,7 @@ export default function Periods() {
 
       {openCount > 1 && (
         <div className="card" style={{ marginBottom: 16, borderColor: 'rgba(251,191,36,0.3)' }}>
-          <p style={{ color: '#fbbf24', fontSize: 13, margin: 0 }}>
+          <p style={{ color: 'var(--theme-amber)', fontSize: 13, margin: 0 }}>
             ⚠ You have {openCount} open periods. It's recommended to keep only one open at a time.
           </p>
         </div>
@@ -482,7 +482,7 @@ export default function Periods() {
 
       <div className="card">
         {loading ? (
-          <p style={{ color: '#6b7280', fontSize: 13 }}>Loading…</p>
+          <p style={{ color: 'var(--theme-text2)', fontSize: 13 }}>Loading…</p>
         ) : periods.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">◷</div>
@@ -520,8 +520,8 @@ export default function Periods() {
                                 min="2070" max="2100"
                                 style={{
                                   width: 90, padding: '4px 8px', fontSize: 13,
-                                  background: '#0f1117', border: '1px solid #2a2f3d',
-                                  borderRadius: 6, color: '#e8e0d0'
+                                  background: 'var(--theme-bg)', border: '1px solid var(--theme-border)',
+                                  borderRadius: 6, color: 'var(--theme-text1)'
                                 }}
                               />
                               <select
@@ -529,8 +529,8 @@ export default function Periods() {
                                 onChange={e => setEditForm({ ...editForm, bs_month: parseInt(e.target.value) })}
                                 style={{
                                   padding: '4px 8px', fontSize: 13,
-                                  background: '#0f1117', border: '1px solid #2a2f3d',
-                                  borderRadius: 6, color: '#e8e0d0'
+                                  background: 'var(--theme-bg)', border: '1px solid var(--theme-border)',
+                                  borderRadius: 6, color: 'var(--theme-text1)'
                                 }}
                               >
                                 {BS_MONTHS.map((m, i) => (
@@ -538,14 +538,14 @@ export default function Periods() {
                                 ))}
                               </select>
                               {editError && (
-                                <span style={{ color: '#f87171', fontSize: 12 }}>{editError}</span>
+                                <span style={{ color: 'var(--theme-red)', fontSize: 12 }}>{editError}</span>
                               )}
                             </div>
                           </td>
                           <td>
                             <span className="badge badge-green">OPEN</span>
                           </td>
-                          <td style={{ color: '#6b7280' }}>
+                          <td style={{ color: 'var(--theme-text2)' }}>
                             {new Date(p.created_at).toLocaleDateString()}
                           </td>
                           <td style={{ textAlign: 'right' }}>
@@ -571,7 +571,7 @@ export default function Periods() {
                       ) : (
                         <>
                           {/* Normal display row */}
-                          <td style={{ fontWeight: 600, color: '#e8e0d0' }}>
+                          <td style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>
                             {BS_MONTHS[p.bs_month - 1]} {p.bs_year}
                           </td>
                           <td>{p.bs_year}</td>
@@ -583,7 +583,7 @@ export default function Periods() {
                               <span className="badge badge-red">CLOSED</span>
                             )}
                           </td>
-                          <td style={{ color: '#6b7280' }}>
+                          <td style={{ color: 'var(--theme-text2)' }}>
                             {new Date(p.created_at).toLocaleDateString()}
                           </td>
                           <td style={{ textAlign: 'right' }}>
@@ -593,7 +593,7 @@ export default function Periods() {
                                 <button
                                   className="btn btn-ghost"
                                   title="Edit period"
-                                  style={{ fontSize: 13, padding: '5px 10px', lineHeight: 1, color: '#c9a84c', borderColor: 'rgba(201,168,76,0.35)', background: 'rgba(201,168,76,0.07)' }}
+                                  style={{ fontSize: 13, padding: '5px 10px', lineHeight: 1, color: 'var(--theme-accent)', borderColor: 'rgba(201,168,76,0.35)', background: 'rgba(201,168,76,0.07)' }}
                                   onClick={() => startEdit(p)}
                                 >
                                   ✏
@@ -603,7 +603,7 @@ export default function Periods() {
                               {isAdmin && (p.status === 'open' ? (
                                 <button
                                   className="btn btn-ghost"
-                                  style={{ fontSize: 12, padding: '5px 12px', color: '#f87171', borderColor: 'rgba(248,113,113,0.35)', background: 'rgba(248,113,113,0.07)' }}
+                                  style={{ fontSize: 12, padding: '5px 12px', color: 'var(--theme-red)', borderColor: 'rgba(248,113,113,0.35)', background: 'rgba(248,113,113,0.07)' }}
                                   onClick={() => closeAndAdvance(p)}
                                 >
                                   Close &amp; Start Next
@@ -611,7 +611,7 @@ export default function Periods() {
                               ) : (
                                 <button
                                   className="btn btn-ghost"
-                                  style={{ fontSize: 12, padding: '5px 12px', color: '#34d399', borderColor: 'rgba(52,211,153,0.35)', background: 'rgba(52,211,153,0.07)' }}
+                                  style={{ fontSize: 12, padding: '5px 12px', color: 'var(--theme-green)', borderColor: 'rgba(52,211,153,0.35)', background: 'rgba(52,211,153,0.07)' }}
                                   onClick={() => reopenPeriod(p.id)}
                                 >
                                   Reopen
