@@ -909,30 +909,37 @@ export default function Dashboard() {
                   <p style={{ color: 'var(--theme-text3)', fontSize: 12 }}>No purchase data</p>
                 </div>
               ) : (
-                <ResponsiveContainer width="100%" height={160}>
-                  <LineChart data={dailyTrend} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-                    <CartesianGrid stroke="#2a2f3d" strokeDasharray="3 3" vertical={false} />
-                    <XAxis
-                      dataKey="day" tick={{ fill: '#9ca3af', fontSize: 9 }}
-                      tickLine={false} axisLine={false}
-                      interval={Math.ceil(dailyTrend.length / 6)}
-                      tickFormatter={v => v.replace('Day ', '')}
-                    />
-                    <YAxis
-                      tick={{ fill: '#9ca3af', fontSize: 9 }} tickLine={false} axisLine={false}
-                      tickFormatter={v => `${(v / 1000).toFixed(0)}k`} width={32}
-                    />
-                    <Tooltip
-                      contentStyle={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, fontSize: 11 }}
-                      formatter={v => [`NPR ${Number(v).toLocaleString()}`, 'Net']}
-                      labelFormatter={l => l}
-                    />
-                    <Line type="monotone" dataKey="value" stroke="#c9a84c" strokeWidth={2}
-                      dot={{ r: 2, fill: '#c9a84c', strokeWidth: 0 }}
-                      activeDot={{ r: 4, fill: '#c9a84c' }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                <div style={{ overflowX: 'auto', overflowY: 'hidden' }}>
+                  {/* Give each day a fixed width so a long month overflows into a horizontal scrollbar
+                      instead of cramming every day into the card. minWidth only kicks in when there are
+                      enough days to exceed the card; few days still fill the width with no scroll. */}
+                  <div style={{ minWidth: Math.max(0, dailyTrend.length * 44), height: 160 }}>
+                    <ResponsiveContainer width="100%" height={160}>
+                      <LineChart data={dailyTrend} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                        <CartesianGrid stroke="#2a2f3d" strokeDasharray="3 3" vertical={false} />
+                        <XAxis
+                          dataKey="day" tick={{ fill: '#9ca3af', fontSize: 9 }}
+                          tickLine={false} axisLine={false}
+                          interval={0}
+                          tickFormatter={v => v.replace('Day ', '')}
+                        />
+                        <YAxis
+                          tick={{ fill: '#9ca3af', fontSize: 9 }} tickLine={false} axisLine={false}
+                          tickFormatter={v => `${(v / 1000).toFixed(0)}k`} width={32}
+                        />
+                        <Tooltip
+                          contentStyle={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, fontSize: 11 }}
+                          formatter={v => [`NPR ${Number(v).toLocaleString()}`, 'Net']}
+                          labelFormatter={l => l}
+                        />
+                        <Line type="monotone" dataKey="value" stroke="#c9a84c" strokeWidth={2}
+                          dot={{ r: 2, fill: '#c9a84c', strokeWidth: 0 }}
+                          activeDot={{ r: 4, fill: '#c9a84c' }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
               )}
             </div>
 
@@ -979,10 +986,12 @@ export default function Dashboard() {
               <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--theme-text2)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 Food Cost % — Monthly Trend
               </div>
-              <ResponsiveContainer width="100%" height={160}>
+              <div style={{ overflowX: 'auto', overflowY: 'hidden' }}>
+               <div style={{ minWidth: Math.max(0, fcTrend.length * 64), height: 160 }}>
+                <ResponsiveContainer width="100%" height={160}>
                 <LineChart data={fcTrend} margin={{ top: 8, right: 48, bottom: 0, left: 0 }}>
                   <CartesianGrid stroke="#2a2f3d" strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fill: '#9ca3af', fontSize: 10 }} tickLine={false} axisLine={false} />
+                  <XAxis dataKey="label" tick={{ fill: '#9ca3af', fontSize: 10 }} tickLine={false} axisLine={false} interval={0} />
                   <YAxis
                     tick={{ fill: '#9ca3af', fontSize: 10 }} tickLine={false} axisLine={false}
                     tickFormatter={v => `${v}%`} domain={['auto', 'auto']} width={36}
@@ -1014,7 +1023,9 @@ export default function Dashboard() {
                     activeDot={{ r: 5, fill: '#c9a84c' }}
                   />
                 </LineChart>
-              </ResponsiveContainer>
+                </ResponsiveContainer>
+               </div>
+              </div>
               <div style={{ display: 'flex', gap: 16, marginTop: 6, fontSize: 10 }}>
                 <span style={{ color: 'var(--theme-green)' }}>● ≤35% Good</span>
                 <span style={{ color: 'var(--theme-accent)' }}>● 35–45% Watch</span>
