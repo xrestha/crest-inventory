@@ -21,7 +21,7 @@ const IMS_TIERS = [
       {
         icon: '≡', name: 'Item Master',
         guide: 'Your ingredient database. Every item needs a name, category, UOM (unit of measure), and rate. The system calculates Per UOM Rate automatically. Set conversion factors if you buy in bulk packs but consume in smaller units (e.g. 1 CTN = 24 BTL).',
-        tips: ['Use consistent UOMs — GM for solids, ML for liquids', 'Set conversion factor if 1 case = 24 bottles etc.', 'Deactivate items you no longer use — do not delete them']
+        tips: ['Use consistent UOMs — GM for solids, ML for liquids', 'Set conversion factor if 1 case = 24 bottles etc.', 'Deactivate items you no longer use — do not delete them', 'Editing many items in a row? The Edit Item dialog has ← Prev / Next → buttons that save the current item and jump straight to the next one in the list (in the order shown), with an "X of Y" counter — no need to close and reopen. (Same on the Vendors edit dialog.)']
       },
       {
         icon: '⊙', name: 'Vendors',

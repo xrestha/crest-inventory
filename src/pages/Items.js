@@ -227,10 +227,12 @@ export default function Items() {
     return `${prefix}-${String(maxNum + 1).padStart(3, '0')}`
   }
 
-  async function save() {
-    if (!clientId) { setError('No client selected. Pick a client in the top-left switcher before saving.'); return }
-    if (!form.name.trim()) { setError('Item name is required.'); return }
-    if (!form.purchase_qty || !form.rate) { setError('Purchase qty and rate are required.'); return }
+  // Core save — validates + writes, returns true on success. Does NOT close the modal or reload,
+  // so callers can chain a "save & next" navigation.
+  async function doSave() {
+    if (!clientId) { setError('No client selected. Pick a client in the top-left switcher before saving.'); return false }
+    if (!form.name.trim()) { setError('Item name is required.'); return false }
+    if (!form.purchase_qty || !form.rate) { setError('Purchase qty and rate are required.'); return false }
 
     // Conversion validation
     const hasPurchaseUnit = form.purchase_unit.trim() !== ''
@@ -240,7 +242,7 @@ export default function Items() {
     if (hasAny && !(hasPurchaseUnit && hasBaseUnit && hasFactor)) {
       setError('Conversion requires all three fields: Purchase Unit, Base Unit, and Conversion Factor.')
       setActiveTab('conversion')
-      return
+      return false
     }
 
     setSaving(true)
@@ -266,16 +268,27 @@ export default function Items() {
 
     if (editing) {
       const { error } = await supabase.from('items').update(payload).eq('id', editing)
-      if (error) { setError(error.message); setSaving(false); return }
+      if (error) { setError(error.message); setSaving(false); return false }
     } else {
       const { error } = await supabase.from('items').insert({
         ...payload, client_id: clientId, item_code: getNextItemCode()
       })
-      if (error) { setError(error.message); setSaving(false); return }
+      if (error) { setError(error.message); setSaving(false); return false }
     }
     setSaving(false)
-    setShowForm(false)
-    loadItems()
+    return true
+  }
+
+  async function save() {
+    if (await doSave()) { setShowForm(false); loadItems() }
+  }
+
+  // Save current item, then open the adjacent one (dir = +1 next / -1 prev) in the visible order.
+  async function saveAndGo(dir) {
+    const idx = filtered.findIndex(i => i.id === editing)
+    const target = filtered[idx + dir]
+    if (!target) return
+    if (await doSave()) { loadItems(); openEdit(target) }
   }
 
   async function toggleActive(item) {
@@ -527,11 +540,27 @@ export default function Items() {
           )}
 
           {error && <p style={{ color: 'var(--theme-red)', fontSize: 13, margin: '10px 0 0' }}>{error}</p>}
-          <div className="form-actions">
-            <button className="btn btn-ghost" onClick={() => setShowForm(false)}>Cancel</button>
-            <button className="btn btn-primary" onClick={save} disabled={saving}>
-              {saving ? 'Saving…' : editing ? 'Update Item' : 'Add Item'}
-            </button>
+          <div className="form-actions" style={{ justifyContent: 'space-between' }}>
+            {editing ? (() => {
+              const idx = filtered.findIndex(i => i.id === editing)
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button className="btn btn-ghost" onClick={() => saveAndGo(-1)} disabled={saving || idx <= 0}
+                    title="Save & edit previous item" style={{ padding: '7px 12px' }}>← Prev</button>
+                  <span style={{ fontSize: 12, color: 'var(--theme-text3)', minWidth: 64, textAlign: 'center' }}>
+                    {idx >= 0 ? `${idx + 1} of ${filtered.length}` : ''}
+                  </span>
+                  <button className="btn btn-ghost" onClick={() => saveAndGo(1)} disabled={saving || idx < 0 || idx >= filtered.length - 1}
+                    title="Save & edit next item" style={{ padding: '7px 12px' }}>Next →</button>
+                </div>
+              )
+            })() : <span />}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-ghost" onClick={() => setShowForm(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={save} disabled={saving}>
+                {saving ? 'Saving…' : editing ? 'Update Item' : 'Add Item'}
+              </button>
+            </div>
           </div>
         </Modal>
       )}

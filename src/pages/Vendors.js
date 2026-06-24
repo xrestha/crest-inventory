@@ -54,9 +54,10 @@ export default function Vendors() {
     setShowForm(true)
   }
 
-  async function save() {
-    if (!clientId) { setError('No client selected. Pick a client in the top-left switcher before saving.'); return }
-    if (!form.name.trim()) { setError('Vendor name is required.'); return }
+  // Core save — returns true on success; does not close/reload (lets callers chain "save & next").
+  async function doSave() {
+    if (!clientId) { setError('No client selected. Pick a client in the top-left switcher before saving.'); return false }
+    if (!form.name.trim()) { setError('Vendor name is required.'); return false }
     setSaving(true)
     setError('')
     if (editing) {
@@ -67,7 +68,7 @@ export default function Vendors() {
         address: form.address.trim(),
         pan_vat_no: form.pan_vat_no.trim()
       }).eq('id', editing)
-      if (error) { setError(error.message); setSaving(false); return }
+      if (error) { setError(error.message); setSaving(false); return false }
     } else {
       const { error } = await supabase.from('vendors').insert({
         client_id: clientId,
@@ -78,11 +79,22 @@ export default function Vendors() {
         address: form.address.trim(),
         pan_vat_no: form.pan_vat_no.trim()
       })
-      if (error) { setError(error.message); setSaving(false); return }
+      if (error) { setError(error.message); setSaving(false); return false }
     }
     setSaving(false)
-    setShowForm(false)
-    loadVendors()
+    return true
+  }
+
+  async function save() {
+    if (await doSave()) { setShowForm(false); loadVendors() }
+  }
+
+  // Save current vendor, then open the adjacent one (dir = +1 next / -1 prev) in the visible order.
+  async function saveAndGo(dir) {
+    const idx = filtered.findIndex(v => v.id === editing)
+    const target = filtered[idx + dir]
+    if (!target) return
+    if (await doSave()) { loadVendors(); openEdit(target) }
   }
 
   function getNextVendorCode() {
@@ -113,6 +125,12 @@ export default function Vendors() {
     await supabase.from('vendors').delete().eq('id', vendor.id)
     loadVendors()
   }
+
+  const filtered = vendors.filter(v =>
+    !search ||
+    v.name.toLowerCase().includes(search.toLowerCase()) ||
+    (v.vendor_code || '').toLowerCase().includes(search.toLowerCase())
+  )
 
   return (
     <div>
@@ -171,11 +189,27 @@ export default function Vendors() {
             </div>
           </div>
           {error && <p style={{ color: 'var(--theme-red)', fontSize: 13, margin: '12px 0 0' }}>{error}</p>}
-          <div className="form-actions">
-            <button className="btn btn-ghost" onClick={() => setShowForm(false)}>Cancel</button>
-            <button className="btn btn-primary" onClick={save} disabled={saving}>
-              {saving ? 'Saving…' : editing ? 'Update Vendor' : 'Add Vendor'}
-            </button>
+          <div className="form-actions" style={{ justifyContent: 'space-between' }}>
+            {editing ? (() => {
+              const idx = filtered.findIndex(v => v.id === editing)
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button className="btn btn-ghost" onClick={() => saveAndGo(-1)} disabled={saving || idx <= 0}
+                    title="Save & edit previous vendor" style={{ padding: '7px 12px' }}>← Prev</button>
+                  <span style={{ fontSize: 12, color: 'var(--theme-text3)', minWidth: 64, textAlign: 'center' }}>
+                    {idx >= 0 ? `${idx + 1} of ${filtered.length}` : ''}
+                  </span>
+                  <button className="btn btn-ghost" onClick={() => saveAndGo(1)} disabled={saving || idx < 0 || idx >= filtered.length - 1}
+                    title="Save & edit next vendor" style={{ padding: '7px 12px' }}>Next →</button>
+                </div>
+              )
+            })() : <span />}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-ghost" onClick={() => setShowForm(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={save} disabled={saving}>
+                {saving ? 'Saving…' : editing ? 'Update Vendor' : 'Add Vendor'}
+              </button>
+            </div>
           </div>
         </Modal>
       )}
@@ -221,11 +255,7 @@ export default function Vendors() {
                 </tr>
               </thead>
               <tbody>
-                {vendors.filter(v =>
-                  !search ||
-                  v.name.toLowerCase().includes(search.toLowerCase()) ||
-                  (v.vendor_code || '').toLowerCase().includes(search.toLowerCase())
-                ).map(v => (
+                {filtered.map(v => (
                   <tr key={v.id}>
                     <td style={{ color: 'var(--theme-accent)', fontFamily: 'monospace', fontSize: 12, whiteSpace: 'nowrap' }}>
                       {v.vendor_code || '—'}

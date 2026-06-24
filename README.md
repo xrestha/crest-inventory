@@ -124,6 +124,19 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S138 — 2026-06-24 — Save & Next/Prev navigation in edit dialogs
+
+Editing many records one-by-one meant closing and reopening the modal each time. Added in-modal record navigation.
+
+- **Items** ([Items.js](src/pages/Items.js)) and **Vendors** ([Vendors.js](src/pages/Vendors.js)) edit dialogs now have **← Prev / Next →** buttons with an **"X of Y"** counter in the footer. Each saves the current record (`doSave()` — validates + writes, returns success) then opens the adjacent record **in the visible sorted/filtered order** (`filtered`). Disabled at the list ends; only shown when editing an existing record (not on Add). On validation/DB error it stays put and shows the error.
+- Refactored each page's `save()` into a reusable `doSave()` (no close/reload) + thin `save()` (close + reload) + `saveAndGo(dir)`.
+- Applicable scope: the per-record edit **modals**. Other editors are day/period or multi-line forms (Purchases, Requisitions, POs, Overheads, Periods) where "next record" doesn't map; Recipes is a full-page editor (could get it later if wanted).
+- Build clean. Help (Item Master tip) updated.
+
+**Files:** `src/pages/Items.js`, `src/pages/Vendors.js`, `src/pages/Help.js`
+
+---
+
 ### S137 — 2026-06-24 — Dashboard layout fix + daily sales totals + dropdown flip-up
 
 UX polish follow-ups after the Purchases-vs-Sales chart shipped.
