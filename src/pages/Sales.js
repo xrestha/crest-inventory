@@ -461,6 +461,21 @@ export default function Sales() {
                   </div>
                 ) : (
                   <>
+                  {(() => {
+                    let totQty = 0, totRev = 0
+                    recipes.forEach(r => {
+                      const raw = dailyForm[r.id] !== undefined ? dailyForm[r.id] : (dailySales[r.id] > 0 ? String(dailySales[r.id]) : '')
+                      const q = parseFloat(raw) || 0
+                      totQty += q
+                      totRev += q * (parseFloat(r.selling_price) || 0)
+                    })
+                    return (
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 24, marginBottom: 12, fontSize: 13, flexWrap: 'wrap' }}>
+                        <span style={{ color: 'var(--theme-text2)' }}>Total qty sold (Day {selectedDay}): <strong style={{ color: 'var(--theme-text1)' }}>{totQty.toLocaleString()}</strong></span>
+                        <span style={{ color: 'var(--theme-text2)' }}>Day revenue: <strong style={{ color: 'var(--theme-accent)' }}>{totRev > 0 ? `NPR ${totRev.toLocaleString('en-NP', { maximumFractionDigits: 0 })}` : '—'}</strong></span>
+                      </div>
+                    )
+                  })()}
                   <div className="table-wrap">
                   <table className="data-table">
                     <thead>
