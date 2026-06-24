@@ -179,12 +179,15 @@ export default function Dashboard() {
       if (!d || d <= 0) return
       daySalesMap[d] = (daySalesMap[d] || 0) + parseFloat(s.qty_sold || 0) * (priceMap[s.recipe_id] || 0)
     })
+    Object.keys(daySalesMap).forEach(d => { daySalesMap[d] = Math.round(daySalesMap[d]) }) // whole NPR (no ugly decimals)
     const salesDayNums = Object.keys(daySalesMap).map(Number).sort((a, b) => a - b)
     const dailySalesOn = salesDayNums.length > 0
     setHasDailySales(dailySalesOn)
 
     // Projection: current open month + ≥5 sales days only. Least-squares trend on daily revenue,
-    // extended to the last day of the BS month. Past/closed months show actuals only.
+    // extended to the last day of the BS month — but DAMPENED so a steep slope fitted to a few
+    // volatile early days can't run away: each projected day is clamped to [0, 1.25 × recent peak].
+    // Past/closed months show actuals only.
     const bsToday = getBsToday()
     const isCurrentMonth = !!period && period.bs_year === bsToday.year && period.bs_month === bsToday.month
     const monthEndDay = period ? daysInBsMonth(period.bs_year, period.bs_month) : 31
@@ -197,10 +200,12 @@ export default function Dashboard() {
       const denom = n * sumXX - sumX * sumX
       const slope = denom !== 0 ? (n * sumXY - sumX * sumY) / denom : 0
       const intercept = (sumY - slope * sumX) / n
+      const recentYs = salesDayNums.slice(-7).map(d => daySalesMap[d]) // last up-to-7 days
+      const cap = Math.round(Math.max(...recentYs) * 1.25)
       const lastActual = salesDayNums[salesDayNums.length - 1]
       let projSum = 0
       for (let d = lastActual + 1; d <= monthEndDay; d++) {
-        const v = Math.max(0, Math.round(slope * d + intercept))
+        const v = Math.min(cap, Math.max(0, Math.round(slope * d + intercept)))
         projDays[d] = v; projSum += v
       }
       projectedMonthEnd = Math.round(sumY + projSum)
@@ -996,7 +1001,7 @@ export default function Dashboard() {
                         />
                         <Tooltip
                           contentStyle={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, fontSize: 11 }}
-                          formatter={(value, name) => [`NPR ${Number(value).toLocaleString()}`, name]}
+                          formatter={(value, name) => [`NPR ${Math.round(Number(value)).toLocaleString()}`, name]}
                           labelFormatter={l => l}
                         />
                         <Line type="monotone" dataKey="purchases" name="Purchases" stroke="#c9a84c" strokeWidth={2} connectNulls
