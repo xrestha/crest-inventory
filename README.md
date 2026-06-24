@@ -124,6 +124,20 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S134 — 2026-06-24 — Recover "missing" recipes (NULL client_id bug)
+
+User reported food recipes vanished from Recipe Costing (only 2 of ~8 showed). Diagnosed against the live DB (service-role read): the recipes were **not deleted** — **15 recipes had `client_id = NULL`** and the list query filters `.eq('client_id', clientId)`, so they were invisible.
+
+- **Root cause:** AuthContext `clientId = isAdmin ? adminViewClientId : (profile?.client_id || null)`. `adminViewClientId` hydrates from localStorage, so there's a window (post-login / hard-refresh / before picking a client) where it's null. [Recipes.js](src/pages/Recipes.js) `save()` wrote `client_id: clientId` with **no guard**, persisting NULLs.
+- **Recovered:** backfilled all 15 recipes (6 Food: Acai Indulgent Bowl, Classic Brazilian Bowl, Club Sandwich, Scrambled Eggs Croissant, Grilled Chicken Sandwich, Ham & Cheese Sandwich; 8 Beverage; 1 Sub-Recipe: Ranch Dressing) + 1 linked item (SRC-016 Ranch Dressing) → Casa Acai's client_id. Ingredients survived (recipe_ingredients link by recipe_id). Casa now: Food 8 / Beverage 40 / Sub-Recipe 31. **0 orphans remain.**
+- **Code fix:** `save()` now guards `if (!clientId) { setError('No client selected…'); return }` — blocks any NULL-client insert (recipe + sub-recipe linked-item).
+- **Also found:** 43 unused duplicate categories with NULL client_id (seed junk, used by nothing) — left for a confirmed cleanup (deleting, not backfilling).
+- **Recommended follow-up:** add the same `!clientId` guard to other create paths (Items/Vendors/Purchases) + DB `client_id SET NOT NULL` after backfill; consider an audit trigger on `recipes` (currently unaudited; `recipe_ingredients` is ON DELETE CASCADE so deletions leave no trace).
+
+**Files:** `src/pages/Recipes.js` (+ live-DB data backfill via service role)
+
+---
+
 ### S133 — 2026-06-24 — Content-page light-theme migration (36 pages)
 
 Closed the gap noted in S132: content pages used hardcoded inline hex, so the light themes (Latte, Rosé Dawn, Solarized, Light) only restyled the chrome + Dashboard while inner page content stayed dark. Swept **36 page files** to map their semantic inline colors onto the theme CSS variables.

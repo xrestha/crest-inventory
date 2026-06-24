@@ -440,6 +440,10 @@ export default function Recipes() {
   }
 
   async function save() {
+    // Guard: never persist a recipe without a client — a null client_id makes the
+    // recipe invisible (the list query filters by client_id). This previously happened
+    // when an admin saved before the viewed client had hydrated from localStorage.
+    if (!clientId) { setError('No client selected. Pick a client in the top-left switcher before saving.'); return }
     if (!recipeForm.name.trim()) { setError('Recipe name is required.'); return }
     const validIngs = ingredients.filter(i =>
       (i.type === 'item' ? i.item_id : i.sub_recipe_id) && parseFloat(i.qty_per_portion) > 0
