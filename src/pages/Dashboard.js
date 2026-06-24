@@ -917,7 +917,7 @@ export default function Dashboard() {
       {/* ── Charts Row ── */}
       {!loading && activePeriod && (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr 1fr', gap: 14, marginBottom: 14 }}>
 
             {/* Pie — Category Spend */}
             <div className="card" style={{ padding: '14px 16px' }}>
@@ -964,7 +964,9 @@ export default function Dashboard() {
             </div>
 
             {/* Line — Daily Purchases vs Sales */}
-            <div className="card" style={{ padding: '14px 16px' }}>
+            {/* minWidth:0 lets this grid column hold its 1/3 share — without it the inner
+                scroll div's large minWidth forces the track wide and squeezes the other cards. */}
+            <div className="card" style={{ padding: '14px 16px', minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                   Daily Purchases vs Sales
