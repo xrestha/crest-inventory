@@ -124,6 +124,18 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S137 — 2026-06-24 — Dashboard layout fix + daily sales totals + dropdown flip-up
+
+UX polish follow-ups after the Purchases-vs-Sales chart shipped.
+
+- **Chart squeezing the donut (fixed)** — the Purchases-vs-Sales card sits in a 3-col grid; its scroll wrapper's large `minWidth` made the grid column refuse to shrink (grid items default to `min-width: auto`), ballooning the track and squeezing the Spend-by-Category + Top-Items cards. Added `minWidth: 0` to the chart card so the column holds its share and the horizontal scrollbar works *inside* it. Also widened the row to `1fr 1.6fr 1fr` so the (richer) chart gets more room. [Dashboard.js](src/pages/Dashboard.js)
+- **Daily sales day totals** — [Sales.js](src/pages/Sales.js) daily entry now shows a live **"Total qty sold (Day N)"** + **Day revenue** strip above the table, recomputed as quantities are typed and reflecting saved values when switching days.
+- **SearchableSelect flip-up** — the fixed-position combobox dropdown always opened downward, pushing the list off-screen for rows near the bottom of the viewport. `measure()` now flips the panel **above** the field when there's not enough room below, and clamps the list height to the available space (min ~120px, internal scroll). Improves every picker (recipe ingredients, purchases, stock, requisitions). [SearchableSelect.js](src/components/SearchableSelect.js)
+
+**Files:** `src/pages/Dashboard.js`, `src/pages/Sales.js`, `src/components/SearchableSelect.js`
+
+---
+
 ### S136 — 2026-06-24 — Dashboard "Purchases vs Sales" trend + revenue projection
 
 Reworked the Daily Purchase Trend card in [Dashboard.js](src/pages/Dashboard.js) into a dual-line trend with a forecast, designed POS-forward.
