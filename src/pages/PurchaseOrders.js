@@ -158,6 +158,7 @@ export default function PurchaseOrders() {
   }
 
   async function savePo() {
+    if (!effectiveClientId) { setFormError('No client selected. Pick a client in the top-left switcher before saving.'); return }
     if (!poForm.vendor_id) { setFormError('Select a vendor.'); return }
     if (!poForm.period_id) { setFormError('Select a period.'); return }
     const validItems = poItems.filter(x => x.item_id && parseFloat(x.qty_ordered) > 0)

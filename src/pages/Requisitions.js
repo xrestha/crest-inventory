@@ -139,6 +139,7 @@ export default function Requisitions() {
   }
 
   async function saveReq(statusOverride) {
+    if (!effectiveClientId) { setError('No client selected. Pick a client in the top-left switcher before saving.'); return }
     if (!formDay) { setError('Select a day.'); return }
     const validLines = formLines.filter(l => l.item_id && parseFloat(l.qty_requested) > 0)
     if (validLines.length === 0) { setError('Add at least one item with a requested quantity.'); return }

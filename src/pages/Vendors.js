@@ -55,6 +55,7 @@ export default function Vendors() {
   }
 
   async function save() {
+    if (!clientId) { setError('No client selected. Pick a client in the top-left switcher before saving.'); return }
     if (!form.name.trim()) { setError('Vendor name is required.'); return }
     setSaving(true)
     setError('')

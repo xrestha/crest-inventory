@@ -154,6 +154,7 @@ export default function Overheads() {
   }
 
   async function save() {
+    if (!effectiveClientId) { alert('No client selected. Pick a client in the top-left switcher before saving.'); return }
     setSaving(true)
     await supabase.from('overheads').delete().eq('period_id', periodId)
     const inserts = []

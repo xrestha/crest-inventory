@@ -294,6 +294,7 @@ export default function Purchases() {
   }
 
   async function saveReturn() {
+    if (!effectiveClientId) { setReturnError('No client selected. Pick a client in the top-left switcher before saving.'); return }
     if (!returnForm.purchase_entry_id) { setReturnError('Select a purchase entry to return against.'); return }
     const linked = getLinkedPurchase(returnForm.purchase_entry_id)
     if (!linked) { setReturnError('Linked purchase not found.'); return }

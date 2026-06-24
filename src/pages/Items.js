@@ -177,6 +177,7 @@ export default function Items() {
   }
 
   async function initDefaultCategories() {
+    if (!clientId) return // never seed categories with a null client_id (creates orphaned duplicates)
     setInitingCats(true)
     const inserts = DEFAULT_CATEGORIES.map((name, i) => ({ client_id: clientId, name, sort_order: i }))
     await supabase.from('categories').upsert(inserts, { onConflict: 'client_id,name', ignoreDuplicates: true })
@@ -227,6 +228,7 @@ export default function Items() {
   }
 
   async function save() {
+    if (!clientId) { setError('No client selected. Pick a client in the top-left switcher before saving.'); return }
     if (!form.name.trim()) { setError('Item name is required.'); return }
     if (!form.purchase_qty || !form.rate) { setError('Purchase qty and rate are required.'); return }
 

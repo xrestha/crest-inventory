@@ -127,6 +127,7 @@ export default function Periods() {
   }
 
   async function createPeriod() {
+    if (!clientId) { setError('No client selected. Pick a client in the top-left switcher before creating a period.'); return }
     setError('')
     setCreating(true)
     const { error } = await supabase.from('monthly_periods').insert({
