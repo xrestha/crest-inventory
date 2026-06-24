@@ -124,6 +124,19 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S130 — 2026-06-23 — Outstanding Payables: pay by bill (invoice), not per item
+
+Payables tracked payment per **line item** (`payable_payments.purchase_entry_id`), so an 8-item bill showed 8 separate "Pay" rows — but you pay vendors **one amount per invoice**. Reworked [src/pages/OutstandingPayables.js](src/pages/OutstandingPayables.js) to group by **bill** (vendor + invoice ref + period + day):
+
+- **One row per bill** — Invoice · Period · Items(count) · Bill Total · Paid · Remaining · Days · Status. Expand to see the bill's line items + aggregated payment history.
+- **One payment settles the whole bill** — `payBill()` distributes the amount across the bill's unpaid line items (oldest-first), writing the existing per-line `payable_payments` rows and stamping `paid_at` on each line as it's covered. So the underlying ledger (and every report that reads it) is unchanged; only the UX is invoice-level. **No schema change.** Verified the split via a unit test (full / partial / overpay-capped, incl. NPR decimals).
+- **"Pay in full"** button pre-fills the exact remaining; payment is capped at the bill's remaining (no overpay). Stat cards now count **bills** not line items.
+- Purchase *entry* stays item-wise (inventory needs per-item qty) — only payment became bill-wise.
+
+**Files:** `src/pages/OutstandingPayables.js`
+
+---
+
 ### S129 — 2026-06-23 — Stock Report (inventory valuation + movement)
 
 New standalone **Stock Report** ([src/pages/StockReport.js](src/pages/StockReport.js), `/stock-report`, **Starter** `stock_report` flag) — answers "what stock do I hold and what's it worth," which the buried Stock-Count Summary tab didn't surface. Value-focused sibling of the Reorder Report.

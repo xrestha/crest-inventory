@@ -6,6 +6,7 @@ import Tip from '../components/Tip'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 const TODAY = new Date().toISOString().split('T')[0]
+const EPS = 0.001
 
 const INPUT = {
   background: 'var(--theme-input-bg, #161b27)',
@@ -32,7 +33,7 @@ export default function OutstandingPayables() {
   const [filterVendor, setFilterVendor] = useState('all')
   const [filterAging, setFilterAging]   = useState('all')
   const [activeTab, setActiveTab]       = useState('outstanding')
-  const [expandedEntry, setExpandedEntry] = useState(null)
+  const [expandedBill, setExpandedBill] = useState(null)
   const [payForm, setPayForm]           = useState({ amount: '', paid_at: TODAY, note: '' })
   const [savingPayment, setSavingPayment] = useState(false)
   const [payError, setPayError]           = useState('')
@@ -43,7 +44,7 @@ export default function OutstandingPayables() {
     setLoading(true)
     setFilterVendor('all')
     setFilterAging('all')
-    setExpandedEntry(null)
+    setExpandedBill(null)
 
     let query = supabase
       .from('purchase_entries')
@@ -97,64 +98,79 @@ export default function OutstandingPayables() {
 
   function switchTab(tab) { setActiveTab(tab); load(tab) }
 
-  function toggleExpand(id) {
-    setExpandedEntry(prev => prev === id ? null : id)
+  function toggleBill(key) {
+    setExpandedBill(prev => prev === key ? null : key)
     setPayForm({ amount: '', paid_at: TODAY, note: '' })
     setPayError('')
   }
 
-  async function addPayment(entry) {
-    const amount = parseFloat(payForm.amount)
+  // One payment for a whole bill — distributed across its unpaid line items (oldest first).
+  async function payBill(bill) {
+    let amount = parseFloat(payForm.amount)
     if (!amount || amount <= 0) return
+    amount = Math.min(amount, bill.remaining) // never over-pay the bill
     setSavingPayment(true)
     setPayError('')
+    const date = payForm.paid_at || TODAY
+    const note = payForm.note || null
 
-    const { error: insertErr } = await supabase.from('payable_payments').insert({
-      purchase_entry_id: entry.id,
-      client_id: effectiveClientId,
-      amount,
-      paid_at: payForm.paid_at || TODAY,
-      note: payForm.note || null,
-    })
-
-    if (insertErr) {
-      setPayError(insertErr.message || 'Failed to save payment.')
-      setSavingPayment(false)
-      return
+    let left = amount
+    const rows = []
+    const settleIds = []
+    for (const e of bill.entries) {
+      if (left <= EPS) break
+      if (e.remaining <= EPS) continue
+      const alloc = Math.min(e.remaining, left)
+      rows.push({ purchase_entry_id: e.id, client_id: effectiveClientId, amount: alloc, paid_at: date, note })
+      left -= alloc
+      if (e.paidTotal + alloc >= e.value - EPS) settleIds.push(e.id)
     }
+    if (rows.length === 0) { setSavingPayment(false); return }
 
-    // Fully settled — stamp paid_at on the entry
-    if (entry.paidTotal + amount >= entry.value) {
-      await supabase.from('purchase_entries')
-        .update({ paid_at: payForm.paid_at || TODAY })
-        .eq('id', entry.id)
+    const { error: insErr } = await supabase.from('payable_payments').insert(rows)
+    if (insErr) { setPayError(insErr.message || 'Failed to save payment.'); setSavingPayment(false); return }
+    if (settleIds.length > 0) {
+      await supabase.from('purchase_entries').update({ paid_at: date }).in('id', settleIds)
     }
-
     setSavingPayment(false)
     load(activeTab)
   }
 
+  function fmt(v) { return `NPR ${Number(v).toLocaleString('en-NP', { maximumFractionDigits: 0 })}` }
+
+  // ── Group line entries into BILLS (vendor + invoice + period + day) ──
   const vendors = [...new Map(entries.map(e => [e.vendors?.name, e.vendors])).values()].filter(Boolean)
   const AGING_LABELS = ['Current', '31–60 days', '61–90 days', '90+ days']
 
-  const filtered = entries.filter(e => {
-    const matchV = filterVendor === 'all' || e.vendors?.name === filterVendor
-    const matchA = filterAging  === 'all' || e.aging.label    === filterAging
+  const billMap = {}
+  entries.forEach(e => {
+    const vName = e.vendors?.name || 'Unknown'
+    const key = `${vName}|${e.invoice_ref || 'noinv'}|${e.period.bs_year}-${e.period.bs_month}-${e.bs_day || 0}`
+    if (!billMap[key]) billMap[key] = { key, vendorName: vName, invoice_ref: e.invoice_ref, period: e.period, bs_day: e.bs_day, entries: [] }
+    billMap[key].entries.push(e)
+  })
+  const bills = Object.values(billMap).map(b => {
+    const total     = b.entries.reduce((s, e) => s + e.value, 0)
+    const paid      = b.entries.reduce((s, e) => s + e.paidTotal, 0)
+    const remaining = b.entries.reduce((s, e) => s + e.remaining, 0)
+    const daysOld   = Math.max(0, ...b.entries.map(e => e.daysOld))
+    const payments  = b.entries.flatMap(e => (paymentsMap[e.id] || [])).sort((x, y) => (x.paid_at > y.paid_at ? 1 : -1))
+    const settledOn = b.entries.map(e => e.paid_at).filter(Boolean).sort().slice(-1)[0] || null
+    return { ...b, total, paid, remaining, daysOld, aging: aging(daysOld), isPartial: paid > EPS && remaining > EPS, payments, settledOn }
+  })
+
+  const filteredBills = bills.filter(b => {
+    const matchV = filterVendor === 'all' || b.vendorName === filterVendor
+    const matchA = filterAging  === 'all' || b.aging.label === filterAging
     return matchV && matchA
   })
 
   const byVendor = {}
-  filtered.forEach(e => {
-    const vName = e.vendors?.name || 'Unknown'
-    if (!byVendor[vName]) byVendor[vName] = []
-    byVendor[vName].push(e)
-  })
+  filteredBills.forEach(b => { (byVendor[b.vendorName] = byVendor[b.vendorName] || []).push(b) })
 
-  const totalRemaining = filtered.reduce((s, e) => s + (activeTab === 'outstanding' ? e.remaining : e.value), 0)
-  const overdueItems   = filtered.filter(e => e.daysOld > 60).length
-  const urgentValue    = filtered.filter(e => e.daysOld > 90).reduce((s, e) => s + e.remaining, 0)
-
-  function fmt(v) { return `NPR ${Number(v).toLocaleString('en-NP', { maximumFractionDigits: 0 })}` }
+  const totalRemaining = filteredBills.reduce((s, b) => s + (activeTab === 'outstanding' ? b.remaining : b.total), 0)
+  const overdueBills   = filteredBills.filter(b => b.daysOld > 60).length
+  const urgentValue    = filteredBills.filter(b => b.daysOld > 90).reduce((s, b) => s + b.remaining, 0)
 
   return (
     <div>
@@ -162,7 +178,7 @@ export default function OutstandingPayables() {
         <div>
           <h1 className="page-title">Outstanding Payables</h1>
           <p className="page-subtitle">
-            {activeTab === 'outstanding' ? 'Unpaid credit purchases — aging & partial payments' : 'Settled credit purchases — payment history'}
+            {activeTab === 'outstanding' ? 'Unpaid credit bills — pay the whole invoice in one go' : 'Settled credit bills — payment history'}
           </p>
         </div>
       </div>
@@ -185,25 +201,25 @@ export default function OutstandingPayables() {
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginBottom: 24 }}>
         {activeTab === 'outstanding' ? (<>
           <div className="stat-card">
-            <div className="stat-label"><Tip text="Total remaining balance across all outstanding credit purchases." width={220}>Total Remaining</Tip></div>
+            <div className="stat-label"><Tip text="Total remaining balance across all outstanding credit bills." width={220}>Total Remaining</Tip></div>
             <div className="stat-value" style={{ fontSize: 18, color: totalRemaining > 0 ? '#f87171' : '#6b7280' }}>{fmt(totalRemaining)}</div>
-            <div className="stat-sub">{filtered.length} invoices · {Object.keys(byVendor).length} vendors</div>
+            <div className="stat-sub">{filteredBills.length} bill{filteredBills.length !== 1 ? 's' : ''} · {Object.keys(byVendor).length} vendor{Object.keys(byVendor).length !== 1 ? 's' : ''}</div>
           </div>
           <div className="stat-card">
-            <div className="stat-label"><Tip text="Invoices with remaining balance older than 60 days." width={230}>Overdue Items</Tip></div>
-            <div className="stat-value" style={{ color: overdueItems > 0 ? '#f97316' : '#6b7280' }}>{overdueItems}</div>
+            <div className="stat-label"><Tip text="Bills with a remaining balance older than 60 days." width={230}>Overdue Bills</Tip></div>
+            <div className="stat-value" style={{ color: overdueBills > 0 ? '#f97316' : '#6b7280' }}>{overdueBills}</div>
             <div className="stat-sub">&gt;60 days outstanding</div>
           </div>
           <div className="stat-card">
-            <div className="stat-label"><Tip text="Remaining value on invoices over 90 days old. Urgent settlement needed." width={240}>90+ Day Value</Tip></div>
+            <div className="stat-label"><Tip text="Remaining value on bills over 90 days old. Urgent settlement needed." width={240}>90+ Day Value</Tip></div>
             <div className="stat-value" style={{ fontSize: 16, color: urgentValue > 0 ? '#f87171' : '#6b7280' }}>{urgentValue > 0 ? fmt(urgentValue) : '—'}</div>
             <div className="stat-sub">Urgent settlement</div>
           </div>
         </>) : (<>
           <div className="stat-card">
-            <div className="stat-label"><Tip text="Total value of all fully settled credit purchases." width={220}>Total Paid</Tip></div>
+            <div className="stat-label"><Tip text="Total value of all fully settled credit bills." width={220}>Total Paid</Tip></div>
             <div className="stat-value" style={{ fontSize: 18, color: '#34d399' }}>{fmt(totalRemaining)}</div>
-            <div className="stat-sub">{filtered.length} settled invoices</div>
+            <div className="stat-sub">{filteredBills.length} settled bill{filteredBills.length !== 1 ? 's' : ''}</div>
           </div>
           <div className="stat-card">
             <div className="stat-label">Vendors Paid</div>
@@ -211,9 +227,9 @@ export default function OutstandingPayables() {
             <div className="stat-sub">Unique vendors settled</div>
           </div>
           <div className="stat-card">
-            <div className="stat-label"><Tip text="Most recently settled invoice date." width={200}>Last Settlement</Tip></div>
-            <div className="stat-value" style={{ fontSize: 14 }}>{filtered.length > 0 ? filtered[0].paid_at : '—'}</div>
-            <div className="stat-sub">{filtered.length > 0 ? filtered[0].vendors?.name : ''}</div>
+            <div className="stat-label"><Tip text="Most recently settled bill date." width={200}>Last Settlement</Tip></div>
+            <div className="stat-value" style={{ fontSize: 14 }}>{filteredBills.length > 0 ? (filteredBills[0].settledOn || '—') : '—'}</div>
+            <div className="stat-sub">{filteredBills.length > 0 ? filteredBills[0].vendorName : ''}</div>
           </div>
         </>)}
       </div>
@@ -234,23 +250,23 @@ export default function OutstandingPayables() {
 
       {loading ? (
         <div className="card"><p style={{ color: '#6b7280', fontSize: 13 }}>Loading payables…</p></div>
-      ) : setupNeeded ? null : filtered.length === 0 ? (
+      ) : setupNeeded ? null : filteredBills.length === 0 ? (
         <div className="card">
           <div className="empty-state">
             <div className="empty-state-icon">✓</div>
             <p className="empty-state-text">
-              {entries.length === 0
-                ? 'No outstanding credit payables.'
-                : 'No items match the current filters.'}
+              {bills.length === 0 ? 'No outstanding credit payables.' : 'No bills match the current filters.'}
             </p>
           </div>
         </div>
       ) : (
         Object.entries(byVendor)
           .sort(([, a], [, b]) =>
-            b.reduce((s, e) => s + e.remaining, 0) - a.reduce((s, e) => s + e.remaining, 0))
-          .map(([vName, vRows]) => {
-            const vendorTotal = vRows.reduce((s, e) => s + (activeTab === 'outstanding' ? e.remaining : e.value), 0)
+            b.reduce((s, x) => s + x.remaining, 0) - a.reduce((s, x) => s + x.remaining, 0))
+          .map(([vName, vBills]) => {
+            const vendorTotal = vBills.reduce((s, b) => s + (activeTab === 'outstanding' ? b.remaining : b.total), 0)
+            const sorted = activeTab === 'outstanding' ? [...vBills].sort((a, b) => b.daysOld - a.daysOld) : vBills
+            const cols = activeTab === 'outstanding' ? 9 : 6
             return (
               <div key={vName} className="card" style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #2a2f3d' }}>
@@ -261,163 +277,141 @@ export default function OutstandingPayables() {
                   <table className="data-table">
                     <thead>
                       <tr>
-                        <th>Item</th>
-                        <th>Category</th>
-                        <th>Period</th>
                         <th>Invoice</th>
-                        <th style={{ textAlign: 'right' }}>Qty</th>
-                        <th style={{ textAlign: 'right' }}>Rate</th>
-                        <th style={{ textAlign: 'right' }}>Total</th>
+                        <th>Period</th>
+                        <th style={{ textAlign: 'right' }}>Items</th>
+                        <th style={{ textAlign: 'right' }}>Bill Total</th>
                         {activeTab === 'outstanding' ? (<>
                           <th style={{ textAlign: 'right' }}>Paid</th>
                           <th style={{ textAlign: 'right' }}>Remaining</th>
-                          <th style={{ textAlign: 'right' }}><Tip text="Calendar days since this purchase." width={180}>Days</Tip></th>
+                          <th style={{ textAlign: 'right' }}><Tip text="Calendar days since the bill date." width={180}>Days</Tip></th>
                           <th>Status</th>
                           <th></th>
                         </>) : (<>
-                          <th style={{ textAlign: 'right' }}>Total Paid</th>
                           <th>Settled On</th>
                           <th></th>
                         </>)}
                       </tr>
                     </thead>
                     <tbody>
-                      {(activeTab === 'outstanding'
-                        ? vRows.sort((a, b) => b.daysOld - a.daysOld)
-                        : vRows
-                      ).map(e => {
-                        const payments = paymentsMap[e.id] || []
-                        const isExpanded = expandedEntry === e.id
-                        const isPartial = e.paidTotal > 0 && e.remaining > 0
-                        const willSettle = payForm.amount && parseFloat(payForm.amount) + e.paidTotal >= e.value
-
+                      {sorted.map(b => {
+                        const isExpanded = expandedBill === b.key
+                        const willSettle = payForm.amount && parseFloat(payForm.amount) + b.paid >= b.total - EPS
                         return (
-                          <Fragment key={e.id}>
-                            <tr style={{ cursor: 'pointer' }} onClick={() => toggleExpand(e.id)}>
-                              <td style={{ fontWeight: 600, color: '#e8e0d0' }}>{e.items?.name}</td>
-                              <td><span className="badge badge-yellow">{e.items?.categories?.name || '—'}</span></td>
-                              <td style={{ color: '#6b7280' }}>{BS_MONTHS[(e.period.bs_month || 1) - 1]} {e.period.bs_year}</td>
-                              <td style={{ color: '#9ca3af', fontSize: 12 }}>{e.invoice_ref || '—'}</td>
-                              <td style={{ textAlign: 'right', color: '#6b7280' }}>{parseFloat(e.qty).toLocaleString()} {e.items?.uom}</td>
-                              <td style={{ textAlign: 'right', color: '#6b7280' }}>NPR {parseFloat(e.rate).toLocaleString()}</td>
-                              <td style={{ textAlign: 'right', fontWeight: 600, color: '#c9a84c' }}>{fmt(e.value)}</td>
+                          <Fragment key={b.key}>
+                            <tr style={{ cursor: 'pointer' }} onClick={() => toggleBill(b.key)}>
+                              <td style={{ fontWeight: 600, color: '#e8e0d0' }}>#{b.invoice_ref || '—'}</td>
+                              <td style={{ color: '#6b7280' }}>{BS_MONTHS[(b.period.bs_month || 1) - 1]} {b.period.bs_year}</td>
+                              <td style={{ textAlign: 'right', color: '#6b7280' }}>{b.entries.length}</td>
+                              <td style={{ textAlign: 'right', fontWeight: 600, color: '#c9a84c' }}>{fmt(b.total)}</td>
                               {activeTab === 'outstanding' ? (<>
-                                <td style={{ textAlign: 'right', color: e.paidTotal > 0 ? '#34d399' : '#6b7280' }}>
-                                  {e.paidTotal > 0 ? fmt(e.paidTotal) : '—'}
-                                </td>
-                                <td style={{ textAlign: 'right', fontWeight: 700, color: '#f87171' }}>{fmt(e.remaining)}</td>
-                                <td style={{ textAlign: 'right', fontWeight: 700, color: e.aging.color }}>{e.daysOld}</td>
+                                <td style={{ textAlign: 'right', color: b.paid > 0 ? '#34d399' : '#6b7280' }}>{b.paid > 0 ? fmt(b.paid) : '—'}</td>
+                                <td style={{ textAlign: 'right', fontWeight: 700, color: '#f87171' }}>{fmt(b.remaining)}</td>
+                                <td style={{ textAlign: 'right', fontWeight: 700, color: b.aging.color }}>{b.daysOld}</td>
                                 <td>
-                                  {isPartial
+                                  {b.isPartial
                                     ? <span style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', background: 'rgba(129,140,248,0.1)', border: '1px solid rgba(129,140,248,0.3)', borderRadius: 4, padding: '2px 8px', whiteSpace: 'nowrap' }}>Partial</span>
-                                    : <span style={{ fontSize: 11, fontWeight: 700, color: e.aging.color, background: `${e.aging.color}18`, border: `1px solid ${e.aging.color}40`, borderRadius: 4, padding: '2px 8px', whiteSpace: 'nowrap' }}>{e.aging.label}</span>
+                                    : <span style={{ fontSize: 11, fontWeight: 700, color: b.aging.color, background: `${b.aging.color}18`, border: `1px solid ${b.aging.color}40`, borderRadius: 4, padding: '2px 8px', whiteSpace: 'nowrap' }}>{b.aging.label}</span>
                                   }
                                 </td>
-                                <td style={{ color: '#c9a84c', fontSize: 12, whiteSpace: 'nowrap' }}>
-                                  {isExpanded ? '▲ Close' : '＋ Pay'}
-                                </td>
+                                <td style={{ color: '#c9a84c', fontSize: 12, whiteSpace: 'nowrap' }}>{isExpanded ? '▲ Close' : '＋ Pay Bill'}</td>
                               </>) : (<>
-                                <td style={{ textAlign: 'right', color: '#34d399', fontWeight: 600 }}>
-                                  {fmt(payments.length > 0 ? e.paidTotal : e.value)}
-                                </td>
-                                <td style={{ color: '#34d399', fontWeight: 600, fontSize: 13 }}>{e.paid_at}</td>
-                                <td style={{ color: '#9ca3af', fontSize: 12, whiteSpace: 'nowrap' }}>
-                                  {payments.length > 0 ? (isExpanded ? '▲ Hide' : `▼ ${payments.length} payment${payments.length > 1 ? 's' : ''}`) : ''}
-                                </td>
+                                <td style={{ color: '#34d399', fontWeight: 600, fontSize: 13 }}>{b.settledOn || '—'}</td>
+                                <td style={{ color: '#9ca3af', fontSize: 12, whiteSpace: 'nowrap' }}>{isExpanded ? '▲ Hide' : '▼ Details'}</td>
                               </>)}
                             </tr>
 
                             {isExpanded && (
                               <tr>
-                                <td colSpan={activeTab === 'outstanding' ? 12 : 10} style={{ padding: 0, background: 'rgba(10,12,18,0.7)' }}>
+                                <td colSpan={cols} style={{ padding: 0, background: 'rgba(10,12,18,0.7)' }}>
                                   <div style={{ padding: '16px 20px' }}>
 
-                                    {/* Payment history */}
-                                    {payments.length > 0 && (
+                                    {/* Line items in this bill */}
+                                    <div style={{ fontSize: 11, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Items in this bill ({b.entries.length})</div>
+                                    <table style={{ borderCollapse: 'collapse', fontSize: 13, width: '100%', maxWidth: 620, marginBottom: 20 }}>
+                                      <thead>
+                                        <tr>
+                                          <th style={{ textAlign: 'left', padding: '4px 16px 4px 0', color: '#6b7280', fontWeight: 600, fontSize: 11 }}>Item</th>
+                                          <th style={{ textAlign: 'right', padding: '4px 16px', color: '#6b7280', fontWeight: 600, fontSize: 11 }}>Qty</th>
+                                          <th style={{ textAlign: 'right', padding: '4px 16px', color: '#6b7280', fontWeight: 600, fontSize: 11 }}>Rate</th>
+                                          <th style={{ textAlign: 'right', padding: '4px 0 4px 16px', color: '#6b7280', fontWeight: 600, fontSize: 11 }}>Total</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {b.entries.map(e => (
+                                          <tr key={e.id}>
+                                            <td style={{ padding: '4px 16px 4px 0', color: '#e8e0d0' }}>{e.items?.name}</td>
+                                            <td style={{ padding: '4px 16px', textAlign: 'right', color: '#6b7280' }}>{parseFloat(e.qty).toLocaleString()} {e.items?.uom}</td>
+                                            <td style={{ padding: '4px 16px', textAlign: 'right', color: '#6b7280' }}>{parseFloat(e.rate).toLocaleString()}</td>
+                                            <td style={{ padding: '4px 0 4px 16px', textAlign: 'right', color: '#c9a84c', fontWeight: 600 }}>{fmt(e.value)}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+
+                                    {/* Payment history (across the whole bill) */}
+                                    {b.payments.length > 0 && (
                                       <div style={{ marginBottom: activeTab === 'outstanding' ? 20 : 0 }}>
                                         <div style={{ fontSize: 11, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Payment History</div>
                                         <table style={{ borderCollapse: 'collapse', fontSize: 13, minWidth: 400 }}>
-                                          <thead>
-                                            <tr>
-                                              <th style={{ textAlign: 'left', padding: '4px 16px 4px 0', color: '#6b7280', fontWeight: 600, fontSize: 11 }}>Date</th>
-                                              <th style={{ textAlign: 'right', padding: '4px 16px', color: '#6b7280', fontWeight: 600, fontSize: 11 }}>Amount</th>
-                                              <th style={{ textAlign: 'left', padding: '4px 0 4px 16px', color: '#6b7280', fontWeight: 600, fontSize: 11 }}>Note</th>
-                                            </tr>
-                                          </thead>
                                           <tbody>
-                                            {payments.map(p => (
+                                            {b.payments.map(p => (
                                               <tr key={p.id}>
                                                 <td style={{ padding: '5px 16px 5px 0', color: '#34d399' }}>{p.paid_at}</td>
                                                 <td style={{ padding: '5px 16px', textAlign: 'right', color: '#e8e0d0', fontWeight: 600 }}>{fmt(p.amount)}</td>
                                                 <td style={{ padding: '5px 0 5px 16px', color: '#9ca3af' }}>{p.note || '—'}</td>
                                               </tr>
                                             ))}
-                                            {payments.length > 1 && (
-                                              <tr style={{ borderTop: '1px solid #2a2f3d' }}>
-                                                <td style={{ padding: '5px 16px 5px 0', color: '#6b7280', fontSize: 11 }}>Total paid</td>
-                                                <td style={{ padding: '5px 16px', textAlign: 'right', fontWeight: 700, color: '#34d399' }}>{fmt(e.paidTotal)}</td>
-                                                <td />
-                                              </tr>
-                                            )}
+                                            <tr style={{ borderTop: '1px solid #2a2f3d' }}>
+                                              <td style={{ padding: '5px 16px 5px 0', color: '#6b7280', fontSize: 11 }}>Total paid</td>
+                                              <td style={{ padding: '5px 16px', textAlign: 'right', fontWeight: 700, color: '#34d399' }}>{fmt(b.paid)}</td>
+                                              <td />
+                                            </tr>
                                           </tbody>
                                         </table>
                                       </div>
                                     )}
 
-                                    {/* Add payment — outstanding only */}
+                                    {/* Record one payment for the whole bill — outstanding only */}
                                     {activeTab === 'outstanding' && (
                                       <div>
                                         <div style={{ fontSize: 11, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
-                                          {payments.length === 0 ? 'Record Payment' : 'Add Payment'}
+                                          {b.payments.length === 0 ? 'Pay this bill' : 'Add payment'}
+                                          <span style={{ textTransform: 'none', letterSpacing: 0, color: '#6b7280', marginLeft: 8 }}>· applied across all {b.entries.length} item{b.entries.length !== 1 ? 's' : ''}</span>
                                         </div>
                                         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
                                           <div>
                                             <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 4 }}>Amount (NPR)</div>
-                                            <input
-                                              type="number"
-                                              style={{ ...INPUT, width: 150 }}
-                                              placeholder={`max ${fmt(e.remaining)}`}
+                                            <input type="number" style={{ ...INPUT, width: 150 }} placeholder={`full: ${fmt(b.remaining)}`}
                                               value={payForm.amount}
                                               onChange={ev => setPayForm(f => ({ ...f, amount: ev.target.value }))}
-                                              onClick={ev => ev.stopPropagation()}
-                                            />
+                                              onClick={ev => ev.stopPropagation()} />
                                           </div>
                                           <div>
                                             <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 4 }}>Date</div>
-                                            <input
-                                              type="date"
-                                              style={INPUT}
-                                              value={payForm.paid_at}
+                                            <input type="date" style={INPUT} value={payForm.paid_at}
                                               onChange={ev => setPayForm(f => ({ ...f, paid_at: ev.target.value }))}
-                                              onClick={ev => ev.stopPropagation()}
-                                            />
+                                              onClick={ev => ev.stopPropagation()} />
                                           </div>
                                           <div style={{ flex: 1, minWidth: 180 }}>
                                             <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 4 }}>Note (optional)</div>
-                                            <input
-                                              type="text"
-                                              style={{ ...INPUT, width: '100%' }}
-                                              placeholder="e.g. Cheque #1234"
+                                            <input type="text" style={{ ...INPUT, width: '100%' }} placeholder="e.g. Cheque #1234"
                                               value={payForm.note}
                                               onChange={ev => setPayForm(f => ({ ...f, note: ev.target.value }))}
-                                              onClick={ev => ev.stopPropagation()}
-                                            />
+                                              onClick={ev => ev.stopPropagation()} />
                                           </div>
-                                          <button
-                                            className="btn btn-primary"
-                                            style={{ padding: '8px 18px', fontSize: 13 }}
+                                          <button className="btn btn-ghost" style={{ padding: '8px 14px', fontSize: 12 }}
+                                            onClick={ev => { ev.stopPropagation(); setPayForm(f => ({ ...f, amount: String(Number(b.remaining.toFixed(2))) })) }}>
+                                            Pay in full
+                                          </button>
+                                          <button className="btn btn-primary" style={{ padding: '8px 18px', fontSize: 13 }}
                                             disabled={!payForm.amount || parseFloat(payForm.amount) <= 0 || savingPayment}
-                                            onClick={ev => { ev.stopPropagation(); addPayment(e) }}
-                                          >
+                                            onClick={ev => { ev.stopPropagation(); payBill(b) }}>
                                             {savingPayment ? '…' : 'Save'}
                                           </button>
                                         </div>
-                                        {payError && (
-                                          <div style={{ marginTop: 8, fontSize: 12, color: '#f87171' }}>⚠ {payError}</div>
-                                        )}
-                                        {willSettle && !payError && (
-                                          <div style={{ marginTop: 8, fontSize: 12, color: '#34d399' }}>✓ This will fully settle the invoice</div>
-                                        )}
+                                        {payError && <div style={{ marginTop: 8, fontSize: 12, color: '#f87171' }}>⚠ {payError}</div>}
+                                        {willSettle && !payError && <div style={{ marginTop: 8, fontSize: 12, color: '#34d399' }}>✓ This will fully settle the bill</div>}
                                       </div>
                                     )}
 
