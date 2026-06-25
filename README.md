@@ -124,6 +124,21 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S142 — 2026-06-25 — Recipes: USDA FoodData Central live nutrition fallback
+
+When "⚡ Auto-fill nutrition" can't match an ingredient in the regional seed library, it now fires a live lookup against the **USDA FoodData Central API** (80,000+ foods, free, CC0) as a fallback. Seed matches still take priority; USDA fills the gaps.
+
+- New utility: `src/utils/usdaNutrition.js` — searches FDC, maps nutrient IDs to our schema (energy, protein, carbs, fat, sugar, sodium), returns `{ basis_qty: 100, basis_unit: 'GM', ..., source: 'USDA FDC' }`
+- `autoFillNutrition()` rewritten: seed matches first → USDA live lookup for misses → confirm dialog shows source split ("3 from regional library · 2 from USDA FoodData Central")
+- Falls back to `DEMO_KEY` (30 req/hr) if `REACT_APP_USDA_API_KEY` is not set; free registered key allows 1,000 req/hr (sign up at fdc.nal.usda.gov/api-key-signup.html)
+- `.env.example` updated with the new key entry
+
+No DB change. Build clean.
+
+**Files:** `src/utils/usdaNutrition.js`, `src/pages/Recipes.js`, `.env.example`
+
+---
+
 ### S141 — 2026-06-25 — Recipes: % of Total column in ingredient edit form
 
 Added a **% of Total** column to the ingredients table inside the recipe edit form (between Cost and Nutrition). Each ingredient row now shows its share of the total recipe cost (`ingredient cost ÷ liveCost × 100`). Rows with no cost show `—`. The column was already present in the read/detail view; this brings it into the edit view as well.

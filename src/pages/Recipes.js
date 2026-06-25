@@ -8,6 +8,7 @@ import Modal from '../components/Modal'
 import SearchableSelect from '../components/SearchableSelect'
 import { NUTRIENTS, EMPTY_NUTRITION, calcRecipeNutrition, calcLiveNutrition, hasNutrition, buildNutritionPayload, defaultBasisUnit, convertQty } from '../utils/nutrition'
 import { suggestSeeds } from '../data/nutritionSeed'
+import { fetchUsdaNutrition } from '../utils/usdaNutrition'
 import * as XLSX from 'xlsx'
 
 const UNITS = ['GM', 'ML', 'KG', 'LTR', 'PCS', 'PKT', 'BTL', 'BOX', 'ROLL', 'BUNCH', 'JAR', 'CTN', 'BAG', 'TIN', 'SACHET']
@@ -370,27 +371,49 @@ export default function Recipes() {
   }
 
   async function autoFillNutrition() {
+    setAutoFillBusy(true)
+
     const seen = new Set()
-    const targets = []
-    const unmatched = []
+    const seedTargets = []
+    const unmatchedItems = []
     ingredients.forEach(ing => {
       if (ing.type !== 'item' || !ing.item_id || seen.has(ing.item_id)) return
       seen.add(ing.item_id)
       const it = items.find(i => i.id === ing.item_id)
-      if (!it || hasNutrition(it.nutrition)) return // already has data → leave it
+      if (!it || hasNutrition(it.nutrition)) return
       const best = suggestSeeds(it.name)[0]
-      if (best) targets.push({ it, payload: seedToNutrition(best, it.uom) })
-      else unmatched.push(it.name)
+      if (best) seedTargets.push({ it, payload: seedToNutrition(best, it.uom) })
+      else unmatchedItems.push(it)
     })
 
+    // Live USDA FoodData Central fallback for seed misses
+    const usdaTargets = []
+    const stillUnmatched = []
+    if (unmatchedItems.length > 0) {
+      const usdaResults = await Promise.all(
+        unmatchedItems.map(async it => ({ it, payload: await fetchUsdaNutrition(it.name) }))
+      )
+      usdaResults.forEach(({ it, payload }) => {
+        if (payload) usdaTargets.push({ it, payload })
+        else stillUnmatched.push(it.name)
+      })
+    }
+
+    const targets = [...seedTargets, ...usdaTargets]
+    setAutoFillBusy(false)
+
     if (targets.length === 0) {
-      window.alert(unmatched.length
-        ? `No library matches found. Add these manually: ${unmatched.join(', ')}`
+      window.alert(stillUnmatched.length
+        ? `No matches found in library or USDA. Add these manually: ${stillUnmatched.join(', ')}`
         : 'All ingredients already have nutrition data.')
       return
     }
-    const msg = `Auto-fill nutrition for ${targets.length} ingredient(s) from the library (best regional match)?`
-      + (unmatched.length ? `\n\n${unmatched.length} have no library match and will be skipped: ${unmatched.join(', ')}` : '')
+
+    const parts = []
+    if (seedTargets.length) parts.push(`${seedTargets.length} from regional library`)
+    if (usdaTargets.length) parts.push(`${usdaTargets.length} from USDA FoodData Central`)
+    const msg = `Auto-fill nutrition for ${targets.length} ingredient(s)?\n${parts.join(' · ')}`
+      + (stillUnmatched.length ? `\n\n${stillUnmatched.length} have no match and will be skipped: ${stillUnmatched.join(', ')}` : '')
       + `\n\nValues are reference estimates — you can edit any afterward.`
     if (!window.confirm(msg)) return
 
@@ -402,7 +425,7 @@ export default function Recipes() {
     let failed = 0
     results.forEach(r => { if (r.error) failed++; else okMap[r.id] = r.payload })
 
-    // Reflect immediately so the label + coverage recompute.
+    // Reflect immediately so label + coverage recompute.
     setItems(prev => prev.map(i => okMap[i.id] ? { ...i, nutrition: okMap[i.id] } : i))
     setRecipes(prev => prev.map(r => ({
       ...r,
@@ -411,9 +434,9 @@ export default function Recipes() {
     })))
     setAutoFillBusy(false)
 
-    window.alert(`Filled ${Object.keys(okMap).length} ingredient(s) from the library.`
+    window.alert(`Filled ${Object.keys(okMap).length} ingredient(s).`
       + (failed ? ` ${failed} failed to save.` : '')
-      + (unmatched.length ? `\n\nStill need manual entry (no match): ${unmatched.join(', ')}` : ''))
+      + (stillUnmatched.length ? `\n\nStill need manual entry (no USDA match): ${stillUnmatched.join(', ')}` : ''))
   }
 
   async function saveNutri() {
