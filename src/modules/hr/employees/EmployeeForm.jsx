@@ -32,17 +32,49 @@ const EMPTY = {
   ssf_no: '',
   basic_salary: '',
   notes: '',
+  // Reporting & lifecycle
+  supervisor_id: '',
+  retirement_date: '',
+  // Family
+  marital_status: '',
+  spouse_name: '',
+  father_name: '',
+  mother_name: '',
+  grandfather_name: '',
+  children_count: '',
+  nominee_name: '',
+  nominee_relationship: '',
+  nominee_contact: '',
+  // Permanent address (Nepal: Province → District → Municipality/VDC → Ward → Tole)
+  perm_province: '',
+  perm_district: '',
+  perm_municipality: '',
+  perm_ward: '',
+  perm_tole: '',
+  // Current / temporary address
+  same_as_permanent: false,
+  temp_province: '',
+  temp_district: '',
+  temp_municipality: '',
+  temp_ward: '',
+  temp_tole: '',
 }
 
 const TABS = [
   { key: 'personal',   label: 'Personal'   },
   { key: 'employment', label: 'Employment' },
+  { key: 'address',    label: 'Address'    },
+  { key: 'family',     label: 'Family'     },
   { key: 'salary',     label: 'Salary'     },
   { key: 'bank',       label: 'Bank / SSF' },
 ]
 
 const QUICK_EARNINGS   = ['Housing Allowance', 'Transport', 'Medical Allowance', 'Food Allowance', 'Grade Pay']
 const QUICK_DEDUCTIONS = ['CIT / Provident Fund', 'Advance Recovery', 'Other Deduction']
+
+const PROVINCES = ['Koshi', 'Madhesh', 'Bagmati', 'Gandaki', 'Lumbini', 'Karnali', 'Sudurpashchim']
+const MARITAL    = ['single', 'married', 'divorced', 'widowed']
+const NOMINEE_RELATIONS = ['Spouse', 'Father', 'Mother', 'Son', 'Daughter', 'Brother', 'Sister', 'Other']
 
 const inp = {
   background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 6,
@@ -64,6 +96,7 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
   const [tab, setTab]         = useState('personal')
   const [form, setForm]       = useState(isEdit ? { ...EMPTY, ...employee } : { ...EMPTY })
   const [components, setComponents] = useState([])
+  const [supervisors, setSupervisors] = useState([])
   const [saving, setSaving]   = useState(false)
   const [error, setError]     = useState('')
   const [splitOpen, setSplitOpen]   = useState(false)
@@ -80,7 +113,27 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
       .then(({ data }) => { if (data) setComponents(data) })
   }, [isEdit, employee?.id])
 
+  // Active employees available as reporting supervisors (exclude self to prevent self-reporting).
+  useEffect(() => {
+    if (!clientId) return
+    supabase
+      .from('hr_employees')
+      .select('id, full_name, designation')
+      .eq('client_id', clientId)
+      .eq('status', 'active')
+      .order('full_name')
+      .then(({ data }) => setSupervisors((data || []).filter(e => e.id !== employee?.id)))
+  }, [clientId, employee?.id])
+
   function set(field, value) { setForm(f => ({ ...f, [field]: value })) }
+
+  // Suggest retirement date = date of birth + 60 years (SSF pension age in Nepal).
+  function calcRetirement() {
+    if (!form.date_of_birth) return
+    const d = new Date(form.date_of_birth)
+    d.setFullYear(d.getFullYear() + 60)
+    set('retirement_date', d.toISOString().slice(0, 10))
+  }
 
   function addComponent(type, name = '') {
     setComponents(c => [...c, { name, type, calc_type: 'fixed', value: '' }])
@@ -126,6 +179,7 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
     setError('')
     setSaving(true)
 
+    const samePerm = !!form.same_as_permanent
     const payload = {
       ...form,
       client_id:      clientId,
@@ -136,6 +190,17 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
       end_date:       form.end_date       || null,
       pan_no:         form.pan_no         || null,
       citizenship_no: form.citizenship_no || null,
+      // Typed columns must be null (not '') when empty.
+      supervisor_id:   form.supervisor_id   || null,
+      retirement_date: form.retirement_date || null,
+      marital_status:  form.marital_status  || null,
+      children_count:  form.children_count === '' ? null : parseInt(form.children_count, 10),
+      // When "same as permanent" is ticked, mirror the permanent address into current.
+      temp_province:     samePerm ? form.perm_province     : form.temp_province,
+      temp_district:     samePerm ? form.perm_district     : form.temp_district,
+      temp_municipality: samePerm ? form.perm_municipality : form.temp_municipality,
+      temp_ward:         samePerm ? form.perm_ward         : form.temp_ward,
+      temp_tole:         samePerm ? form.perm_tole         : form.temp_tole,
     }
 
     let empId = employee?.id
@@ -286,10 +351,6 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
               <label style={lbl}>Email</label>
               <input type="email" style={inp} placeholder="employee@email.com" value={form.email} onChange={e => set('email', e.target.value)} />
             </div>
-            <div style={col}>
-              <label style={lbl}>Address</label>
-              <input style={inp} placeholder="District, ward, tole" value={form.address} onChange={e => set('address', e.target.value)} />
-            </div>
             <div style={row}>
               <div style={col}>
                 <label style={lbl}>Emergency Contact Name</label>
@@ -348,6 +409,33 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
               </select>
             </div>
             <div style={col}>
+              <label style={lbl}>
+                <Tip text="The person this employee reports to. Only active employees are listed." width={260}>Reporting Supervisor</Tip>
+              </label>
+              <select style={inp} value={form.supervisor_id || ''} onChange={e => set('supervisor_id', e.target.value)}>
+                <option value="">— None —</option>
+                {supervisors.map(s => (
+                  <option key={s.id} value={s.id}>{s.full_name}{s.designation ? ` — ${s.designation}` : ''}</option>
+                ))}
+              </select>
+            </div>
+            <div style={col}>
+              <label style={lbl}>
+                <Tip text="Expected retirement date (AD). SSF pension age in Nepal is 60 — use ↻ to set DOB + 60 years." width={280}>Retirement Date (AD)</Tip>
+              </label>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <input type="date" style={{ ...inp, flex: 1 }} value={form.retirement_date || ''} onChange={e => set('retirement_date', e.target.value)} />
+                <button
+                  type="button"
+                  onClick={calcRetirement}
+                  disabled={!form.date_of_birth}
+                  title={form.date_of_birth ? 'Set to date of birth + 60 years' : 'Enter Date of Birth first (Personal tab)'}
+                  style={{ background: 'none', border: '1px solid #2a2f3d', borderRadius: 5, color: form.date_of_birth ? '#9ca3af' : '#4b5563', fontSize: 11, padding: '8px 10px', cursor: form.date_of_birth ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap' }}>
+                  ↻ Age 60
+                </button>
+              </div>
+            </div>
+            <div style={col}>
               <label style={lbl}>Notes</label>
               <textarea
                 rows={3}
@@ -356,6 +444,141 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
                 value={form.notes}
                 onChange={e => set('notes', e.target.value)}
               />
+            </div>
+          </>}
+
+          {/* ── ADDRESS ── */}
+          {tab === 'address' && <>
+            {isEdit && form.address && (
+              <div style={{ fontSize: 11, color: '#6b7280', background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 6, padding: '8px 12px' }}>
+                On file (legacy): <span style={{ color: '#9ca3af' }}>{form.address}</span>
+              </div>
+            )}
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '4px 0 0' }}>Permanent Address</p>
+            <div style={row}>
+              <div style={col}>
+                <label style={lbl}>Province</label>
+                <select style={inp} value={form.perm_province} onChange={e => set('perm_province', e.target.value)}>
+                  <option value="">Select</option>
+                  {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+              <div style={col}>
+                <label style={lbl}>District</label>
+                <input style={inp} placeholder="e.g. Kathmandu" value={form.perm_district} onChange={e => set('perm_district', e.target.value)} />
+              </div>
+            </div>
+            <div style={row}>
+              <div style={{ ...col, flex: 2 }}>
+                <label style={lbl}>Municipality / VDC</label>
+                <input style={inp} placeholder="e.g. Lalitpur Metropolitan City" value={form.perm_municipality} onChange={e => set('perm_municipality', e.target.value)} />
+              </div>
+              <div style={col}>
+                <label style={lbl}>Ward No.</label>
+                <input style={inp} placeholder="e.g. 5" value={form.perm_ward} onChange={e => set('perm_ward', e.target.value)} />
+              </div>
+            </div>
+            <div style={col}>
+              <label style={lbl}>Tole / Street</label>
+              <input style={inp} placeholder="e.g. Jhamsikhel" value={form.perm_tole} onChange={e => set('perm_tole', e.target.value)} />
+            </div>
+
+            <label style={{ ...lbl, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginTop: 8 }}>
+              <input type="checkbox" checked={!!form.same_as_permanent} onChange={e => set('same_as_permanent', e.target.checked)} />
+              Current address same as permanent
+            </label>
+
+            {!form.same_as_permanent && <>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '8px 0 0' }}>Current Address</p>
+              <div style={row}>
+                <div style={col}>
+                  <label style={lbl}>Province</label>
+                  <select style={inp} value={form.temp_province} onChange={e => set('temp_province', e.target.value)}>
+                    <option value="">Select</option>
+                    {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </div>
+                <div style={col}>
+                  <label style={lbl}>District</label>
+                  <input style={inp} placeholder="e.g. Kathmandu" value={form.temp_district} onChange={e => set('temp_district', e.target.value)} />
+                </div>
+              </div>
+              <div style={row}>
+                <div style={{ ...col, flex: 2 }}>
+                  <label style={lbl}>Municipality / VDC</label>
+                  <input style={inp} placeholder="e.g. Kathmandu Metropolitan City" value={form.temp_municipality} onChange={e => set('temp_municipality', e.target.value)} />
+                </div>
+                <div style={col}>
+                  <label style={lbl}>Ward No.</label>
+                  <input style={inp} placeholder="e.g. 10" value={form.temp_ward} onChange={e => set('temp_ward', e.target.value)} />
+                </div>
+              </div>
+              <div style={col}>
+                <label style={lbl}>Tole / Street</label>
+                <input style={inp} placeholder="e.g. Baluwatar" value={form.temp_tole} onChange={e => set('temp_tole', e.target.value)} />
+              </div>
+            </>}
+          </>}
+
+          {/* ── FAMILY ── */}
+          {tab === 'family' && <>
+            <div style={row}>
+              <div style={col}>
+                <label style={lbl}>Marital Status</label>
+                <select style={inp} value={form.marital_status} onChange={e => set('marital_status', e.target.value)}>
+                  <option value="">Select</option>
+                  {MARITAL.map(m => <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>)}
+                </select>
+              </div>
+              <div style={col}>
+                <label style={lbl}>No. of Children</label>
+                <input type="number" min="0" style={inp} placeholder="0" value={form.children_count} onChange={e => set('children_count', e.target.value)} />
+              </div>
+            </div>
+            {form.marital_status === 'married' && (
+              <div style={col}>
+                <label style={lbl}>Spouse Name</label>
+                <input style={inp} placeholder="Spouse full name" value={form.spouse_name} onChange={e => set('spouse_name', e.target.value)} />
+              </div>
+            )}
+            <div style={row}>
+              <div style={col}>
+                <label style={lbl}>Father's Name</label>
+                <input style={inp} placeholder="Father's full name" value={form.father_name} onChange={e => set('father_name', e.target.value)} />
+              </div>
+              <div style={col}>
+                <label style={lbl}>Mother's Name</label>
+                <input style={inp} placeholder="Mother's full name" value={form.mother_name} onChange={e => set('mother_name', e.target.value)} />
+              </div>
+            </div>
+            <div style={col}>
+              <label style={lbl}>
+                <Tip text="Required on Nepal employment/PAN forms — grandfather's name establishes lineage." width={260}>Grandfather's Name</Tip>
+              </label>
+              <input style={inp} placeholder="Grandfather's full name" value={form.grandfather_name} onChange={e => set('grandfather_name', e.target.value)} />
+            </div>
+
+            <div style={{ borderTop: '1px solid #2a2f3d', paddingTop: 14, marginTop: 6 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#c9a84c', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px' }}>
+                <Tip text="The person who receives this employee's SSF / gratuity / final settlement in the event of death. Keep this current." width={300}>Nominee</Tip>
+              </p>
+              <div style={col}>
+                <label style={lbl}>Nominee Name</label>
+                <input style={inp} placeholder="Full name" value={form.nominee_name} onChange={e => set('nominee_name', e.target.value)} />
+              </div>
+              <div style={row}>
+                <div style={col}>
+                  <label style={lbl}>Relationship</label>
+                  <select style={inp} value={form.nominee_relationship} onChange={e => set('nominee_relationship', e.target.value)}>
+                    <option value="">Select</option>
+                    {NOMINEE_RELATIONS.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </div>
+                <div style={col}>
+                  <label style={lbl}>Contact</label>
+                  <input style={inp} placeholder="98XXXXXXXX" value={form.nominee_contact} onChange={e => set('nominee_contact', e.target.value)} />
+                </div>
+              </div>
             </div>
           </>}
 

@@ -124,6 +124,23 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S152 — 2026-06-25 — HR employee: family, structured address, supervisor, retirement
+
+Expanded the Add/Edit Employee form (`EmployeeForm.jsx`) to match Nepal HR norms (researched against Nimble HRMS + Nepal govt/PAN employee forms). Two new tabs + two Employment fields, all flat columns on `hr_employees`.
+
+- **Address tab** — structured Nepal address (Province → District → Municipality/VDC → Ward → Tole) for **permanent** + **current**, with a "current same as permanent" toggle that mirrors on save. Replaces the old single free-text `address` line (legacy `address` retained in DB, shown read-only "On file" when present).
+- **Family tab** — Marital Status, Spouse (shown when married), Father / Mother / Grandfather names, No. of Children, and a **Nominee** (name, relationship, contact) for SSF/gratuity settlement.
+- **Employment tab** — **Reporting Supervisor** (self-referential select of active employees, excludes self) and **Retirement Date** with a "↻ Age 60" auto-fill (DOB + 60, Nepal SSF pension age).
+- Typed empties serialize to `null` (supervisor_id/retirement_date/children_count) to avoid Postgres type errors; `supervisor_id` FK is `ON DELETE SET NULL`.
+
+**DB migration required** (all nullable, idempotent — see db_schema run log): `supervisor_id`, `retirement_date`, `marital_status`, `spouse_name`, `father_name`, `mother_name`, `grandfather_name`, `children_count`, `nominee_name`, `nominee_relationship`, `nominee_contact`, and `perm_*`/`temp_*` address columns + `same_as_permanent`.
+
+Build clean. Service worker cache `crest-v9` → `crest-v10`.
+
+**Files:** `src/modules/hr/employees/EmployeeForm.jsx`, `public/service-worker.js`
+
+---
+
 ### S151 — 2026-06-25 — Sync public Pricing page with actual plan tiers
 
 Audited the plan/pricing feature lists against the live gating in `AuthContext` (`STARTER_KEYS` / `GROWTH_KEYS` / `PRO_KEYS`). The in-app `Help.js` lists were accurate but missing the two newest Growth features; the public `Pricing.js` page was significantly stale.
