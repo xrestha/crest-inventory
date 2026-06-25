@@ -1119,22 +1119,20 @@ export default function Recipes() {
                       <option value="0">0% (No VAT)</option>
                     </select>
                   </div>
-                  {isAdmin && (
-                    <div className="form-field">
-                      <label><Tip text="Target food cost % for this recipe. Used to compute the suggested menu price. Nepal F&B average: 28–35%." width={260}>Target FC % 🔒</Tip></label>
-                      <input
-                        type="number" min="1" max="100"
-                        value={recipeForm.target_fc_pct}
-                        onChange={e => setRecipeForm(f => ({ ...f, target_fc_pct: e.target.value }))}
-                        placeholder="30"
-                      />
-                      {recipeForm.target_fc_pct && (
-                        <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginTop: 4 }}>
-                          Suggested price targets {recipeForm.target_fc_pct}% food cost
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  <div className="form-field">
+                    <label><Tip text="Target food cost % for this recipe. Used to compute the suggested menu price. Nepal F&B average: 28–35%." width={260}>Target FC %</Tip></label>
+                    <input
+                      type="number" min="1" max="100"
+                      value={recipeForm.target_fc_pct}
+                      onChange={e => setRecipeForm(f => ({ ...f, target_fc_pct: e.target.value }))}
+                      placeholder="30"
+                    />
+                    {recipeForm.target_fc_pct && (
+                      <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginTop: 4 }}>
+                        Suggested price targets {recipeForm.target_fc_pct}% food cost
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
             </div>
