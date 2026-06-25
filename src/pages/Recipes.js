@@ -22,7 +22,7 @@ function fmtNutrient(def, value) {
 const EMPTY_RECIPE = { name: '', category: 'Food', selling_price: '', vat_rate: '0.13', yield_qty: '1', yield_uom: 'portion', target_fc_pct: '30' }
 
 export default function Recipes() {
-  const { clientId, isAdmin, hasFeature } = useAuth()
+  const { clientId, hasFeature } = useAuth()
   const showNutrition = hasFeature('nutrition_facts')
   const { settings, recipeCategories } = useSettings()
   const [recipes, setRecipes] = useState([])
@@ -34,6 +34,8 @@ export default function Recipes() {
   const [recipeForm, setRecipeForm] = useState(EMPTY_RECIPE)
   const [ingredients, setIngredients] = useState([{ _key: Date.now(), item_id: '', sub_recipe_id: '', qty_per_portion: '', type: 'item' }])
   const [saving, setSaving] = useState(false)
+  const [fcPctSaved, setFcPctSaved] = useState(null) // null = new recipe; string = DB value
+  const [fcPctSaving, setFcPctSaving] = useState(false)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [ingSearch, setIngSearch] = useState('')
@@ -198,12 +200,14 @@ export default function Recipes() {
     setSelectedRecipe(null)
     setRecipeForm(EMPTY_RECIPE)
     setIngredients([{ _key: Date.now(), item_id: '', sub_recipe_id: '', qty_per_portion: '', type: 'item' }])
+    setFcPctSaved(null)
     setError('')
     setView('edit')
   }
 
   function openEdit(recipe) {
     setSelectedRecipe(recipe)
+    const fcVal = recipe.target_fc_pct ? String(recipe.target_fc_pct) : '30'
     setRecipeForm({
       name: recipe.name,
       category: recipe.category || 'Food',
@@ -211,8 +215,9 @@ export default function Recipes() {
       vat_rate: recipe.vat_rate || '0.13',
       yield_qty: recipe.yield_qty || '1',
       yield_uom: recipe.yield_uom || 'portion',
-      target_fc_pct: recipe.target_fc_pct ? String(recipe.target_fc_pct) : '30'
+      target_fc_pct: fcVal
     })
+    setFcPctSaved(fcVal)
     const ings = (recipe.recipe_ingredients || []).map(ri => ({
       _key: ri.id,
       item_id: ri.item_id || '',
@@ -228,6 +233,22 @@ export default function Recipes() {
   function openDetail(recipe) {
     setSelectedRecipe(recipe)
     setView('detail')
+  }
+
+  async function saveFcPct() {
+    if (!selectedRecipe?.id) return
+    setFcPctSaving(true)
+    const newVal = parseFloat(recipeForm.target_fc_pct) || 30
+    const { error } = await supabase.from('recipes')
+      .update({ target_fc_pct: newVal })
+      .eq('id', selectedRecipe.id)
+    if (!error) {
+      const strVal = String(newVal)
+      setFcPctSaved(strVal)
+      setSelectedRecipe(r => ({ ...r, target_fc_pct: newVal }))
+      setRecipes(rs => rs.map(r => r.id === selectedRecipe.id ? { ...r, target_fc_pct: newVal } : r))
+    }
+    setFcPctSaving(false)
   }
 
   function addRow() {
@@ -1120,13 +1141,31 @@ export default function Recipes() {
                     </select>
                   </div>
                   <div className="form-field">
-                    <label><Tip text="Target food cost % for this recipe. Used to compute the suggested menu price. Nepal F&B average: 28–35%." width={260}>Target FC %</Tip></label>
-                    <input
-                      type="number" min="1" max="100"
-                      value={recipeForm.target_fc_pct}
-                      onChange={e => setRecipeForm(f => ({ ...f, target_fc_pct: e.target.value }))}
-                      placeholder="30"
-                    />
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Tip text="Target food cost % for this recipe. Used to compute the suggested menu price. Nepal F&B average: 28–35%." width={260}>Target FC %</Tip>
+                      {fcPctSaved !== null && (
+                        <span style={{ fontSize: 10, color: recipeForm.target_fc_pct !== fcPctSaved ? 'var(--theme-amber)' : 'var(--theme-green)', lineHeight: 1 }}>●</span>
+                      )}
+                    </label>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <input
+                        type="number" min="1" max="100"
+                        style={{ flex: 1 }}
+                        value={recipeForm.target_fc_pct}
+                        onChange={e => setRecipeForm(f => ({ ...f, target_fc_pct: e.target.value }))}
+                        placeholder="30"
+                      />
+                      {fcPctSaved !== null && (
+                        <button
+                          onClick={saveFcPct}
+                          disabled={recipeForm.target_fc_pct === fcPctSaved || fcPctSaving}
+                          className="btn btn-ghost"
+                          style={{ fontSize: 11, padding: '4px 10px', whiteSpace: 'nowrap' }}
+                        >
+                          {fcPctSaving ? 'Saving…' : 'Save'}
+                        </button>
+                      )}
+                    </div>
                     {recipeForm.target_fc_pct && (
                       <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginTop: 4 }}>
                         Suggested price targets {recipeForm.target_fc_pct}% food cost
