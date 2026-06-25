@@ -124,6 +124,50 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S146 — 2026-06-25 — Recipes: fix 0% VAT silently coerced to 13%
+
+A recipe saved with **0% (No VAT)** came back as 13% on reopen — the menu price grossed itself up (e.g. 25 → 28.25). Root cause: `parseFloat('0')` is falsy, so every `parseFloat(vat_rate) || 0.13` fallback coerced a 0% selection back to 13%.
+
+- **Save** (`payload.vat_rate`) wrote `0.13` to the DB even with No VAT selected — this is what corrupted the stored value
+- **openEdit** hydration flipped a stored `0` back to `'0.13'`, and now uses `String(rec.vat_rate)` so the value matches the `<select>` option keys
+- **Display paths** (detail view ×2, print card) routed through a new module-level `vatOf(rec)` helper so a legitimately 0% recipe no longer shows grossed-up at 13%
+- Live form math, the Menu Price label, and the "Ex-VAT stored" / "incl. % VAT, rounded" hints are now VAT-aware (show "no VAT" / "Stored" at 0%)
+- The Menu Price input is keyed on `vat_rate` so the displayed gross-up recalculates when the rate dropdown changes
+
+Note: recipes saved before this fix retain `0.13` in the DB — reopen, re-select 0% VAT, and save once to correct them.
+
+No DB change. Build clean.
+
+**Files:** `src/pages/Recipes.js`
+
+---
+
+### S145 — 2026-06-25 — Recipes: Target FC% editable by all users + inline save
+
+The **Target FC%** field was admin-only (lock icon). Unlocked it for all users and gave it a self-contained save flow so the target can be tuned without re-saving the whole recipe.
+
+- Removed the `isAdmin` gate / lock icon from the field
+- Permanent status dot next to the label: **green** = matches the DB value, **amber** = unsaved change
+- Inline **Save** button (edit mode only) does a targeted `UPDATE recipes.target_fc_pct` and syncs `selectedRecipe` + `recipes` local state; disabled when value already matches saved
+- New recipes save the target with the main Save Recipe button as before (no separate button shown)
+- `fcPctSaved` state (string | null) tracks the DB-committed value; the live value feeds the suggested-price calc unchanged
+
+No DB change. Build clean.
+
+**Files:** `src/pages/Recipes.js`
+
+---
+
+### S144 — 2026-06-25 — Recipes: FC% filter pill strip on list view
+
+Added a quick-filter pill strip above the recipe list to slice by food-cost band (e.g. All / ≤30% / 31–38% / >38%), matching the green/amber/red colour coding used elsewhere.
+
+No DB change. Build clean.
+
+**Files:** `src/pages/Recipes.js`
+
+---
+
 ### S143 — 2026-06-25 — Settings: user-configurable recipe categories
 
 Added a **Recipe Categories** tab to Settings (visible to clients with `recipe_costing` feature). Users can add, remove, and reorder their own category names — changes take effect immediately in the recipe form dropdown and the filter tab bar.
