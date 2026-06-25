@@ -124,6 +124,21 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S155 — 2026-06-25 — HR: split Salary + Bank/SSF into a dedicated "Pay Setup" page
+
+The Add/Edit Employee modal carried Salary and Bank/SSF tabs. Moved them out into a new **Pay Setup** page (sidebar, between Employees and Salary Structure) so the employee form stays about the person, and pay/banking is managed on its own.
+
+- **New** `src/modules/hr/pay/PaySetup.jsx` (`/hr/pay-setup`) — employee directory (name, department, pay basis, basic/rate, net, bank set/not-set) filtered by status; click a row → edit modal.
+- **New** `src/modules/hr/pay/PayForm.jsx` — centered modal with the combined **Salary** + **Bank/SSF** tabs (pay basis, split-from-gross, basic, allowances/deductions with quick chips, SSF auto-calc + net summary, bank + SSF no.). Saves the pay/bank columns on `hr_employees` and syncs `hr_salary_components` (delete-all + re-insert).
+- **EmployeeForm** trimmed to Personal · Employment · Address · Family. Removed the salary/component state, split logic, SSF calc, and — importantly — the `hr_salary_components` delete/re-insert from its save, so editing an employee no longer touches their pay components. The pay/bank columns still round-trip untouched on save.
+- Nav: added **Pay Setup** between Employees and Salary Structure (`Layout.js`); route in `App.js`.
+
+No DB change (reuses existing columns/tables). Build clean. Service worker cache `crest-v12` → `crest-v13`.
+
+**Files:** `src/modules/hr/pay/PaySetup.jsx`, `src/modules/hr/pay/PayForm.jsx`, `src/modules/hr/employees/EmployeeForm.jsx`, `src/App.js`, `src/components/Layout.js`, `public/service-worker.js`
+
+---
+
 ### S154 — 2026-06-25 — HR: Employee form as centered modal (was right drawer)
 
 The Add/Edit Employee form (`EmployeeForm.jsx`) opened as a right-side slide-in drawer. Converted it to a **centered floating modal** — outer container now `justify/align center` with padding; the panel is `560px`, `maxHeight 90vh`, `borderRadius 12`, full border + drop shadow, `overflow hidden`. The existing header/footer stay fixed and the body scrolls inside (already `flex:1; overflow-y:auto`). Backdrop-click close unchanged.
