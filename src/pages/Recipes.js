@@ -43,6 +43,7 @@ export default function Recipes() {
   const [importBusy, setImportBusy] = useState(false)
   const [importError, setImportError] = useState('')
   const filterCat = 'all' // no active UI to change this; filter always passes through
+  const [fcFilter, setFcFilter] = useState('all')
 
   // ── Inline per-ingredient nutrition editor (saves to items.nutrition) ──
   const [nutriItemId, setNutriItemId] = useState(null)
@@ -771,12 +772,25 @@ export default function Recipes() {
     })
   }
 
+  const fcWarn = settings.fc_warning_pct || 35
+  const fcCrit = settings.fc_critical_pct || 45
   const ingQ = ingSearch.trim().toLowerCase()
   const filtered = recipes.filter(r => {
     const matchSearch = r.name.toLowerCase().includes(search.toLowerCase())
     const matchCat = filterCat === 'all' || r.category === filterCat
     const matchIngredient = !ingQ || recipeHasIngredient(r, ingQ, recipes)
-    return matchSearch && matchCat && matchIngredient
+    const matchFC = (() => {
+      if (fcFilter === 'all') return true
+      const cost = calcRecipeCost(r, recipes)
+      const price = parseFloat(r.selling_price) || 0
+      const fcPct = price > 0 ? (cost / price) * 100 : null
+      if (fcPct == null) return false
+      if (fcFilter === 'good')  return fcPct <= fcWarn
+      if (fcFilter === 'watch') return fcPct > fcWarn && fcPct <= fcCrit
+      if (fcFilter === 'high')  return fcPct > fcCrit
+      return true
+    })()
+    return matchSearch && matchCat && matchIngredient && matchFC
   })
 
   const regularRecipes = filtered.filter(r => r.category !== 'Sub-Recipe')
@@ -858,6 +872,26 @@ export default function Recipes() {
               Showing recipes that use an ingredient matching "<strong>{ingSearch}</strong>" ({filtered.length} found).
             </div>
           )}
+
+          {/* FC% filter pills */}
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 14 }}>
+            <span style={{ fontSize: 11, color: 'var(--theme-text3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginRight: 2, flexShrink: 0 }}>FC %</span>
+            {[
+              { key: 'all',   label: 'All',                                  color: null },
+              { key: 'good',  label: `✓  ≤${fcWarn}%`,                      color: 'var(--theme-green)' },
+              { key: 'watch', label: `⚠  ${fcWarn}–${fcCrit}%`,             color: 'var(--theme-accent)' },
+              { key: 'high',  label: `✗  >${fcCrit}%`,                      color: 'var(--theme-red)' },
+            ].map(pill => (
+              <button
+                key={pill.key}
+                onClick={() => setFcFilter(pill.key)}
+                className={`tab-btn${fcFilter === pill.key ? ' tab-btn--active' : ''}`}
+                style={fcFilter === pill.key && pill.color ? { color: pill.color, borderColor: pill.color } : {}}
+              >
+                {pill.label}
+              </button>
+            ))}
+          </div>
 
           {/* Tab bar */}
           <div style={{ display: 'flex', gap: 2, marginBottom: 0, borderBottom: '1px solid var(--theme-border)' }}>
