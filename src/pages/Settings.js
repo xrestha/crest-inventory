@@ -4,10 +4,10 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabaseClient'
 import { useTheme, PRESETS } from '../context/ThemeContext'
 
-const ALL_TABS = ['Branding', 'Property', 'Thresholds', 'Item Codes', 'Vendor Codes', 'Sub-Recipe Codes', 'Contact', 'Data', 'Theme']
+const ALL_TABS = ['Branding', 'Property', 'Thresholds', 'Item Codes', 'Vendor Codes', 'Sub-Recipe Codes', 'Recipe Categories', 'Contact', 'Data', 'Theme']
 
 export default function Settings() {
-  const { settings, saveSettings, loadSettings } = useSettings()
+  const { settings, saveSettings, loadSettings, recipeCategories } = useSettings()
   const { clientId, isAdmin, hasFeature } = useAuth()
   const { themeKey, colors, switchPreset, updateColor } = useTheme()
   const ADMIN_TABS = new Set(['Branding', 'Contact', 'Theme', 'Data'])
@@ -16,6 +16,7 @@ export default function Settings() {
     if (isAdmin) return ADMIN_TABS.has(t)
     if (CLIENT_HIDDEN.has(t)) return false
     if (t === 'Sub-Recipe Codes' && !hasFeature('recipe_costing')) return false
+    if (t === 'Recipe Categories' && !hasFeature('recipe_costing')) return false
     return true
   })
   const [activeTab, setActiveTab] = useState(isAdmin ? 'Branding' : 'Thresholds')
@@ -31,14 +32,42 @@ export default function Settings() {
   const [regenerateMsgSrc, setRegenerateMsgSrc] = useState('')
   const [logoUploading, setLogoUploading] = useState(false)
   const [logoMsg, setLogoMsg] = useState('')
+  const [cats, setCats] = useState([])
+  const [newCat, setNewCat] = useState('')
+  const [catSaving, setCatSaving] = useState(false)
+  const [catMsg, setCatMsg] = useState('')
 
   useEffect(() => {
     loadSettings(isAdmin && !clientId ? null : clientId)
   }, [clientId, isAdmin]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { setForm({ ...settings }) }, [settings])
+  useEffect(() => { setCats([...recipeCategories]) }, [recipeCategories]) // eslint-disable-line
 
   function update(key, val) { setForm(f => ({ ...f, [key]: val })) }
+
+  function addCat() {
+    const name = newCat.trim()
+    if (!name) return
+    if (cats.some(c => c.toLowerCase() === name.toLowerCase())) return
+    if (name.toLowerCase() === 'sub-recipe') return
+    setCats(prev => [...prev, name])
+    setNewCat('')
+  }
+
+  async function saveCategories() {
+    const cleaned = cats.map(c => c.trim()).filter(Boolean)
+    if (cleaned.length === 0) { setCatMsg('error:Add at least one category.'); return }
+    setCatSaving(true); setCatMsg('')
+    try {
+      await saveSettings({ ...settings, recipe_categories: cleaned })
+      setCatMsg('ok:Categories saved.')
+      setTimeout(() => setCatMsg(''), 2500)
+    } catch (e) {
+      setCatMsg('error:' + e.message)
+    }
+    setCatSaving(false)
+  }
 
   async function save() {
     setSaving(true)
@@ -457,6 +486,56 @@ export default function Settings() {
               </p>
             )}
           </div>
+        </div>
+      )}
+
+      {/* RECIPE CATEGORIES */}
+      {activeTab === 'Recipe Categories' && (
+        <div className="card">
+          <h3 style={{ margin: '0 0 8px', fontSize: 14, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Recipe Categories</h3>
+          <p style={{ fontSize: 13, color: 'var(--theme-text2)', margin: '0 0 20px' }}>
+            These appear in the recipe form dropdown and as filter tabs. <strong>Sub-Recipe / Prep Item</strong> is system-managed and cannot be removed.
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
+            {cats.map((cat, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', border: '1px solid var(--theme-border)', borderRadius: 6, background: 'var(--theme-bg)' }}>
+                <span style={{ flex: 1, fontSize: 13, color: 'var(--theme-text1)' }}>{cat}</span>
+                <button
+                  onClick={() => setCats(prev => prev.filter((_, idx) => idx !== i))}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-red)', fontSize: 18, lineHeight: 1, padding: '0 4px', opacity: 0.7 }}
+                  title="Remove category"
+                >×</button>
+              </div>
+            ))}
+            {cats.length === 0 && (
+              <p style={{ fontSize: 13, color: 'var(--theme-text3)', fontStyle: 'italic' }}>No categories — add at least one below.</p>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            <input
+              value={newCat}
+              onChange={e => setNewCat(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addCat()}
+              placeholder="e.g. Cocktails, Combo Meals, Specials"
+              style={{ flex: 1 }}
+            />
+            <button className="btn btn-ghost" onClick={addCat} disabled={!newCat.trim()}>+ Add</button>
+          </div>
+
+          <p style={{ fontSize: 11, color: 'var(--theme-text3)', margin: '0 0 20px' }}>
+            Removing a category won't change recipes already tagged with it — they'll still appear under "All Recipes".
+          </p>
+
+          <button className="btn btn-primary" onClick={saveCategories} disabled={catSaving || cats.length === 0}>
+            {catSaving ? 'Saving…' : 'Save Categories'}
+          </button>
+          {catMsg && (
+            <p style={{ fontSize: 12, marginTop: 10, color: catMsg.startsWith('error') ? 'var(--theme-red)' : 'var(--theme-green)' }}>
+              {catMsg.replace(/^(ok|error):/, '')}
+            </p>
+          )}
         </div>
       )}
 

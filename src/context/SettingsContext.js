@@ -19,6 +19,8 @@ const DEFAULT_SETTINGS = {
   contact_website: ''
 }
 
+export const DEFAULT_RECIPE_CATS = ['Food', 'Beverage', 'Dessert', 'Snack', 'Other']
+
 const DEFAULT_FLAGS = {
   sales_entry: false,
   monthly_summary: false,
@@ -149,12 +151,16 @@ export function SettingsProvider({ children }) {
     return data || { ...DEFAULT_FLAGS, client_id: cid }
   }
 
+  const recipeCategories = (settings.recipe_categories?.length > 0)
+    ? settings.recipe_categories
+    : DEFAULT_RECIPE_CATS
+
   return (
     <SettingsContext.Provider value={{
       settings, featureFlags, loading,
       saveSettings, saveClientSettings, saveFeatureFlags,
       loadSettings, loadClientSettings, loadClientFeatureFlags,
-      isFeatureEnabled
+      isFeatureEnabled, recipeCategories
     }}>
       {children}
     </SettingsContext.Provider>

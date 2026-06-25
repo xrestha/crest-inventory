@@ -124,6 +124,25 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S143 — 2026-06-25 — Settings: user-configurable recipe categories
+
+Added a **Recipe Categories** tab to Settings (visible to clients with `recipe_costing` feature). Users can add, remove, and reorder their own category names — changes take effect immediately in the recipe form dropdown and the filter tab bar.
+
+- `SettingsContext` exports `DEFAULT_RECIPE_CATS` and a derived `recipeCategories` value that reads `settings.recipe_categories` (text[] column) with automatic fallback to the defaults — zero disruption for existing clients
+- `Recipes.js` replaces the hardcoded `RECIPE_CATS` constant with `recipeCategories` from context; tab bar order follows the user-defined list; recipes tagged with a removed category still appear under All Recipes (orphan-safe)
+- Sub-Recipe / Prep Item is excluded from the user list — it remains system-managed
+
+**DB migration required:**
+```sql
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS recipe_categories text[];
+```
+
+Build clean.
+
+**Files:** `src/context/SettingsContext.js`, `src/pages/Settings.js`, `src/pages/Recipes.js`
+
+---
+
 ### S142 — 2026-06-25 — Recipes: USDA FoodData Central live nutrition fallback
 
 When "⚡ Auto-fill nutrition" can't match an ingredient in the regional seed library, it now fires a live lookup against the **USDA FoodData Central API** (80,000+ foods, free, CC0) as a fallback. Seed matches still take priority; USDA fills the gaps.

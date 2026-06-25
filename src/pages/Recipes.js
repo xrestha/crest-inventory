@@ -13,7 +13,6 @@ import * as XLSX from 'xlsx'
 
 const UNITS = ['GM', 'ML', 'KG', 'LTR', 'PCS', 'PKT', 'BTL', 'BOX', 'ROLL', 'BUNCH', 'JAR', 'CTN', 'BAG', 'TIN', 'SACHET']
 
-const RECIPE_CATS = ['Food', 'Beverage', 'Dessert', 'Snack', 'Sub-Recipe', 'Other']
 
 // Format one nutrient value for display, e.g. "130 kcal", "2.7 g".
 function fmtNutrient(def, value) {
@@ -25,7 +24,7 @@ const EMPTY_RECIPE = { name: '', category: 'Food', selling_price: '', vat_rate: 
 export default function Recipes() {
   const { clientId, isAdmin, hasFeature } = useAuth()
   const showNutrition = hasFeature('nutrition_facts')
-  const { settings } = useSettings()
+  const { settings, recipeCategories } = useSettings()
   const [recipes, setRecipes] = useState([])
   const [overheadData, setOverheadData] = useState(null) // { totalOverheads, totalCovers, openPeriodId } | null
   const [items, setItems] = useState([])
@@ -783,8 +782,12 @@ export default function Recipes() {
   const regularRecipes = filtered.filter(r => r.category !== 'Sub-Recipe')
   const subRecipeList = filtered.filter(r => r.category === 'Sub-Recipe')
 
-  // Build tab list dynamically from categories present in recipes
-  const presentCats = RECIPE_CATS.filter(c => c !== 'Sub-Recipe' && recipes.some(r => r.category === c))
+  // Build tab list: user-defined order first, then any orphaned categories (recipes tagged with a removed category)
+  const usedCats = [...new Set(recipes.filter(r => r.category !== 'Sub-Recipe').map(r => r.category))]
+  const presentCats = [
+    ...recipeCategories.filter(c => usedCats.includes(c)),
+    ...usedCats.filter(c => !recipeCategories.includes(c)),
+  ]
   const tabs = [
     { key: 'all', label: 'All Recipes', count: regularRecipes.length },
     ...presentCats.map(c => ({
@@ -1035,7 +1038,7 @@ export default function Recipes() {
               <div className="form-field">
                 <label>Category</label>
                 <select value={recipeForm.category} onChange={e => setRecipeForm(f => ({ ...f, category: e.target.value }))}>
-                  {RECIPE_CATS.map(c => <option key={c} value={c}>{c === 'Sub-Recipe' ? '⚙ Sub-Recipe / Prep Item' : c}</option>)}
+                  {[...recipeCategories, 'Sub-Recipe'].map(c => <option key={c} value={c}>{c === 'Sub-Recipe' ? '⚙ Sub-Recipe / Prep Item' : c}</option>)}
                 </select>
               </div>
               {isSubRecipeForm ? (
