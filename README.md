@@ -124,6 +124,19 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S139 — 2026-06-25 — Purchases: day pill strip filter
+
+By mid-month the Purchases list grows long (10+ days of bills), making it tedious to scroll to find or edit a specific day's entries. Replaced the "All Days" dropdown with a horizontal scrollable **pill strip** above the item filter.
+
+- Each pill shows the BS day number and a bill count (`Day 10 · 3 bills`). Clicking any pill filters the list instantly to that day's entries only; clicking **All Days** resets.
+- The `billCountPerDay` map is derived from `purchases` via `useMemo` (counts distinct `purchase_group_id` per day).
+- The item filter select and entry count remain on the row below the strip, unchanged.
+- No DB change. Build clean.
+
+**Files:** `src/pages/Purchases.js`
+
+---
+
 ### S138 — 2026-06-24 — Save & Next/Prev navigation in edit dialogs
 
 Editing many records one-by-one meant closing and reopening the modal each time. Added in-modal record navigation.

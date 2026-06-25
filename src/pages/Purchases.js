@@ -379,6 +379,17 @@ export default function Purchases() {
   const filteredValue = filtered.reduce((s, p) => s + p.qty * p.rate, 0)
   const uniqueDays  = [...new Set(purchases.map(p => p.bs_day))].sort((a, b) => a - b)
 
+  // Number of distinct bills (groups) per day — shown on each day pill
+  const billCountPerDay = useMemo(() => {
+    const map = {}
+    purchases.forEach(p => {
+      const gid = p.purchase_group_id || p.id
+      if (!map[p.bs_day]) map[p.bs_day] = new Set()
+      map[p.bs_day].add(gid)
+    })
+    return Object.fromEntries(Object.entries(map).map(([d, s]) => [parseInt(d), s.size]))
+  }, [purchases])
+
   const byDay = filtered.reduce((acc, p) => {
     const day = p.bs_day
     if (!acc[day]) acc[day] = {}
@@ -705,19 +716,42 @@ export default function Purchases() {
           )}
 
           {/* Filters */}
-          <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-            <select className="form-select" value={filterDay} onChange={e => setFilterDay(e.target.value)}>
-              <option value="all">All Days</option>
-              {uniqueDays.map(d => <option key={d} value={d}>Day {d}</option>)}
-            </select>
-            <select className="form-select" value={filterItem} onChange={e => setFilterItem(e.target.value)}>
-              <option value="all">All Items</option>
-              {items.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-            </select>
-            {(filterDay !== 'all' || filterItem !== 'all') && (
-              <button className="btn btn-ghost" style={{ fontSize: 12, padding: '6px 12px' }} onClick={() => { setFilterDay('all'); setFilterItem('all') }}>Clear Filters</button>
-            )}
-            <span style={{ fontSize: 13, color: 'var(--theme-text2)' }}>{filtered.length} entr{filtered.length !== 1 ? 'ies' : 'y'}</span>
+          <div style={{ marginBottom: 16 }}>
+            {/* Day pill strip */}
+            <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, marginBottom: 10 }}>
+              <button
+                className={`tab-btn${filterDay === 'all' ? ' tab-btn--active' : ''}`}
+                onClick={() => setFilterDay('all')}
+              >
+                All Days
+              </button>
+              {uniqueDays.map(d => (
+                <button
+                  key={d}
+                  className={`tab-btn${filterDay === String(d) ? ' tab-btn--active' : ''}`}
+                  onClick={() => setFilterDay(String(d))}
+                  style={{ whiteSpace: 'nowrap' }}
+                >
+                  Day {d}
+                  {billCountPerDay[d] > 0 && (
+                    <span style={{ marginLeft: 5, fontSize: 10, opacity: 0.65 }}>
+                      · {billCountPerDay[d]} {billCountPerDay[d] === 1 ? 'bill' : 'bills'}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+            {/* Item filter + count */}
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+              <select className="form-select" value={filterItem} onChange={e => setFilterItem(e.target.value)}>
+                <option value="all">All Items</option>
+                {items.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+              </select>
+              {(filterDay !== 'all' || filterItem !== 'all') && (
+                <button className="btn btn-ghost" style={{ fontSize: 12, padding: '6px 12px' }} onClick={() => { setFilterDay('all'); setFilterItem('all') }}>Clear Filters</button>
+              )}
+              <span style={{ fontSize: 13, color: 'var(--theme-text2)' }}>{filtered.length} entr{filtered.length !== 1 ? 'ies' : 'y'}</span>
+            </div>
           </div>
 
           {/* Purchases table */}
