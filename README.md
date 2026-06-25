@@ -124,6 +124,19 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S151 — 2026-06-25 — Sync public Pricing page with actual plan tiers
+
+Audited the plan/pricing feature lists against the live gating in `AuthContext` (`STARTER_KEYS` / `GROWTH_KEYS` / `PRO_KEYS`). The in-app `Help.js` lists were accurate but missing the two newest Growth features; the public `Pricing.js` page was significantly stale.
+
+- **Pricing.js** was selling Starter features (Sales Entry, Monthly Summary, Payment Summary, Reorder, VAT) as *Growth* extras, omitted ~9 Starter features, missed several Growth features (Outstanding Payables, Requisitions, Dead Stock, Recipe Margin, Staff Meals), missed Pro's Period Comparison + Shrinkage Report, and mis-listed Settings under Pro. Rewrote all three feature arrays to match the real tiers (prices unchanged).
+- Added the two newest Growth features — **Menu Repricing** and **Nutrition Facts** — to both `Pricing.js` and `Help.js` Growth lists.
+
+No DB change. Build clean. Service worker cache `crest-v8` → `crest-v9`.
+
+**Files:** `src/pages/Pricing.js`, `src/pages/Help.js`, `public/service-worker.js`
+
+---
+
 ### S150 — 2026-06-25 — Menu Repricing report + Dashboard "Menu Health" card
 
 New owner-facing report (the gap industry sources rank #1: "Menu Price Analysis"). Surfaces, in one prioritized list, **which dishes are priced below their target food-cost % and how much margin that leaks per month** — and the exact price to charge to fix it. All inputs already existed (`target_fc_pct`, `getSuggestedPrice`, sales qty); nothing was being aggregated this way.

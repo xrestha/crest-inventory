@@ -297,9 +297,11 @@ const GROWTH_EXTRAS = [
   'Internal Requisitions (Store to Department)',
   'Dead Stock & Slow Mover Detection',
   'Recipe Contribution Margin Report',
+  'Menu Repricing (Underpriced Dish Finder)',
   'Best & Worst Sellers Analysis',
   'Purchase Orders',
   'Staff Meals Tracking',
+  'Nutrition Facts & Allergen Labels',
 ]
 const PRO_EXTRAS = [
   'Period Comparison (6 / 12 / 24 / All Periods)',

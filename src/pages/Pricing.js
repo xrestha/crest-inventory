@@ -15,29 +15,40 @@ const STARTER_FEATURES = [
   'BS Calendar Periods',
   'Purchases + Vendor Returns',
   'Stock Count (Opening / Closing / Wastage)',
+  'Mobile App — Installable PWA, Offline Stock Counting',
+  'Sales Entry (Bulk or Daily)',
+  'Payment Summary (Cash / Credit / FonePay)',
+  'Monthly & Annual Summary (COGS, BS Fiscal Year)',
+  'Reorder Report & Par Levels',
+  'VAT & Non-VAT Reports',
+  'Wastage Report with Excel Export',
+  'Settings & Outlet Customisation',
 ]
 
 const GROWTH_EXTRAS = [
-  'Sales Entry (Bulk & Daily)',
   'Recipe Costing & Live Food Cost %',
-  'Variance Report',
-  'Monthly Summary (COGS)',
-  'Payment Summary (Cash / Credit / FonePay)',
-  'Reorder Report & Par Levels',
-  'Budget vs Actual',
+  'Variance Report (Theoretical vs Actual)',
+  'Recipe Contribution Margin Report',
+  'Menu Repricing (Underpriced Dish Finder)',
   'Best & Worst Sellers Analysis',
-  'VAT Report',
+  'Budget vs Actual per Category',
+  'Outstanding Payables with Aging',
+  'Internal Requisitions (Store → Department)',
+  'Dead Stock & Slow Mover Detection',
+  'Staff Meals Tracking',
+  'Nutrition Facts & Allergen Labels',
   'Purchase Orders (PO → GRN Workflow)',
 ]
 
 const PRO_EXTRAS = [
-  'Menu Engineering (Star / Puzzle / Plowhorses / Dogs)',
+  'Menu Engineering (Star / Puzzle / Plowhorse / Dog)',
   'Theoretical vs Actual Food Cost Variance',
+  'Period Comparison (6 / 12 / 24 / All Periods)',
+  'Shrinkage Report (Multi-Period Consistency)',
   'FIFO / Expiry Tracking',
   'Vendor Spend Report',
-  'Supplier Price Tracker',
+  'Supplier Price Tracker & Rate Alerts',
   'Overheads & True Margin Analysis',
-  'Custom Branding & Settings',
 ]
 
 const PLANS = [
