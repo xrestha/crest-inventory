@@ -1120,9 +1120,21 @@ function FeatureAccessModal({ client, onClose }) {
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
 
+  // clientPlan drives the IMS feature grid (which tiers are auto-included) — always the IMS plan.
   const clientPlan = client.plan || 'starter'
-  const planColor  = clientPlan === 'pro' ? 'var(--theme-accent)' : clientPlan === 'growth' ? 'var(--theme-green)' : 'var(--theme-text3)'
   const planLabel  = clientPlan.charAt(0).toUpperCase() + clientPlan.slice(1)
+  // These feature flags are all Crest IMS features. They only mean anything when IMS is
+  // enabled for the client — ModuleGate blocks all IMS routes otherwise. Don't show the
+  // IMS plan grid for an HR-only client.
+  const imsEnabled = client.ims_enabled !== false
+  const hrEnabled  = !!client.hr_enabled
+  // Header reflects the module that's actually active for this client, with the plan the
+  // admin selected for it in the Modules tab — for an HR-only client that's hr_plan, not
+  // the (irrelevant) IMS plan.
+  const activeModule = imsEnabled ? 'IMS' : (hrEnabled ? 'HR' : 'IMS')
+  const activePlan   = (imsEnabled ? client.plan : (hrEnabled ? client.hr_plan : client.plan)) || 'starter'
+  const activeColor  = activePlan === 'pro' ? 'var(--theme-accent)' : activePlan === 'growth' ? 'var(--theme-green)' : 'var(--theme-text3)'
+  const activeLabel  = activePlan.charAt(0).toUpperCase() + activePlan.slice(1)
 
   useEffect(() => {
     loadClientFeatureFlags(client.id).then(data => {
@@ -1156,17 +1168,27 @@ function FeatureAccessModal({ client, onClose }) {
         {/* Header */}
         <div style={{ padding: '18px 24px 14px', borderBottom: '1px solid var(--theme-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <h3 style={{ margin: 0, fontSize: 15, color: 'var(--theme-text1)', fontFamily: 'Georgia, serif' }}>Feature Access</h3>
+            <h3 style={{ margin: 0, fontSize: 15, color: 'var(--theme-text1)', fontFamily: 'Georgia, serif' }}>Feature Access · Crest {activeModule}</h3>
             <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--theme-text2)' }}>
               {client.name} ·{' '}
-              <span style={{ fontWeight: 700, color: planColor }}>{planLabel} Plan</span>
-              <span style={{ marginLeft: 10, fontSize: 11, color: 'var(--theme-text3)' }}>Checkboxes override plan — check to grant, uncheck to revoke</span>
+              <span style={{ fontWeight: 700, color: activeColor }}>{activeModule} {activeLabel} Plan</span>
+              {imsEnabled && <span style={{ marginLeft: 10, fontSize: 11, color: 'var(--theme-text3)' }}>Checkboxes override plan — check to grant, uncheck to revoke</span>}
             </p>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--theme-text2)', fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: '2px 6px' }}>✕</button>
         </div>
 
-        {/* Body — 4-column layout, one plan tier per column, no scroll */}
+        {/* IMS disabled — these IMS feature grants would be inert (ModuleGate blocks all IMS routes) */}
+        {!imsEnabled ? (
+          <div style={{ padding: '32px 24px', textAlign: 'center' }}>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--theme-text1)', fontWeight: 600 }}>Granular feature access applies to Crest IMS only</p>
+            <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--theme-text2)', lineHeight: 1.5 }}>
+              {hrEnabled && <>This client is on <strong>Crest HR</strong> (<span style={{ color: activeColor, fontWeight: 700 }}>{activeLabel}</span>) — HR access is set by its plan tier in the Modules tab, not per-feature.<br/></>}
+              To manage IMS features here, enable the <strong>Crest IMS</strong> module from the client card.
+            </p>
+          </div>
+        ) : (
+        /* Body — 4-column layout, one plan tier per column, no scroll */
         <div style={{ padding: '16px 24px 8px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0 14px', alignItems: 'start' }}>
           {loading ? <p style={{ color: 'var(--theme-text2)', fontSize: 13, gridColumn: '1/-1' }}>Loading…</p> : FEATURE_GROUPS.map(group => {
             const planIncluded = isPlanIncluded(group.tier, clientPlan)
@@ -1245,6 +1267,7 @@ function FeatureAccessModal({ client, onClose }) {
             )
           })}
         </div>
+        )}
 
         {/* Footer */}
         <div style={{ padding: '12px 24px', borderTop: '1px solid var(--theme-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1253,9 +1276,11 @@ function FeatureAccessModal({ client, onClose }) {
           </span>
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 14px' }} onClick={onClose}>Close</button>
-            <button className="btn btn-primary" style={{ fontSize: 12, padding: '5px 14px' }} onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving…' : 'Save'}
-            </button>
+            {imsEnabled && (
+              <button className="btn btn-primary" style={{ fontSize: 12, padding: '5px 14px' }} onClick={handleSave} disabled={saving}>
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+            )}
           </div>
         </div>
       </div>
