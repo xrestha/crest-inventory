@@ -537,9 +537,9 @@ export default function Recipes() {
       }
     }
 
+    await init()
     setSaving(false)
     setView('list')
-    init()
   }
 
   async function deleteRecipe(recipe) {
@@ -550,31 +550,6 @@ export default function Recipes() {
     }
     await supabase.from('recipes').delete().eq('id', recipe.id)
     init()
-  }
-
-  // ── Clone: prefill the New Recipe form from an existing recipe ──
-  function cloneRecipe(recipe) {
-    setSelectedRecipe(null) // null → save() creates a NEW recipe
-    setRecipeForm({
-      name: `${recipe.name} (Copy)`,
-      category: recipe.category || 'Food',
-      selling_price: recipe.selling_price || '',
-      vat_rate: recipe.vat_rate || '0.13',
-      yield_qty: recipe.yield_qty || '1',
-      yield_uom: recipe.yield_uom || 'portion',
-      target_fc_pct: recipe.target_fc_pct ? String(recipe.target_fc_pct) : '30',
-    })
-    setIngredients(
-      (recipe.recipe_ingredients || []).map(ri => ({
-        _key: ri.id + '-' + Math.random().toString(36).slice(2),
-        item_id: ri.item_id || '',
-        sub_recipe_id: ri.sub_recipe_id || '',
-        qty_per_portion: ri.qty_per_portion,
-        type: ri.sub_recipe_id ? 'sub_recipe' : 'item',
-      }))
-    )
-    setError('')
-    setView('edit')
   }
 
   // ── Bulk Excel import ─────────────────────────────────────────
@@ -958,7 +933,6 @@ export default function Recipes() {
                           <td style={{ textAlign: 'right' }}>
                             <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                               <button className="btn btn-ghost" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => setPrintRecipe(recipe)}>🖶</button>
-                              <button className="btn btn-ghost" style={{ fontSize: 11, padding: '4px 8px' }} title="Duplicate this recipe" onClick={() => cloneRecipe(recipe)}>Clone</button>
                               <button className="btn btn-ghost" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => openEdit(recipe)}>Edit</button>
                               <button className="btn btn-danger" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => deleteRecipe(recipe)}>Del</button>
                             </div>
@@ -1009,7 +983,6 @@ export default function Recipes() {
                           <td style={{ textAlign: 'right' }}>
                             <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                               <button className="btn btn-ghost" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => setPrintRecipe(recipe)}>🖶</button>
-                              <button className="btn btn-ghost" style={{ fontSize: 11, padding: '4px 8px' }} title="Duplicate this recipe" onClick={() => cloneRecipe(recipe)}>Clone</button>
                               <button className="btn btn-ghost" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => openEdit(recipe)}>Edit</button>
                               <button className="btn btn-danger" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => deleteRecipe(recipe)}>Del</button>
                             </div>

@@ -124,6 +124,19 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S140 — 2026-06-25 — Recipes: remove Clone button + fix stale-data bug on save
+
+Two fixes to Recipe Costing:
+
+- **Removed Clone button** from both the regular recipes table and the sub-recipes table. The now-unused `cloneRecipe` function was also deleted.
+- **Fixed stale-data bug** — `save()` was calling `setView('list')` before `await`-ing `init()`, so opening a recipe immediately after saving could show the old ingredient list. Reordered to `await init()` first, then switch to list — the "Saving…" state stays until fresh data is loaded.
+
+No DB change. Build clean.
+
+**Files:** `src/pages/Recipes.js`
+
+---
+
 ### S139 — 2026-06-25 — Purchases: day pill strip filter
 
 By mid-month the Purchases list grows long (10+ days of bills), making it tedious to scroll to find or edit a specific day's entries. Replaced the "All Days" dropdown with a horizontal scrollable **pill strip** above the item filter.
