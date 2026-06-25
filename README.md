@@ -124,6 +124,35 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S148 — 2026-06-25 — UI: remove number-input spinner arrows app-wide
+
+Hid the up/down stepper arrows on all `type="number"` inputs (qty boxes in Sales, Requisitions, recipe forms, etc.) for a cleaner look. Inputs stay true number fields — mobile numeric keypad and `min`/`max` validation are preserved.
+
+- Single rule in `Layout.css` targeting `::-webkit-inner/outer-spin-button` (Chrome/Safari/Edge) + `appearance: textfield` (Firefox) — applies everywhere, no per-field markup
+- Service worker cache bumped `crest-v5` → `crest-v6`
+
+No DB change. Build clean.
+
+**Files:** `src/components/Layout.css`, `public/service-worker.js`
+
+---
+
+### S147 — 2026-06-25 — Admin/UI: ghost-button contrast + module-aware Feature Access
+
+Two fixes. **Button contrast:** `.btn-ghost` and `.btn-danger` were near-invisible against card backgrounds (transparent fill, faint `--theme-text2` text + `--theme-border` outline), so the print/Edit/Save/Del actions disappeared. Gave them a filled `--theme-input-bg` surface, brighter `--theme-text1` text, lighter border, and an accent-colored hover — readable across all 9 themes, fixed in one place.
+
+**Feature Access modal (AdminClients):** the modal lists only Crest IMS feature flags and showed `client.plan` (the IMS plan) regardless of the client's actual module — misleading for an HR-only client like "HR TEST".
+
+- Title now reads **"Feature Access · Crest {module}"** and the badge reflects the **active module's** plan (`hr_plan` for an HR-only client, not the irrelevant IMS plan), mirroring the admin's Modules-tab selection
+- When IMS is not enabled, the IMS plan grid is replaced with a notice ("Granular feature access applies to Crest IMS only…") and the Save button is hidden — nothing to grant since `ModuleGate` blocks all IMS routes anyway
+- Service worker cache bumped `crest-v4` → `crest-v5`
+
+No DB change. Build clean.
+
+**Files:** `src/components/Layout.css`, `src/pages/AdminClients.js`, `public/service-worker.js`
+
+---
+
 ### S146 — 2026-06-25 — Recipes: fix 0% VAT silently coerced to 13%
 
 A recipe saved with **0% (No VAT)** came back as 13% on reopen — the menu price grossed itself up (e.g. 25 → 28.25). Root cause: `parseFloat('0')` is falsy, so every `parseFloat(vat_rate) || 0.13` fallback coerced a 0% selection back to 13%.
