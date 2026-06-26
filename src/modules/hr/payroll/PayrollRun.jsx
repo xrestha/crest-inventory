@@ -263,7 +263,7 @@ export default function PayrollRun() {
                       <th style={{ textAlign: 'right' }}><Tip text="Overtime pay at 1.5× the hourly rate." width={200}>OT</Tip></th>
                       <th style={{ textAlign: 'right' }}><Tip text="Pay deducted for unpaid-absence days (basic ÷ days in month × unpaid days)." width={260}>Absence</Tip></th>
                       <th style={{ textAlign: 'right' }}><Tip text="11% SSF — only for employees with an SSF number on file." width={230}>SSF</Tip></th>
-                      <th style={{ textAlign: 'right' }}>Other Ded</th>
+                      <th style={{ textAlign: 'right' }}><Tip text="All configured deductions except SSF — loan repayments, CIT/PF, advances, etc." width={250}>Other Ded</Tip></th>
                       <th style={{ textAlign: 'right' }}><Tip text="Income tax, computed automatically from FY tax slabs using year-to-date projection. Editable while draft if you need to override." width={270}>TDS</Tip></th>
                       <th style={{ textAlign: 'right', color: '#c9a84c' }}>Net Pay</th>
                       <th></th>

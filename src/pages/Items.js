@@ -640,17 +640,23 @@ export default function Items() {
                   <th>Item Name</th>
                   {showCategoryCol && <th>Category</th>}
                   <th>UOM</th>
-                  <th style={{ textAlign: 'right' }}>Purch. Qty</th>
-                  <th style={{ textAlign: 'right' }}>Rate (NPR)</th>
-                  <th style={{ textAlign: 'right' }}>/ UOM</th>
+                  <th style={{ textAlign: 'right' }}>
+                    <Tip text="Quantity in base units per purchase order unit (e.g. 1 carton = 12 bottles → 12). Used to convert purchase-unit prices to per-base-unit rates." width={280}>Purch. Qty</Tip>
+                  </th>
+                  <th style={{ textAlign: 'right' }}>
+                    <Tip text="Purchase price per purchase unit (e.g. per carton). Divide by Purch. Qty to get the per-base-unit rate." width={260}>Rate (NPR)</Tip>
+                  </th>
+                  <th style={{ textAlign: 'right' }}>
+                    <Tip text="Rate per base unit = Rate ÷ Purch. Qty. This is the cost used in recipe costing and stock valuation." width={270}>/ UOM</Tip>
+                  </th>
                   <th style={{ textAlign: 'right' }}>
                     <Tip width={240} text="Usable % after trim/prep. Red = trim loss is factored into recipe costing. 100% = no loss (default).">
                       Yield %
                     </Tip>
                   </th>
-                  <th>Conversion</th>
+                  <th><Tip text="Purchase unit → base unit mapping (e.g. 1 carton = 12 bottles). Set this when your vendor sells in bulk but you track stock in individual units." width={280}>Conversion</Tip></th>
                   <th>Status</th>
-                  <th>Used In</th>
+                  <th><Tip text="Number of recipes that use this item as an ingredient. Helps identify items that are safe to archive." width={250}>Used In</Tip></th>
                   <th></th>
                 </tr>
               </thead>

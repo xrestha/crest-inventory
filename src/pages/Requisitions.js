@@ -320,8 +320,8 @@ export default function Requisitions() {
                     <th style={{ textAlign: 'right' }}>
                       <Tip text="Quantity actually issued from the store. Leave blank to issue the full requested quantity when you confirm." width={260}>Qty Issued</Tip>
                     </th>
-                    <th style={{ textAlign: 'right', color: 'var(--theme-text3)' }}>Rate / UOM</th>
-                    <th style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>Est. Value</th>
+                    <th style={{ textAlign: 'right', color: 'var(--theme-text3)' }}><Tip text="Per-base-unit cost from the most recent purchase entry for this item." width={240}>Rate / UOM</Tip></th>
+                    <th style={{ textAlign: 'right', color: 'var(--theme-accent)' }}><Tip text="Estimated store issue cost = Qty Issued (or Requested) × Rate / UOM." width={240}>Est. Value</Tip></th>
                     <th style={{ width: 36 }}></th>
                   </tr>
                 </thead>
@@ -488,8 +488,8 @@ export default function Requisitions() {
                       <th style={{ textAlign: 'right' }}>
                         <Tip text="Set the actual quantity you are issuing from the store. Can be less than requested." width={230}>Qty Issued</Tip>
                       </th>
-                      <th style={{ textAlign: 'right', color: 'var(--theme-text3)' }}>Rate / UOM</th>
-                      <th style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>Value Issued</th>
+                      <th style={{ textAlign: 'right', color: 'var(--theme-text3)' }}><Tip text="Per-base-unit cost from the most recent purchase entry for this item." width={240}>Rate / UOM</Tip></th>
+                      <th style={{ textAlign: 'right', color: 'var(--theme-accent)' }}><Tip text="Qty Issued × Rate / UOM — the NPR cost of goods leaving the store." width={240}>Value Issued</Tip></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -542,8 +542,8 @@ export default function Requisitions() {
                       <th style={{ textAlign: 'right' }}>
                         <Tip text="Qty actually issued from the store. Green = full qty issued, red = partial." width={220}>Qty Issued</Tip>
                       </th>
-                      <th style={{ textAlign: 'right', color: 'var(--theme-text3)' }}>Rate / UOM</th>
-                      <th style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>Value</th>
+                      <th style={{ textAlign: 'right', color: 'var(--theme-text3)' }}><Tip text="Per-base-unit cost from the most recent purchase entry for this item." width={240}>Rate / UOM</Tip></th>
+                      <th style={{ textAlign: 'right', color: 'var(--theme-accent)' }}><Tip text="Qty Issued × Rate / UOM — the NPR cost of goods that left the store." width={240}>Value</Tip></th>
                     </tr>
                   </thead>
                   <tbody>

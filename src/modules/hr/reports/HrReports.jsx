@@ -320,7 +320,7 @@ export default function HrReports() {
               ) : (
                 <div className="table-wrap">
                   <table className="data-table">
-                    <thead><tr><th>SSF No</th><th>Employee</th><th style={{ textAlign: 'right' }}><Tip text="Basic salary capped at NPR 100,000 — the SSF contribution base." width={240}>SSF Basic</Tip></th><th style={{ textAlign: 'right' }}>Employee 11%</th><th style={{ textAlign: 'right' }}>Employer 20%</th><th style={{ textAlign: 'right', color: '#c9a84c' }}>Total 31%</th></tr></thead>
+                    <thead><tr><th>SSF No</th><th>Employee</th><th style={{ textAlign: 'right' }}><Tip text="Basic salary capped at NPR 100,000 — the SSF contribution base." width={240}>SSF Basic</Tip></th><th style={{ textAlign: 'right' }}><Tip text="SSF deducted from employee's pay = 11% of basic (capped at NPR 100,000 basic)." width={250}>Employee 11%</Tip></th><th style={{ textAlign: 'right' }}><Tip text="SSF paid by the company on top of salary = 20% of basic (capped at NPR 100,000 basic)." width={260}>Employer 20%</Tip></th><th style={{ textAlign: 'right', color: '#c9a84c' }}><Tip text="Total SSF deposit to submit = Employee 11% + Employer 20%." width={240}>Total 31%</Tip></th></tr></thead>
                     <tbody>
                       {ssfRows.map(({ s, emp }) => (
                         <tr key={s.id}>

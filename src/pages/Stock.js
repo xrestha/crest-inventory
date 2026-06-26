@@ -530,11 +530,11 @@ export default function Stock() {
                           <th style={{ width: 36, textAlign: 'center', color: 'var(--theme-text2)' }}>S.No</th>
                           <th>Category</th>
                           <th style={thStyle}>Opening Stock (NPR)</th>
-                          <th style={thStyle}>Production / Purchase (NPR)</th>
+                          <th style={thStyle}><Tip text="Value of goods received via purchases this period. 'Production' = sub-recipes processed in-house from existing stock." width={280}>Production / Purchase (NPR)</Tip></th>
                           <th style={thStyle}>Closing Stock (NPR)</th>
                           <th style={thStyle}>Wastage (NPR)</th>
                           <th style={thStyle}>Staff Meals (NPR)</th>
-                          <th style={thStyle}>COGS (NPR)</th>
+                          <th style={thStyle}><Tip text="Cost of Goods Sold = Opening + Purchases − Wastage − Staff Meals − Closing stock value." width={270}>COGS (NPR)</Tip></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -592,12 +592,12 @@ export default function Stock() {
                     <th style={{ textAlign: 'right' }}>Closing</th>
                     <th style={{ textAlign: 'right' }}><Tip text="Opening + Purchased − Returned − Wastage − Staff Meals − Closing. What was actually consumed this period." width={240}>Used</Tip></th>
                     <th style={{ textAlign: 'right', color: '#a78bfa' }}><Tip text="Total qty issued from the store via requisition slips this period. Should align with Used quantity." width={240}>Requisitioned</Tip></th>
-                    <th style={{ textAlign: 'right', color: 'var(--theme-text3)', borderLeft: '1px solid var(--theme-border)' }}>Open. Value</th>
-                    <th style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>Purch. Value</th>
-                    <th style={{ textAlign: 'right', color: 'var(--theme-red)' }}>Wastage Value</th>
-                    <th style={{ textAlign: 'right', color: '#a78bfa' }}>Staff Meals Value</th>
-                    <th style={{ textAlign: 'right', color: 'var(--theme-green)' }}>Close Value</th>
-                    <th style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>COGS (NPR)</th>
+                    <th style={{ textAlign: 'right', color: 'var(--theme-text3)', borderLeft: '1px solid var(--theme-border)' }}><Tip text="Opening quantity × per-unit rate. Value of stock carried forward from the previous period." width={240}>Open. Value</Tip></th>
+                    <th style={{ textAlign: 'right', color: 'var(--theme-accent)' }}><Tip text="Purchased quantity × per-unit purchase rate." width={220}>Purch. Value</Tip></th>
+                    <th style={{ textAlign: 'right', color: 'var(--theme-red)' }}><Tip text="Wastage quantity × per-unit rate. NPR cost of goods recorded as waste." width={240}>Wastage Value</Tip></th>
+                    <th style={{ textAlign: 'right', color: '#a78bfa' }}><Tip text="Staff meals quantity × per-unit rate. NPR cost of complimentary/staff consumption." width={260}>Staff Meals Value</Tip></th>
+                    <th style={{ textAlign: 'right', color: 'var(--theme-green)' }}><Tip text="Closing (physical count) quantity × per-unit rate." width={220}>Close Value</Tip></th>
+                    <th style={{ textAlign: 'right', color: 'var(--theme-accent)' }}><Tip text="Cost of Goods Sold = Opening + Purchased − Wastage − Staff Meals − Closing, in NPR." width={270}>COGS (NPR)</Tip></th>
                   </tr>
                 </thead>
                 <tbody>

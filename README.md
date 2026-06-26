@@ -124,6 +124,23 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S157 — 2026-06-26 — Tooltip audit: add missing Tip tooltips across all pages
+
+Full audit of every page and module for missing `<Tip>` tooltips on non-obvious column headers. 18 tooltips added across 6 files.
+
+- **Stock.js** — Category summary: `Production / Purchase (NPR)` (explains "production" = sub-recipes), `COGS (NPR)` (formula). Item detail value columns: `Open. Value`, `Purch. Value`, `Wastage Value`, `Staff Meals Value`, `Close Value` (all explain qty × rate), `COGS (NPR)` (formula).
+- **Items.js** — `Purch. Qty` (base units per purchase unit), `Rate (NPR)` (per purchase unit), `/ UOM` (generated per-base-unit rate), `Conversion` (unit mapping), `Used In` (recipe count).
+- **Requisitions.js** — `Rate / UOM` and `Est. Value` / `Value Issued` / `Value` in all three requisition tables (entry, issue confirm, history).
+- **HrReports.jsx** — SSF Challan: `Employee 11%`, `Employer 20%`, `Total 31%` (contribution details and cap).
+- **PayrollRun.jsx** — `Other Ded` (all deductions except SSF).
+- **Overheads.js** — `% of Bucket` (share of the bucket's total).
+
+No DB change. Build clean.
+
+**Files:** `src/pages/Stock.js`, `src/pages/Items.js`, `src/pages/Requisitions.js`, `src/modules/hr/reports/HrReports.jsx`, `src/modules/hr/payroll/PayrollRun.jsx`, `src/pages/Overheads.js`
+
+---
+
 ### S156 — 2026-06-26 — HR: fold Salary Structure into Pay Setup; drop the separate page
 
 Merged all of SalaryList's functionality into **Pay Setup** so there is one place for both viewing and editing employee pay. Pay Setup now shows stat cards (Total Gross Payroll, SSF Employee, SSF Employer, Net Payroll), a full breakdown table (Basic / Allowances / Gross / Deductions / Net / SSF Employer / Bank), totals footer, and Excel export — plus the existing click-to-edit modal. Salary Structure is removed.

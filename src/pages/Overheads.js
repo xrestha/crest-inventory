@@ -353,7 +353,7 @@ export default function Overheads() {
                 <th style={{ width: 200 }}>Category</th>
                 <th>Description</th>
                 <th style={{ textAlign: 'right', width: 160 }}>Amount (NPR)</th>
-                <th style={{ textAlign: 'right', width: 80 }}>% of Bucket</th>
+                <th style={{ textAlign: 'right', width: 80 }}><Tip text="This item's share of the total overhead for its bucket (Food Cost, Labour, or Other)." width={260}>% of Bucket</Tip></th>
                 <th style={{ width: 40 }}></th>
               </tr>
             </thead>
