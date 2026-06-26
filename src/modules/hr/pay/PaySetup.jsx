@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../../../supabaseClient'
 import { useAuth } from '../../../context/AuthContext'
 import Tip from '../../../components/Tip'
-import { SSF_CAP, SSF_EMPLOYEE_PCT, PAY_BASES } from '../payrollConstants'
+import * as XLSX from 'xlsx'
+import { SSF_CAP, SSF_EMPLOYEE_PCT, SSF_EMPLOYER_PCT, PAY_BASES } from '../payrollConstants'
 import PayForm from './PayForm'
 
 const STATUS_COLORS = {
@@ -47,15 +48,54 @@ export default function PaySetup() {
 
   const filtered = employees.filter(e => statusFilter === 'all' || e.status === statusFilter)
 
-  // Per-employee net (monthly only) — daily/hourly resolve at payroll.
-  function netOf(emp) {
-    if ((emp.pay_basis || 'monthly') !== 'monthly') return null
-    const basic = parseFloat(emp.basic_salary) || 0
-    const comps = components.filter(c => c.employee_id === emp.id)
-    const allow = comps.filter(c => c.type === 'earning').reduce((s, c) => s + calcAmount(c, basic), 0)
-    const otherDed = comps.filter(c => c.type === 'deduction').reduce((s, c) => s + calcAmount(c, basic), 0)
-    const ssfEmp = Math.round(Math.min(basic, SSF_CAP) * SSF_EMPLOYEE_PCT)
-    return basic + allow - ssfEmp - otherDed
+  // Per-employee computed salary. Monthly only — daily/hourly pay resolves at payroll.
+  function getSalary(emp) {
+    const monthly = (emp.pay_basis || 'monthly') === 'monthly'
+    const basic   = parseFloat(emp.basic_salary) || 0
+    if (!monthly) return { monthly: false, rate: basic, unit: payUnitOf(emp) }
+    const comps      = components.filter(c => c.employee_id === emp.id)
+    const earnings   = comps.filter(c => c.type === 'earning')
+    const deductions = comps.filter(c => c.type === 'deduction')
+    const totalAllowances = earnings.reduce((s, c)   => s + calcAmount(c, basic), 0)
+    const totalOtherDed   = deductions.reduce((s, c) => s + calcAmount(c, basic), 0)
+    const ssf_base  = Math.min(basic, SSF_CAP)
+    const ssf_emp   = Math.round(ssf_base * SSF_EMPLOYEE_PCT)
+    const ssf_emp_  = Math.round(ssf_base * SSF_EMPLOYER_PCT)
+    const gross     = basic + totalAllowances
+    const totalDed  = ssf_emp + totalOtherDed
+    return { monthly: true, basic, totalAllowances, ssf_emp, ssf_employer: ssf_emp_, totalOtherDed, gross, totalDed, net: gross - totalDed }
+  }
+
+  // Totals — monthly employees only.
+  const totals = filtered.reduce((acc, emp) => {
+    const s = getSalary(emp)
+    if (!s.monthly) return acc
+    acc.gross += s.gross; acc.ssf_emp += s.ssf_emp; acc.ssf_employer += s.ssf_employer
+    acc.deductions += s.totalDed; acc.net += s.net; acc.count += 1
+    return acc
+  }, { gross: 0, ssf_emp: 0, ssf_employer: 0, deductions: 0, net: 0, count: 0 })
+
+  function exportExcel() {
+    const rows = filtered.map(emp => {
+      const s = getSalary(emp)
+      const base = {
+        'Employee Code': emp.employee_code || '', 'Name': emp.full_name,
+        'Designation': emp.designation || '', 'Department': emp.department || '',
+        'Status': emp.status, 'Pay Basis': emp.pay_basis || 'monthly',
+        'Bank': emp.bank_name || '', 'Account No': emp.bank_account_no || '',
+      }
+      if (!s.monthly) return { ...base, [`Rate (NPR / ${s.unit})`]: s.rate, 'Note': 'Pay computed at payroll from attendance' }
+      return {
+        ...base,
+        'Basic (NPR)': s.basic, 'Allowances (NPR)': s.totalAllowances, 'Gross (NPR)': s.gross,
+        'SSF Emp 11% (NPR)': s.ssf_emp, 'Other Ded (NPR)': s.totalOtherDed, 'Total Ded (NPR)': s.totalDed,
+        'Net Salary (NPR)': s.net, 'SSF Employer 20% (NPR)': s.ssf_employer,
+      }
+    })
+    const ws = XLSX.utils.json_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Pay Setup')
+    XLSX.writeFile(wb, 'pay_setup.xlsx')
   }
 
   const tabs = [
@@ -69,10 +109,30 @@ export default function PaySetup() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Pay Setup</h1>
-          <p className="page-subtitle">Set each employee's salary, allowances, deductions, SSF and bank details. Click an employee to edit.</p>
+          <p className="page-subtitle">Salary, allowances, deductions, SSF and bank per employee — click a row to edit. Daily/hourly staff are paid via payroll from attendance.</p>
         </div>
+        <button className="btn btn-ghost" onClick={exportExcel} style={{ fontSize: 12 }}>⬇ Export Excel</button>
       </div>
 
+      {/* Stat cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
+        {[
+          { label: 'Total Gross Payroll', value: fmt(totals.gross),        color: '#c9a84c', tip: 'Sum of gross earnings (basic + allowances) across all monthly employees. Daily/hourly workers are excluded — their pay is computed at payroll.' },
+          { label: 'SSF — Employee',       value: fmt(totals.ssf_emp),      color: '#f87171', tip: 'Total 11% SSF deducted from employees this month, computed on basic salary (capped at NPR 100,000 each).' },
+          { label: 'SSF — Employer',       value: fmt(totals.ssf_employer), color: '#6b7280', tip: 'Total 20% SSF the company pays on top of salaries — not deducted from employee net pay.' },
+          { label: 'Net Payroll',          value: fmt(totals.net),          color: '#34d399', tip: 'Total take-home pay (gross − SSF employee − other deductions) across all monthly employees.' },
+        ].map(s => (
+          <div key={s.label} className="card" style={{ padding: '16px 18px' }}>
+            <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              <Tip text={s.tip} width={260}>{s.label}</Tip>
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: s.color }}>NPR {s.value}</div>
+            <div style={{ fontSize: 10, color: '#4b5563', marginTop: 3 }}>{totals.count} monthly employees</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Status filter */}
       <div className="tab-bar" style={{ marginBottom: 16 }}>
         {tabs.map(t => (
           <button key={t.key} className={`tab-btn${statusFilter === t.key ? ' tab-btn--active' : ''}`} onClick={() => setStatusFilter(t.key)}>
@@ -88,9 +148,7 @@ export default function PaySetup() {
         {loading ? (
           <div style={{ padding: 32, textAlign: 'center', color: '#6b7280' }}>Loading…</div>
         ) : filtered.length === 0 ? (
-          <div style={{ padding: 32, textAlign: 'center', color: '#6b7280' }}>
-            No employees found. Add employees first in HR → Employees.
-          </div>
+          <div style={{ padding: 32, textAlign: 'center', color: '#6b7280' }}>No employees found. Add employees first in HR → Employees.</div>
         ) : (
           <div className="table-wrap">
             <table className="data-table">
@@ -98,57 +156,90 @@ export default function PaySetup() {
                 <tr>
                   <th>Employee</th>
                   <th>Department</th>
-                  <th>Pay Basis</th>
                   <th style={{ textAlign: 'right' }}>
-                    <Tip text="Monthly basic salary (or rate per day/hour for non-monthly staff)." width={240}>Basic / Rate</Tip>
+                    <Tip text="Monthly basic salary. SSF and the 60% rule are computed on this." width={240}>Basic</Tip>
+                  </th>
+                  <th style={{ textAlign: 'right' }}>
+                    <Tip text="Sum of all allowances (housing, transport, etc.) — fixed or % of basic." width={240}>Allowances</Tip>
+                  </th>
+                  <th style={{ textAlign: 'right' }}>
+                    <Tip text="Gross earnings = basic + allowances, before any deduction." width={220}>Gross</Tip>
+                  </th>
+                  <th style={{ textAlign: 'right' }}>
+                    <Tip text="SSF Employee (11% of basic) plus any other deductions configured for the employee." width={250}>Deductions</Tip>
                   </th>
                   <th style={{ textAlign: 'right', color: '#c9a84c' }}>
-                    <Tip text="Take-home pay = basic + allowances − SSF (11%) − other deductions. Monthly staff only." width={250}>Net Salary</Tip>
+                    <Tip text="Take-home pay = gross − deductions. What the employee actually receives." width={230}>Net Salary</Tip>
+                  </th>
+                  <th style={{ textAlign: 'right', color: '#6b7280' }}>
+                    <Tip text="20% SSF the company pays on top — not deducted from the employee's net salary." width={240}>SSF Employer</Tip>
                   </th>
                   <th>
                     <Tip text="Whether bank name + account number are on file for salary disbursement." width={240}>Bank</Tip>
                   </th>
-                  <th></th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map(emp => {
+                  const s = getSalary(emp)
                   const st = STATUS_COLORS[emp.status] || STATUS_COLORS.inactive
-                  const monthly = (emp.pay_basis || 'monthly') === 'monthly'
-                  const net = netOf(emp)
                   const hasBank = emp.bank_name && emp.bank_account_no
                   return (
-                    <tr key={emp.id} style={{ cursor: 'pointer' }} onClick={() => setEditing(emp)}>
+                    <tr key={emp.id} style={{ cursor: 'pointer' }} onClick={() => setEditing(emp)} title="Click to edit pay & bank details">
                       <td>
                         <div style={{ fontWeight: 600, color: '#e8e0d0', fontSize: 13 }}>{emp.full_name}</div>
                         <div style={{ display: 'flex', gap: 6, marginTop: 3, alignItems: 'center' }}>
                           {emp.employee_code && <span style={{ fontSize: 10, color: '#6b7280' }}>{emp.employee_code}</span>}
                           <span style={{ fontSize: 10, fontWeight: 700, color: st.color, background: st.bg, border: `1px solid ${st.border}`, borderRadius: 8, padding: '1px 6px' }}>{emp.status}</span>
+                          {!s.monthly && (
+                            <span style={{ fontSize: 10, fontWeight: 700, color: '#60a5fa', background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.2)', borderRadius: 8, padding: '1px 6px' }}>per {s.unit}</span>
+                          )}
                         </div>
                       </td>
-                      <td style={{ color: '#6b7280', fontSize: 12 }}>{emp.department || '—'}</td>
-                      <td style={{ color: '#9ca3af', fontSize: 12 }}>{monthly ? 'Monthly' : `Per ${payUnitOf(emp)}`}</td>
-                      <td style={{ textAlign: 'right', color: '#9ca3af', fontSize: 13 }}>
-                        {fmt(parseFloat(emp.basic_salary) || 0)}{!monthly && <span style={{ color: '#6b7280', fontSize: 11 }}> /{payUnitOf(emp)}</span>}
+                      <td style={{ color: '#6b7280', fontSize: 12 }}>
+                        {emp.department || '—'}{emp.designation ? <><br/><span style={{ fontSize: 11, color: '#4b5563' }}>{emp.designation}</span></> : null}
                       </td>
-                      <td style={{ textAlign: 'right', color: '#c9a84c', fontSize: 14, fontWeight: 700 }}>
-                        {monthly ? fmt(net) : <span style={{ color: '#6b7280', fontSize: 11, fontStyle: 'italic' }}>via payroll</span>}
-                      </td>
+                      {s.monthly ? (
+                        <>
+                          <td style={{ textAlign: 'right', color: '#9ca3af', fontSize: 13 }}>{fmt(s.basic)}</td>
+                          <td style={{ textAlign: 'right', color: s.totalAllowances > 0 ? '#34d399' : '#4b5563', fontSize: 13 }}>{s.totalAllowances > 0 ? `+${fmt(s.totalAllowances)}` : '—'}</td>
+                          <td style={{ textAlign: 'right', color: '#e8e0d0', fontSize: 13, fontWeight: 500 }}>{fmt(s.gross)}</td>
+                          <td style={{ textAlign: 'right', color: '#f87171', fontSize: 13 }}>−{fmt(s.totalDed)}</td>
+                          <td style={{ textAlign: 'right', color: '#c9a84c', fontSize: 14, fontWeight: 700 }}>{fmt(s.net)}</td>
+                          <td style={{ textAlign: 'right', color: '#6b7280', fontSize: 12 }}>{fmt(s.ssf_employer)}</td>
+                        </>
+                      ) : (
+                        <td colSpan={6} style={{ textAlign: 'right', color: '#6b7280', fontSize: 12, fontStyle: 'italic' }}>
+                          NPR {fmt(s.rate)} / {s.unit} · paid via payroll from attendance
+                        </td>
+                      )}
                       <td style={{ fontSize: 12 }}>
-                        {hasBank
-                          ? <span style={{ color: '#9ca3af' }}>{emp.bank_name}</span>
-                          : <span style={{ color: '#c9a84c' }}>⚠ not set</span>}
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <button className="btn btn-ghost" style={{ fontSize: 11, padding: '3px 10px' }} onClick={ev => { ev.stopPropagation(); setEditing(emp) }}>Edit</button>
+                        {hasBank ? <span style={{ color: '#9ca3af' }}>{emp.bank_name}</span> : <span style={{ color: '#c9a84c' }}>⚠ not set</span>}
                       </td>
                     </tr>
                   )
                 })}
               </tbody>
+              <tfoot>
+                <tr style={{ fontWeight: 700, borderTop: '2px solid #2a2f3d' }}>
+                  <td colSpan={2} style={{ color: '#6b7280', fontSize: 12 }}>Total — {totals.count} monthly employees</td>
+                  <td />
+                  <td />
+                  <td style={{ textAlign: 'right', color: '#e8e0d0' }}>{fmt(totals.gross)}</td>
+                  <td style={{ textAlign: 'right', color: '#f87171' }}>−{fmt(totals.deductions)}</td>
+                  <td style={{ textAlign: 'right', color: '#c9a84c', fontSize: 15 }}>{fmt(totals.net)}</td>
+                  <td style={{ textAlign: 'right', color: '#6b7280' }}>{fmt(totals.ssf_employer)}</td>
+                  <td />
+                </tr>
+              </tfoot>
             </table>
           </div>
         )}
+      </div>
+
+      <div style={{ marginTop: 12, fontSize: 11, color: '#4b5563', lineHeight: 1.6 }}>
+        Deductions = SSF Employee (11% of basic, capped at NPR 100,000 basic) + any additional deductions configured per employee. Employer SSF (20%) is paid by the company and not deducted from net salary.
+        Daily/hourly workers show their rate only — their pay is computed each period from attendance in Payroll and is excluded from the monthly payroll totals above.
       </div>
 
       {editing && (

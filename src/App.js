@@ -47,7 +47,6 @@ import OutstandingPayables from './pages/OutstandingPayables'
 import ShrinkageReport from './pages/ShrinkageReport'
 import EmployeeList from './modules/hr/employees/EmployeeList'
 import PaySetup from './modules/hr/pay/PaySetup'
-import SalaryList from './modules/hr/salary/SalaryList'
 import AttendanceSheet from './modules/hr/attendance/AttendanceSheet'
 import PayrollRun from './modules/hr/payroll/PayrollRun'
 import HrReports from './modules/hr/reports/HrReports'
@@ -143,7 +142,6 @@ export default function App() {
               {/* Crest HR — gated on hr_enabled */}
               <Route path="/hr/employees" element={<ModuleGate module="hr"><EmployeeList /></ModuleGate>} />
               <Route path="/hr/pay-setup" element={<ModuleGate module="hr"><PaySetup /></ModuleGate>} />
-              <Route path="/hr/salary"     element={<ModuleGate module="hr"><SalaryList /></ModuleGate>} />
               <Route path="/hr/attendance" element={<ModuleGate module="hr"><AttendanceSheet /></ModuleGate>} />
               <Route path="/hr/leave"      element={<ModuleGate module="hr"><LeaveManagement /></ModuleGate>} />
               <Route path="/hr/payroll"    element={<ModuleGate module="hr"><PayrollRun /></ModuleGate>} />

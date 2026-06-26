@@ -124,6 +124,23 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S156 — 2026-06-26 — HR: fold Salary Structure into Pay Setup; drop the separate page
+
+Merged all of SalaryList's functionality into **Pay Setup** so there is one place for both viewing and editing employee pay. Pay Setup now shows stat cards (Total Gross Payroll, SSF Employee, SSF Employer, Net Payroll), a full breakdown table (Basic / Allowances / Gross / Deductions / Net / SSF Employer / Bank), totals footer, and Excel export — plus the existing click-to-edit modal. Salary Structure is removed.
+
+- `src/modules/hr/pay/PaySetup.jsx` — fully rewritten: stat cards + getSalary/totals logic + full breakdown table + export ported from SalaryList; click row → PayForm modal unchanged.
+- `src/modules/hr/salary/SalaryList.jsx` — deleted.
+- `src/App.js` — removed `import SalaryList` and `/hr/salary` route.
+- `src/components/Layout.js` — removed Salary Structure nav item.
+- `src/pages/Help.js` — replaced Salary Structure entry with Pay Setup guide.
+- Service worker cache `crest-v13` → `crest-v14`.
+
+No DB change. Build clean.
+
+**Files:** `src/modules/hr/pay/PaySetup.jsx`, `src/App.js`, `src/components/Layout.js`, `src/pages/Help.js`, `public/service-worker.js`
+
+---
+
 ### S155 — 2026-06-25 — HR: split Salary + Bank/SSF into a dedicated "Pay Setup" page
 
 The Add/Edit Employee modal carried Salary and Bank/SSF tabs. Moved them out into a new **Pay Setup** page (sidebar, between Employees and Salary Structure) so the employee form stays about the person, and pay/banking is managed on its own.
