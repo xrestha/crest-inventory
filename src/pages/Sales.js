@@ -426,7 +426,6 @@ export default function Sales() {
                               style={{ padding: '4px 10px', fontSize: 14 }}
                             >›</button>
                           </div>
-                          <span style={{ fontSize: 13, color: 'var(--theme-text2)' }}>of <strong style={{ color: 'var(--theme-text1)' }}>{periodLabel}</strong></span>
                           {isCurrentMonth && selectedDay !== today.day && (
                             <button
                               className="btn btn-ghost"
