@@ -124,6 +124,22 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S162 — 2026-06-29 — IMS cleanup: full BsCalendarPicker rollout + dead code removal
+
+Completed the BS calendar picker migration across all remaining date fields.
+
+**BsCalendarPicker free-mode fix:** Updated `src/components/BsCalendarPicker.js` to handle full ISO timestamps (from quick-extend buttons) in addition to `YYYY-MM-DD` strings — prevents `Invalid Date` when loading existing subscription end dates stored as ISO.
+
+**AdminClients subscription date:** Replaced `BsFullDatePicker` (three cascading `<select>` dropdowns) with `BsCalendarPicker` visual grid (free mode). `extendSub()` now stores `YYYY-MM-DD` via `formatAd()` consistently. Added `clearable` prop.
+
+**BsDatePicker.js deleted:** The old period-locked day dropdown and `BsFullDatePicker` components are no longer used anywhere — file removed entirely.
+
+**Security fix:** Dropped `public.inventory_summary` view from Supabase (was SECURITY DEFINER — bypassed RLS, unused by app code). Removed from `supabase_schema.sql`.
+
+**Files changed:** `src/components/BsCalendarPicker.js`, `src/pages/AdminClients.js`, `supabase_schema.sql`. `src/components/BsDatePicker.js` deleted.
+
+---
+
 ### S161 — 2026-06-29 — HR: Employee form — Address, Family, Supervisor, Retirement tabs
 
 Extended `src/modules/hr/employees/EmployeeForm.jsx` with two new tabs and additions to the Employment tab. No new child tables — all flat columns on `hr_employees`.
