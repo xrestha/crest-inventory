@@ -29,7 +29,7 @@ export default function BsCalendarPicker({
   // Resolve the currently-selected BS date from value, per mode
   const selected = locked
     ? (value ? { year: lockYear, month: lockMonth, day: parseInt(value) } : null)
-    : (value ? adToBs(new Date(value + 'T00:00:00')) : null)
+    : (value ? adToBs(new Date(value.includes('T') ? value : value + 'T00:00:00')) : null)
 
   const [navYear,  setNavYear]  = useState(selected?.year  || lockYear  || today.year)
   const [navMonth, setNavMonth] = useState(selected?.month || lockMonth || today.month)

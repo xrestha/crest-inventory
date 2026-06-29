@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { useSettings } from '../context/SettingsContext'
-import { getBsToday } from '../utils/bsCalendar'
-import { BsFullDatePicker } from '../components/BsDatePicker'
+import { getBsToday, formatAd } from '../utils/bsCalendar'
+import BsCalendarPicker from '../components/BsCalendarPicker'
 import { getSubStatus } from '../utils/subscription'
 
 // All auth-admin operations go through an Edge Function — service role key stays server-side
@@ -368,7 +368,7 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
   function extendSub(days) {
     const d = new Date()
     d.setDate(d.getDate() + days)
-    setSubEndsAt(d.toISOString())
+    setSubEndsAt(formatAd(d))
   }
 
   async function handleSaveSub() {
@@ -853,7 +853,7 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                 {/* Date picker */}
                 <p style={{ fontSize: 11, color: 'var(--theme-text2)', margin: '0 0 8px' }}>Subscription end date</p>
                 <div style={{ marginBottom: 12 }}>
-                  <BsFullDatePicker value={subEndsAt} onChange={setSubEndsAt} />
+                  <BsCalendarPicker value={subEndsAt} onChange={setSubEndsAt} clearable />
                 </div>
                 <p style={{ fontSize: 11, color: 'var(--theme-text2)', margin: '0 0 8px' }}>Quick extend from today:</p>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>

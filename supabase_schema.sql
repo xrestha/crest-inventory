@@ -331,37 +331,3 @@ create policy "sales_update" on sales_entries for update
 create policy "sales_delete" on sales_entries for delete
   using (is_admin() or (select client_id from monthly_periods where id = period_id) = my_client_id());
 
--- ─────────────────────────────────────────
--- USEFUL VIEW: Monthly Inventory Summary
--- ─────────────────────────────────────────
-create or replace view inventory_summary as
-select
-  mp.id as period_id,
-  mp.client_id,
-  mp.bs_year,
-  mp.bs_month,
-  i.id as item_id,
-  i.name as item_name,
-  i.uom,
-  i.per_uom_rate,
-  c.name as category,
-  coalesce(os.qty, 0) as opening_qty,
-  coalesce(sum(pe.qty), 0) as purchased_qty,
-  coalesce(ws.qty, 0) as wastage_qty,
-  coalesce(cs.physical_qty, 0) as closing_qty,
-  (coalesce(os.qty, 0) + coalesce(sum(pe.qty), 0)
-    - coalesce(ws.qty, 0) - coalesce(cs.physical_qty, 0)) as used_qty,
-  coalesce(os.qty, 0) * i.per_uom_rate as opening_value,
-  coalesce(cs.physical_qty, 0) * i.per_uom_rate as closing_value
-from monthly_periods mp
-join items i on i.client_id = mp.client_id
-left join categories c on c.id = i.category_id
-left join opening_stock os on os.period_id = mp.id and os.item_id = i.id
-left join purchase_entries pe on pe.period_id = mp.id and pe.item_id = i.id
-left join closing_stock cs on cs.period_id = mp.id and cs.item_id = i.id
-left join (
-  select period_id, item_id, sum(qty) as qty from wastages group by period_id, item_id
-) ws on ws.period_id = mp.id and ws.item_id = i.id
-group by mp.id, mp.client_id, mp.bs_year, mp.bs_month,
-         i.id, i.name, i.uom, i.per_uom_rate, c.name,
-         os.qty, ws.qty, cs.physical_qty;
