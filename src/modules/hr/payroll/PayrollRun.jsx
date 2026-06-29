@@ -48,7 +48,7 @@ export default function PayrollRun() {
   async function loadAll(periodId) {
     const [{ data: runRow }, { data: emps }, { data: comps }, { data: att }] = await Promise.all([
       supabase.from('hr_payroll_runs').select('*').eq('client_id', clientId).eq('period_id', periodId).maybeSingle(),
-      supabase.from('hr_employees').select('id, full_name, employee_code, pay_basis, basic_salary, ssf_no, ssf_enrolled, life_insurance_premium, health_insurance_premium, department, status')
+      supabase.from('hr_employees').select('id, full_name, employee_code, pay_basis, basic_salary, ssf_no, ssf_enrolled, life_insurance_premium, health_insurance_premium, marital_status, department, status')
         .eq('client_id', clientId).in('status', ['active', 'probation']).order('full_name'),
       supabase.from('hr_salary_components').select('*').eq('client_id', clientId),
       supabase.from('hr_attendance').select('*').eq('period_id', periodId),
@@ -100,7 +100,8 @@ export default function PayrollRun() {
       const comps = components.filter(c => c.employee_id === emp.id)
       const att   = attendance.filter(a => a.employee_id === emp.id)
       const slip  = computePayslip(emp, comps, att, period, 0)
-      const isSsf = !!(emp.ssf_enrolled)
+      const isSsf    = !!(emp.ssf_enrolled)
+      const isMarried = emp.marital_status === 'married'
       const ytd   = ytdMap[emp.id] || { gross: 0, ssf: 0, withheld: 0 }
       const tds   = computeMonthlyTds({
         period,
@@ -110,6 +111,7 @@ export default function PayrollRun() {
         ytdSsf:                ytd.ssf,
         ytdWithheld:           ytd.withheld,
         isSsf,
+        isMarried,
         annualLifeInsurance:   parseFloat(emp.life_insurance_premium) || 0,
         annualHealthInsurance: parseFloat(emp.health_insurance_premium) || 0,
       })

@@ -4,6 +4,7 @@ import { useAuth } from '../../../context/AuthContext'
 import Tip from '../../../components/Tip'
 import * as XLSX from 'xlsx'
 import { bsToAd, getBsToday } from '../../../utils/bsCalendar'
+import { computeBonusTds, fiscalYearOf } from '../payroll/tds'
 
 const fmt = n => Math.round(n || 0).toLocaleString('en-NP')
 
@@ -44,7 +45,7 @@ export default function FestivalAllowance() {
   async function load() {
     setLoading(true); setMsg('')
     const [{ data: emps }, { data: fa }] = await Promise.all([
-      supabase.from('hr_employees').select('id, full_name, employee_code, department, pay_basis, basic_salary, join_date, bank_name, bank_account_no, status')
+      supabase.from('hr_employees').select('id, full_name, employee_code, department, pay_basis, basic_salary, join_date, bank_name, bank_account_no, status, marital_status, ssf_enrolled')
         .eq('client_id', clientId).in('status', ['active', 'probation']).order('full_name'),
       supabase.from('hr_festival_allowances').select('*').eq('client_id', clientId).eq('bs_year', bsYear).eq('festival_name', festival),
     ])
@@ -109,6 +110,20 @@ export default function FestivalAllowance() {
   }
 
   const total = rows.reduce((a, r) => a + (r.amount || 0), 0)
+  const { fyStart } = fiscalYearOf(bsYear, 6) // Ashwin (Dashain); fyStart = bsYear for festivals in months 4–12
+  const tdsMap = Object.fromEntries(rows.map(r => {
+    const e = empMap[r.employee_id] || {}
+    const basic = parseFloat(r.basic) || 0
+    const annualBasic = basic * 12
+    const annualSsf = e.ssf_enrolled ? Math.min(basic, 100000) * 0.11 * 12 : 0
+    const ssfDeduction = Math.min(annualSsf, Math.min(500000, annualBasic / 3))
+    const annualTaxable = Math.max(0, annualBasic - ssfDeduction)
+    return [r.id, computeBonusTds({
+      annualTaxable, bonusAmount: r.amount || 0,
+      isSsf: !!e.ssf_enrolled, isMarried: e.marital_status === 'married', fyStart,
+    })]
+  }))
+  const totalTds = Object.values(tdsMap).reduce((a, v) => a + v, 0)
 
   function exportSheet(data, name, ext = 'xlsx') {
     const ws = XLSX.utils.json_to_sheet(data)
@@ -119,7 +134,8 @@ export default function FestivalAllowance() {
   function exportRegister() {
     exportSheet(rows.map(r => {
       const e = empMap[r.employee_id] || {}
-      return { Employee: e.full_name || '', Code: e.employee_code || '', 'Pay Basis': r.pay_basis, Basic: r.basic, 'Months Worked': r.months_worked, Amount: r.amount }
+      const tds = tdsMap[r.id] || 0
+      return { Employee: e.full_name || '', Code: e.employee_code || '', 'Pay Basis': r.pay_basis, Basic: r.basic, 'Months Worked': r.months_worked, 'Gross Amount': r.amount, 'TDS (est.)': tds, 'Net Amount': (r.amount || 0) - tds }
     }), 'Festival Allowance')
   }
   function exportBank(ext) {
@@ -161,11 +177,13 @@ export default function FestivalAllowance() {
         </div>
       ) : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 20 }}>
             {[
-              { label: 'Total Payout', value: fmt(total), color: '#c9a84c', tip: 'Total festival bonus to disburse across all employees in this run.' },
-              { label: 'Employees',    value: rows.length, color: '#e8e0d0', tip: 'Active and probation employees included in this festival run.' },
-              { label: 'Average',      value: fmt(rows.length ? total / rows.length : 0), color: '#9ca3af', tip: 'Average allowance per employee (total ÷ headcount).' },
+              { label: 'Gross Payout',  value: fmt(total),                         color: '#c9a84c', tip: 'Total gross festival bonus before TDS withholding.' },
+              { label: 'Total TDS',     value: fmt(totalTds),                       color: '#f87171', tip: 'Estimated income tax (TDS) to withhold from festival bonus. Marginal rate based on annual basic salary.' },
+              { label: 'Net Payout',    value: fmt(total - totalTds),               color: '#34d399', tip: 'Amount to actually disburse to employees after TDS deduction.' },
+              { label: 'Employees',     value: rows.length,                         color: '#e8e0d0', tip: 'Active and probation employees included in this festival run.' },
+              { label: 'Average Gross', value: fmt(rows.length ? total / rows.length : 0), color: '#9ca3af', tip: 'Average gross bonus per employee (total ÷ headcount).' },
             ].map(s => (
               <div key={s.label} className="card" style={{ padding: '16px 18px' }}>
                 <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
@@ -200,6 +218,9 @@ export default function FestivalAllowance() {
                     <th style={{ textAlign: 'right', color: '#c9a84c' }}>
                       <Tip text="Festival bonus. Editable while draft; daily/hourly default to 0 — enter manually." width={250}>Amount</Tip>
                     </th>
+                    <th style={{ textAlign: 'right', color: '#f87171' }}>
+                      <Tip text="Estimated TDS (income tax) to withhold from this bonus. Computed at the employee's marginal tax rate based on annual basic salary. Married employees on FY 2082/83 slabs get a wider first band." width={300}>TDS</Tip>
+                    </th>
                     <th>Note</th>
                   </tr>
                 </thead>
@@ -225,6 +246,9 @@ export default function FestivalAllowance() {
                             ? <span style={{ color: '#c9a84c', fontWeight: 700 }}>{fmt(r.amount)}</span>
                             : <input type="number" min="0" defaultValue={r.amount || ''} onBlur={ev => updateAmount(r, ev.target.value)} placeholder="0" style={{ ...inp, width: 110, textAlign: 'right', color: '#c9a84c', fontWeight: 600 }} />}
                         </td>
+                        <td style={{ textAlign: 'right', color: tdsMap[r.id] > 0 ? '#f87171' : '#4b5563' }}>
+                          {tdsMap[r.id] > 0 ? fmt(tdsMap[r.id]) : '—'}
+                        </td>
                         <td>
                           {finalized
                             ? <span style={{ color: '#6b7280', fontSize: 12 }}>{r.note || '—'}</span>
@@ -238,6 +262,7 @@ export default function FestivalAllowance() {
                   <tr style={{ fontWeight: 700, borderTop: '2px solid #2a2f3d' }}>
                     <td colSpan={3} style={{ color: '#6b7280' }}>Total — {rows.length}</td>
                     <td style={{ textAlign: 'right', color: '#c9a84c', fontSize: 15 }}>{fmt(total)}</td>
+                    <td style={{ textAlign: 'right', color: '#f87171', fontSize: 15 }}>{totalTds > 0 ? fmt(totalTds) : '—'}</td>
                     <td></td>
                   </tr>
                 </tfoot>
@@ -245,7 +270,7 @@ export default function FestivalAllowance() {
             </div>
           </div>
           <div style={{ marginTop: 12, fontSize: 11, color: '#4b5563', lineHeight: 1.6 }}>
-            Monthly staff get one month's basic, pro-rated by months worked toward the festival. Daily/hourly staff start at 0 — enter an amount per person. Festival allowance is taxable income, but no tax is withheld here yet.
+            Monthly staff get one month's basic, pro-rated by months worked toward the festival. Daily/hourly staff start at 0 — enter an amount per person. TDS is estimated using the marginal tax rate on annual basic salary; verify with your CA before filing. Married employees benefit from wider slabs in FY 2082/83 (slabs unified from FY 2083/84 onward).
           </div>
         </>
       )}

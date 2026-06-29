@@ -378,7 +378,7 @@ export default function Dashboard() {
     const since24h = new Date(Date.now() - 86400000).toISOString()
     const [{ data: clients }, { data: periods }, { data: recentProfiles }] = await Promise.all([
       supabase.from('clients')
-        .select('id, name, plan, is_active, trial_ends_at, subscription_ends_at, location')
+        .select('id, name, plan, hr_plan, is_active, trial_ends_at, subscription_ends_at, ims_ends_at, hr_ends_at, billing_cycle, location')
         .order('name'),
       supabase.from('monthly_periods')
         .select('client_id, bs_year, bs_month, status')
@@ -424,9 +424,9 @@ export default function Dashboard() {
     const inactive = adminClients.filter(c => !c.is_active)
     const expiring = active.filter(c => { const s = getSubStatus(c); return s.days !== null && s.days >= 0 && s.days <= 30 })
     const noPeriod = active.filter(c => !clientPeriods[c.id] || clientPeriods[c.id].status !== 'open')
-    const PLAN_MRR = { starter: 8000, growth: 18000, pro: 25000 }
+    const PLAN_MRR = { starter: 5000, growth: 8000, pro: 12000 }
     const estMRR   = active.reduce((sum, c) => {
-      if (!c.subscription_ends_at) return sum
+      if (!(c.ims_ends_at || c.subscription_ends_at)) return sum
       const s = getSubStatus(c)
       return sum + (s.days > 0 ? (PLAN_MRR[c.plan] || 0) : 0)
     }, 0)
@@ -506,7 +506,7 @@ export default function Dashboard() {
                 <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Revenue & Billing</span>
                 <span style={{ fontSize: 12, color: 'var(--theme-text3)' }}>
                   MRR: <span style={{ color: 'var(--theme-accent)', fontWeight: 700 }}>NPR {estMRR.toLocaleString('en-NP')}</span>
-                  {' '}· {active.filter(c => { const s = getSubStatus(c); return s.days !== null && s.days > 0 && c.subscription_ends_at }).length} paying
+                  {' '}· {active.filter(c => { const s = getSubStatus(c); return s.days !== null && s.days > 0 && (c.ims_ends_at || c.subscription_ends_at) }).length} paying
                 </span>
               </div>
               <div className="table-wrap">
@@ -525,10 +525,11 @@ export default function Dashboard() {
                     {sorted.map(c => {
                       const sub = getSubStatus(c)
                       const monthlyVal = PLAN_MRR[c.plan] || 0
-                      const isPaying = c.subscription_ends_at && sub.days !== null && sub.days > 0
-                      const isTrial  = !c.subscription_ends_at && c.trial_ends_at
+                      const endDate  = c.ims_ends_at || c.subscription_ends_at
+                      const isPaying = endDate && sub.days !== null && sub.days > 0
+                      const isTrial  = !endDate && c.trial_ends_at
 
-                      const expiryIso = c.subscription_ends_at || c.trial_ends_at
+                      const expiryIso = endDate || c.trial_ends_at
                       let expiryBs = null
                       if (expiryIso) {
                         const bs = adToBs(new Date(expiryIso))
@@ -580,7 +581,7 @@ export default function Dashboard() {
                   <tfoot>
                     <tr style={{ borderTop: '2px solid var(--theme-border)' }}>
                       <td colSpan={2} style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--theme-text2)', fontSize: 12 }}>
-                        Total ({active.filter(c => { const s = getSubStatus(c); return s.days !== null && s.days > 0 && c.subscription_ends_at }).length} paying clients)
+                        Total ({active.filter(c => { const s = getSubStatus(c); return s.days !== null && s.days > 0 && (c.ims_ends_at || c.subscription_ends_at) }).length} paying clients)
                       </td>
                       <td style={{ padding: '10px 12px', fontWeight: 800, color: 'var(--theme-accent)', fontSize: 15 }}>
                         NPR {estMRR.toLocaleString('en-NP')}

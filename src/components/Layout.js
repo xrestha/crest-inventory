@@ -64,6 +64,8 @@ const HR_ITEMS = [
   { to: '/hr/reports',    label: 'HR Reports',        icon: '📊' },
   { to: '/hr/festival',   label: 'Festival Allowance', icon: '🎉' },
   { to: '/hr/advances',   label: 'Advances & Loans',   icon: '💳' },
+  { to: '/hr/gratuity',   label: 'Gratuity',           icon: '💰' },
+  { to: '/hr/settlement', label: 'Final Settlement',   icon: '🧾' },
 ]
 
 export default function Layout() {

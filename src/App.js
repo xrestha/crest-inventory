@@ -53,6 +53,8 @@ import HrReports from './modules/hr/reports/HrReports'
 import FestivalAllowance from './modules/hr/festival/FestivalAllowance'
 import LeaveManagement from './modules/hr/leave/LeaveManagement'
 import Advances from './modules/hr/advances/Advances'
+import GratuityTracker from './modules/hr/gratuity/GratuityTracker'
+import FinalSettlement from './modules/hr/settlement/FinalSettlement'
 import './components/Layout.css'
 
 export default function App() {
@@ -149,6 +151,8 @@ export default function App() {
               <Route path="/hr/reports"    element={<ModuleGate module="hr"><HrReports /></ModuleGate>} />
               <Route path="/hr/festival"   element={<ModuleGate module="hr"><FestivalAllowance /></ModuleGate>} />
               <Route path="/hr/advances"   element={<ModuleGate module="hr"><Advances /></ModuleGate>} />
+              <Route path="/hr/gratuity"   element={<ModuleGate module="hr"><GratuityTracker /></ModuleGate>} />
+              <Route path="/hr/settlement" element={<ModuleGate module="hr"><FinalSettlement /></ModuleGate>} />
 
               {/* Admin only */}
               <Route path="/admin/clients"

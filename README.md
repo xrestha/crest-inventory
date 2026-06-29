@@ -106,7 +106,7 @@ Architecture: single React app, single Supabase project, feature flags per clien
 | Module | Status | Routes |
 |---|---|---|
 | Crest IMS | ✅ Live | All existing routes |
-| Crest HR | 🔨 Building | `/hr/employees`, `/hr/salary`, `/hr/attendance`, `/hr/leave`, `/hr/payroll`, `/hr/reports`, `/hr/festival` |
+| Crest HR | 🔨 Building | `/hr/employees`, `/hr/salary`, `/hr/attendance`, `/hr/leave`, `/hr/payroll`, `/hr/reports`, `/hr/festival`, `/hr/advances`, `/hr/gratuity`, `/hr/settlement` |
 | Crest POS | 🔲 Planned | — |
 
 **Suite pricing:**
@@ -123,6 +123,53 @@ Architecture: single React app, single Supabase project, feature flags per clien
 ---
 
 ## Session Log
+
+### S170 — 2026-06-29 — Crest HR: Phase 2 Compliance — married TDS, festival TDS, gratuity tracker, final settlement
+
+**TDS engine (`src/modules/hr/payroll/tds.js`):**
+- Added `SLABS_2082_83_MARRIED` — married/couple schedule for FY 2082/83: first 3 bands are +1L wider than single (6L/8L/11L vs 5L/7L/10L); the distinction was removed in FY 2083/84 (unified `SLABS_2083_84` already in place)
+- `slabsFor(fyStart, isMarried)` — returns married slabs for FY ≤ 2082, unified slabs for FY ≥ 2083 regardless of marital status
+- `computeMonthlyTds` — added `isMarried` and `festivalBonus` params to the signature
+- `computeBonusTds({ annualTaxable, bonusAmount, isSsf, isMarried, fyStart })` — new export: incremental marginal TDS on lump-sum payments using tax(base+bonus) − tax(base)
+
+**PayrollRun (`src/modules/hr/payroll/PayrollRun.jsx`):**
+- Employee fetch now includes `marital_status`
+- `buildRows()` detects `isMarried = emp.marital_status === 'married'` and passes it to `computeMonthlyTds`
+
+**FestivalAllowance (`src/modules/hr/festival/FestivalAllowance.jsx`):**
+- Employee fetch now includes `marital_status`, `ssf_enrolled`
+- TDS estimated per employee via `computeBonusTds` using annual basic as the taxable income baseline and marginal rate on the bonus amount
+- 5 stat cards (was 3): Gross Payout, Total TDS (red), Net Payout (green), Employees, Average Gross
+- TDS column added to table with per-employee estimated TDS; footer shows total TDS
+- Excel export now outputs Gross Amount / TDS (est.) / Net Amount columns
+- Footer note updated explaining TDS computation and married/single schedule
+
+**New: GratuityTracker (`src/modules/hr/gratuity/GratuityTracker.jsx`) — route `/hr/gratuity`:**
+- Read-only accrual tracker for all active monthly-paid employees
+- Per-employee: service months, monthly accrual (basic ÷ 12), Labour Act total accrued, SSF-covered portion (3.33% of capped basic × months), net cash liability
+- 4 stat cards: Total Liability (net), Monthly Accrual, Vested Employees, SSF Fund (est.)
+- Filters: All / Vested ≥1 yr / Vesting <1 yr + department selector
+- Excel export; daily/hourly staff excluded with banner warning
+
+**New: FinalSettlement (`src/modules/hr/settlement/FinalSettlement.jsx`) — route `/hr/settlement`:**
+- Pure calculator — no DB writes; inputs: employee, separation reason, last BS working date, leave days, notice served, festival paid this FY
+- Computes: partial-month salary (basic ÷ BS month days × days worked), leave encashment (basic ÷ 26 × days), gratuity (if vested), festival pro-ration (if not paid), notice deduction, advance recovery (auto-fetched outstanding balances), TDS on lump sum via `computeBonusTds`
+- Earnings table + Deductions table + Net payout card with printable output
+
+**Wiring:**
+- Routes added to `src/App.js`: `/hr/gratuity` and `/hr/settlement`, both wrapped in `<ModuleGate module="hr">`
+- Nav entries added to `HR_ITEMS` in `src/components/Layout.js`: Gratuity 💰, Final Settlement 🧾
+- Help entries added for Gratuity and Final Settlement with tips in `src/pages/Help.js`
+- Festival Allowance Help tip updated: TDS is now estimated (no longer "no tax withheld yet")
+
+**Files:** `src/modules/hr/payroll/tds.js`, `src/modules/hr/payroll/PayrollRun.jsx`, `src/modules/hr/festival/FestivalAllowance.jsx`, `src/modules/hr/gratuity/GratuityTracker.jsx` (new), `src/modules/hr/settlement/FinalSettlement.jsx` (new), `src/App.js`, `src/components/Layout.js`, `src/pages/Help.js`
+
+**Admin Dashboard bug fixes (`src/pages/Dashboard.js`):**
+- `loadAdminStats()` query was missing `ims_ends_at`, `hr_ends_at`, `billing_cycle`, `hr_plan` — `getSubStatus()` always fell back to the legacy `subscription_ends_at`, showing wrong subscription badges/expiry for all clients on per-module billing
+- `PLAN_MRR` was `{ starter: 8000, growth: 18000, pro: 25000 }` — corrected to actual plan prices `{ starter: 5000, growth: 8000, pro: 12000 }`
+- `estMRR`, `isPaying`, `expiryIso`, and the "paying clients" count all checked `c.subscription_ends_at` directly, missing `ims_ends_at` — all updated to use `c.ims_ends_at || c.subscription_ends_at`
+
+---
 
 ### S169 — 2026-06-29 — Admin: Billing tab overhaul — module toggles, per-module subscriptions, compact cards
 
