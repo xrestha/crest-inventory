@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
+import BsCalendarPicker from '../../../components/BsCalendarPicker'
 
 const EMPTY = {
   employee_code: '',
@@ -215,9 +216,9 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
               </div>
               <div style={col}>
                 <label style={lbl}>
-                  <Tip text="Date of birth in AD. Used for age and retirement calculations." width={220}>Date of Birth (AD)</Tip>
+                  <Tip text="Date of birth in BS. Used for age and retirement calculations." width={220}>Date of Birth</Tip>
                 </label>
-                <input type="date" style={inp} value={form.date_of_birth} onChange={e => set('date_of_birth', e.target.value)} />
+                <BsCalendarPicker value={form.date_of_birth} onChange={v => set('date_of_birth', v)} placeholder="Pick DOB" clearable />
               </div>
             </div>
             <div style={row}>
@@ -277,13 +278,13 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
             </div>
             <div style={row}>
               <div style={col}>
-                <label style={lbl}>Join Date (AD) <span style={{ color: '#f87171' }}>*</span></label>
-                <input type="date" style={inp} value={form.join_date} onChange={e => set('join_date', e.target.value)} />
+                <label style={lbl}>Join Date <span style={{ color: '#f87171' }}>*</span></label>
+                <BsCalendarPicker value={form.join_date} onChange={v => set('join_date', v)} placeholder="Pick join date" />
               </div>
               {(form.employment_type === 'contract' || form.employment_type === 'part_time') && (
                 <div style={col}>
-                  <label style={lbl}>Contract End Date (AD)</label>
-                  <input type="date" style={inp} value={form.end_date} onChange={e => set('end_date', e.target.value)} />
+                  <label style={lbl}>Contract End Date</label>
+                  <BsCalendarPicker value={form.end_date} onChange={v => set('end_date', v)} placeholder="Pick end date" clearable />
                 </div>
               )}
             </div>
@@ -310,10 +311,12 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
             </div>
             <div style={col}>
               <label style={lbl}>
-                <Tip text="Expected retirement date (AD). SSF pension age in Nepal is 60 — use ↻ to set DOB + 60 years." width={280}>Retirement Date (AD)</Tip>
+                <Tip text="Expected retirement date. SSF pension age in Nepal is 60 — use ↻ to set DOB + 60 years." width={280}>Retirement Date</Tip>
               </label>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <input type="date" style={{ ...inp, flex: 1 }} value={form.retirement_date || ''} onChange={e => set('retirement_date', e.target.value)} />
+              <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+                <div style={{ flex: 1 }}>
+                  <BsCalendarPicker value={form.retirement_date || ''} onChange={v => set('retirement_date', v)} placeholder="Pick retirement date" clearable />
+                </div>
                 <button
                   type="button"
                   onClick={calcRetirement}

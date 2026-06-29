@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient'
 import { getBsToday } from '../utils/bsCalendar'
 import Tip from '../components/Tip'
 import Fab from '../components/Fab'
+import BsCalendarPicker from '../components/BsCalendarPicker'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 const PAYMENT_METHODS = ['Cash', 'Credit', 'FonePay']
@@ -482,8 +483,11 @@ export default function PurchaseOrders() {
                   Expected Delivery
                 </Tip>
               </label>
-              <input type="date" value={poForm.expected_date}
-                onChange={e => setPoForm(f => ({ ...f, expected_date: e.target.value }))} />
+              <BsCalendarPicker
+                value={poForm.expected_date}
+                onChange={v => setPoForm(f => ({ ...f, expected_date: v }))}
+                placeholder="Pick delivery date"
+                clearable />
             </div>
             <div className="form-field" style={{ gridColumn: 'span 2' }}>
               <label>Notes</label>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../../supabaseClient'
 import { useAuth } from '../../../context/AuthContext'
 import Tip from '../../../components/Tip'
-import { BsFullDatePicker } from '../../../components/BsDatePicker'
+import BsCalendarPicker from '../../../components/BsCalendarPicker'
 import * as XLSX from 'xlsx'
 import { adToBs, BS_MONTHS } from '../../../utils/bsCalendar'
 import { DEFAULT_LEAVE_TYPES, LEAVE_STATUSES, workingDaysInRange } from './leaveConstants'
@@ -220,11 +220,11 @@ export default function LeaveManagement() {
               </div>
               <div>
                 <label style={lbl}>Start Date</label>
-                <BsFullDatePicker value={fStart} onChange={setFStart} />
+                <BsCalendarPicker value={fStart} onChange={setFStart} placeholder="Pick start date" />
               </div>
               <div>
                 <label style={lbl}>End Date</label>
-                <BsFullDatePicker value={fEnd} onChange={setFEnd} />
+                <BsCalendarPicker value={fEnd} onChange={setFEnd} placeholder="Pick end date" />
               </div>
               <div>
                 <label style={lbl}>Reason</label>

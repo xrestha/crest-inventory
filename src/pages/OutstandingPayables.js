@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabaseClient'
 import { bsToAd } from '../utils/bsCalendar'
 import Tip from '../components/Tip'
+import BsCalendarPicker from '../components/BsCalendarPicker'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 const TODAY = new Date().toISOString().split('T')[0]
@@ -389,9 +390,12 @@ export default function OutstandingPayables() {
                                           </div>
                                           <div>
                                             <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginBottom: 4 }}>Date</div>
-                                            <input type="date" style={INPUT} value={payForm.paid_at}
-                                              onChange={ev => setPayForm(f => ({ ...f, paid_at: ev.target.value }))}
-                                              onClick={ev => ev.stopPropagation()} />
+                                            <div onClick={ev => ev.stopPropagation()}>
+                                              <BsCalendarPicker
+                                                value={payForm.paid_at}
+                                                onChange={v => setPayForm(f => ({ ...f, paid_at: v }))}
+                                                placeholder="Pick date" />
+                                            </div>
                                           </div>
                                           <div style={{ flex: 1, minWidth: 180 }}>
                                             <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginBottom: 4 }}>Note (optional)</div>
