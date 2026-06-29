@@ -432,12 +432,14 @@ export default function PayForm({ employee, onSave, onClose }) {
               </div>
               <div style={{ borderTop: '1px solid #2a2f3d', paddingTop: 20 }}>
                 <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 12px' }}>SSF Details</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                  <input type="checkbox" id="ssf_enrolled" checked={form.ssf_enrolled} onChange={e => set('ssf_enrolled', e.target.checked)}
-                    style={{ width: 15, height: 15, cursor: 'pointer', accentColor: 'var(--theme-accent)' }} />
-                  <label htmlFor="ssf_enrolled" style={{ fontSize: 13, color: '#e8e0d0', cursor: 'pointer' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                  {/* Toggle switch */}
+                  <div onClick={() => set('ssf_enrolled', !form.ssf_enrolled)} style={{ position: 'relative', width: 42, height: 24, borderRadius: 12, cursor: 'pointer', flexShrink: 0, background: form.ssf_enrolled ? 'var(--theme-accent)' : '#374151', transition: 'background 0.2s' }}>
+                    <div style={{ position: 'absolute', top: 3, left: form.ssf_enrolled ? 21 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.4)' }} />
+                  </div>
+                  <span style={{ fontSize: 13, color: '#e8e0d0', cursor: 'pointer' }} onClick={() => set('ssf_enrolled', !form.ssf_enrolled)}>
                     <Tip text="SSF enrolled employees have 11% deducted from their salary and 20% contributed by the employer. Enable this for employees registered under Nepal's Social Security Fund." width={300}>SSF Enrolled</Tip>
-                  </label>
+                  </span>
                   {form.ssf_enrolled && <span style={{ fontSize: 11, color: '#34d399', marginLeft: 'auto' }}>11% emp · 20% employer</span>}
                 </div>
                 {form.ssf_enrolled && (

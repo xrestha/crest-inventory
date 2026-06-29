@@ -139,13 +139,10 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
   const [savingSettings, setSavingSettings]   = useState(false)
   const [settingsMsg, setSettingsMsg]         = useState('')
 
-  // Modules tab state
-  const [hrEnabled]                  = useState(client.hr_enabled || false)
+  // Modules state
+  const [imsEnabled, setImsEnabled] = useState(client.ims_enabled !== false)
+  const [hrEnabled,  setHrEnabled]  = useState(!!client.hr_enabled)
   const [hrPlan, setHrPlan]         = useState(client.hr_plan || 'starter')
-  const [savingIms, setSavingIms]   = useState(false)
-  const [imsMsg, setImsMsg]         = useState('')
-  const [savingHr, setSavingHr]     = useState(false)
-  const [hrMsg, setHrMsg]           = useState('')
 
   // Billing tab state
   const [trialEndsAt, setTrialEndsAt] = useState(client.trial_ends_at || '')
@@ -336,23 +333,19 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
     setSavingSettings(false)
   }
 
-  // ── Modules ──
-  async function handleSaveIms() {
-    setSavingIms(true); setImsMsg('')
-    const { error } = await supabase.from('clients').update({ plan: currentPlan }).eq('id', client.id)
-    if (error) { setImsMsg('error:' + error.message) }
-    else { setImsMsg('ok:Saved.'); onClientUpdated() }
-    setSavingIms(false)
+  // ── Module toggles (instant save) ──
+  async function handleToggleIms() {
+    const next = !imsEnabled
+    setImsEnabled(next)
+    await supabase.from('clients').update({ ims_enabled: next }).eq('id', client.id)
+    onClientUpdated()
   }
 
-  async function handleSaveHr() {
-    setSavingHr(true); setHrMsg('')
-    const { error } = await supabase.from('clients').update({
-      hr_plan: hrPlan,
-    }).eq('id', client.id)
-    if (error) { setHrMsg('error:' + error.message) }
-    else { setHrMsg('ok:Saved.'); onClientUpdated() }
-    setSavingHr(false)
+  async function handleToggleHr() {
+    const next = !hrEnabled
+    setHrEnabled(next)
+    await supabase.from('clients').update({ hr_enabled: next }).eq('id', client.id)
+    onClientUpdated()
   }
 
   // ── Billing ──
@@ -377,6 +370,7 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
     const { error } = await supabase.from('clients').update({
       subscription_ends_at: subEndsAt || null,
       plan: currentPlan,
+      hr_plan: hrPlan,
       billing_cycle: billingCycle,
     }).eq('id', client.id)
     if (error) { setSubMsg('error:' + error.message) }
@@ -474,7 +468,6 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
 
   const tabs = [
     { key: 'users',      label: 'Users' },
-    { key: 'modules',    label: 'Modules' },
     { key: 'billing',    label: 'Billing' },
     { key: 'settings',   label: 'Settings' },
     { key: 'thresholds', label: 'Thresholds' },
@@ -654,106 +647,6 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
             </div>
           )}
 
-          {/* ── MODULES TAB ── */}
-          {activeTab === 'modules' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-              <p style={{ fontSize: 11, color: 'var(--theme-text2)', margin: '0 0 16px', lineHeight: 1.6 }}>
-                Enable / disable modules from the client card. Set the plan tier for each enabled module here.
-              </p>
-
-              {/* IMS plan */}
-              <div style={{ padding: '16px 0', borderBottom: '1px solid var(--theme-border)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-                  <div style={{ minWidth: 120 }}>
-                    <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 700, color: 'var(--theme-text1)' }}>Crest IMS</p>
-                    <p style={{ margin: 0, fontSize: 12, color: 'var(--theme-text2)' }}>Inventory Management System</p>
-                  </div>
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
-                    {['starter','growth','pro'].map(p => (
-                      <button key={p} onClick={() => setCurrentPlan(p)} style={{
-                        padding: '4px 12px', borderRadius: 4, cursor: 'pointer', fontSize: 11, fontWeight: 700,
-                        border: currentPlan === p
-                          ? `1px solid ${p === 'pro' ? 'var(--theme-accent)' : p === 'growth' ? 'var(--theme-green)' : 'var(--theme-text2)'}`
-                          : '1px solid var(--theme-border)',
-                        background: currentPlan === p
-                          ? (p === 'pro' ? 'rgba(201,168,76,0.12)' : p === 'growth' ? 'rgba(52,211,153,0.10)' : 'rgba(120,113,108,0.10)')
-                          : 'none',
-                        color: currentPlan === p
-                          ? (p === 'pro' ? 'var(--theme-accent)' : p === 'growth' ? 'var(--theme-green)' : 'var(--theme-text3)')
-                          : 'var(--theme-text3)',
-                      }}>
-                        {p.charAt(0).toUpperCase() + p.slice(1)}
-                      </button>
-                    ))}
-                    <button className="btn btn-primary" style={{ fontSize: 11, padding: '4px 12px' }} onClick={handleSaveIms} disabled={savingIms}>
-                      {savingIms ? '…' : imsMsg.startsWith('ok:') ? '✓' : 'Save'}
-                    </button>
-                  </div>
-                </div>
-                {imsMsg && <p style={{ margin: '6px 0 0', fontSize: 11, color: imsMsg.startsWith('ok:') ? 'var(--theme-green)' : 'var(--theme-red)' }}>{imsMsg.replace(/^(ok|error):/, '')}</p>}
-              </div>
-
-              {/* HR plan */}
-              <div style={{ padding: '16px 0', borderBottom: '1px solid var(--theme-border)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-                  <div style={{ minWidth: 120 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: hrEnabled ? 'var(--theme-text1)' : 'var(--theme-text3)' }}>Crest HR</p>
-                      {!hrEnabled && <span style={{ fontSize: 10, color: 'var(--theme-text3)' }}>not enabled</span>}
-                    </div>
-                    <p style={{ margin: 0, fontSize: 12, color: 'var(--theme-text2)' }}>Human Resources</p>
-                  </div>
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0, opacity: hrEnabled ? 1 : 0.35 }}>
-                    {['starter','growth','pro'].map(p => (
-                      <button key={p} onClick={() => hrEnabled && setHrPlan(p)} style={{
-                        padding: '4px 12px', borderRadius: 4, cursor: hrEnabled ? 'pointer' : 'not-allowed', fontSize: 11, fontWeight: 700,
-                        border: hrPlan === p
-                          ? `1px solid ${p === 'pro' ? 'var(--theme-accent)' : p === 'growth' ? 'var(--theme-green)' : 'var(--theme-text2)'}`
-                          : '1px solid var(--theme-border)',
-                        background: hrPlan === p
-                          ? (p === 'pro' ? 'rgba(201,168,76,0.12)' : p === 'growth' ? 'rgba(52,211,153,0.10)' : 'rgba(120,113,108,0.10)')
-                          : 'none',
-                        color: hrPlan === p
-                          ? (p === 'pro' ? 'var(--theme-accent)' : p === 'growth' ? 'var(--theme-green)' : 'var(--theme-text3)')
-                          : 'var(--theme-text3)',
-                      }}>
-                        {p.charAt(0).toUpperCase() + p.slice(1)}
-                      </button>
-                    ))}
-                    <button className="btn btn-primary" style={{ fontSize: 11, padding: '4px 12px' }} onClick={handleSaveHr} disabled={savingHr || !hrEnabled}>
-                      {savingHr ? '…' : hrMsg.startsWith('ok:') ? '✓' : 'Save'}
-                    </button>
-                  </div>
-                </div>
-                {hrMsg && <p style={{ margin: '6px 0 0', fontSize: 11, color: hrMsg.startsWith('ok:') ? 'var(--theme-green)' : 'var(--theme-red)' }}>{hrMsg.replace(/^(ok|error):/, '')}</p>}
-              </div>
-
-              {/* POS plan */}
-              <div style={{ padding: '16px 0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--theme-text3)' }}>Crest POS</p>
-                      <span style={{ fontSize: 10, color: 'var(--theme-text3)', fontStyle: 'italic' }}>coming soon</span>
-                    </div>
-                    <p style={{ margin: 0, fontSize: 12, color: 'var(--theme-text2)' }}>Point of Sale</p>
-                  </div>
-                  <div style={{ display: 'flex', gap: 6, flexShrink: 0, opacity: 0.25 }}>
-                    {['starter','growth','pro'].map(p => (
-                      <button key={p} disabled style={{
-                        padding: '4px 12px', borderRadius: 4, cursor: 'not-allowed', fontSize: 11, fontWeight: 700,
-                        border: '1px solid var(--theme-border)', background: 'none', color: 'var(--theme-text3)',
-                      }}>
-                        {p.charAt(0).toUpperCase() + p.slice(1)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-            </div>
-          )}
-
           {/* ── BILLING TAB ── */}
           {activeTab === 'billing' && (() => {
             const trialDays = trialEndsAt
@@ -762,6 +655,63 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
             const subStatus = getSubStatus(client)
             return (
               <div>
+                {/* ── Modules ── */}
+                <div style={{ marginBottom: 24 }}>
+                  <p style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 4px' }}>
+                    Modules
+                  </p>
+                  <p style={{ fontSize: 11, color: 'var(--theme-text3)', margin: '0 0 12px' }}>
+                    Toggle on/off. Plan for each module is saved with the subscription below.
+                  </p>
+
+                  {/* IMS row */}
+                  {[
+                    { key: 'ims', label: 'Crest IMS', sub: 'Inventory Management', enabled: imsEnabled, toggle: handleToggleIms, plan: currentPlan, setPlan: setCurrentPlan },
+                    { key: 'hr',  label: 'Crest HR',  sub: 'Human Resources',      enabled: hrEnabled,  toggle: handleToggleHr,  plan: hrPlan,      setPlan: setHrPlan },
+                  ].map(mod => (
+                    <div key={mod.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--theme-border-lt)' }}>
+                      <div style={{ minWidth: 110 }}>
+                        <p style={{ margin: '0 0 1px', fontSize: 13, fontWeight: 700, color: mod.enabled ? 'var(--theme-text1)' : 'var(--theme-text3)' }}>{mod.label}</p>
+                        <p style={{ margin: 0, fontSize: 11, color: 'var(--theme-text2)' }}>{mod.sub}</p>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                        <div style={{ display: 'flex', gap: 4, opacity: mod.enabled ? 1 : 0.3, transition: 'opacity 0.2s' }}>
+                          {['starter','growth','pro'].map(p => {
+                            const active = mod.plan === p
+                            const color = p === 'pro' ? 'var(--theme-accent)' : p === 'growth' ? 'var(--theme-green)' : 'var(--theme-text2)'
+                            return (
+                              <button key={p} onClick={() => mod.enabled && mod.setPlan(p)} style={{
+                                padding: '3px 10px', borderRadius: 4, cursor: mod.enabled ? 'pointer' : 'not-allowed',
+                                fontSize: 10, fontWeight: 700, border: active ? `1px solid ${color}` : '1px solid var(--theme-border)',
+                                background: active ? (p === 'pro' ? 'rgba(201,168,76,0.12)' : p === 'growth' ? 'rgba(52,211,153,0.10)' : 'rgba(120,113,108,0.10)') : 'none',
+                                color: active ? color : 'var(--theme-text3)',
+                              }}>
+                                {p.charAt(0).toUpperCase() + p.slice(1)}
+                              </button>
+                            )
+                          })}
+                        </div>
+                        <div onClick={mod.toggle} style={{ position: 'relative', width: 38, height: 22, borderRadius: 11, cursor: 'pointer', flexShrink: 0, background: mod.enabled ? 'var(--theme-accent)' : '#374151', transition: 'background 0.2s' }}>
+                          <div style={{ position: 'absolute', top: 3, left: mod.enabled ? 19 : 3, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.35)' }} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* POS row — coming soon */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 0' }}>
+                    <div style={{ minWidth: 110 }}>
+                      <p style={{ margin: '0 0 1px', fontSize: 13, fontWeight: 700, color: 'var(--theme-text3)' }}>Crest POS</p>
+                      <p style={{ margin: 0, fontSize: 11, color: 'var(--theme-text2)' }}>Point of Sale · coming soon</p>
+                    </div>
+                    <div style={{ opacity: 0.3 }}>
+                      <div style={{ position: 'relative', width: 38, height: 22, borderRadius: 11, background: '#374151', cursor: 'not-allowed' }}>
+                        <div style={{ position: 'absolute', top: 3, left: 3, width: 16, height: 16, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.35)' }} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Trial info */}
                 <div style={{ marginBottom: 24, padding: '14px 16px', background: 'var(--theme-bg)', borderRadius: 8, border: '1px solid var(--theme-border)' }}>
                   <p style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 8px' }}>Free Trial (1 month)</p>
