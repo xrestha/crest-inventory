@@ -1514,137 +1514,53 @@ export default function AdminClients() {
                 key={c.id}
                 onClick={() => setActiveDrawer(c)}
                 style={{
-                  background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 10,
-                  overflow: 'hidden', cursor: 'pointer',
-                  transition: 'border-color 0.15s',
+                  background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 8,
+                  overflow: 'hidden', cursor: 'pointer', transition: 'border-color 0.15s',
                 }}
                 onMouseEnter={e => e.currentTarget.style.borderColor = '#3a3f4d'}
                 onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--theme-border)'}
               >
-                {/* Header row */}
-                <div style={{ padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                {/* Main row */}
+                <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {/* Name + status */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-                      <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--theme-text1)', fontFamily: 'Georgia, serif' }}>{c.name}</span>
-                      <span className={`badge ${c.is_active ? 'badge-green' : 'badge-gray'}`}>
-                        {c.is_active ? 'Active' : 'Inactive'}
-                      </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--theme-text1)', fontFamily: 'Georgia, serif' }}>{c.name}</span>
+                      <span className={`badge ${c.is_active ? 'badge-green' : 'badge-gray'}`}>{c.is_active ? 'Active' : 'Inactive'}</span>
                       {rel && (
-                        <span style={{ fontSize: 11, color: isRecent ? 'var(--theme-green)' : 'var(--theme-text2)', fontWeight: isRecent ? 600 : 400 }}>
-                          {rel}
-                          {lastUser && (
-                            <span style={{ color: 'var(--theme-text2)', fontWeight: 400 }}> · {lastUser}</span>
-                          )}
+                        <span style={{ fontSize: 11, color: isRecent ? 'var(--theme-green)' : 'var(--theme-text3)', fontWeight: isRecent ? 600 : 400 }}>
+                          {rel}{lastUser && <span style={{ color: 'var(--theme-text3)', fontWeight: 400 }}> · {lastUser}</span>}
                         </span>
                       )}
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--theme-text2)' }}>
+                    <div style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 2 }}>
                       {[c.location, c.contact_person, c.contact_phone].filter(Boolean).join(' · ') || '—'}
                     </div>
                   </div>
+
+                  {/* Module pills */}
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                    {[
+                      { key: 'IMS', enabled: c.ims_enabled !== false, plan: c.plan },
+                      { key: 'HR',  enabled: !!c.hr_enabled,          plan: c.hr_plan },
+                    ].map(m => (
+                      <span key={m.key} style={{
+                        fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4,
+                        border: `1px solid ${m.enabled ? (planColor(m.plan) === 'var(--theme-accent)' ? 'rgba(201,168,76,0.4)' : planColor(m.plan) === 'var(--theme-green)' ? 'rgba(52,211,153,0.35)' : 'rgba(107,114,128,0.35)') : 'var(--theme-border)'}`,
+                        color: m.enabled ? planColor(m.plan) : 'var(--theme-text3)',
+                        background: 'transparent',
+                      }}>
+                        {m.key}{m.enabled ? ` · ${planLabel(m.plan || 'starter')}` : ' · off'}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Sub badge + Manage */}
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
-                    {c.billing_cycle === 'annual' && c.subscription_ends_at && (
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4, color: '#000', background: 'var(--theme-accent)', whiteSpace: 'nowrap' }}>Annual</span>
+                    {c.billing_cycle === 'annual' && (c.ims_ends_at || c.subscription_ends_at) && (
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4, color: '#000', background: 'var(--theme-accent)' }}>Annual</span>
                     )}
                     <SubBadge client={c} />
-                  </div>
-                </div>
-
-                {/* Module strip */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', borderTop: '1px solid var(--theme-border)' }}>
-                  {/* IMS */}
-                  <div style={{ padding: '10px 18px', borderRight: '1px solid var(--theme-border)' }} onClick={e => e.stopPropagation()}>
-                    <div style={{ fontSize: 10, color: 'var(--theme-text3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>IMS</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <button
-                        onClick={e => toggleImsEnabled(c, e)}
-                        style={{
-                          width: 32, height: 18, borderRadius: 9, border: 'none', cursor: 'pointer',
-                          position: 'relative', flexShrink: 0, padding: 0,
-                          background: c.ims_enabled !== false ? 'var(--theme-green)' : 'var(--theme-text3)', transition: 'background 0.2s',
-                        }}
-                      >
-                        <span style={{
-                          position: 'absolute', top: 2, left: c.ims_enabled !== false ? 15 : 2,
-                          width: 14, height: 14, borderRadius: '50%', background: '#fff', transition: 'left 0.2s',
-                        }} />
-                      </button>
-                      {c.ims_enabled !== false ? (
-                        <span style={{ fontSize: 12, fontWeight: 700, color: planColor(c.plan) }}>
-                          {planLabel(c.plan || 'starter')}
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: 12, color: 'var(--theme-text3)' }}>Not enabled</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* HR */}
-                  <div style={{ padding: '10px 18px', borderRight: '1px solid var(--theme-border)' }} onClick={e => e.stopPropagation()}>
-                    <div style={{ fontSize: 10, color: 'var(--theme-text3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>HR</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <button
-                        onClick={e => toggleHrEnabled(c, e)}
-                        style={{
-                          width: 32, height: 18, borderRadius: 9, border: 'none', cursor: 'pointer',
-                          position: 'relative', flexShrink: 0, padding: 0,
-                          background: c.hr_enabled ? 'var(--theme-green)' : 'var(--theme-text3)', transition: 'background 0.2s',
-                        }}
-                      >
-                        <span style={{
-                          position: 'absolute', top: 2, left: c.hr_enabled ? 15 : 2,
-                          width: 14, height: 14, borderRadius: '50%', background: '#fff', transition: 'left 0.2s',
-                        }} />
-                      </button>
-                      {c.hr_enabled ? (
-                        <span style={{ fontSize: 12, fontWeight: 700, color: planColor(c.hr_plan) }}>
-                          {planLabel(c.hr_plan || 'starter')}
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: 12, color: 'var(--theme-text3)' }}>Not enabled</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* POS */}
-                  <div style={{ padding: '10px 18px' }}>
-                    <div style={{ fontSize: 10, color: 'var(--theme-text3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>POS</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <button
-                        disabled
-                        style={{
-                          width: 32, height: 18, borderRadius: 9, border: 'none', cursor: 'not-allowed',
-                          position: 'relative', flexShrink: 0, padding: 0,
-                          background: 'var(--theme-card)', opacity: 0.45,
-                        }}
-                      >
-                        <span style={{ position: 'absolute', top: 2, left: 2, width: 14, height: 14, borderRadius: '50%', background: 'var(--theme-text3)' }} />
-                      </button>
-                      <span style={{ fontSize: 12, color: 'var(--theme-text3)', fontStyle: 'italic' }}>Coming soon</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Action footer */}
-                <div
-                  style={{ padding: '10px 18px', borderTop: '1px solid var(--theme-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--theme-bg)' }}
-                  onClick={e => e.stopPropagation()}
-                >
-                  <button
-                    className="btn btn-ghost"
-                    style={{ fontSize: 11, padding: '4px 10px', color: '#818cf8', borderColor: 'rgba(129,140,248,0.3)' }}
-                    onClick={e => { e.stopPropagation(); setFeatureModalClient(c) }}
-                  >
-                    Features ⊞
-                  </button>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button
-                      className="btn btn-ghost"
-                      style={{ fontSize: 11, padding: '4px 10px' }}
-                      onClick={e => toggleActive(c, e)}
-                    >
-                      {c.is_active ? 'Deactivate' : 'Activate'}
-                    </button>
                     <button
                       className="btn btn-ghost"
                       style={{ fontSize: 11, padding: '4px 10px', color: 'var(--theme-accent)', borderColor: 'rgba(201,168,76,0.3)' }}
@@ -1653,6 +1569,27 @@ export default function AdminClients() {
                       Manage →
                     </button>
                   </div>
+                </div>
+
+                {/* Secondary action bar */}
+                <div
+                  style={{ padding: '6px 16px', borderTop: '1px solid var(--theme-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.15)' }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  <button
+                    className="btn btn-ghost"
+                    style={{ fontSize: 10, padding: '2px 8px', color: '#818cf8', borderColor: 'rgba(129,140,248,0.25)' }}
+                    onClick={e => { e.stopPropagation(); setFeatureModalClient(c) }}
+                  >
+                    Features ⊞
+                  </button>
+                  <button
+                    className="btn btn-ghost"
+                    style={{ fontSize: 10, padding: '2px 8px' }}
+                    onClick={e => toggleActive(c, e)}
+                  >
+                    {c.is_active ? 'Deactivate' : 'Activate'}
+                  </button>
                 </div>
               </div>
             )
