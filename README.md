@@ -124,6 +124,43 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S169 — 2026-06-29 — Admin: Billing tab overhaul — module toggles, per-module subscriptions, compact cards
+
+**Modules tab removed; Billing tab consolidated:**
+- Modules tab removed from admin client drawer entirely
+- New Modules section at top of Billing tab: on/off toggle switches for Crest IMS, Crest HR, Crest POS (coming soon); toggles instantly save `ims_enabled`/`hr_enabled` to DB
+- Plan pills removed from module toggle rows — plan selection moved to dedicated plan card sections below
+- HR plan cards added below IMS plan cards; both show price detail (NPR X,XXX/mo) that updates with billing cycle
+- Admin Free Trial (1-month) card removed — disconnected legacy mechanism; real trial is the 7-day self-service flow via `register_trial` Edge Function (`is_trial`, `trial_expires_at`, `trial_purge_at`)
+
+**Per-module subscription end dates:**
+- `clients` table: new columns `ims_ends_at timestamptz`, `hr_ends_at timestamptz`, `pos_ends_at timestamptz`
+- Billing tab now shows a separate section per enabled module (IMS / HR): plan cards + date picker + quick extend (+7 Days / +1 Month / +3 Months / +1 Year) + Clear button + inline status badge (green / amber / red / Expired)
+- `handleSaveSub` saves all three module dates instead of global `subscription_ends_at`
+- IMS date pre-fills from legacy `subscription_ends_at` on first open (migration path — no data lost)
+- `loadClients` expiry check: client stays active while ANY module date is valid; only deactivated when all module dates have expired
+- `subscription.js`: new `getDateStatus(endsAt)` helper for per-module badges; `getSubStatus` updated to use `ims_ends_at → subscription_ends_at → trial` fallback chain
+- AuthContext + Layout `allClients` query updated to include the three new columns
+
+**Compact client cards:**
+- Removed 3-column module strip (toggles, plan labels) and separate action footer
+- Module status now shown as inline pills in the main row: `IMS · Pro`, `HR · Starter`, `HR · off` (color-coded by plan tier)
+- Manage → button moved into the main row alongside Sub badge + Annual badge
+- Features ⊞ and Deactivate/Activate moved to a slim secondary bar below
+- Card height roughly halved; all clients fit without scrolling
+
+**DB migrations:**
+```sql
+ALTER TABLE clients
+  ADD COLUMN ims_ends_at timestamptz,
+  ADD COLUMN hr_ends_at  timestamptz,
+  ADD COLUMN pos_ends_at timestamptz;
+```
+
+**Files:** `src/pages/AdminClients.js`, `src/utils/subscription.js`, `src/context/AuthContext.js`, `src/components/Layout.js`
+
+---
+
 ### S168 — 2026-06-29 — Admin: Billing cycle + corrected plan prices
 
 **Billing cycle (monthly vs annual) added to admin client billing:**
