@@ -124,6 +124,24 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S161 — 2026-06-29 — HR: Employee form — Address, Family, Supervisor, Retirement tabs
+
+Extended `src/modules/hr/employees/EmployeeForm.jsx` with two new tabs and additions to the Employment tab. No new child tables — all flat columns on `hr_employees`.
+
+**Address tab (new):** Province (7 Nepal provinces) → District → Municipality/VDC → Ward → Tole for both **Permanent** and **Current** address. "Current address same as permanent" checkbox — when ticked, current is mirrored from permanent on save. Legacy single-line `address` value shown read-only as "On file" for existing employees; old `address` input removed from Personal tab.
+
+**Family tab (new):** Marital Status (single/married/divorced/widowed) — Spouse Name appears only when married. Father's Name, Mother's Name, Grandfather's Name (with Tip noting lineage requirement on Nepal forms), Number of Children. **Nominee** sub-section (Name, Relationship, Contact) with Tip that nominee receives SSF/gratuity on death.
+
+**Employment tab additions:** Reporting Supervisor `<select>` (active employees only, self excluded, shows "Name — Designation") with self-referential FK `ON DELETE SET NULL`. Retirement Date `BsCalendarPicker` + **↻ Age 60** button (DOB + 60 years; disabled until DOB entered; Tip notes SSF pension age).
+
+**DB migration run ✓** (22 `ALTER TABLE IF NOT EXISTS` columns on `hr_employees`): `supervisor_id`, `retirement_date`, `marital_status`, `spouse_name`, `father_name`, `mother_name`, `grandfather_name`, `children_count`, `nominee_name`, `nominee_relationship`, `nominee_contact`, `perm_province/district/municipality/ward/tole`, `same_as_permanent`, `temp_province/district/municipality/ward/tole`.
+
+No service-worker bump needed (JS-only change). Build clean.
+
+**File:** `src/modules/hr/employees/EmployeeForm.jsx`
+
+---
+
 ### S160 — 2026-06-29 — Login redesign (split layout + trial); signup phone field; full BS calendar picker
 
 **Login page — two-column split layout (`src/pages/Login.js`, `Login.css`):**
