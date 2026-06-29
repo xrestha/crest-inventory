@@ -124,6 +124,34 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S163 — 2026-06-29 — HR: Pay Setup overhaul — dearness, CTC, Cash in Hand, compact calendar
+
+**Pay Setup overhaul (`src/modules/hr/pay/PayForm.jsx`, `src/modules/hr/pay/PaySetup.jsx`):**
+- Replaced the old "split from gross" helper with three dedicated fields: **Basic Salary**, **Dearness Allowance (महँगी भत्ता)**, and **Other Allowances** — dearness is stored as a named `hr_salary_components` row (no DB migration needed)
+- Modal widened to 780px; two-column layout — inputs left, live Monthly Summary right
+- Monthly Summary now shows: Basic → Dearness → Other Allowances → Gross → −SSF → **Net (Cash in Hand)** → **Cost to Company (CTC)** (blue) → Employer SSF. CTC = Gross + Employer SSF
+- Compliance panel: checks Basic ≥ 12,170 / Dearness ≥ 7,380 / Gross ≥ 19,550 all at once with ✓/✗ per line; green "all clear" when all pass
+- Daily/hourly staff now show estimated monthly cost (~rate × 26 days or × 8h × 26) in the summary table
+- `getSalary()` separates dearness from other allowances; Excel export now has `'Dearness Allowance (NPR)'` and `'Other Allowances (NPR)'` as separate columns
+- Allowances column tooltip updated to mention dearness is included
+
+**PayrollRun payslip (`src/modules/hr/payroll/PayrollRun.jsx`):** "Allowances" label changed to "Allowances (incl. Dearness)" on the payslip modal/print
+
+**payrollCompute.js:** removed stale comment referencing deleted SalaryList.jsx
+
+**BsCalendarPicker compact (`src/components/BsCalendarPicker.js`):**
+- Day buttons: `aspectRatio: 1` (square ~40px) → `height: 26px` fixed — reduces popup from ~320px to ~230px tall
+- Popover width capped at 280px regardless of input width; left-edge clamped to viewport
+- `above` threshold 300px → 240px; `bottom` anchor corrected for above-mode; `maxHeight: calc(100vh - 16px)` + `overflowY: auto` prevents viewport clip
+
+**Help.js:** Pay Setup guide rewritten to document dearness field, CTC, Cash in Hand, and compliance panel.
+
+No DB change. Build clean.
+
+**Files:** `src/modules/hr/pay/PayForm.jsx`, `src/modules/hr/pay/PaySetup.jsx`, `src/modules/hr/payroll/PayrollRun.jsx`, `src/modules/hr/payroll/payrollCompute.js`, `src/components/BsCalendarPicker.js`, `src/pages/Help.js`
+
+---
+
 ### S162 — 2026-06-29 — IMS cleanup: full BsCalendarPicker rollout + dead code removal
 
 Completed the BS calendar picker migration across all remaining date fields.

@@ -8,7 +8,7 @@ import {
 
 const r = n => Math.round((n + Number.EPSILON))
 
-// Value of a salary component given the basic (mirrors SalaryList.jsx).
+// Value of a salary component given the basic salary.
 export function calcAmount(comp, basic) {
   const v = parseFloat(comp.value) || 0
   if (comp.calc_type === 'percent_of_basic') return Math.round((parseFloat(basic) || 0) * v / 100)

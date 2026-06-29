@@ -55,11 +55,11 @@ export default function BsCalendarPicker({
     if (!open || !triggerRef.current) return
     const rect       = triggerRef.current.getBoundingClientRect()
     const spaceBelow = window.innerHeight - rect.bottom
-    const above      = spaceBelow < 320
+    const above      = spaceBelow < 240
     setPos({
-      top:   above ? rect.top : rect.bottom + 4,
-      left:  rect.left,
-      width: Math.max(rect.width, 280),
+      top:   above ? Math.max(8, rect.top - 4) : rect.bottom + 4,
+      left:  Math.min(rect.left, window.innerWidth - 284),
+      width: Math.min(Math.max(rect.width, 260), 280),
       above,
     })
   }, [open])
@@ -130,40 +130,42 @@ export default function BsCalendarPicker({
       style={{
         position:  'fixed',
         top:       pos.above ? undefined : pos.top,
-        bottom:    pos.above ? window.innerHeight - pos.top : undefined,
+        bottom:    pos.above ? window.innerHeight - pos.top + 4 : undefined,
         left:      pos.left,
         width:     pos.width,
-        minWidth:  280,
+        minWidth:  260,
+        maxHeight: 'calc(100vh - 16px)',
+        overflowY: 'auto',
         zIndex:    9999,
         background: 'var(--theme-card)',
         border:    '1px solid var(--theme-border)',
         borderRadius: 10,
         boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-        padding:   '12px 12px 8px',
+        padding:   '10px 10px 6px',
       }}
     >
       {/* Month navigation (arrows hidden in locked mode) */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
         <button style={navBtn(!locked)} onClick={prevMonth} disabled={locked}>‹</button>
-        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--theme-text1)' }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--theme-text1)' }}>
           {BS_MONTHS[navMonth - 1]} {navYear}
         </div>
         <button style={navBtn(!locked)} onClick={nextMonth} disabled={locked}>›</button>
       </div>
 
       {/* Day-of-week headers */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 4 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1, marginBottom: 2 }}>
         {DAY_LABELS.map(d => (
-          <div key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: 'var(--theme-text3)', padding: '2px 0' }}>
+          <div key={d} style={{ textAlign: 'center', fontSize: 9, fontWeight: 700, color: 'var(--theme-text3)', padding: '1px 0' }}>
             {d}
           </div>
         ))}
       </div>
 
       {/* Day grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1 }}>
         {cells.map((day, i) => {
-          if (!day) return <div key={i} />
+          if (!day) return <div key={i} style={{ height: 26 }} />
           const isToday = day === today.day && navMonth === today.month && navYear === today.year
           const isSel   = selected && day === selected.day && navMonth === selected.month && navYear === selected.year
           return (
@@ -172,8 +174,9 @@ export default function BsCalendarPicker({
               type="button"
               onClick={() => selectDay(day)}
               style={{
-                width: '100%', aspectRatio: '1', border: 'none',
-                borderRadius: 6, fontSize: 12, cursor: 'pointer',
+                width: '100%', height: 26, border: 'none',
+                borderRadius: 4, fontSize: 11, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontWeight: isSel || isToday ? 700 : 400,
                 background: isSel
                   ? 'var(--theme-accent)'
@@ -198,7 +201,7 @@ export default function BsCalendarPicker({
       {/* Footer */}
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--theme-border)',
+        marginTop: 5, paddingTop: 5, borderTop: '1px solid var(--theme-border)',
       }}>
         {todayInView ? (
           <button

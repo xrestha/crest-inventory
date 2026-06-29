@@ -379,7 +379,7 @@ function PayslipBody({ slip, emp, periodLabel, forPrint }) {
 
       <div style={{ fontSize: 10, color: c1, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Earnings</div>
       <Row label={isMonthly ? 'Basic Salary' : `Wage (${slip.pay_basis})`} value={slip.basic} />
-      {isMonthly && slip.allowances > 0 && <Row label="Allowances" value={slip.allowances} />}
+      {isMonthly && slip.allowances > 0 && <Row label="Allowances (incl. Dearness)" value={slip.allowances} />}
       {!isMonthly && <Row label={slip.pay_basis === 'hourly' ? `Hours worked (${slip.hours_worked})` : `Days worked (${slip.worked_days})`} value={slip.gross} />}
       {slip.ot_amount > 0 && <Row label={`Overtime (${slip.ot_hours} hrs)`} value={slip.ot_amount} />}
       <Row label="Gross Earnings" value={slip.gross + slip.ot_amount} strong />

@@ -48,22 +48,31 @@ export default function PaySetup() {
 
   const filtered = employees.filter(e => statusFilter === 'all' || e.status === statusFilter)
 
-  // Per-employee computed salary. Monthly only — daily/hourly pay resolves at payroll.
+  // Per-employee computed salary.
+  // Monthly: derives from basic + dearness + other allowances + deductions.
+  // Daily/hourly: returns rate + an estimated monthly cost (rate × 26 days or rate × 8h × 26).
   function getSalary(emp) {
-    const monthly = (emp.pay_basis || 'monthly') === 'monthly'
-    const basic   = parseFloat(emp.basic_salary) || 0
-    if (!monthly) return { monthly: false, rate: basic, unit: payUnitOf(emp) }
+    const basis = emp.pay_basis || 'monthly'
+    const basic = parseFloat(emp.basic_salary) || 0
+    if (basis !== 'monthly') {
+      const unit    = payUnitOf(emp)
+      const estMonthly = basis === 'daily' ? basic * 26 : basic * 8 * 26
+      return { monthly: false, rate: basic, unit, estMonthly }
+    }
     const comps      = components.filter(c => c.employee_id === emp.id)
-    const earnings   = comps.filter(c => c.type === 'earning')
+    const dearness   = comps.find(c => c.name === 'Dearness Allowance' && c.type === 'earning')
+    const dearnessAmt = parseFloat(dearness?.value) || 0
+    const earnings   = comps.filter(c => c.type === 'earning' && c.name !== 'Dearness Allowance')
     const deductions = comps.filter(c => c.type === 'deduction')
-    const totalAllowances = earnings.reduce((s, c)   => s + calcAmount(c, basic), 0)
+    const otherAllowances = earnings.reduce((s, c)   => s + calcAmount(c, basic), 0)
+    const totalAllowances = dearnessAmt + otherAllowances
     const totalOtherDed   = deductions.reduce((s, c) => s + calcAmount(c, basic), 0)
     const ssf_base  = Math.min(basic, SSF_CAP)
     const ssf_emp   = Math.round(ssf_base * SSF_EMPLOYEE_PCT)
     const ssf_emp_  = Math.round(ssf_base * SSF_EMPLOYER_PCT)
     const gross     = basic + totalAllowances
     const totalDed  = ssf_emp + totalOtherDed
-    return { monthly: true, basic, totalAllowances, ssf_emp, ssf_employer: ssf_emp_, totalOtherDed, gross, totalDed, net: gross - totalDed }
+    return { monthly: true, basic, dearnessAmt, otherAllowances, totalAllowances, ssf_emp, ssf_employer: ssf_emp_, totalOtherDed, gross, totalDed, net: gross - totalDed }
   }
 
   // Totals — monthly employees only.
@@ -87,7 +96,7 @@ export default function PaySetup() {
       if (!s.monthly) return { ...base, [`Rate (NPR / ${s.unit})`]: s.rate, 'Note': 'Pay computed at payroll from attendance' }
       return {
         ...base,
-        'Basic (NPR)': s.basic, 'Allowances (NPR)': s.totalAllowances, 'Gross (NPR)': s.gross,
+        'Basic (NPR)': s.basic, 'Dearness Allowance (NPR)': s.dearnessAmt, 'Other Allowances (NPR)': s.otherAllowances, 'Gross (NPR)': s.gross,
         'SSF Emp 11% (NPR)': s.ssf_emp, 'Other Ded (NPR)': s.totalOtherDed, 'Total Ded (NPR)': s.totalDed,
         'Net Salary (NPR)': s.net, 'SSF Employer 20% (NPR)': s.ssf_employer,
       }
@@ -160,7 +169,7 @@ export default function PaySetup() {
                     <Tip text="Monthly basic salary. SSF and the 60% rule are computed on this." width={240}>Basic</Tip>
                   </th>
                   <th style={{ textAlign: 'right' }}>
-                    <Tip text="Sum of all allowances (housing, transport, etc.) — fixed or % of basic." width={240}>Allowances</Tip>
+                    <Tip text="Sum of all allowances including Dearness Allowance, housing, transport, etc. — fixed or % of basic." width={260}>Allowances</Tip>
                   </th>
                   <th style={{ textAlign: 'right' }}>
                     <Tip text="Gross earnings = basic + allowances, before any deduction." width={220}>Gross</Tip>
@@ -209,9 +218,16 @@ export default function PaySetup() {
                           <td style={{ textAlign: 'right', color: '#6b7280', fontSize: 12 }}>{fmt(s.ssf_employer)}</td>
                         </>
                       ) : (
-                        <td colSpan={6} style={{ textAlign: 'right', color: '#6b7280', fontSize: 12, fontStyle: 'italic' }}>
-                          NPR {fmt(s.rate)} / {s.unit} · paid via payroll from attendance
-                        </td>
+                        <>
+                          <td colSpan={4} style={{ color: '#6b7280', fontSize: 12 }}>
+                            NPR {fmt(s.rate)} / {s.unit}
+                          </td>
+                          <td style={{ textAlign: 'right', fontSize: 12 }}>
+                            <span style={{ color: '#c9a84c', fontWeight: 600 }}>~{fmt(s.estMonthly)}</span>
+                            <span style={{ color: '#4b5563', fontSize: 10, marginLeft: 4 }}>est/mo</span>
+                          </td>
+                          <td colSpan={2} style={{ color: '#4b5563', fontSize: 11, fontStyle: 'italic' }}>from attendance</td>
+                        </>
                       )}
                       <td style={{ fontSize: 12 }}>
                         {hasBank ? <span style={{ color: '#9ca3af' }}>{emp.bank_name}</span> : <span style={{ color: '#c9a84c' }}>⚠ not set</span>}
