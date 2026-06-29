@@ -106,7 +106,7 @@ export default function Login() {
           </div>
 
           <div className="login-pitch">
-            <div className="login-pitch-headline">Run a tighter kitchen.</div>
+            <div className="login-pitch-headline">Smarter menus. Better margins.</div>
             <div className="login-pitch-sub">Built for Nepal's F&amp;B industry.</div>
           </div>
 
