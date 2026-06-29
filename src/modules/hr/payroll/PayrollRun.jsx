@@ -48,7 +48,7 @@ export default function PayrollRun() {
   async function loadAll(periodId) {
     const [{ data: runRow }, { data: emps }, { data: comps }, { data: att }] = await Promise.all([
       supabase.from('hr_payroll_runs').select('*').eq('client_id', clientId).eq('period_id', periodId).maybeSingle(),
-      supabase.from('hr_employees').select('id, full_name, employee_code, pay_basis, basic_salary, ssf_no, department, status')
+      supabase.from('hr_employees').select('id, full_name, employee_code, pay_basis, basic_salary, ssf_no, ssf_enrolled, department, status')
         .eq('client_id', clientId).in('status', ['active', 'probation']).order('full_name'),
       supabase.from('hr_salary_components').select('*').eq('client_id', clientId),
       supabase.from('hr_attendance').select('*').eq('period_id', periodId),
@@ -100,7 +100,7 @@ export default function PayrollRun() {
       const comps = components.filter(c => c.employee_id === emp.id)
       const att   = attendance.filter(a => a.employee_id === emp.id)
       const slip  = computePayslip(emp, comps, att, period, 0)
-      const isSsf = !!(emp.ssf_no && String(emp.ssf_no).trim())
+      const isSsf = !!(emp.ssf_enrolled)
       const ytd   = ytdMap[emp.id] || { gross: 0, ssf: 0, withheld: 0 }
       const tds   = computeMonthlyTds({
         period,
@@ -280,7 +280,7 @@ export default function PayrollRun() {
                             <div style={{ display: 'flex', gap: 6, marginTop: 2, alignItems: 'center' }}>
                               {emp.employee_code && <span style={{ fontSize: 10, color: '#6b7280' }}>{emp.employee_code}</span>}
                               {!isMonthly && <span style={{ fontSize: 10, fontWeight: 700, color: '#60a5fa', background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.2)', borderRadius: 8, padding: '1px 6px' }}>{s.pay_basis}</span>}
-                              {!emp.ssf_no && <span style={{ fontSize: 10, color: '#4b5563' }}>no SSF</span>}
+                              {!emp.ssf_enrolled && <span style={{ fontSize: 10, color: '#4b5563' }}>no SSF</span>}
                             </div>
                           </td>
                           <td style={{ textAlign: 'right', color: '#e8e0d0' }}>{fmt(s.gross)}</td>

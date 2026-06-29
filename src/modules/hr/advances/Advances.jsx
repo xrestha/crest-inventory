@@ -1,0 +1,461 @@
+import { useState, useEffect, useCallback } from 'react'
+import { supabase } from '../../../supabaseClient'
+import { useAuth } from '../../../context/AuthContext'
+import Tip from '../../../components/Tip'
+import SearchableSelect from '../../../components/SearchableSelect'
+import BsCalendarPicker from '../../../components/BsCalendarPicker'
+import { adToBs } from '../../../utils/bsCalendar'
+
+const fmt  = n => Math.round(n || 0).toLocaleString('en-NP')
+const fmtD = iso => {
+  if (!iso) return '—'
+  const bs = adToBs(new Date(iso + 'T00:00:00'))
+  return `${bs.year}-${String(bs.month).padStart(2,'0')}-${String(bs.day).padStart(2,'0')}`
+}
+const inp = {
+  background: 'var(--theme-input-bg)', border: '1px solid var(--theme-border)',
+  borderRadius: 6, padding: '7px 10px', fontSize: 13, color: 'var(--theme-text1)',
+  outline: 'none', width: '100%', fontFamily: 'inherit',
+}
+const lbl = { fontSize: 11, color: 'var(--theme-text3)', marginBottom: 4, display: 'block' }
+
+const EMPTY_ADD = {
+  employee_id: '', type: 'advance', issued_date: '', amount: '',
+  installment_amount: '', purpose: '', notes: '',
+}
+const EMPTY_REPAY = { repaid_date: '', amount: '', notes: '' }
+
+export default function Advances() {
+  const { clientId } = useAuth()
+  const [employees,  setEmployees]  = useState([])
+  const [advances,   setAdvances]   = useState([])
+  const [repayments, setRepayments] = useState([])
+  const [loading,    setLoading]    = useState(true)
+  const [filterType,   setFilterType]   = useState('all')    // all | advance | loan
+  const [filterStatus, setFilterStatus] = useState('active') // active | settled | all
+  const [selected,   setSelected]   = useState(null)  // advance id for detail panel
+  const [showAdd,    setShowAdd]    = useState(false)
+  const [showRepay,  setShowRepay]  = useState(false)
+  const [addForm,    setAddForm]    = useState(EMPTY_ADD)
+  const [repayForm,  setRepayForm]  = useState(EMPTY_REPAY)
+  const [saving,     setSaving]     = useState(false)
+  const [error,      setError]      = useState('')
+  const [settleTarget, setSettleTarget] = useState(null)
+
+  const load = useCallback(async () => {
+    if (!clientId) return
+    setLoading(true)
+    const [{ data: emps }, { data: advs }, { data: reps }] = await Promise.all([
+      supabase.from('hr_employees').select('id, full_name, employee_code, status')
+        .eq('client_id', clientId).order('full_name'),
+      supabase.from('hr_advances').select('*')
+        .eq('client_id', clientId).order('issued_date', { ascending: false }),
+      supabase.from('hr_advance_repayments').select('*')
+        .eq('client_id', clientId).order('repaid_date'),
+    ])
+    setEmployees(emps || [])
+    setAdvances(advs || [])
+    setRepayments(reps || [])
+    setLoading(false)
+  }, [clientId])
+
+  useEffect(() => { load() }, [load])
+
+  const empMap = Object.fromEntries((employees || []).map(e => [e.id, e]))
+
+  // Per-advance repayment totals and rows
+  const repayMap = {}
+  ;(repayments || []).forEach(r => {
+    if (!repayMap[r.advance_id]) repayMap[r.advance_id] = { total: 0, rows: [] }
+    repayMap[r.advance_id].total += parseFloat(r.amount) || 0
+    repayMap[r.advance_id].rows.push(r)
+  })
+
+  const filtered = (advances || []).filter(a => {
+    if (filterType !== 'all' && a.type !== filterType) return false
+    if (filterStatus !== 'all' && a.status !== filterStatus) return false
+    return true
+  })
+
+  // Summary stats (active only)
+  const activeAdvances = advances.filter(a => a.status === 'active')
+  const totalOutstanding = activeAdvances.reduce((s, a) => {
+    const repaid = repayMap[a.id]?.total || 0
+    return s + Math.max(0, parseFloat(a.amount) - repaid)
+  }, 0)
+  const employeesWithActive = new Set(activeAdvances.map(a => a.employee_id)).size
+  const advanceCount = activeAdvances.filter(a => a.type === 'advance').length
+  const loanCount    = activeAdvances.filter(a => a.type === 'loan').length
+
+  function setAdd(f, v) { setAddForm(p => ({ ...p, [f]: v })) }
+  function setRepay(f, v) { setRepayForm(p => ({ ...p, [f]: v })) }
+
+  async function handleAdd() {
+    if (!clientId) return
+    if (!addForm.employee_id) { setError('Select an employee.'); return }
+    if (!addForm.issued_date) { setError('Set the issued date.'); return }
+    if (!addForm.amount || parseFloat(addForm.amount) <= 0) { setError('Enter a valid amount.'); return }
+    setError(''); setSaving(true)
+    const { error: err } = await supabase.from('hr_advances').insert({
+      client_id:          clientId,
+      employee_id:        addForm.employee_id,
+      type:               addForm.type,
+      issued_date:        addForm.issued_date,
+      amount:             parseFloat(addForm.amount),
+      installment_amount: parseFloat(addForm.installment_amount) || null,
+      purpose:            addForm.purpose || null,
+      notes:              addForm.notes || null,
+    })
+    setSaving(false)
+    if (err) { setError(err.message); return }
+    setShowAdd(false); setAddForm(EMPTY_ADD); load()
+  }
+
+  async function handleRepay() {
+    if (!clientId || !selected) return
+    if (!repayForm.repaid_date) { setError('Set the repayment date.'); return }
+    if (!repayForm.amount || parseFloat(repayForm.amount) <= 0) { setError('Enter a valid amount.'); return }
+    const adv = advances.find(a => a.id === selected)
+    if (!adv) return
+    setError(''); setSaving(true)
+    const { error: err } = await supabase.from('hr_advance_repayments').insert({
+      client_id:   clientId,
+      advance_id:  selected,
+      employee_id: adv.employee_id,
+      repaid_date: repayForm.repaid_date,
+      amount:      parseFloat(repayForm.amount),
+      notes:       repayForm.notes || null,
+    })
+    setSaving(false)
+    if (err) { setError(err.message); return }
+    setShowRepay(false); setRepayForm(EMPTY_REPAY); load()
+  }
+
+  async function handleSettle(advId) {
+    await supabase.from('hr_advances').update({ status: 'settled' }).eq('id', advId)
+    setSettleTarget(null)
+    if (selected === advId) setSelected(null)
+    load()
+  }
+
+  async function handleDelete(advId) {
+    const hasReps = (repayMap[advId]?.rows || []).length > 0
+    if (hasReps) return // button shouldn't show if repayments exist
+    await supabase.from('hr_advances').delete().eq('id', advId)
+    if (selected === advId) setSelected(null)
+    load()
+  }
+
+  const selectedAdv = selected ? advances.find(a => a.id === selected) : null
+  const selectedReps = selected ? (repayMap[selected]?.rows || []) : []
+  const selectedRepaid = selected ? (repayMap[selected]?.total || 0) : 0
+  const selectedOutstanding = selectedAdv ? Math.max(0, parseFloat(selectedAdv.amount) - selectedRepaid) : 0
+
+  const tabBtn = (val, cur, set, label) => (
+    <button className={`tab-btn${cur === val ? ' tab-btn--active' : ''}`}
+      onClick={() => set(val)}>{label}</button>
+  )
+
+  if (loading) return <div style={{ padding: 32, color: 'var(--theme-text3)' }}>Loading…</div>
+
+  return (
+    <div style={{ padding: '24px 28px', maxWidth: 1100 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--theme-text1)' }}>Advances &amp; Loans</h2>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--theme-text3)' }}>Track salary advances and employee loans</p>
+        </div>
+        <button className="btn btn-primary" onClick={() => { setAddForm(EMPTY_ADD); setError(''); setShowAdd(true) }}>
+          + Issue Advance / Loan
+        </button>
+      </div>
+
+      {/* Summary cards */}
+      <div className="stat-grid" style={{ marginBottom: 20 }}>
+        {[
+          { label: 'Total Outstanding', value: `NPR ${fmt(totalOutstanding)}`, tip: 'Sum of unpaid balances across all active advances and loans.' },
+          { label: 'Employees Affected', value: employeesWithActive, tip: 'Number of employees with at least one active advance or loan.' },
+          { label: 'Active Advances', value: advanceCount, tip: 'Short-term advances (typically recovered in the next payslip).' },
+          { label: 'Active Loans', value: loanCount, tip: 'Multi-month loans with scheduled installment repayments.' },
+        ].map(c => (
+          <div key={c.label} className="card" style={{ padding: '14px 16px' }}>
+            <div style={{ fontSize: 11, color: 'var(--theme-text3)', marginBottom: 4 }}>
+              <Tip text={c.tip}>{c.label}</Tip>
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--theme-text1)' }}>{c.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center' }}>
+        <div className="tab-bar">
+          {tabBtn('all',     filterType,   setFilterType,   'All')}
+          {tabBtn('advance', filterType,   setFilterType,   'Advances')}
+          {tabBtn('loan',    filterType,   setFilterType,   'Loans')}
+        </div>
+        <div className="tab-bar" style={{ marginLeft: 8 }}>
+          {tabBtn('active',  filterStatus, setFilterStatus, 'Active')}
+          {tabBtn('settled', filterStatus, setFilterStatus, 'Settled')}
+          {tabBtn('all',     filterStatus, setFilterStatus, 'All')}
+        </div>
+      </div>
+
+      {/* Main table */}
+      <div className="table-wrap" style={{ marginBottom: selected ? 12 : 0 }}>
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th><Tip text="Advance = short-term, next payslip. Loan = multi-month installment.">Type</Tip></th>
+              <th>Issued (BS)</th>
+              <th style={{ textAlign: 'right' }}><Tip text="Original amount issued.">Amount</Tip></th>
+              <th style={{ textAlign: 'right' }}><Tip text="Scheduled monthly deduction from payroll.">Installment/Mo</Tip></th>
+              <th style={{ textAlign: 'right' }}><Tip text="Total repaid so far via recorded repayments.">Repaid</Tip></th>
+              <th style={{ textAlign: 'right' }}><Tip text="Amount still to be recovered.">Outstanding</Tip></th>
+              <th>Purpose</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 && (
+              <tr><td colSpan={9} style={{ textAlign: 'center', color: 'var(--theme-text3)', padding: 32 }}>
+                No records found.
+              </td></tr>
+            )}
+            {filtered.map(a => {
+              const emp      = empMap[a.employee_id] || {}
+              const repaid   = repayMap[a.id]?.total || 0
+              const outstanding = Math.max(0, parseFloat(a.amount) - repaid)
+              const isActive = a.status === 'active'
+              const isSel    = selected === a.id
+              return (
+                <tr key={a.id}
+                  onClick={() => setSelected(isSel ? null : a.id)}
+                  style={{ cursor: 'pointer', background: isSel ? 'rgba(201,168,76,0.07)' : undefined }}
+                >
+                  <td>
+                    <div style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{emp.full_name || '—'}</div>
+                    {emp.employee_code && <div style={{ fontSize: 11, color: 'var(--theme-text3)' }}>{emp.employee_code}</div>}
+                  </td>
+                  <td>
+                    <span className={a.type === 'loan' ? 'badge-gold' : 'badge-gray'} style={{ textTransform: 'capitalize' }}>
+                      {a.type}
+                    </span>
+                  </td>
+                  <td style={{ color: 'var(--theme-text2)', fontSize: 13 }}>{fmtD(a.issued_date)}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--theme-text1)' }}>{fmt(a.amount)}</td>
+                  <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>
+                    {a.installment_amount ? fmt(a.installment_amount) : <span style={{ color: 'var(--theme-text3)' }}>—</span>}
+                  </td>
+                  <td style={{ textAlign: 'right', color: '#34d399' }}>{fmt(repaid)}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 600, color: outstanding > 0 ? '#f87171' : '#34d399' }}>
+                    {fmt(outstanding)}
+                  </td>
+                  <td style={{ color: 'var(--theme-text3)', fontSize: 12, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {a.purpose || '—'}
+                  </td>
+                  <td>
+                    <span className={isActive ? 'badge-amber' : 'badge-green'} style={{ textTransform: 'capitalize' }}>
+                      {a.status}
+                    </span>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Detail panel */}
+      {selectedAdv && (
+        <div className="card" style={{ padding: 20, marginBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--theme-text1)' }}>
+                {empMap[selectedAdv.employee_id]?.full_name} — {selectedAdv.type === 'loan' ? 'Loan' : 'Advance'} of NPR {fmt(selectedAdv.amount)}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--theme-text3)', marginTop: 3 }}>
+                Issued {fmtD(selectedAdv.issued_date)}
+                {selectedAdv.purpose && ` · ${selectedAdv.purpose}`}
+                {selectedAdv.installment_amount && ` · NPR ${fmt(selectedAdv.installment_amount)}/mo installment`}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {selectedAdv.status === 'active' && (
+                <>
+                  <button className="btn btn-ghost" style={{ fontSize: 12 }}
+                    onClick={() => { setRepayForm({ ...EMPTY_REPAY, amount: selectedAdv.installment_amount || '' }); setError(''); setShowRepay(true) }}>
+                    + Record Repayment
+                  </button>
+                  <button className="btn btn-ghost" style={{ fontSize: 12, color: '#34d399' }}
+                    onClick={() => setSettleTarget(selectedAdv)}>
+                    ✓ Settle
+                  </button>
+                </>
+              )}
+              {(repayMap[selectedAdv.id]?.rows || []).length === 0 && (
+                <button className="btn btn-ghost" style={{ fontSize: 12, color: '#f87171' }}
+                  onClick={() => handleDelete(selectedAdv.id)}>
+                  Delete
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Balance bar */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--theme-text3)', marginBottom: 4 }}>
+              <span>Repaid: NPR {fmt(selectedRepaid)}</span>
+              <span>Outstanding: NPR {fmt(selectedOutstanding)}</span>
+            </div>
+            <div style={{ height: 6, borderRadius: 3, background: 'var(--theme-border)', overflow: 'hidden' }}>
+              <div style={{
+                height: '100%', borderRadius: 3,
+                width: `${Math.min(100, (selectedRepaid / parseFloat(selectedAdv.amount)) * 100)}%`,
+                background: selectedOutstanding === 0 ? '#34d399' : 'var(--theme-accent)',
+                transition: 'width 0.3s',
+              }} />
+            </div>
+          </div>
+
+          {/* Repayment history */}
+          {selectedReps.length === 0 ? (
+            <div style={{ fontSize: 13, color: 'var(--theme-text3)', padding: '8px 0' }}>No repayments recorded yet.</div>
+          ) : (
+            <table className="data-table" style={{ fontSize: 12 }}>
+              <thead>
+                <tr>
+                  <th>Date (BS)</th>
+                  <th style={{ textAlign: 'right' }}>Amount</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {selectedReps.map(r => (
+                  <tr key={r.id}>
+                    <td>{fmtD(r.repaid_date)}</td>
+                    <td style={{ textAlign: 'right', color: '#34d399', fontWeight: 600 }}>NPR {fmt(r.amount)}</td>
+                    <td style={{ color: 'var(--theme-text3)' }}>{r.notes || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {/* Add Advance/Loan modal */}
+      {showAdd && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card" style={{ width: 480, padding: 28, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <h3 style={{ margin: 0, fontSize: 16, color: 'var(--theme-text1)' }}>Issue Advance / Loan</h3>
+
+            <div>
+              <label style={lbl}>Employee</label>
+              <SearchableSelect
+                options={employees.filter(e => e.status === 'active' || e.status === 'probation').map(e => ({ value: e.id, label: `${e.full_name}${e.employee_code ? ` (${e.employee_code})` : ''}` }))}
+                value={addForm.employee_id}
+                onChange={v => setAdd('employee_id', v)}
+                placeholder="Select employee…"
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <label style={lbl}>Type</label>
+                <select className="form-select" value={addForm.type} onChange={e => setAdd('type', e.target.value)}>
+                  <option value="advance">Advance (short-term)</option>
+                  <option value="loan">Loan (multi-month)</option>
+                </select>
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={lbl}>Issued Date (BS)</label>
+                <BsCalendarPicker value={addForm.issued_date} onChange={v => setAdd('issued_date', v)} placeholder="Select date" clearable />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <label style={lbl}><Tip text="Total amount issued to the employee." width={200}>Amount (NPR)</Tip></label>
+                <input style={inp} type="number" min="1" placeholder="e.g. 20000" value={addForm.amount} onChange={e => setAdd('amount', e.target.value)} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={lbl}><Tip text="Monthly deduction amount. Shows in the detail panel as a reminder during payroll." width={240}>Installment / Month (NPR)</Tip></label>
+                <input style={inp} type="number" min="0" placeholder="e.g. 5000" value={addForm.installment_amount} onChange={e => setAdd('installment_amount', e.target.value)} />
+              </div>
+            </div>
+
+            <div>
+              <label style={lbl}>Purpose</label>
+              <input style={inp} placeholder="e.g. Medical emergency, festival advance…" value={addForm.purpose} onChange={e => setAdd('purpose', e.target.value)} />
+            </div>
+
+            <div>
+              <label style={lbl}>Notes</label>
+              <textarea style={{ ...inp, height: 60, resize: 'vertical' }} placeholder="Optional internal notes" value={addForm.notes} onChange={e => setAdd('notes', e.target.value)} />
+            </div>
+
+            {error && <div style={{ fontSize: 12, color: '#f87171' }}>{error}</div>}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn btn-ghost" onClick={() => { setShowAdd(false); setError('') }}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleAdd} disabled={saving}>{saving ? 'Saving…' : 'Issue'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Record Repayment modal */}
+      {showRepay && selectedAdv && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card" style={{ width: 400, padding: 28, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <h3 style={{ margin: 0, fontSize: 16, color: 'var(--theme-text1)' }}>Record Repayment</h3>
+            <div style={{ fontSize: 13, color: 'var(--theme-text3)' }}>
+              {empMap[selectedAdv.employee_id]?.full_name} · Outstanding: NPR {fmt(selectedOutstanding)}
+            </div>
+
+            <div>
+              <label style={lbl}>Repayment Date (BS)</label>
+              <BsCalendarPicker value={repayForm.repaid_date} onChange={v => setRepay('repaid_date', v)} placeholder="Select date" clearable />
+            </div>
+
+            <div>
+              <label style={lbl}>Amount (NPR)</label>
+              <input style={inp} type="number" min="1" placeholder={selectedAdv.installment_amount ? `Installment: ${fmt(selectedAdv.installment_amount)}` : 'Amount'} value={repayForm.amount} onChange={e => setRepay('amount', e.target.value)} />
+            </div>
+
+            <div>
+              <label style={lbl}>Notes</label>
+              <input style={inp} placeholder="e.g. Deducted from Shrawan payslip" value={repayForm.notes} onChange={e => setRepay('notes', e.target.value)} />
+            </div>
+
+            {error && <div style={{ fontSize: 12, color: '#f87171' }}>{error}</div>}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn btn-ghost" onClick={() => { setShowRepay(false); setError('') }}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleRepay} disabled={saving}>{saving ? 'Saving…' : 'Record'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Settle confirmation */}
+      {settleTarget && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card" style={{ width: 360, padding: 28, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <h3 style={{ margin: 0, fontSize: 16, color: 'var(--theme-text1)' }}>Settle {settleTarget.type === 'loan' ? 'Loan' : 'Advance'}?</h3>
+            {(() => {
+              const outstanding = Math.max(0, parseFloat(settleTarget.amount) - (repayMap[settleTarget.id]?.total || 0))
+              return outstanding > 0
+                ? <p style={{ margin: 0, fontSize: 13, color: '#f87171' }}>NPR {fmt(outstanding)} is still outstanding. Mark as settled anyway?</p>
+                : <p style={{ margin: 0, fontSize: 13, color: 'var(--theme-text2)' }}>Fully repaid. Mark as settled?</p>
+            })()}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn btn-ghost" onClick={() => setSettleTarget(null)}>Cancel</button>
+              <button className="btn btn-primary" onClick={() => handleSettle(settleTarget.id)}>Settle</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

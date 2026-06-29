@@ -26,6 +26,7 @@ const EMPTY = {
   bank_account_no: '',
   bank_branch: '',
   ssf_no: '',
+  ssf_enrolled: false,
   basic_salary: '',
   notes: '',
   // Reporting & lifecycle

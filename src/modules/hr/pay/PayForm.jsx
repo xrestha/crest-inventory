@@ -45,6 +45,7 @@ export default function PayForm({ employee, onSave, onClose }) {
     bank_account_no: employee.bank_account_no || '',
     bank_branch:     employee.bank_branch || '',
     ssf_no:          employee.ssf_no || '',
+    ssf_enrolled:    !!(employee.ssf_enrolled),
   })
   const [dearness, setDearness]     = useState('')   // stored separately from other components
   const [components, setComponents] = useState([])   // earnings + deductions excluding dearness
@@ -86,6 +87,7 @@ export default function PayForm({ employee, onSave, onClose }) {
       bank_account_no: form.bank_account_no || null,
       bank_branch:     form.bank_branch || null,
       ssf_no:          form.ssf_no || null,
+      ssf_enrolled:    form.ssf_enrolled,
     }).eq('id', employee.id)
     if (err) { setError(err.message); setSaving(false); return }
 
@@ -426,12 +428,22 @@ export default function PayForm({ employee, onSave, onClose }) {
               </div>
               <div style={{ borderTop: '1px solid #2a2f3d', paddingTop: 20 }}>
                 <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 12px' }}>SSF Details</p>
-                <div style={col}>
-                  <label style={lbl}>
-                    <Tip text="SSF registration number. Required for SSF challan generation in HR Reports. Leave blank until the employee's registration is confirmed." width={280}>SSF No.</Tip>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                  <input type="checkbox" id="ssf_enrolled" checked={form.ssf_enrolled} onChange={e => set('ssf_enrolled', e.target.checked)}
+                    style={{ width: 15, height: 15, cursor: 'pointer', accentColor: 'var(--theme-accent)' }} />
+                  <label htmlFor="ssf_enrolled" style={{ fontSize: 13, color: '#e8e0d0', cursor: 'pointer' }}>
+                    <Tip text="SSF enrolled employees have 11% deducted from their salary and 20% contributed by the employer. Enable this for employees registered under Nepal's Social Security Fund." width={300}>SSF Enrolled</Tip>
                   </label>
-                  <input style={inp} placeholder="SSF registration number" value={form.ssf_no} onChange={e => set('ssf_no', e.target.value)} />
+                  {form.ssf_enrolled && <span style={{ fontSize: 11, color: '#34d399', marginLeft: 'auto' }}>11% emp · 20% employer</span>}
                 </div>
+                {form.ssf_enrolled && (
+                  <div style={col}>
+                    <label style={lbl}>
+                      <Tip text="SSF registration number. Required for SSF challan export in HR Reports. Leave blank until the employee's registration is confirmed." width={280}>SSF No.</Tip>
+                    </label>
+                    <input style={inp} placeholder="SSF registration number" value={form.ssf_no} onChange={e => set('ssf_no', e.target.value)} />
+                  </div>
+                )}
               </div>
             </div>
           )}

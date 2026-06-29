@@ -52,6 +52,7 @@ import PayrollRun from './modules/hr/payroll/PayrollRun'
 import HrReports from './modules/hr/reports/HrReports'
 import FestivalAllowance from './modules/hr/festival/FestivalAllowance'
 import LeaveManagement from './modules/hr/leave/LeaveManagement'
+import Advances from './modules/hr/advances/Advances'
 import './components/Layout.css'
 
 export default function App() {
@@ -147,6 +148,7 @@ export default function App() {
               <Route path="/hr/payroll"    element={<ModuleGate module="hr"><PayrollRun /></ModuleGate>} />
               <Route path="/hr/reports"    element={<ModuleGate module="hr"><HrReports /></ModuleGate>} />
               <Route path="/hr/festival"   element={<ModuleGate module="hr"><FestivalAllowance /></ModuleGate>} />
+              <Route path="/hr/advances"   element={<ModuleGate module="hr"><Advances /></ModuleGate>} />
 
               {/* Admin only */}
               <Route path="/admin/clients"

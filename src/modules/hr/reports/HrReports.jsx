@@ -46,7 +46,7 @@ export default function HrReports() {
       setPeriods(p || [])
       // Employee master loads independently of any payroll run (powers the Roster tab).
       const { data: emps } = await supabase.from('hr_employees')
-        .select('id, full_name, employee_code, department, designation, employment_type, supervisor_id, retirement_date, join_date, pay_basis, bank_name, bank_account_no, bank_branch, ssf_no, pan_no, status')
+        .select('id, full_name, employee_code, department, designation, employment_type, supervisor_id, retirement_date, join_date, pay_basis, bank_name, bank_account_no, bank_branch, ssf_no, ssf_enrolled, pan_no, status')
         .eq('client_id', clientId).order('full_name')
       setEmployees(emps || [])
       const open = (p || []).find(x => x.status === 'open') || (p || [])[0]
@@ -99,7 +99,7 @@ export default function HrReports() {
 
   // ── Derived rows ────────────────────────────────────────────────────────────
   const rows = payslips.map(s => ({ s, emp: empMap[s.employee_id] || {} }))
-  const ssfRows = rows.filter(({ emp }) => emp.ssf_no && String(emp.ssf_no).trim())
+  const ssfRows = rows.filter(({ emp }) => emp.ssf_enrolled && emp.ssf_no && String(emp.ssf_no).trim())
   const noSsfCount = rows.length - ssfRows.length
 
   function downloadSheet(data, sheet, ext = 'xlsx') {

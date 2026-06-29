@@ -124,6 +124,43 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S165 — 2026-06-29 — HR: SSF enrollment gate + Advances & Loans ledger
+
+**SSF enrollment gate decoupled (`payrollCompute.js`, `PayrollRun.jsx`, `HrReports.jsx`, `PayForm.jsx`, `EmployeeForm.jsx`):**
+- Added `ssf_enrolled boolean DEFAULT false` column to `hr_employees`; auto-migrated existing rows with `ssf_no` set to `true`
+- `payrollCompute.js`: gate now uses `employee.ssf_enrolled` (not `ssf_no`) — SSF computed for all enrolled employees regardless of whether a registration number is on file
+- `PayForm.jsx`: Bank/SSF tab now has an "SSF Enrolled" checkbox (with 11%/20% rate reminder); SSF No. field only shows when enrolled is checked
+- `PayrollRun.jsx`: `isSsf` (TDS 1% slab waiver) and "no SSF" badge both use `ssf_enrolled`
+- `HrReports.jsx`: SSF Challan filters `ssf_enrolled AND ssf_no` — needs both enrollment flag and a registration number to appear in the challan export
+- Fix: Employer Cost in HR Reports is now accurate even before SSF numbers are entered
+
+**Advances & Loans ledger (new feature):**
+- New DB tables: `hr_advances` + `hr_advance_repayments` with RLS
+- New page `src/modules/hr/advances/Advances.jsx` — issue advances/loans, filter by type/status, click row to see repayment history + progress bar, record repayments, settle with confirmation
+- Route `/hr/advances` (ModuleGate hr); nav entry "Advances & Loans 💳"; Help entry added
+- Advances = short-term (next payslip); Loans = multi-month with installment amount
+- Repayments are manually recorded (not auto-deducted from payroll — installment amount shows as a reminder)
+
+**Files:** `src/modules/hr/payroll/payrollCompute.js`, `src/modules/hr/payroll/PayrollRun.jsx`, `src/modules/hr/reports/HrReports.jsx`, `src/modules/hr/pay/PayForm.jsx`, `src/modules/hr/employees/EmployeeForm.jsx`, `src/modules/hr/advances/Advances.jsx`, `src/App.js`, `src/components/Layout.js`, `src/pages/Help.js`
+
+---
+
+### S164 — 2026-06-29 — Tooling: Google Stitch MCP connected
+
+Connected Google Stitch to Claude Code via MCP (Model Context Protocol).
+
+**What was done:**
+- Located the correct Claude Code config file (`~/.claude.json` project `mcpServers` object) and created `.mcp.json` at the project root — the VS Code extension reads `.mcp.json`, not `settings.json`
+- Stitch connected successfully and all 14 MCP tools loaded (`list_projects`, `list_screens`, `get_screen`, `generate_screen_from_text`, etc.)
+- Listed the existing Stitch project "Inventory Management Dashboard" with 5 HTML screens: Stock Count Operation, Item Master List, Dashboard YOLO: Tactile Organic / Command Center / Minimalist Canvas
+- User cancelled mid-session and disconnected Stitch — `.mcp.json` removed, `.claude.json` reverted
+
+**To reconnect Stitch in future:** create `.mcp.json` in project root with `{ "mcpServers": { "stitch": { "type": "http", "url": "https://stitch.googleapis.com/mcp", "headers": { "X-Goog-Api-Key": "<key>" } } } }` then reload VS Code window.
+
+No code changes. No commit.
+
+---
+
 ### S163 — 2026-06-29 — HR: Pay Setup overhaul — dearness, CTC, Cash in Hand, compact calendar
 
 **Pay Setup overhaul (`src/modules/hr/pay/PayForm.jsx`, `src/modules/hr/pay/PaySetup.jsx`):**

@@ -31,7 +31,7 @@ export function tallyAttendance(attendanceRows) {
 export function computePayslip(employee, components, attendanceRows, period, tds = 0) {
   const basis    = employee.pay_basis || 'monthly'
   const basic    = parseFloat(employee.basic_salary) || 0
-  const enrolled = !!(employee.ssf_no && String(employee.ssf_no).trim())
+  const enrolled = !!(employee.ssf_enrolled)
   const t        = tallyAttendance(attendanceRows)
   const tdsVal   = parseFloat(tds) || 0
   const monthDays = daysInBsMonth(period.bs_year, period.bs_month)
