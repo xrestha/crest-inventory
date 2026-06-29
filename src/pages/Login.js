@@ -102,7 +102,7 @@ export default function Login() {
         <div className="login-left">
           <div className="login-brand">
             <span style={{ fontSize: 30, color: 'var(--theme-accent)', lineHeight: 1 }}>⬢</span>
-            <span className="login-brand-name">{settings?.app_name || 'Crest'} Inventory</span>
+            <span className="login-brand-name">{settings?.app_name || 'Crest Inventory'}</span>
           </div>
 
           <div className="login-pitch">
