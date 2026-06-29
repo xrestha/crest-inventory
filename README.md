@@ -124,6 +124,22 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S167 — 2026-06-29 — HR: Annual TDS Certificate
+
+**Annual TDS Certificate (new tab in HR Reports):**
+- New "TDS Certificate" tab in `HrReports.jsx` — independent of the monthly period selector
+- Fiscal year dropdown (derived from existing periods via `fiscalYearOf`) + employee dropdown
+- Fetches all finalized payslips for the selected employee + FY, sorted by month in FY order
+- Certificate shows: employer/employee details, month-wise gross/SSF/other deductions/TDS table, taxable income computation (subtracting SSF + capped insurance deductions), TDS summary panel, signature blocks
+- Insurance premium deductions pulled from `hr_employees` (life + health, caps applied)
+- Employer PAN left as blank line (filled by hand) — employee PAN shown from record with amber warning if missing
+- Print button triggers `window.print()` for browser PDF; tab/period selector hidden via `no-print`
+- Client name fetched from `clients` table for certificate header
+
+**Files:** `src/modules/hr/reports/HrReports.jsx`, `src/pages/Help.js`
+
+---
+
 ### S166 — 2026-06-29 — HR: Insurance premium TDS deductions
 
 **Insurance premium TDS deductions (life + health):**
