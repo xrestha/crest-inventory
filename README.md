@@ -124,6 +124,27 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S160 — 2026-06-29 — Login redesign (split layout + trial); signup phone field; full BS calendar picker
+
+**Login page — two-column split layout (`src/pages/Login.js`, `Login.css`):**
+- Left panel: brand + tagline **"Smarter menus. Better margins."** + 4 feature highlights (live recipe FC% on every purchase, stock/variance, BS calendar + supplier tracking + payables aging, menu engineering) + the trial signup form. Right panel: clean "Welcome back" sign-in. Vertical divider; stacks vertically on mobile (sign-in on top). Tabs removed entirely; plain `/login` works as a shareable link for both prospects and existing users. `?trial=1` still focuses the trial form first. Layout compressed to fit a single viewport without scrolling.
+
+**Trial signup — phone field:**
+- Added required **Phone** field to the trial form, stored on `clients.contact_phone` (Edge Function `register_trial` passes it through). Admin Trial Accounts panel shows the phone as a clickable `wa.me/977…` WhatsApp link for instant outreach.
+
+**Full Bikram Sambat calendar picker (`src/components/BsCalendarPicker.js` — NEW):**
+- Visual month-grid picker (Su–Sa headers, click-to-select day, Today highlight, prev/next month nav, optional Clear). Uses `createPortal` + fixed positioning so it never clips inside modals/cards; flips above the trigger near the viewport bottom.
+- **Two modes:** *free* (value = AD ISO `YYYY-MM-DD`, month nav enabled) and *period-locked* (`lockYear`+`lockMonth` → value = day-number, grid pinned to the open period, no month nav — a drop-in for the old `BsDatePicker` dropdown so entries can't escape their accounting period).
+- **Replaced free-mode AD `type="date"` inputs:** PurchaseOrders expected delivery, OutstandingPayables paid date, EmployeeForm date_of_birth / join_date / contract end_date / retirement_date, LeaveManagement start/end (was `BsFullDatePicker`). Dropped "(AD)" labels.
+- **Replaced period-locked day pickers/selects:** Purchases bill day, Requisitions day, Sales day selector (kept ‹ › steppers + Today), Stock daily-wastage day.
+- Left as-is: report period selectors (BS year/month dropdowns) and AdminClients subscription date (`BsFullDatePicker`, ISO-timestamp dating). `src/components/BsDatePicker.js` retained for that one admin use.
+
+No DB change beyond the S159 trial columns. Build clean (Edge Function `admin-user-ops` redeployed for the phone passthrough).
+
+**Files:** `src/pages/Login.js`, `src/pages/Login.css`, `src/components/BsCalendarPicker.js` (new), `src/pages/Purchases.js`, `src/pages/Requisitions.js`, `src/pages/Sales.js`, `src/pages/Stock.js`, `src/pages/PurchaseOrders.js`, `src/pages/OutstandingPayables.js`, `src/modules/hr/employees/EmployeeForm.jsx`, `src/modules/hr/leave/LeaveManagement.jsx`, `src/pages/AdminClients.js`, `supabase/functions/admin-user-ops/index.ts`
+
+---
+
 ### S159 — 2026-06-29 — Items filter chips; Menu Engineering + Overheads charts; break-even fix; free trial system
 
 **Item Master filter chips:**
