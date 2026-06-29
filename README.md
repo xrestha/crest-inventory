@@ -124,6 +124,25 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S172 — 2026-06-29 — Chart expand modals + daily trend 10-day window
+
+**New component — `src/components/ChartCard.js`:**
+- Reusable card wrapper with `renderChart(height)` render prop — chart JSX written once, called at card size and modal size
+- Expand button (⛶ icon) in every chart header opens a `createPortal` fullscreen modal (92% viewport, max 1100px wide, 440px chart height)
+- `titleStyle` + `cardStyle` props allow override for non-standard card layouts
+- Modal uses `h > 200` check inside renderChart to scale dot sizes, bar counts, font sizes, margins
+
+**Charts upgraded across 3 files:**
+- `Dashboard.js`: Spend by Category (pie scales inner/outer radius in modal) · Daily Purchases vs Sales · Top Items by Spend (modal shows all 10 vs 6) · Food Cost % Monthly Trend
+- `MenuEngineering.js`: Popularity vs Profitability scatter · Top Items by Revenue bar
+- `BestSellers.js`: Top 10 bar
+
+**Daily Purchases vs Sales — 10-day window (`Dashboard.js`):**
+- Current month: chart shows only day (today−6) → day (today+3); projected month-end revenue footer still uses full-month trend math
+- Past/closed months: show full actuals as before
+
+**Old manual modal removed** from Dashboard.js (`chartExpanded` state + fullscreen block replaced by ChartCard)
+
 ### S171 — 2026-06-29 — Admin dashboard rebuild + ESLint fixes + login page polish
 
 **ESLint fixes (`src/pages/AdminClients.js`):**

@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabaseClient'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import Tip from '../components/Tip'
+import ChartCard from '../components/ChartCard'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 
@@ -123,26 +124,29 @@ export default function BestSellers() {
       ) : (
         <>
           {/* Bar chart — top 10 */}
-          <div className="card" style={{ marginBottom: 24 }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: 14, color: '#e8e0d0' }}>
-              Top 10 — {sortBy === 'qty' ? 'Units Sold' : sortBy === 'margin' ? 'Gross Margin %' : 'Revenue (NPR)'}
-            </h3>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={chartData} margin={{ top: 0, right: 10, left: 0, bottom: 40 }}>
-                <XAxis dataKey="name" tick={{ fill: MUTED, fontSize: 11 }} angle={-30} textAnchor="end" interval={0} />
-                <YAxis tick={{ fill: MUTED, fontSize: 11 }} tickFormatter={v => sortBy === 'revenue' ? `${Math.round(v/1000)}k` : v} />
-                <Tooltip
-                  contentStyle={{ background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 8, fontSize: 12, color: '#e8e0d0' }}
-                  labelStyle={{ color: '#e8e0d0' }}
-                  itemStyle={{ color: '#e8e0d0' }}
-                  formatter={(v) => [sortBy === 'revenue' ? fmt(v) : sortBy === 'margin' ? `${v}%` : v, sortBy === 'revenue' ? 'Revenue' : sortBy === 'qty' ? 'Qty Sold' : 'Margin']}
-                />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                  {chartData.map((_, i) => <Cell key={i} fill={i < 3 ? GOLD : GREEN} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <ChartCard
+            title={`Top 10 — ${sortBy === 'qty' ? 'Units Sold' : sortBy === 'margin' ? 'Gross Margin %' : 'Revenue (NPR)'}`}
+            titleStyle={{ fontSize: 14, fontWeight: 700, color: '#e8e0d0' }}
+            cardStyle={{ marginBottom: 24 }}
+            smallHeight={220}
+            renderChart={h => (
+              <ResponsiveContainer width="100%" height={h}>
+                <BarChart data={chartData} margin={{ top: 0, right: 10, left: 0, bottom: h > 200 ? 60 : 40 }}>
+                  <XAxis dataKey="name" tick={{ fill: MUTED, fontSize: 11 }} angle={-30} textAnchor="end" interval={0} />
+                  <YAxis tick={{ fill: MUTED, fontSize: 11 }} tickFormatter={v => sortBy === 'revenue' ? `${Math.round(v/1000)}k` : v} />
+                  <Tooltip
+                    contentStyle={{ background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 8, fontSize: 12, color: '#e8e0d0' }}
+                    labelStyle={{ color: '#e8e0d0' }}
+                    itemStyle={{ color: '#e8e0d0' }}
+                    formatter={(v) => [sortBy === 'revenue' ? fmt(v) : sortBy === 'margin' ? `${v}%` : v, sortBy === 'revenue' ? 'Revenue' : sortBy === 'qty' ? 'Qty Sold' : 'Margin']}
+                  />
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                    {chartData.map((_, i) => <Cell key={i} fill={i < 3 ? GOLD : GREEN} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          />
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
             {/* Best sellers */}

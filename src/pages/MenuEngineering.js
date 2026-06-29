@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabaseClient'
 import Tip from '../components/Tip'
+import ChartCard from '../components/ChartCard'
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid,
   Tooltip as RTooltip, ReferenceLine, ResponsiveContainer,
@@ -302,12 +303,12 @@ export default function MenuEngineering() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
           {/* Scatter chart — FC% Profitability vs Qty Sold */}
-          <div className="card" style={{ padding: '20px 20px 12px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
-              <div>
-                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--theme-text1)' }}>Popularity vs Profitability</span>
-                <span style={{ fontSize: 12, color: 'var(--theme-text2)', marginLeft: 10 }}>Each dot = one menu item</span>
-              </div>
+          <ChartCard
+            title={<>Popularity vs Profitability <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--theme-text2)', marginLeft: 10, textTransform: 'none', letterSpacing: 0 }}>Each dot = one menu item</span></>}
+            titleStyle={{ fontSize: 14, fontWeight: 700, color: 'var(--theme-text1)' }}
+            cardStyle={{ padding: '20px 20px 12px' }}
+            smallHeight={320}
+            legend={
               <div style={{ display: 'flex', gap: 16 }}>
                 {Object.entries(Q_HEX).map(([name, hex]) => (
                   <span key={name} style={{ fontSize: 11, color: '#9ca3af', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -316,57 +317,52 @@ export default function MenuEngineering() {
                   </span>
                 ))}
               </div>
-            </div>
-            <ResponsiveContainer width="100%" height={320}>
-              <ScatterChart margin={{ top: 10, right: 20, bottom: 30, left: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2d3240" />
-                <XAxis
-                  type="number" dataKey="x" name="Qty Sold"
-                  label={{ value: 'Qty Sold →', position: 'insideBottom', offset: -16, fill: '#6b7280', fontSize: 11 }}
-                  tick={{ fill: '#6b7280', fontSize: 11 }}
-                />
-                <YAxis
-                  type="number" dataKey="y" name="Profitability"
-                  domain={[0, 100]}
-                  label={{ value: 'Profitability % →', angle: -90, position: 'insideLeft', offset: 10, fill: '#6b7280', fontSize: 11 }}
-                  tick={{ fill: '#6b7280', fontSize: 11 }}
-                  tickFormatter={v => `${v}%`}
-                />
-                {/* Quadrant divider lines */}
-                <ReferenceLine x={medianQty} stroke="#4b5563" strokeDasharray="5 4" label={{ value: `median ${medianQty.toFixed(0)}`, position: 'top', fill: '#6b7280', fontSize: 10 }} />
-                <ReferenceLine y={100 - FC_CUTOFF} stroke="#4b5563" strokeDasharray="5 4" label={{ value: `FC ${FC_CUTOFF}%`, position: 'right', fill: '#6b7280', fontSize: 10 }} />
-                {/* Quadrant labels */}
-                <ReferenceLine x={0} stroke="none" label={{ value: '★ STARS', position: 'insideTopRight', fill: '#34d399', fontSize: 9, offset: 8 }} />
-                <RTooltip content={<ScatterTooltipContent />} cursor={{ strokeDasharray: '3 3' }} />
-                <Scatter data={scatterData} shape={<ScatterDot />} />
-              </ScatterChart>
-            </ResponsiveContainer>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, marginTop: 4 }}>
-              {[
-                { q: 'Star',      pos: 'right + top (high qty, low FC%)',   hint: 'Keep, feature prominently' },
-                { q: 'Plowhouse', pos: 'left + top (low qty, low FC%)',     hint: 'Good margin — promote harder' },
-                { q: 'Puzzle',    pos: 'right + bottom (high qty, high FC%)', hint: 'Popular — review recipe cost' },
-                { q: 'Dog',       pos: 'left + bottom (low qty, high FC%)', hint: 'Consider redesign or removal' },
-              ].map(({ q, pos, hint }) => (
-                <div key={q} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '8px 10px', borderLeft: `3px solid ${Q_HEX[q]}` }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: Q_HEX[q] }}>{QUADRANTS[q].icon} {q}</div>
-                  <div style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>{pos}</div>
-                  <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>{hint}</div>
-                </div>
-              ))}
-            </div>
-          </div>
+            }
+            footer={
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, marginTop: 4 }}>
+                {[
+                  { q: 'Star',      pos: 'right + top (high qty, low FC%)',     hint: 'Keep, feature prominently' },
+                  { q: 'Plowhouse', pos: 'left + top (low qty, low FC%)',       hint: 'Good margin — promote harder' },
+                  { q: 'Puzzle',    pos: 'right + bottom (high qty, high FC%)', hint: 'Popular — review recipe cost' },
+                  { q: 'Dog',       pos: 'left + bottom (low qty, high FC%)',   hint: 'Consider redesign or removal' },
+                ].map(({ q, pos, hint }) => (
+                  <div key={q} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '8px 10px', borderLeft: `3px solid ${Q_HEX[q]}` }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: Q_HEX[q] }}>{QUADRANTS[q].icon} {q}</div>
+                    <div style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>{pos}</div>
+                    <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>{hint}</div>
+                  </div>
+                ))}
+              </div>
+            }
+            renderChart={h => (
+              <ResponsiveContainer width="100%" height={h}>
+                <ScatterChart margin={{ top: 10, right: 20, bottom: 30, left: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#2d3240" />
+                  <XAxis type="number" dataKey="x" name="Qty Sold" label={{ value: 'Qty Sold →', position: 'insideBottom', offset: -16, fill: '#6b7280', fontSize: 11 }} tick={{ fill: '#6b7280', fontSize: 11 }} />
+                  <YAxis type="number" dataKey="y" name="Profitability" domain={[0, 100]} label={{ value: 'Profitability % →', angle: -90, position: 'insideLeft', offset: 10, fill: '#6b7280', fontSize: 11 }} tick={{ fill: '#6b7280', fontSize: 11 }} tickFormatter={v => `${v}%`} />
+                  <ReferenceLine x={medianQty} stroke="#4b5563" strokeDasharray="5 4" label={{ value: `median ${medianQty.toFixed(0)}`, position: 'top', fill: '#6b7280', fontSize: 10 }} />
+                  <ReferenceLine y={100 - FC_CUTOFF} stroke="#4b5563" strokeDasharray="5 4" label={{ value: `FC ${FC_CUTOFF}%`, position: 'right', fill: '#6b7280', fontSize: 10 }} />
+                  <ReferenceLine x={0} stroke="none" label={{ value: '★ STARS', position: 'insideTopRight', fill: '#34d399', fontSize: 9, offset: 8 }} />
+                  <RTooltip content={<ScatterTooltipContent />} cursor={{ strokeDasharray: '3 3' }} />
+                  <Scatter data={scatterData} shape={<ScatterDot />} />
+                </ScatterChart>
+              </ResponsiveContainer>
+            )}
+          />
 
           {/* Bottom row: Top Revenue Items + Category Pivot */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
 
             {/* Top 10 by Revenue */}
-            <div className="card" style={{ padding: '16px 16px 8px' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--theme-text1)', marginBottom: 12 }}>Top Items by Revenue</div>
-              {topItems.length === 0 ? (
+            <ChartCard
+              title="Top Items by Revenue"
+              titleStyle={{ fontSize: 13, fontWeight: 700, color: 'var(--theme-text1)' }}
+              cardStyle={{ padding: '16px 16px 8px' }}
+              smallHeight={Math.max(topItems.length * 32 + 20, 80)}
+              renderChart={h => topItems.length === 0 ? (
                 <p style={{ fontSize: 12, color: 'var(--theme-text3)' }}>No sales recorded this period.</p>
               ) : (
-                <ResponsiveContainer width="100%" height={topItems.length * 32 + 20}>
+                <ResponsiveContainer width="100%" height={h}>
                   <BarChart data={topItems} layout="vertical" margin={{ top: 0, right: 40, bottom: 0, left: 0 }}>
                     <XAxis type="number" hide />
                     <YAxis type="category" dataKey="name" width={140} tick={{ fill: '#9ca3af', fontSize: 11 }} />
@@ -379,7 +375,7 @@ export default function MenuEngineering() {
                   </BarChart>
                 </ResponsiveContainer>
               )}
-            </div>
+            />
 
             {/* Category Pivot */}
             <div className="card" style={{ padding: '16px' }}>

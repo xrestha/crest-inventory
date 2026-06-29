@@ -8,6 +8,7 @@ import {
   BarChart, Bar
 } from 'recharts'
 import Tip from '../components/Tip'
+import ChartCard from '../components/ChartCard'
 import { getBsToday, BS_MONTHS, adToBs, daysInBsMonth } from '../utils/bsCalendar'
 import { getSubStatus } from '../utils/subscription'
 const CHART_COLORS = ['#c9a84c', '#34d399', '#60a5fa', '#f87171', '#a78bfa', '#fb923c', '#22d3ee', '#f472b6']
@@ -234,13 +235,14 @@ export default function Dashboard() {
     }
     setSalesProjection(projectedMonthEnd != null ? { projectedMonthEnd } : null)
 
-    // Build the unified day axis (purchases + sales actuals, then projected days to month-end).
+    // Build the unified day axis. Current month: 6 days back → 3 days ahead (10-day window).
+    // Past months: show full actuals only.
     const purchDayNums = Object.keys(dayPurchMap).map(Number)
     const baseDays = [...purchDayNums, ...salesDayNums].filter(d => d > 0)
     const lastActualSalesDay = salesDayNums.length ? salesDayNums[salesDayNums.length - 1] : null
     const hasProj = Object.keys(projDays).length > 0
-    const startDay = baseDays.length ? Math.min(...baseDays) : 1
-    const lastDay = hasProj ? monthEndDay : (baseDays.length ? Math.max(...baseDays) : 0)
+    const startDay = isCurrentMonth ? Math.max(1, bsToday.day - 6) : (baseDays.length ? Math.min(...baseDays) : 1)
+    const lastDay  = isCurrentMonth ? Math.min(monthEndDay, bsToday.day + 3) : (baseDays.length ? Math.max(...baseDays) : 0)
     const trend = []
     for (let d = startDay; d <= lastDay; d++) {
       const isProj = projDays[d] != null
@@ -1022,21 +1024,21 @@ export default function Dashboard() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr 1fr', gap: 14, marginBottom: 14 }}>
 
             {/* Pie — Category Spend */}
-            <div className="card" style={{ padding: '14px 16px' }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--theme-text2)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Spend by Category
-              </div>
-              {categorySpend.length === 0 ? (
-                <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <ChartCard
+              title="Spend by Category"
+              smallHeight={140}
+              renderChart={h => categorySpend.length === 0 ? (
+                <div style={{ height: h, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <p style={{ color: 'var(--theme-text3)', fontSize: 12 }}>No purchase data</p>
                 </div>
               ) : (
                 <>
-                  <ResponsiveContainer width="100%" height={140}>
+                  <ResponsiveContainer width="100%" height={h}>
                     <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
                       <Pie
                         data={categorySpend} dataKey="value" nameKey="name"
-                        cx="50%" cy="50%" innerRadius={38} outerRadius={60}
+                        cx="50%" cy="50%"
+                        innerRadius={h > 200 ? 80 : 38} outerRadius={h > 200 ? 140 : 60}
                         paddingAngle={2}
                       >
                         {categorySpend.map((entry, i) => <Cell key={entry.name} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
@@ -1048,7 +1050,6 @@ export default function Dashboard() {
                       />
                     </PieChart>
                   </ResponsiveContainer>
-                  {/* Legend */}
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', marginTop: 6 }}>
                     {categorySpend.map((entry, i) => {
                       const total = categorySpend.reduce((s, r) => s + r.value, 0)
@@ -1063,169 +1064,139 @@ export default function Dashboard() {
                   </div>
                 </>
               )}
-            </div>
+            />
 
             {/* Line — Daily Purchases vs Sales */}
             {/* minWidth:0 lets this grid column hold its 1/3 share — without it the inner
                 scroll div's large minWidth forces the track wide and squeezes the other cards. */}
-            <div className="card" style={{ padding: '14px 16px', minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  Daily Purchases vs Sales
-                </div>
-                <div style={{ display: 'flex', gap: 14, fontSize: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <span style={{ color: 'var(--theme-text2)' }}><span style={{ color: '#c9a84c' }}>●</span> Purchases</span>
-                  {hasDailySales && <span style={{ color: 'var(--theme-text2)' }}><span style={{ color: '#34d399' }}>●</span> Sales</span>}
-                  {salesProjection && <span style={{ color: 'var(--theme-text2)' }}><span style={{ color: '#34d399', letterSpacing: '-2px' }}>┄</span> Projection</span>}
-                  {!hasDailySales && <span style={{ color: 'var(--theme-text3)' }}>Enter daily sales to see the sales trend</span>}
-                </div>
-              </div>
-              {dailyTrend.length === 0 ? (
-                <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <p style={{ color: 'var(--theme-text3)', fontSize: 12 }}>No purchase or sales data</p>
-                </div>
-              ) : (
-                <div style={{ overflowX: 'auto', overflowY: 'hidden' }}>
-                  {/* Give each day a fixed width so a long month overflows into a horizontal scrollbar
-                      instead of cramming every day into the card. minWidth only kicks in when there are
-                      enough days to exceed the card; few days still fill the width with no scroll. */}
-                  <div style={{ minWidth: Math.max(0, dailyTrend.length * 44), height: 160 }}>
-                    <ResponsiveContainer width="100%" height={160}>
-                      <LineChart data={dailyTrend} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-                        <CartesianGrid stroke="#2a2f3d" strokeDasharray="3 3" vertical={false} />
-                        <XAxis
-                          dataKey="day" tick={{ fill: '#9ca3af', fontSize: 9 }}
-                          tickLine={false} axisLine={false}
-                          interval={0}
-                          tickFormatter={v => v.replace('Day ', '')}
-                        />
-                        <YAxis
-                          tick={{ fill: '#9ca3af', fontSize: 9 }} tickLine={false} axisLine={false}
-                          tickFormatter={v => `${(v / 1000).toFixed(0)}k`} width={32}
-                        />
-                        <Tooltip
-                          contentStyle={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, fontSize: 11 }}
-                          formatter={(value, name) => [`NPR ${Math.round(Number(value)).toLocaleString()}`, name]}
-                          labelFormatter={l => l}
-                        />
-                        <Line type="monotone" dataKey="purchases" name="Purchases" stroke="#c9a84c" strokeWidth={2} connectNulls
-                          dot={{ r: 2, fill: '#c9a84c', strokeWidth: 0 }}
-                          activeDot={{ r: 4, fill: '#c9a84c' }}
-                        />
-                        {hasDailySales && (
-                          <Line type="monotone" dataKey="sales" name="Sales" stroke="#34d399" strokeWidth={2} connectNulls
-                            dot={{ r: 2, fill: '#34d399', strokeWidth: 0 }}
-                            activeDot={{ r: 4, fill: '#34d399' }}
-                          />
-                        )}
-                        {salesProjection && (
-                          <Line type="monotone" dataKey="salesProj" name="Projection" stroke="#34d399" strokeWidth={2}
-                            strokeDasharray="5 4" strokeOpacity={0.65} connectNulls dot={false} activeDot={{ r: 3, fill: '#34d399' }}
-                          />
-                        )}
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              )}
-              {salesProjection && (
+            <ChartCard
+              title="Daily Purchases vs Sales"
+              cardStyle={{ minWidth: 0 }}
+              legend={<>
+                <span style={{ color: 'var(--theme-text2)' }}><span style={{ color: '#c9a84c' }}>●</span> Purchases</span>
+                {hasDailySales && <span style={{ color: 'var(--theme-text2)' }}><span style={{ color: '#34d399' }}>●</span> Sales</span>}
+                {salesProjection && <span style={{ color: 'var(--theme-text2)' }}><span style={{ color: '#34d399', letterSpacing: '-2px' }}>┄</span> Projection</span>}
+                {!hasDailySales && <span style={{ color: 'var(--theme-text3)' }}>Enter daily sales to see the sales trend</span>}
+              </>}
+              footer={salesProjection && (
                 <div style={{ marginTop: 8, fontSize: 11, color: 'var(--theme-text2)' }}>
                   Projected month-end revenue: <strong style={{ color: 'var(--theme-green)' }}>NPR {salesProjection.projectedMonthEnd.toLocaleString()}</strong>
                   <span style={{ color: 'var(--theme-text3)' }}> · trend estimate</span>
                 </div>
               )}
-            </div>
+              renderChart={h => {
+                if (dailyTrend.length === 0) return (
+                  <div style={{ height: h, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <p style={{ color: 'var(--theme-text3)', fontSize: 12 }}>No purchase or sales data</p>
+                  </div>
+                )
+                const big = h > 200
+                const chart = (
+                  <ResponsiveContainer width="100%" height={h}>
+                    <LineChart data={dailyTrend} margin={{ top: big ? 8 : 4, right: big ? 16 : 8, bottom: big ? 4 : 0, left: big ? 8 : 0 }}>
+                      <CartesianGrid stroke="#2a2f3d" strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="day" tick={{ fill: '#9ca3af', fontSize: big ? 11 : 9 }} tickLine={false} axisLine={false} interval={0} tickFormatter={v => v.replace('Day ', '')} />
+                      <YAxis tick={{ fill: '#9ca3af', fontSize: big ? 11 : 9 }} tickLine={false} axisLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} width={big ? 40 : 32} />
+                      <Tooltip
+                        contentStyle={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, fontSize: big ? 12 : 11 }}
+                        formatter={(value, name) => [`NPR ${Math.round(Number(value)).toLocaleString()}`, name]}
+                        labelFormatter={l => l}
+                      />
+                      <Line type="monotone" dataKey="purchases" name="Purchases" stroke="#c9a84c" strokeWidth={big ? 2.5 : 2} connectNulls dot={{ r: big ? 3 : 2, fill: '#c9a84c', strokeWidth: 0 }} activeDot={{ r: big ? 5 : 4, fill: '#c9a84c' }} />
+                      {hasDailySales && <Line type="monotone" dataKey="sales" name="Sales" stroke="#34d399" strokeWidth={big ? 2.5 : 2} connectNulls dot={{ r: big ? 3 : 2, fill: '#34d399', strokeWidth: 0 }} activeDot={{ r: big ? 5 : 4, fill: '#34d399' }} />}
+                      {salesProjection && <Line type="monotone" dataKey="salesProj" name="Projection" stroke="#34d399" strokeWidth={2} strokeDasharray="5 4" strokeOpacity={0.65} connectNulls dot={false} activeDot={{ r: big ? 4 : 3, fill: '#34d399' }} />}
+                    </LineChart>
+                  </ResponsiveContainer>
+                )
+                return big ? chart : (
+                  <div style={{ overflowX: 'auto', overflowY: 'hidden' }}>
+                    <div style={{ minWidth: Math.max(0, dailyTrend.length * 44), height: h }}>{chart}</div>
+                  </div>
+                )
+              }}
+            />
 
             {/* Bar — Top Items */}
-            <div className="card" style={{ padding: '14px 16px' }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--theme-text2)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Top Items by Spend
-              </div>
-              {topItemSpend.length === 0 ? (
-                <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <p style={{ color: 'var(--theme-text3)', fontSize: 12 }}>No purchase data</p>
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height={160}>
-                  <BarChart
-                    data={topItemSpend.slice(0, 6)} layout="vertical"
-                    margin={{ top: 0, right: 8, bottom: 0, left: 0 }}
-                  >
-                    <XAxis type="number" hide />
-                    <YAxis
-                      type="category" dataKey="name"
-                      tick={{ fill: '#9ca3af', fontSize: 9 }} tickLine={false} axisLine={false}
-                      width={90}
-                    />
-                    <Tooltip
-                      contentStyle={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, fontSize: 11 }}
-                      formatter={(v, n, p) => [`NPR ${Number(v).toLocaleString()}`, p.payload.fullName || n]}
-                      labelFormatter={() => ''}
-                    />
-                    <Bar dataKey="value" fill="#c9a84c" radius={[0, 3, 3, 0]} barSize={10}>
-                      {topItemSpend.slice(0, 6).map((entry, i) => (
-                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
+            <ChartCard
+              title="Top Items by Spend"
+              renderChart={h => {
+                const big = h > 200
+                const count = big ? topItemSpend.length : 6
+                return topItemSpend.length === 0 ? (
+                  <div style={{ height: h, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <p style={{ color: 'var(--theme-text3)', fontSize: 12 }}>No purchase data</p>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={h}>
+                    <BarChart data={topItemSpend.slice(0, count)} layout="vertical" margin={{ top: 0, right: 8, bottom: 0, left: 0 }}>
+                      <XAxis type="number" hide />
+                      <YAxis type="category" dataKey="name" tick={{ fill: '#9ca3af', fontSize: big ? 11 : 9 }} tickLine={false} axisLine={false} width={big ? 130 : 90} />
+                      <Tooltip
+                        contentStyle={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, fontSize: 11 }}
+                        formatter={(v, n, p) => [`NPR ${Number(v).toLocaleString()}`, p.payload.fullName || n]}
+                        labelFormatter={() => ''}
+                      />
+                      <Bar dataKey="value" fill="#c9a84c" radius={[0, 3, 3, 0]} barSize={big ? 18 : 10}>
+                        {topItemSpend.slice(0, count).map((entry, i) => (
+                          <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )
+              }}
+            />
           </div>
 
           {/* ── FC% Trend ── */}
           {fcTrend.length >= 2 && canSales && (
-            <div className="card" style={{ padding: '14px 16px', marginBottom: 14 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--theme-text2)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Food Cost % — Monthly Trend
-              </div>
-              <div style={{ overflowX: 'auto', overflowY: 'hidden' }}>
-               <div style={{ minWidth: Math.max(0, fcTrend.length * 64), height: 160 }}>
-                <ResponsiveContainer width="100%" height={160}>
-                <LineChart data={fcTrend} margin={{ top: 8, right: 48, bottom: 0, left: 0 }}>
-                  <CartesianGrid stroke="#2a2f3d" strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fill: '#9ca3af', fontSize: 10 }} tickLine={false} axisLine={false} interval={0} />
-                  <YAxis
-                    tick={{ fill: '#9ca3af', fontSize: 10 }} tickLine={false} axisLine={false}
-                    tickFormatter={v => `${v}%`} domain={['auto', 'auto']} width={36}
-                  />
-                  <ReferenceLine y={35} stroke="#34d399" strokeDasharray="4 3" strokeOpacity={0.5}
-                    label={{ value: '35%', fill: '#34d399', fontSize: 9, position: 'right' }} />
-                  <ReferenceLine y={45} stroke="#f87171" strokeDasharray="4 3" strokeOpacity={0.5}
-                    label={{ value: '45%', fill: '#f87171', fontSize: 9, position: 'right' }} />
-                  <Tooltip
-                    contentStyle={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, fontSize: 11, color: 'var(--theme-text1)' }}
-                    labelStyle={{ color: 'var(--theme-text1)' }}
-                    itemStyle={{ color: 'var(--theme-text1)' }}
-                    formatter={(v, _n, props) => {
-                      const p = props.payload
-                      const lines = [`${v}%`]
-                      if (p.purchases != null) lines.push(`Purchases: NPR ${p.purchases.toLocaleString('en-NP')}`)
-                      if (p.revenue != null)   lines.push(`Revenue: NPR ${p.revenue.toLocaleString('en-NP')}`)
-                      return [lines.join(' · '), 'Food Cost %']
-                    }}
-                  />
-                  <Line
-                    type="monotone" dataKey="fc" strokeWidth={2} stroke="#c9a84c"
-                    connectNulls={false}
-                    dot={(props) => {
-                      const { cx, cy, payload } = props
-                      const col = payload.fc <= 35 ? '#34d399' : payload.fc <= 45 ? '#c9a84c' : '#f87171'
-                      return <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r={payload.open ? 5 : 3} fill={col} stroke={payload.open ? '#e8e0d0' : 'none'} strokeWidth={1.5} />
-                    }}
-                    activeDot={{ r: 5, fill: '#c9a84c' }}
-                  />
-                </LineChart>
-                </ResponsiveContainer>
-               </div>
-              </div>
-              <div style={{ display: 'flex', gap: 16, marginTop: 6, fontSize: 10 }}>
-                <span style={{ color: 'var(--theme-green)' }}>● ≤35% Good</span>
-                <span style={{ color: 'var(--theme-accent)' }}>● 35–45% Watch</span>
-                <span style={{ color: 'var(--theme-red)' }}>● &gt;45% High</span>
-                <span style={{ marginLeft: 'auto', color: 'var(--theme-text2)' }}>⊙ = current open period</span>
-              </div>
-            </div>
+            <ChartCard
+              title="Food Cost % — Monthly Trend"
+              cardStyle={{ marginBottom: 14 }}
+              footer={
+                <div style={{ display: 'flex', gap: 16, marginTop: 6, fontSize: 10 }}>
+                  <span style={{ color: 'var(--theme-green)' }}>● ≤35% Good</span>
+                  <span style={{ color: 'var(--theme-accent)' }}>● 35–45% Watch</span>
+                  <span style={{ color: 'var(--theme-red)' }}>● &gt;45% High</span>
+                  <span style={{ marginLeft: 'auto', color: 'var(--theme-text2)' }}>⊙ = current open period</span>
+                </div>
+              }
+              renderChart={h => (
+                <div style={{ overflowX: 'auto', overflowY: 'hidden' }}>
+                  <div style={{ minWidth: Math.max(0, fcTrend.length * 64), height: h }}>
+                    <ResponsiveContainer width="100%" height={h}>
+                      <LineChart data={fcTrend} margin={{ top: 8, right: 48, bottom: 0, left: 0 }}>
+                        <CartesianGrid stroke="#2a2f3d" strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="label" tick={{ fill: '#9ca3af', fontSize: 10 }} tickLine={false} axisLine={false} interval={0} />
+                        <YAxis tick={{ fill: '#9ca3af', fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={v => `${v}%`} domain={['auto', 'auto']} width={36} />
+                        <ReferenceLine y={35} stroke="#34d399" strokeDasharray="4 3" strokeOpacity={0.5} label={{ value: '35%', fill: '#34d399', fontSize: 9, position: 'right' }} />
+                        <ReferenceLine y={45} stroke="#f87171" strokeDasharray="4 3" strokeOpacity={0.5} label={{ value: '45%', fill: '#f87171', fontSize: 9, position: 'right' }} />
+                        <Tooltip
+                          contentStyle={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, fontSize: 11, color: 'var(--theme-text1)' }}
+                          labelStyle={{ color: 'var(--theme-text1)' }}
+                          itemStyle={{ color: 'var(--theme-text1)' }}
+                          formatter={(v, _n, props) => {
+                            const p = props.payload
+                            const lines = [`${v}%`]
+                            if (p.purchases != null) lines.push(`Purchases: NPR ${p.purchases.toLocaleString('en-NP')}`)
+                            if (p.revenue != null)   lines.push(`Revenue: NPR ${p.revenue.toLocaleString('en-NP')}`)
+                            return [lines.join(' · '), 'Food Cost %']
+                          }}
+                        />
+                        <Line type="monotone" dataKey="fc" strokeWidth={2} stroke="#c9a84c" connectNulls={false}
+                          dot={(props) => {
+                            const { cx, cy, payload } = props
+                            const col = payload.fc <= 35 ? '#34d399' : payload.fc <= 45 ? '#c9a84c' : '#f87171'
+                            return <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r={payload.open ? 5 : 3} fill={col} stroke={payload.open ? '#e8e0d0' : 'none'} strokeWidth={1.5} />
+                          }}
+                          activeDot={{ r: 5, fill: '#c9a84c' }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+            />
           )}
 
           {/* ── Bottom: Variance + Reorder side by side ── */}
