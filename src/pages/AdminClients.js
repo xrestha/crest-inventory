@@ -758,17 +758,26 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                   <>
                     <p style={{ fontSize: 11, color: 'var(--theme-text2)', margin: '0 0 4px' }}>Crest HR Plan</p>
                     <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-                      {['starter', 'growth', 'pro'].map(p => {
-                        const active = hrPlan === p
-                        const accentColor = p === 'pro' ? 'var(--theme-accent)' : p === 'growth' ? 'var(--theme-green)' : 'var(--theme-text2)'
+                      {[
+                        { key: 'starter', label: 'Starter', monthly: 5000, annual: 3750 },
+                        { key: 'growth',  label: 'Growth',  monthly: 8000, annual: 6000 },
+                        { key: 'pro',     label: 'Pro',     monthly: 12000, annual: 9000 },
+                      ].map(p => {
+                        const price = billingCycle === 'annual' ? p.annual : p.monthly
+                        const active = hrPlan === p.key
+                        const accentColor = p.key === 'pro' ? 'var(--theme-accent)' : p.key === 'growth' ? 'var(--theme-green)' : 'var(--theme-text2)'
                         return (
-                          <button key={p} onClick={() => setHrPlan(p)} style={{
+                          <button key={p.key} onClick={() => setHrPlan(p.key)} style={{
                             flex: 1, padding: '8px 4px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 700,
                             border: active ? `1px solid ${accentColor}` : '1px solid var(--theme-border)',
-                            background: active ? (p === 'pro' ? 'rgba(201,168,76,0.12)' : p === 'growth' ? 'rgba(52,211,153,0.10)' : 'rgba(120,113,108,0.10)') : 'none',
+                            background: active ? (p.key === 'pro' ? 'rgba(201,168,76,0.12)' : p.key === 'growth' ? 'rgba(52,211,153,0.10)' : 'rgba(120,113,108,0.10)') : 'none',
                             color: active ? accentColor : 'var(--theme-text3)',
+                            lineHeight: 1.4,
                           }}>
-                            {p.charAt(0).toUpperCase() + p.slice(1)}
+                            <div>{p.label}</div>
+                            <div style={{ fontSize: 10, fontWeight: 400, marginTop: 2, opacity: 0.85 }}>
+                              NPR {price.toLocaleString('en-NP')}/mo
+                            </div>
                           </button>
                         )
                       })}
