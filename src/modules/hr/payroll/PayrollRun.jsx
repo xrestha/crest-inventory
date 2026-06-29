@@ -48,7 +48,7 @@ export default function PayrollRun() {
   async function loadAll(periodId) {
     const [{ data: runRow }, { data: emps }, { data: comps }, { data: att }] = await Promise.all([
       supabase.from('hr_payroll_runs').select('*').eq('client_id', clientId).eq('period_id', periodId).maybeSingle(),
-      supabase.from('hr_employees').select('id, full_name, employee_code, pay_basis, basic_salary, ssf_no, ssf_enrolled, department, status')
+      supabase.from('hr_employees').select('id, full_name, employee_code, pay_basis, basic_salary, ssf_no, ssf_enrolled, life_insurance_premium, health_insurance_premium, department, status')
         .eq('client_id', clientId).in('status', ['active', 'probation']).order('full_name'),
       supabase.from('hr_salary_components').select('*').eq('client_id', clientId),
       supabase.from('hr_attendance').select('*').eq('period_id', periodId),
@@ -104,12 +104,14 @@ export default function PayrollRun() {
       const ytd   = ytdMap[emp.id] || { gross: 0, ssf: 0, withheld: 0 }
       const tds   = computeMonthlyTds({
         period,
-        monthlyGross: slip.gross,
-        monthlySsf:   slip.ssf_employee,
-        ytdGross:     ytd.gross,
-        ytdSsf:       ytd.ssf,
-        ytdWithheld:  ytd.withheld,
+        monthlyGross:          slip.gross,
+        monthlySsf:            slip.ssf_employee,
+        ytdGross:              ytd.gross,
+        ytdSsf:                ytd.ssf,
+        ytdWithheld:           ytd.withheld,
         isSsf,
+        annualLifeInsurance:   parseFloat(emp.life_insurance_premium) || 0,
+        annualHealthInsurance: parseFloat(emp.health_insurance_premium) || 0,
       })
       const net = slip.net_pay - tds
       return { run_id: runId, client_id: clientId, employee_id: emp.id, ...slip, tds, net_pay: net }

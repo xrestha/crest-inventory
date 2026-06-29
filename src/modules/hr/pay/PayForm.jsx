@@ -44,8 +44,10 @@ export default function PayForm({ employee, onSave, onClose }) {
     bank_name:       employee.bank_name || '',
     bank_account_no: employee.bank_account_no || '',
     bank_branch:     employee.bank_branch || '',
-    ssf_no:          employee.ssf_no || '',
-    ssf_enrolled:    !!(employee.ssf_enrolled),
+    ssf_no:                    employee.ssf_no || '',
+    ssf_enrolled:              !!(employee.ssf_enrolled),
+    life_insurance_premium:    parseFloat(employee.life_insurance_premium) || 0,
+    health_insurance_premium:  parseFloat(employee.health_insurance_premium) || 0,
   })
   const [dearness, setDearness]     = useState('')   // stored separately from other components
   const [components, setComponents] = useState([])   // earnings + deductions excluding dearness
@@ -86,8 +88,10 @@ export default function PayForm({ employee, onSave, onClose }) {
       bank_name:       form.bank_name || null,
       bank_account_no: form.bank_account_no || null,
       bank_branch:     form.bank_branch || null,
-      ssf_no:          form.ssf_no || null,
-      ssf_enrolled:    form.ssf_enrolled,
+      ssf_no:                   form.ssf_no || null,
+      ssf_enrolled:             form.ssf_enrolled,
+      life_insurance_premium:   parseFloat(form.life_insurance_premium) || 0,
+      health_insurance_premium: parseFloat(form.health_insurance_premium) || 0,
     }).eq('id', employee.id)
     if (err) { setError(err.message); setSaving(false); return }
 
@@ -444,6 +448,40 @@ export default function PayForm({ employee, onSave, onClose }) {
                     <input style={inp} placeholder="SSF registration number" value={form.ssf_no} onChange={e => set('ssf_no', e.target.value)} />
                   </div>
                 )}
+              </div>
+
+              {/* Insurance premium TDS deductions */}
+              <div style={{ borderTop: '1px solid #2a2f3d', paddingTop: 20 }}>
+                <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 6px' }}>Tax Deduction Declarations</p>
+                <p style={{ fontSize: 12, color: '#4b5563', margin: '0 0 14px', lineHeight: 1.6 }}>
+                  Annual insurance premiums declared by the employee. Reduces taxable income before TDS is computed each month.
+                </p>
+                <div style={row}>
+                  <div style={col}>
+                    <label style={lbl}>
+                      <Tip text="Annual life insurance premium paid by the employee. Deductible up to NPR 40,000/year under Nepal Income Tax Act 2058, Section 12. Enter actual premium — excess above 40,000 is ignored." width={300}>Life Insurance Premium (NPR / year)</Tip>
+                    </label>
+                    <input type="number" min="0" style={inp}
+                      placeholder="0  (cap: NPR 40,000)"
+                      value={form.life_insurance_premium || ''}
+                      onChange={e => set('life_insurance_premium', e.target.value)} />
+                    {parseFloat(form.life_insurance_premium) > 40000 && (
+                      <span style={{ fontSize: 11, color: '#c9a84c', marginTop: 4 }}>Capped at NPR 40,000 — excess ignored in TDS.</span>
+                    )}
+                  </div>
+                  <div style={col}>
+                    <label style={lbl}>
+                      <Tip text="Annual health insurance premium paid by the employee. Deductible up to NPR 20,000/year under Nepal Income Tax Act 2058, Section 12. Enter actual premium — excess above 20,000 is ignored." width={300}>Health Insurance Premium (NPR / year)</Tip>
+                    </label>
+                    <input type="number" min="0" style={inp}
+                      placeholder="0  (cap: NPR 20,000)"
+                      value={form.health_insurance_premium || ''}
+                      onChange={e => set('health_insurance_premium', e.target.value)} />
+                    {parseFloat(form.health_insurance_premium) > 20000 && (
+                      <span style={{ fontSize: 11, color: '#c9a84c', marginTop: 4 }}>Capped at NPR 20,000 — excess ignored in TDS.</span>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           )}

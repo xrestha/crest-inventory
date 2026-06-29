@@ -11,6 +11,11 @@
 // lower of NPR 500,000 or one-third of assessable income.
 const RETIREMENT_CAP_ABS = 500000
 
+// Insurance premium deduction caps (Nepal Income Tax Act 2058, Section 12).
+// Employee declares annual premiums; employer applies these to reduce taxable income.
+const LIFE_INS_CAP   = 40000
+const HEALTH_INS_CAP = 20000
+
 // FY 2083/84 onward (effective Shrawan 1, 2083 / mid-July 2026) — unified.
 export const SLABS_2083_84 = [
   { upTo: 1000000, rate: 0.01, first: true },
@@ -56,7 +61,9 @@ export function applySlabs(taxable, slabs, isSsfContributor) {
 
 // Current month's TDS via YTD cumulative projection.
 // ytd* = sums from PRIOR finalized payslips this fiscal year (months before this one).
-export function computeMonthlyTds({ period, monthlyGross, monthlySsf, ytdGross = 0, ytdSsf = 0, ytdWithheld = 0, isSsf = false }) {
+// annualLifeInsurance / annualHealthInsurance: annual premiums declared by the employee
+// (capped at LIFE_INS_CAP / HEALTH_INS_CAP before reducing taxable income).
+export function computeMonthlyTds({ period, monthlyGross, monthlySsf, ytdGross = 0, ytdSsf = 0, ytdWithheld = 0, isSsf = false, annualLifeInsurance = 0, annualHealthInsurance = 0 }) {
   const { fyStart, monthInFy } = fiscalYearOf(period.bs_year, period.bs_month)
   const slabs = slabsFor(fyStart)
 
@@ -64,8 +71,9 @@ export function computeMonthlyTds({ period, monthlyGross, monthlySsf, ytdGross =
   const annualGross = ytdGross + monthlyGross * monthsAtCurrent
   const annualSsf   = ytdSsf   + monthlySsf   * monthsAtCurrent
 
-  const ssfDeduction  = Math.min(annualSsf, Math.min(RETIREMENT_CAP_ABS, annualGross / 3))
-  const annualTaxable = Math.max(0, annualGross - ssfDeduction)
+  const ssfDeduction       = Math.min(annualSsf, Math.min(RETIREMENT_CAP_ABS, annualGross / 3))
+  const insuranceDeduction = Math.min(annualLifeInsurance, LIFE_INS_CAP) + Math.min(annualHealthInsurance, HEALTH_INS_CAP)
+  const annualTaxable      = Math.max(0, annualGross - ssfDeduction - insuranceDeduction)
 
   const annualTax     = applySlabs(annualTaxable, slabs, isSsf)
   const cumulativeDue = (annualTax / 12) * monthInFy

@@ -124,6 +124,21 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S166 — 2026-06-29 — HR: Insurance premium TDS deductions
+
+**Insurance premium TDS deductions (life + health):**
+- `hr_employees`: two new columns — `life_insurance_premium numeric DEFAULT 0`, `health_insurance_premium numeric DEFAULT 0`
+- `tds.js`: `computeMonthlyTds` now accepts `annualLifeInsurance` + `annualHealthInsurance`; caps at NPR 40,000 (life) and NPR 20,000 (health) per Nepal Income Tax Act 2058 Section 12; deducted from `annualTaxable` before slab computation
+- `PayForm.jsx`: new "Tax Deduction Declarations" section in Bank/SSF tab — two number fields (annual NPR amounts, with cap warnings); saved to `hr_employees`
+- `PayrollRun.jsx`: passes both insurance fields from employee record into `computeMonthlyTds`
+- Help: Pay Setup entry updated to describe the Tax Deduction Declarations section
+
+**DB migration:** `ALTER TABLE hr_employees ADD COLUMN IF NOT EXISTS life_insurance_premium numeric DEFAULT 0, ADD COLUMN IF NOT EXISTS health_insurance_premium numeric DEFAULT 0;`
+
+**Files:** `src/modules/hr/payroll/tds.js`, `src/modules/hr/pay/PayForm.jsx`, `src/modules/hr/payroll/PayrollRun.jsx`, `src/pages/Help.js`
+
+---
+
 ### S165 — 2026-06-29 — HR: SSF enrollment gate + Advances & Loans ledger
 
 **SSF enrollment gate decoupled (`payrollCompute.js`, `PayrollRun.jsx`, `HrReports.jsx`, `PayForm.jsx`, `EmployeeForm.jsx`):**
