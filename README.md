@@ -493,6 +493,33 @@ ALTER TABLE clients
 
 ---
 
+### S169 — 2026-06-30 — HR: Advances & Loans — payroll integration (auto-recovery)
+
+**Advance/loan deduction wired into payroll generation and finalize:**
+- `payrollCompute.js`: `computePayslip` gains 7th param `advanceDeduction = 0` — subtracted from `net_pay` in all three pay bases (monthly/daily/hourly); stored as `advance_deduction` on result object
+- `PayrollRun.jsx`:
+  - Fetches `hr_advances` + `hr_advance_repayments` on every `loadAll`
+  - `buildAdvanceMap()`: per-employee deduction = `min(installment_amount, outstanding_balance)` across all active advances; no installment → full outstanding (one-shot)
+  - New **Advance** column in register table (orange `−X`); "Advance / Loan Recovery" line on payslip modal + print
+  - `updateTds` net-pay formula includes `advance_deduction`
+  - **Finalize**: writes `hr_advance_repayments` rows tagged with `payroll_run_id` (idempotent delete+re-insert); auto-settles advances whose balance reaches zero
+  - **Reopen**: deletes auto-repayments for that run; reactivates any advances that now have outstanding balance
+  - Excel export gains "Advance Ded" column
+- `Help.js`: Advances & Loans entry rewritten to describe auto-deduction flow
+
+**DB migrations run:**
+```sql
+ALTER TABLE hr_payslips ADD COLUMN IF NOT EXISTS advance_deduction numeric DEFAULT 0;
+ALTER TABLE hr_advance_repayments ADD COLUMN IF NOT EXISTS payroll_run_id uuid REFERENCES hr_payroll_runs(id);
+```
+**RLS policies added** (were missing — "permission denied" on insert): standard client-own policy + `GRANT ALL TO authenticated` on both `hr_advances` and `hr_advance_repayments`.
+
+**Note:** S165 entry "Repayments are manually recorded" is superseded by this session — repayments are now auto-recorded on Finalize.
+
+**Files:** `src/modules/hr/payroll/payrollCompute.js`, `src/modules/hr/payroll/PayrollRun.jsx`, `src/pages/Help.js`
+
+---
+
 ### S168 — 2026-06-29 — Admin: Billing cycle + corrected plan prices
 
 **Billing cycle (monthly vs annual) added to admin client billing:**

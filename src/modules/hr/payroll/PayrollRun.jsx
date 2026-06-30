@@ -24,11 +24,13 @@ export default function PayrollRun() {
   const [components, setComponents] = useState([])
   const [attendance, setAttendance] = useState([])
   const [otEntries,  setOtEntries]  = useState([])
+  const [advances,   setAdvances]   = useState([])
+  const [repayments, setRepayments] = useState([])
   const [loading,    setLoading]    = useState(true)
   const [busy,       setBusy]       = useState(false)
   const [msg,        setMsg]        = useState('')
-  const [viewSlip,   setViewSlip]   = useState(null)   // { slip, emp } for the on-screen modal
-  const [printSlip,  setPrintSlip]  = useState(null)   // { slip, emp } for the print-only block
+  const [viewSlip,   setViewSlip]   = useState(null)
+  const [printSlip,  setPrintSlip]  = useState(null)
 
   const empMap = Object.fromEntries(employees.map(e => [e.id, e]))
 
@@ -47,7 +49,10 @@ export default function PayrollRun() {
   }, [clientId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadAll(periodId, bsYear, bsMonth) {
-    const [{ data: runRow }, { data: emps }, { data: comps }, { data: att }, { data: ot }] = await Promise.all([
+    const [
+      { data: runRow }, { data: emps }, { data: comps }, { data: att }, { data: ot },
+      { data: advs },   { data: reps },
+    ] = await Promise.all([
       supabase.from('hr_payroll_runs').select('*').eq('client_id', clientId).eq('period_id', periodId).maybeSingle(),
       supabase.from('hr_employees').select('id, full_name, employee_code, pay_basis, basic_salary, ssf_no, ssf_enrolled, life_insurance_premium, health_insurance_premium, marital_status, department, status')
         .eq('client_id', clientId).in('status', ['active', 'probation']).order('full_name'),
@@ -55,11 +60,15 @@ export default function PayrollRun() {
       supabase.from('hr_attendance').select('*').eq('period_id', periodId),
       supabase.from('hr_overtime_entries').select('employee_id, ot_hours, ot_type')
         .eq('client_id', clientId).eq('bs_year', bsYear).eq('bs_month', bsMonth).eq('status', 'approved'),
+      supabase.from('hr_advances').select('*').eq('client_id', clientId).order('issued_date'),
+      supabase.from('hr_advance_repayments').select('*').eq('client_id', clientId),
     ])
     setEmployees(emps || [])
     setComponents(comps || [])
     setAttendance(att || [])
     setOtEntries(ot || [])
+    setAdvances(advs || [])
+    setRepayments(reps || [])
     setRun(runRow || null)
     if (runRow) {
       const { data: slips } = await supabase.from('hr_payslips').select('*').eq('run_id', runRow.id)
@@ -89,7 +98,7 @@ export default function PayrollRun() {
       const mp = r.hr_payroll_runs?.monthly_periods
       if (!mp) return
       const fy = fiscalYearOf(mp.bs_year, mp.bs_month)
-      if (fy.fyStart !== cur.fyStart || fy.monthInFy >= cur.monthInFy) return // same FY, earlier month only
+      if (fy.fyStart !== cur.fyStart || fy.monthInFy >= cur.monthInFy) return
       const e = map[r.employee_id] || { gross: 0, ssf: 0, withheld: 0 }
       e.gross += r.gross || 0
       e.ssf   += r.ssf_employee || 0
@@ -99,12 +108,34 @@ export default function PayrollRun() {
     return map
   }
 
+  // Per-employee scheduled advance deduction for this period.
+  // For each active advance: deduct min(installment, outstanding).
+  // If no installment set, deduct full outstanding (treated as one-time advance).
+  function buildAdvanceMap() {
+    const repaidMap = {}
+    repayments.forEach(r => {
+      repaidMap[r.advance_id] = (repaidMap[r.advance_id] || 0) + (parseFloat(r.amount) || 0)
+    })
+    const advMap = {}
+    advances.filter(a => a.status === 'active').forEach(adv => {
+      const repaid = repaidMap[adv.id] || 0
+      const outstanding = Math.max(0, parseFloat(adv.amount) - repaid)
+      if (outstanding <= 0) return
+      const installment = parseFloat(adv.installment_amount) || outstanding
+      const deduction = Math.min(installment, outstanding)
+      advMap[adv.employee_id] = (advMap[adv.employee_id] || 0) + deduction
+    })
+    return advMap
+  }
+
   function buildRows(runId, ytdMap) {
+    const advMap = buildAdvanceMap()
     return employees.map(emp => {
-      const comps      = components.filter(c => c.employee_id === emp.id)
-      const att        = attendance.filter(a => a.employee_id === emp.id)
+      const comps        = components.filter(c => c.employee_id === emp.id)
+      const att          = attendance.filter(a => a.employee_id === emp.id)
       const empOtEntries = otEntries.filter(e => e.employee_id === emp.id)
-      const slip       = computePayslip(emp, comps, att, period, 0, empOtEntries)
+      const advDed       = Math.round(advMap[emp.id] || 0)
+      const slip         = computePayslip(emp, comps, att, period, 0, empOtEntries, advDed)
       const isSsf    = !!(emp.ssf_enrolled)
       const isMarried = emp.marital_status === 'married'
       const ytd   = ytdMap[emp.id] || { gross: 0, ssf: 0, withheld: 0 }
@@ -153,7 +184,7 @@ export default function PayrollRun() {
   async function updateTds(slip, value) {
     if (run?.status === 'finalized') return
     const tds = parseFloat(value) || 0
-    const net = slip.gross + slip.ot_amount - slip.absence_deduction - slip.ssf_employee - slip.other_deductions - tds
+    const net = slip.gross + slip.ot_amount - slip.absence_deduction - slip.ssf_employee - slip.other_deductions - (slip.advance_deduction || 0) - tds
     setPayslips(ps => ps.map(s => s.id === slip.id ? { ...s, tds, net_pay: net } : s))
     await supabase.from('hr_payslips').update({ tds, net_pay: net }).eq('id', slip.id)
   }
@@ -162,16 +193,88 @@ export default function PayrollRun() {
     if (!run) return
     if (!window.confirm('Finalize this payroll? Payslips will be locked as a permanent record.')) return
     setBusy(true)
+
+    // Build per-advance repaid totals, excluding any prior auto-entries for this run
+    // (idempotent: on re-finalize after reopen, exclude stale rows we're about to replace)
+    const repaidMap = {}
+    repayments.filter(r => r.payroll_run_id !== run.id).forEach(r => {
+      repaidMap[r.advance_id] = (repaidMap[r.advance_id] || 0) + (parseFloat(r.amount) || 0)
+    })
+
+    // Build auto-repayment rows and track which advances become fully settled
+    const repayRows = []
+    const settleIds = []
+    const today = new Date().toISOString().split('T')[0]
+    const monthLabel = `${BS_MONTHS[period.bs_month - 1]} ${period.bs_year} payroll`
+
+    for (const slip of payslips) {
+      if (!slip.advance_deduction || slip.advance_deduction <= 0) continue
+      const empAdvs = advances.filter(a => a.employee_id === slip.employee_id && a.status === 'active')
+      let remaining = slip.advance_deduction
+
+      for (const adv of empAdvs) {
+        if (remaining <= 0) break
+        const repaid = repaidMap[adv.id] || 0
+        const outstanding = Math.max(0, parseFloat(adv.amount) - repaid)
+        if (outstanding <= 0) continue
+        const installment = parseFloat(adv.installment_amount) || outstanding
+        const thisPayment = Math.min(Math.min(installment, outstanding), remaining)
+        repayRows.push({
+          client_id: clientId,
+          advance_id: adv.id,
+          employee_id: slip.employee_id,
+          repaid_date: today,
+          amount: thisPayment,
+          notes: monthLabel,
+          payroll_run_id: run.id,
+        })
+        if (repaid + thisPayment >= parseFloat(adv.amount) - 0.01) settleIds.push(adv.id)
+        remaining -= thisPayment
+      }
+    }
+
     await supabase.from('hr_payroll_runs').update({ status: 'finalized', finalized_at: new Date().toISOString() }).eq('id', run.id)
-    await loadAll(period.id, period.bs_year, period.bs_month); setMsg('ok:Finalized'); setBusy(false)
+    // Idempotent: delete prior auto-repayments for this run, then re-insert
+    await supabase.from('hr_advance_repayments').delete().eq('payroll_run_id', run.id)
+    if (repayRows.length > 0) {
+      await supabase.from('hr_advance_repayments').insert(repayRows)
+    }
+    if (settleIds.length > 0) {
+      await supabase.from('hr_advances').update({ status: 'settled' }).in('id', settleIds)
+    }
+
+    await loadAll(period.id, period.bs_year, period.bs_month)
+    const suffix = repayRows.length > 0 ? ` — ${repayRows.length} advance repayment(s) auto-recorded` : ''
+    setMsg('ok:Finalized' + suffix)
+    setBusy(false)
   }
 
   async function reopen() {
     if (!run) return
-    if (!window.confirm('Reopen this payroll for editing? It will return to draft.')) return
+    if (!window.confirm('Reopen this payroll for editing? It will return to draft and advance repayments auto-recorded by this run will be reversed.')) return
     setBusy(true)
+
+    // Reverse auto-repayments created by this run
+    await supabase.from('hr_advance_repayments').delete().eq('payroll_run_id', run.id)
+
+    // Reactivate any advances that were auto-settled by this run but now have outstanding balance
+    const { data: updatedReps } = await supabase.from('hr_advance_repayments')
+      .select('advance_id, amount').eq('client_id', clientId)
+    const updatedRepaidMap = {}
+    ;(updatedReps || []).forEach(r => {
+      updatedRepaidMap[r.advance_id] = (updatedRepaidMap[r.advance_id] || 0) + (parseFloat(r.amount) || 0)
+    })
+    const reactivateIds = advances
+      .filter(a => a.status === 'settled')
+      .filter(a => Math.max(0, parseFloat(a.amount) - (updatedRepaidMap[a.id] || 0)) > 0.01)
+      .map(a => a.id)
+    if (reactivateIds.length > 0) {
+      await supabase.from('hr_advances').update({ status: 'active' }).in('id', reactivateIds)
+    }
+
     await supabase.from('hr_payroll_runs').update({ status: 'draft', finalized_at: null }).eq('id', run.id)
-    await loadAll(period.id, period.bs_year, period.bs_month); setMsg('ok:Reopened'); setBusy(false)
+    await loadAll(period.id, period.bs_year, period.bs_month)
+    setMsg('ok:Reopened'); setBusy(false)
   }
 
   function printPayslip(slip, emp) {
@@ -188,7 +291,8 @@ export default function PayrollRun() {
         'Present Days': s.present_days, 'Absent Days': s.absent_days,
         'OT Hours': s.ot_hours, 'OT Amount': s.ot_amount,
         'Absence Ded': s.absence_deduction, 'SSF Employee': s.ssf_employee,
-        'Other Ded': s.other_deductions, 'TDS': s.tds, 'Net Pay': s.net_pay,
+        'Other Ded': s.other_deductions, 'Advance Ded': s.advance_deduction || 0,
+        'TDS': s.tds, 'Net Pay': s.net_pay,
         'SSF Employer': s.ssf_employer,
       }
     })
@@ -202,10 +306,12 @@ export default function PayrollRun() {
   const periodLabel = period ? `${BS_MONTHS[period.bs_month - 1]} ${period.bs_year}` : '—'
   const finalized = run?.status === 'finalized'
   const totals = payslips.reduce((a, s) => {
-    a.gross += s.gross; a.ot += s.ot_amount; a.ssfEmp += s.ssf_employee; a.ssfEmpr += s.ssf_employer
-    a.ded += s.absence_deduction + s.other_deductions + s.tds; a.net += s.net_pay
+    a.gross  += s.gross; a.ot += s.ot_amount; a.ssfEmp += s.ssf_employee; a.ssfEmpr += s.ssf_employer
+    a.advDed += s.advance_deduction || 0
+    a.ded    += s.absence_deduction + s.other_deductions + s.tds
+    a.net    += s.net_pay
     return a
-  }, { gross: 0, ot: 0, ssfEmp: 0, ssfEmpr: 0, ded: 0, net: 0 })
+  }, { gross: 0, ot: 0, ssfEmp: 0, ssfEmpr: 0, ded: 0, advDed: 0, net: 0 })
 
   return (
     <div>
@@ -246,10 +352,10 @@ export default function PayrollRun() {
             {/* Stat cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
               {[
-                { label: 'Total Gross',   value: totals.gross, color: '#c9a84c', tip: 'Sum of gross earnings (basic + allowances, or earned wage) across all payslips.' },
-                { label: 'Deductions',    value: totals.ded + totals.ssfEmp, color: '#f87171', tip: 'SSF employee + absence deductions + other deductions + TDS.' },
-                { label: 'Net Payable',   value: totals.net, color: '#34d399', tip: 'Total take-home pay to disburse this period.' },
-                { label: 'Employer SSF',  value: totals.ssfEmpr, color: '#6b7280', tip: '20% SSF the company pays on top — not part of net payable.' },
+                { label: 'Total Gross',  value: totals.gross, color: '#c9a84c', tip: 'Sum of gross earnings (basic + allowances, or earned wage) across all payslips.' },
+                { label: 'Deductions',   value: totals.ded + totals.ssfEmp + totals.advDed, color: '#f87171', tip: 'SSF employee + absence deductions + other deductions + advance recovery + TDS.' },
+                { label: 'Net Payable',  value: totals.net, color: '#34d399', tip: 'Total take-home pay to disburse this period.' },
+                { label: 'Employer SSF', value: totals.ssfEmpr, color: '#6b7280', tip: '20% SSF the company pays on top — not part of net payable.' },
               ].map(s => (
                 <div key={s.label} className="card" style={{ padding: '16px 18px' }}>
                   <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
@@ -272,7 +378,8 @@ export default function PayrollRun() {
                       <th style={{ textAlign: 'right' }}><Tip text="Overtime pay at 1.5× the hourly rate." width={200}>OT</Tip></th>
                       <th style={{ textAlign: 'right' }}><Tip text="Pay deducted for unpaid-absence days (basic ÷ days in month × unpaid days)." width={260}>Absence</Tip></th>
                       <th style={{ textAlign: 'right' }}><Tip text="11% SSF — only for employees with an SSF number on file." width={230}>SSF</Tip></th>
-                      <th style={{ textAlign: 'right' }}><Tip text="All configured deductions except SSF — loan repayments, CIT/PF, advances, etc." width={250}>Other Ded</Tip></th>
+                      <th style={{ textAlign: 'right' }}><Tip text="All configured deductions except SSF — CIT/PF, etc." width={250}>Other Ded</Tip></th>
+                      <th style={{ textAlign: 'right' }}><Tip text="Advance or loan installment auto-recovered this period from active advances in the Advances & Loans ledger. Repayment rows are written on Finalize." width={290}>Advance</Tip></th>
                       <th style={{ textAlign: 'right' }}><Tip text="Income tax, computed automatically from FY tax slabs using year-to-date projection. Editable while draft if you need to override." width={270}>TDS</Tip></th>
                       <th style={{ textAlign: 'right', color: '#c9a84c' }}>Net Pay</th>
                       <th></th>
@@ -282,6 +389,7 @@ export default function PayrollRun() {
                     {payslips.map(s => {
                       const emp = empMap[s.employee_id] || {}
                       const isMonthly = s.pay_basis === 'monthly'
+                      const advDed = s.advance_deduction || 0
                       return (
                         <tr key={s.id}>
                           <td>
@@ -297,6 +405,7 @@ export default function PayrollRun() {
                           <td style={{ textAlign: 'right', color: s.absence_deduction > 0 ? '#f87171' : '#4b5563' }}>{s.absence_deduction > 0 ? `−${fmt(s.absence_deduction)}` : '—'}</td>
                           <td style={{ textAlign: 'right', color: s.ssf_employee > 0 ? '#f87171' : '#4b5563' }}>{s.ssf_employee > 0 ? `−${fmt(s.ssf_employee)}` : '—'}</td>
                           <td style={{ textAlign: 'right', color: s.other_deductions > 0 ? '#f87171' : '#4b5563' }}>{s.other_deductions > 0 ? `−${fmt(s.other_deductions)}` : '—'}</td>
+                          <td style={{ textAlign: 'right', color: advDed > 0 ? '#fb923c' : '#4b5563' }}>{advDed > 0 ? `−${fmt(advDed)}` : '—'}</td>
                           <td style={{ textAlign: 'right' }}>
                             {finalized
                               ? <span style={{ color: s.tds > 0 ? '#f87171' : '#4b5563' }}>{s.tds > 0 ? `−${fmt(s.tds)}` : '—'}</span>
@@ -315,7 +424,7 @@ export default function PayrollRun() {
                       <td style={{ color: '#6b7280', fontSize: 12 }}>Total — {payslips.length}</td>
                       <td style={{ textAlign: 'right', color: '#e8e0d0' }}>{fmt(totals.gross)}</td>
                       <td style={{ textAlign: 'right', color: '#34d399' }}>{totals.ot > 0 ? `+${fmt(totals.ot)}` : '—'}</td>
-                      <td colSpan={3} style={{ textAlign: 'right', color: '#f87171' }}>−{fmt(totals.ded + totals.ssfEmp)}</td>
+                      <td colSpan={4} style={{ textAlign: 'right', color: '#f87171' }}>−{fmt(totals.ded + totals.ssfEmp + totals.advDed)}</td>
                       <td></td>
                       <td style={{ textAlign: 'right', color: '#c9a84c', fontSize: 15 }}>{fmt(totals.net)}</td>
                       <td></td>
@@ -325,7 +434,7 @@ export default function PayrollRun() {
               </div>
             </div>
             <div style={{ marginTop: 12, fontSize: 11, color: '#4b5563', lineHeight: 1.6 }}>
-              {finalized ? 'This payroll is finalized — payslips are locked as a permanent record.' : 'Draft — Regenerate to pull the latest salary, attendance & tax, then Finalize to lock. You can override any TDS value inline.'} SSF is applied only to employees with an SSF number. TDS is computed automatically from the fiscal-year tax slabs using year-to-date projection; finalize earlier months first so each month\'s tax builds on the last.
+              {finalized ? 'This payroll is finalized — payslips are locked as a permanent record.' : 'Draft — Regenerate to pull the latest salary, attendance & tax, then Finalize to lock. You can override any TDS value inline.'} SSF is applied only to employees with an SSF number. TDS is computed automatically from the fiscal-year tax slabs using year-to-date projection; finalize earlier months first so each month\'s tax builds on the last. Active advance installments are auto-deducted; repayment rows are written to Advances & Loans on Finalize.
             </div>
           </>
         )}
@@ -397,8 +506,9 @@ function PayslipBody({ slip, emp, periodLabel, forPrint }) {
       {slip.absence_deduction > 0 && <Row label={`Absence (${slip.absent_days} days)`} value={slip.absence_deduction} neg />}
       {slip.ssf_employee > 0 && <Row label="SSF Employee (11%)" value={slip.ssf_employee} neg />}
       {slip.other_deductions > 0 && <Row label="Other Deductions" value={slip.other_deductions} neg />}
+      {(slip.advance_deduction || 0) > 0 && <Row label="Advance / Loan Recovery" value={slip.advance_deduction} neg />}
       {slip.tds > 0 && <Row label="TDS (income tax)" value={slip.tds} neg />}
-      {(slip.absence_deduction + slip.ssf_employee + slip.other_deductions + slip.tds) === 0 && (
+      {(slip.absence_deduction + slip.ssf_employee + slip.other_deductions + (slip.advance_deduction || 0) + slip.tds) === 0 && (
         <div style={{ fontSize: 12, color: c1, padding: '5px 0' }}>None</div>
       )}
 

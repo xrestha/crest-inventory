@@ -53,24 +53,26 @@ function entryOt(approvedOtEntries, hr) {
 // `approvedOtEntries` is an array of approved hr_overtime_entries rows for this
 // employee in this period — their OT amount is added on top of attendance OT.
 // Returns an object whose keys match the hr_payslips columns.
-export function computePayslip(employee, components, attendanceRows, period, tds = 0, approvedOtEntries = []) {
+export function computePayslip(employee, components, attendanceRows, period, tds = 0, approvedOtEntries = [], advanceDeduction = 0) {
   const basis    = employee.pay_basis || 'monthly'
   const basic    = parseFloat(employee.basic_salary) || 0
   const enrolled = !!(employee.ssf_enrolled)
   const t        = tallyAttendance(attendanceRows)
   const tdsVal   = parseFloat(tds) || 0
+  const advDed   = Math.round(parseFloat(advanceDeduction) || 0)
   const monthDays = daysInBsMonth(period.bs_year, period.bs_month)
   const hr        = hourlyRateOf(basis, basic, monthDays)
 
   const base = {
     pay_basis: basis,
     basic,
-    present_days: t.present + t.half_day * 0.5,
-    absent_days:  t.absent,
-    worked_days:  0,
-    hours_worked: t.sumHours,
-    ot_hours:     t.sumOt,
-    tds:          tdsVal,
+    present_days:      t.present + t.half_day * 0.5,
+    absent_days:       t.absent,
+    worked_days:       0,
+    hours_worked:      t.sumHours,
+    ot_hours:          t.sumOt,
+    tds:               tdsVal,
+    advance_deduction: advDed,
   }
 
   let result
@@ -85,7 +87,7 @@ export function computePayslip(employee, components, attendanceRows, period, tds
       ...base, worked_days: workedDays,
       allowances: 0, gross: earned, absence_deduction: 0, other_deductions: 0,
       ot_amount: otAmount, ssf_employee: ssfEmp, ssf_employer: ssfEmpr,
-      net_pay: earned + otAmount - ssfEmp - tdsVal,
+      net_pay: earned + otAmount - ssfEmp - tdsVal - advDed,
     }
   } else if (basis === 'hourly') {
     const earned   = r(basic * t.sumHours)
@@ -96,7 +98,7 @@ export function computePayslip(employee, components, attendanceRows, period, tds
       ...base,
       allowances: 0, gross: earned, absence_deduction: 0, other_deductions: 0,
       ot_amount: otAmount, ssf_employee: ssfEmp, ssf_employer: ssfEmpr,
-      net_pay: earned + otAmount - ssfEmp - tdsVal,
+      net_pay: earned + otAmount - ssfEmp - tdsVal - advDed,
     }
   } else {
     // monthly
@@ -120,7 +122,7 @@ export function computePayslip(employee, components, attendanceRows, period, tds
       ot_amount:         otAmount,
       ssf_employee:      ssfEmp,
       ssf_employer:      ssfEmpr,
-      net_pay: gross + otAmount - absenceDed - ssfEmp - otherDed - tdsVal,
+      net_pay: gross + otAmount - absenceDed - ssfEmp - otherDed - tdsVal - advDed,
     }
   }
 
