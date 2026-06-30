@@ -43,6 +43,7 @@ export default function Items() {
   const [initingCats, setInitingCats] = useState(false)
   const [usageMap, setUsageMap] = useState({})
   const [filterUsage, setFilterUsage] = useState('all')
+  const [amtDraft, setAmtDraft] = useState('')
 
   const effectiveClientId = clientId
 
@@ -186,16 +187,25 @@ export default function Items() {
     setInitingCats(false)
   }
 
+  function setTotalAmount(val) {
+    setAmtDraft(val)
+    const qty = parseFloat(form.purchase_qty)
+    const amt = parseFloat(val)
+    if (qty > 0 && amt > 0) setForm(prev => ({ ...prev, rate: (amt / qty).toFixed(2) }))
+  }
+
   function openNew() {
     setEditing(null)
     setForm({ ...EMPTY_FORM, category_id: categories[0]?.id || '' })
     setActiveTab('details')
+    setAmtDraft('')
     setError('')
     setShowForm(true)
   }
 
   function openEdit(item) {
     setEditing(item.id)
+    setAmtDraft('')
     setForm({
       name: item.name,
       category_id: item.category_id || '',
@@ -421,7 +431,7 @@ export default function Items() {
                   <input
                     type="number"
                     value={form.conversion_factor ? form.conversion_factor : form.purchase_qty}
-                    onChange={e => { if (!form.conversion_factor) setForm(f({ purchase_qty: e.target.value })) }}
+                    onChange={e => { if (!form.conversion_factor) { setAmtDraft(''); setForm(f({ purchase_qty: e.target.value })) } }}
                     placeholder="1000"
                     readOnly={!!form.conversion_factor}
                     style={form.conversion_factor ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
@@ -437,9 +447,31 @@ export default function Items() {
                   <input
                     type="number"
                     value={form.rate}
-                    onChange={e => setForm(f({ rate: e.target.value }))}
+                    onChange={e => { setAmtDraft(''); setForm(f({ rate: e.target.value })) }}
                     placeholder="500"
                   />
+                  {parseFloat(form.purchase_qty) > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5 }}>
+                      <span style={{ fontSize: 11, color: 'var(--theme-text3)', whiteSpace: 'nowrap' }}>
+                        <Tip text="Enter the total amount paid. Rate will be back-calculated as Total ÷ Purchase Qty." width={220}>Total</Tip>
+                      </span>
+                      <input
+                        type="number" min="0" step="any"
+                        value={amtDraft}
+                        placeholder={
+                          parseFloat(form.rate) > 0 && parseFloat(form.purchase_qty) > 0
+                            ? (parseFloat(form.rate) * parseFloat(form.purchase_qty)).toFixed(2)
+                            : ''
+                        }
+                        onChange={e => setTotalAmount(e.target.value)}
+                        style={{
+                          background: 'var(--theme-input-bg)', border: '1px solid var(--theme-border)',
+                          borderRadius: 4, padding: '4px 7px', fontSize: 12,
+                          color: 'var(--theme-text2)', outline: 'none', width: '100%', textAlign: 'right'
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
                 <div className="form-field">
                   <label>

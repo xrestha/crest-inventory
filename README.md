@@ -124,6 +124,15 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S182 — 2026-06-30 — Item Master: Total-amount back-calculate Rate
+
+**Add/Edit Item modal — "Total" sub-input below Rate field:**
+- New `amtDraft` state tracks the user's typed total; clears when Rate or Purchase Qty is edited directly
+- `setTotalAmount(val)` handler: `rate = totalAmount ÷ purchaseQty` (no VAT — Item Master rates are base rates)
+- Total input placeholder shows computed total (`rate × purchase_qty`) when draft is empty
+- Clears on `openNew` and `openEdit` so modal always opens clean
+- **File:** `src/pages/Items.js`
+
 ### S181 — 2026-06-30 — HR: Advances & Loans — payroll integration (auto-recovery)
 
 **Advance/loan deduction wired into payroll generation and finalize:**
