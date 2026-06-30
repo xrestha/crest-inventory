@@ -14,7 +14,7 @@ const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kart
 const EMPTY_HEADER = { vendor_id: '', bs_day: '', invoice_ref: '', payment_method: 'Cash', discount: '' }
 const EMPTY_RETURN = { purchase_entry_id: '', qty: '', notes: '' }
 const PAYMENT_METHODS = ['Cash', 'Credit', 'FonePay']
-const newLine = () => ({ _key: Date.now() + Math.random(), item_id: '', qty: '', rate: '', expiry_date: '', shelf_life: '', vat_inclusive: false })
+const newLine = () => ({ _key: Date.now() + Math.random(), item_id: '', qty: '', rate: '', expiry_date: '', shelf_life: '', vat_inclusive: false, _amtDraft: '' })
 
 export default function Purchases() {
   const { clientId, profile, loading: authLoading, isAdmin } = useAuth()
@@ -137,6 +137,7 @@ export default function Purchases() {
         expiry_date: e.expiry_date || '',
         shelf_life: '',
         vat_inclusive: e.vat_inclusive || false,
+        _amtDraft: '',
       }
     }))
     setError('')
@@ -165,13 +166,27 @@ export default function Purchases() {
       if (field === 'item_id') {
         const item = items.find(i => i.id === val)
         if (item?.rate) updated.rate = String(item.rate)
+        updated._amtDraft = ''
       }
+      if (field === 'rate' || field === 'vat_inclusive') updated._amtDraft = ''
       if (field === 'shelf_life' && val && billHeader.bs_day && selectedPeriod) {
         const ad = bsToAd(selectedPeriod.bs_year, selectedPeriod.bs_month, parseInt(billHeader.bs_day))
         const exp = new Date(ad); exp.setDate(exp.getDate() + parseInt(val))
         updated.expiry_date = formatAd(exp)
       }
       return updated
+    }))
+  }
+
+  function setLineTotal(key, amtStr) {
+    setBillLines(prev => prev.map(l => {
+      if (l._key !== key) return l
+      const qty = parseFloat(l.qty)
+      const amt = parseFloat(amtStr)
+      const rate = (qty > 0 && amt > 0)
+        ? String((amt / qty / (l.vat_inclusive ? 1.13 : 1)).toFixed(5))
+        : l.rate
+      return { ...l, _amtDraft: amtStr, rate }
     }))
   }
 
@@ -635,6 +650,20 @@ export default function Purchases() {
                             {line.vat_inclusive && parseFloat(line.rate) > 0 && (
                               <div style={{ fontSize: 10, color: 'var(--theme-amber)', textAlign: 'right', marginTop: 2 }}>
                                 +VAT: {(parseFloat(line.rate) * 0.13).toFixed(2)} → {(parseFloat(line.rate) * 1.13).toFixed(2)}
+                              </div>
+                            )}
+                            {parseFloat(line.qty) > 0 && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                                <span style={{ fontSize: 10, color: 'var(--theme-text3)', whiteSpace: 'nowrap' }}>
+                                  <Tip text="Enter the total amount you paid for this line. The Rate will be back-calculated automatically." width={220}>Total</Tip>
+                                </span>
+                                <input
+                                  type="number" min="0" step="any"
+                                  value={line._amtDraft}
+                                  placeholder={lineAmount > 0 ? lineAmount.toFixed(2) : ''}
+                                  onChange={e => setLineTotal(line._key, e.target.value)}
+                                  style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 4, padding: '3px 6px', fontSize: 11, color: 'var(--theme-text2)', outline: 'none', flex: 1, textAlign: 'right', minWidth: 0 }}
+                                />
                               </div>
                             )}
                           </td>

@@ -124,6 +124,20 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S180 — 2026-06-30 — Purchases: Total-amount back-calculate rate
+
+**Reverse-rate calculator in Purchase Bill form (`src/pages/Purchases.js`):**
+- Added **Total** helper input below the Rate field (visible once QTY is entered)
+- User types the total amount paid → Rate is back-calculated: `rate = total ÷ qty ÷ (1.13 if VAT)`
+- Placeholder shows the current computed total so the field doubles as a live readout
+- Editing Rate directly clears the Total input (reverts to placeholder); changing item or toggling VAT also resets it
+- `_amtDraft` field on each bill line holds the user's typed total (not persisted — derived state only)
+- New `setLineTotal()` function handles the back-calc; `updateBillLine` clears `_amtDraft` on `rate` / `vat_inclusive` / `item_id` changes
+
+**Files:** `src/pages/Purchases.js`
+
+---
+
 ### S179 — 2026-06-30 — HR sidebar groups + Overtime Est. Amount column
 
 **HR sidebar rearranged into collapsible groups (`src/components/Layout.js`):**
