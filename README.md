@@ -124,6 +124,21 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S187 — 2026-06-30 — Trial signup awareness: contact_person, signup time display, sidebar amber badge
+
+**Edge Function (`supabase/functions/admin-user-ops/index.ts`):**
+- `register_trial` action now saves `contact_person: full_name || business_name` to the `clients` row on signup
+
+**Admin Clients (`src/pages/AdminClients.js`):**
+- Trial rows now show "Signed up X ago · [contact_person]" using the existing `relativeTime()` helper
+- Contact person only shown when it differs from the business name
+
+**Sidebar (`src/components/Layout.js`):**
+- Added `newTrialCount` state — counts trial clients with `trial_start_date` in the last 7 days
+- Amber badge `"N new"` appended to Clients nav label when `newTrialCount > 0` (distinct from the red subscribe-requested badge)
+- Collapsed-mode: amber dot shown when `newTrialCount > 0` and no pending red badge already showing
+- **Deploy required:** `supabase functions deploy admin-user-ops` to activate contact_person capture
+
 ### S186 — 2026-06-30 — Purchases + Non-VAT Report: discount header field, footer buttons, Non-VAT discount handling
 
 **Add Purchase Bill (`src/pages/Purchases.js`):**

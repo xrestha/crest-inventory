@@ -1411,16 +1411,21 @@ export default function AdminClients() {
                         )}
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--theme-text2)', marginTop: 2 }}>
+                        {c.trial_start_date && (
+                          <span style={{ color: 'var(--theme-text3)', marginRight: 8 }}>
+                            Signed up {relativeTime(c.trial_start_date)}
+                            {c.contact_person && c.contact_person !== c.name ? ` · ${c.contact_person}` : ''}
+                          </span>
+                        )}
                         {expired
                           ? <span style={{ color: '#f87171', fontWeight: 600 }}>
-                              Trial expired{purgeDays != null && purgeDays > 0 ? ` · data purge in ${purgeDays}d` : ' · purge imminent'}
+                              · Trial expired{purgeDays != null && purgeDays > 0 ? ` · data purge in ${purgeDays}d` : ' · purge imminent'}
                             </span>
                           : daysLeft != null
                             ? <span style={{ color: daysLeft <= 2 ? '#f59e0b' : 'var(--theme-text2)' }}>
-                                {daysLeft === 0 ? 'Expires today' : `${daysLeft} day${daysLeft !== 1 ? 's' : ''} left`}
-                                {expAt ? ` · expires ${expAt.toLocaleDateString()}` : ''}
+                                · {daysLeft === 0 ? 'Expires today' : `${daysLeft} day${daysLeft !== 1 ? 's' : ''} left`}
                               </span>
-                            : 'No expiry set'}
+                            : ''}
                         {c.contact_phone && (
                           <span style={{ marginLeft: 8, color: 'var(--theme-text3)' }}>
                             · 📱 <a href={`https://wa.me/977${c.contact_phone.replace(/^0/, '')}`} target="_blank" rel="noreferrer" style={{ color: 'var(--theme-green)', textDecoration: 'none' }}>{c.contact_phone}</a>

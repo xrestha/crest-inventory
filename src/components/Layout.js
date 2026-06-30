@@ -92,6 +92,7 @@ export default function Layout() {
   const [allClients, setAllClients] = useState([])
   const [clientDropdownOpen, setClientDropdownOpen] = useState(false)
   const [pendingTrialCount, setPendingTrialCount] = useState(0)
+  const [newTrialCount, setNewTrialCount] = useState(0)
   const [subscribing, setSubscribing] = useState(false)
   const dropdownRef = useRef(null)
   const location = useLocation()
@@ -126,11 +127,13 @@ export default function Layout() {
   useEffect(() => {
     if (!isAdmin) return
     supabase.from('clients')
-      .select('id, name, trial_ends_at, subscription_ends_at, ims_ends_at, hr_ends_at, pos_ends_at, is_trial, trial_expires_at, subscribe_requested')
+      .select('id, name, trial_ends_at, subscription_ends_at, ims_ends_at, hr_ends_at, pos_ends_at, is_trial, trial_expires_at, trial_start_date, subscribe_requested')
       .order('name')
       .then(({ data }) => {
         setAllClients(data || [])
         setPendingTrialCount((data || []).filter(c => c.subscribe_requested).length)
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+        setNewTrialCount((data || []).filter(c => c.is_trial && c.trial_start_date && c.trial_start_date >= sevenDaysAgo).length)
       })
   }, [isAdmin]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -372,13 +375,29 @@ export default function Layout() {
                       animation: 'pulse-dot 1.5s infinite',
                     }} />
                   )}
+                  {pendingTrialCount === 0 && newTrialCount > 0 && (
+                    <span style={{
+                      position: 'absolute', top: -4, right: -4,
+                      width: 8, height: 8, borderRadius: '50%',
+                      background: '#f59e0b',
+                      boxShadow: '0 0 0 0 rgba(245,158,11,0.7)',
+                      animation: 'pulse-dot 1.5s infinite',
+                    }} />
+                  )}
                 </span>
                 {!collapsed && (
                   <span style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
                     Clients
                     {pendingTrialCount > 0 && (
-                      <span style={{ fontSize: 10, fontWeight: 800, background: '#f87171', color: '#fff', borderRadius: 10, padding: '1px 6px', lineHeight: 1.4 }}>
+                      <span style={{ fontSize: 10, fontWeight: 800, background: '#f87171', color: '#fff', borderRadius: 10, padding: '1px 6px', lineHeight: 1.4 }}
+                        title="Clients requesting to subscribe">
                         {pendingTrialCount}
+                      </span>
+                    )}
+                    {newTrialCount > 0 && (
+                      <span style={{ fontSize: 10, fontWeight: 800, background: '#f59e0b', color: '#000', borderRadius: 10, padding: '1px 6px', lineHeight: 1.4 }}
+                        title="New trial signups in the last 7 days">
+                        {newTrialCount} new
                       </span>
                     )}
                   </span>

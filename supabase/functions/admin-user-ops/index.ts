@@ -52,6 +52,7 @@ Deno.serve(async (req) => {
         .from('clients')
         .insert({
           name:              business_name,
+          contact_person:    full_name || business_name,
           contact_phone:     phone || null,
           plan:              'starter',
           is_trial:          true,
