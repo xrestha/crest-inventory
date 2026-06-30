@@ -20,12 +20,20 @@ export function getDateStatus(endsAt) {
   return statusFromDays(days)
 }
 
-// Client-level badge — uses ims_ends_at as primary, falls back to subscription_ends_at, then trial
+// Client-level badge — uses the latest active end date across all modules, falls back to trial
 export function getSubStatus(client) {
   const now = Date.now()
-  const endDate = client?.ims_ends_at || client?.subscription_ends_at
-  if (endDate) {
-    const days = Math.ceil((new Date(endDate) - now) / 86400000)
+  // Take the farthest end date across all module subscriptions
+  const candidates = [
+    client?.ims_ends_at,
+    client?.hr_ends_at,
+    client?.pos_ends_at,
+    client?.subscription_ends_at,
+  ].filter(Boolean).map(d => new Date(d).getTime())
+
+  if (candidates.length > 0) {
+    const latest = Math.max(...candidates)
+    const days   = Math.ceil((latest - now) / 86400000)
     return statusFromDays(days)
   }
   if (client?.trial_ends_at) {

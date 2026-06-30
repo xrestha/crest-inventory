@@ -143,13 +143,15 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
   // Modules state
   const [imsEnabled, setImsEnabled] = useState(client.ims_enabled !== false)
   const [hrEnabled,  setHrEnabled]  = useState(!!client.hr_enabled)
-  const [hrPlan, setHrPlan]         = useState(client.hr_plan || 'starter')
+  const [hrPlan,  setHrPlan]        = useState(client.hr_plan  || 'starter')
+  const [posEnabled, setPosEnabled] = useState(!!client.pos_enabled)
+  const [posPlan, setPosPlan]       = useState(client.pos_plan || 'starter')
 
   // Billing tab state — per-module end dates; fall back to legacy subscription_ends_at for IMS
   const _legacyEnd = client.subscription_ends_at ? formatAd(new Date(client.subscription_ends_at)) : ''
   const [imsEndsAt, setImsEndsAt] = useState(client.ims_ends_at ? formatAd(new Date(client.ims_ends_at)) : _legacyEnd)
   const [hrEndsAt,  setHrEndsAt]  = useState(client.hr_ends_at  ? formatAd(new Date(client.hr_ends_at))  : '')
-  const [posEndsAt] = useState(client.pos_ends_at ? formatAd(new Date(client.pos_ends_at)) : '')
+  const [posEndsAt, setPosEndsAt] = useState(client.pos_ends_at ? formatAd(new Date(client.pos_ends_at)) : '')
   const [billingCycle, setBillingCycle] = useState(client.billing_cycle || 'monthly')
   const [savingSub, setSavingSub] = useState(false)
   const [subMsg, setSubMsg]       = useState('')
@@ -354,6 +356,13 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
     onClientUpdated()
   }
 
+  async function handleTogglePos() {
+    const next = !posEnabled
+    setPosEnabled(next)
+    await supabase.from('clients').update({ pos_enabled: next }).eq('id', client.id)
+    onClientUpdated()
+  }
+
   // ── Billing ──
   function extendModule(setter, days) {
     const d = new Date()
@@ -369,6 +378,7 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
       pos_ends_at:   posEndsAt || null,
       plan:          currentPlan,
       hr_plan:       hrPlan,
+      pos_plan:      posPlan,
       billing_cycle: billingCycle,
     }).eq('id', client.id)
     if (error) { setSubMsg('error:' + error.message) }
@@ -657,6 +667,7 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                   {[
                     { key: 'ims', label: 'Crest IMS', sub: 'Inventory Management', enabled: imsEnabled, toggle: handleToggleIms },
                     { key: 'hr',  label: 'Crest HR',  sub: 'Human Resources',      enabled: hrEnabled,  toggle: handleToggleHr  },
+                    { key: 'pos', label: 'Crest POS', sub: 'Point of Sale',        enabled: posEnabled, toggle: handleTogglePos  },
                   ].map(mod => (
                     <div key={mod.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--theme-border-lt)' }}>
                       <div>
@@ -668,18 +679,6 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                       </div>
                     </div>
                   ))}
-                  {/* POS — coming soon */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 0' }}>
-                    <div>
-                      <p style={{ margin: '0 0 1px', fontSize: 13, fontWeight: 700, color: 'var(--theme-text3)' }}>Crest POS</p>
-                      <p style={{ margin: 0, fontSize: 11, color: 'var(--theme-text2)' }}>Point of Sale · coming soon</p>
-                    </div>
-                    <div style={{ opacity: 0.3 }}>
-                      <div style={{ position: 'relative', width: 38, height: 22, borderRadius: 11, background: '#374151', cursor: 'not-allowed' }}>
-                        <div style={{ position: 'absolute', top: 3, left: 3, width: 16, height: 16, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.35)' }} />
-                      </div>
-                    </div>
-                  </div>
                 </div>
 
                 {/* Billing cycle toggle */}
@@ -700,6 +699,7 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                 {[
                   { key: 'ims', label: 'Crest IMS', enabled: imsEnabled, plan: currentPlan, setPlan: setCurrentPlan, endsAt: imsEndsAt, setEndsAt: setImsEndsAt },
                   { key: 'hr',  label: 'Crest HR',  enabled: hrEnabled,  plan: hrPlan,      setPlan: setHrPlan,      endsAt: hrEndsAt,  setEndsAt: setHrEndsAt  },
+                  { key: 'pos', label: 'Crest POS', enabled: posEnabled, plan: posPlan,     setPlan: setPosPlan,     endsAt: posEndsAt, setEndsAt: setPosEndsAt },
                 ].map(mod => {
                   if (!mod.enabled) return null
                   const s = getDateStatus(mod.endsAt)
@@ -1536,6 +1536,7 @@ export default function AdminClients() {
                     {[
                       { key: 'IMS', enabled: c.ims_enabled !== false, plan: c.plan },
                       { key: 'HR',  enabled: !!c.hr_enabled,          plan: c.hr_plan },
+                      { key: 'POS', enabled: !!c.pos_enabled,         plan: c.pos_plan },
                     ].map(m => (
                       <span key={m.key} style={{
                         fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4,

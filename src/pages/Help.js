@@ -383,7 +383,7 @@ const FAQ = [
 ]
 
 export default function Help() {
-  const { imsEnabled, hrEnabled, plan, isAdmin } = useAuth()
+  const { imsEnabled, hrEnabled, posEnabled, plan, isAdmin } = useAuth()
   const [activeSection, setActiveSection]         = useState('guide')
   const [expandedModule, setExpandedModule]       = useState(null)
   const [expandedFaq, setExpandedFaq]             = useState(null)
@@ -645,8 +645,46 @@ export default function Help() {
             </div>
           )}
 
+          {/* ── Crest POS ── */}
+          {posEnabled && (
+            <div style={{ marginBottom: 32 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 12, borderBottom: '2px solid rgba(201,168,76,0.2)' }}>
+                <span style={{ fontSize: 18, color: 'var(--theme-accent)' }}>⊕</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--theme-text1)', fontFamily: 'Georgia, serif' }}>Crest POS</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--theme-green)', background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.2)', padding: '2px 8px', borderRadius: 10 }}>Active</span>
+              </div>
+              <div style={{ marginBottom: 8 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--theme-accent)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Point of Sale</span>
+              </div>
+              {[
+                {
+                  icon: '⊞', name: 'Table Management', path: '/pos/tables',
+                  desc: 'Set up your restaurant floor plan — create tables, assign them to sections (Main Hall, Bar, Outdoor), set capacity, and track status (Available / Occupied / Reserved / Inactive). Requires Supervisor role or above.',
+                  tips: [
+                    'Click a status badge directly on the floor grid to cycle it — no need to open the editor',
+                    'Use sections to group tables by area; the section filter tabs appear automatically once you have more than one section',
+                    'Sort Order controls the display sequence within a section — use multiples of 10 (10, 20, 30) to leave room for reordering',
+                    'Inactive status removes a table from active service without deleting it — useful for tables under repair or seasonal areas',
+                  ],
+                },
+                {
+                  icon: '👥', name: 'POS Staff', path: '/pos/staff',
+                  desc: 'Assign POS roles to your team. Only staff with a role assigned can see POS screens. Roles: Staff (order-taking), Supervisor (+ table setup, voids), Manager (+ reports, role assignment). Requires Manager role or above.',
+                  tips: [
+                    'Start by assigning the owner/manager account the Manager role — they can then assign roles to the rest of the team',
+                    'Staff role = waiters who take orders only. They cannot access Table Management or reports',
+                    'Supervisor role is ideal for head waiters and floor captains who need to set table status and manage the floor',
+                    'Users with no role assigned cannot see any POS screens — the POS section is hidden from their sidebar',
+                  ],
+                },
+              ].map(feat => (
+                <FeatureCard key={feat.name} feat={feat} moduleKey="pos" />
+              ))}
+            </div>
+          )}
+
           {/* Neither module active */}
-          {!imsEnabled && !hrEnabled && (
+          {!imsEnabled && !hrEnabled && !posEnabled && (
             <div className="card" style={{ textAlign: 'center', padding: '40px 24px', borderColor: 'rgba(107,114,128,0.2)' }}>
               <div style={{ fontSize: 28, marginBottom: 12 }}>⊘</div>
               <div style={{ fontSize: 14, color: 'var(--theme-text2)', marginBottom: 6 }}>No modules are currently active</div>

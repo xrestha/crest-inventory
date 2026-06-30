@@ -5,6 +5,15 @@ import Tip from '../components/Tip'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 
+function dispPurch(baseQty, item) {
+  const cf = parseFloat(item.conversion_factor) || 1
+  if (cf > 1 && item.purchase_unit) {
+    const puQty = (baseQty / cf).toLocaleString(undefined, { maximumFractionDigits: 3 })
+    return `${puQty} ${item.purchase_unit} (${Number(baseQty).toLocaleString()} ${item.uom})`
+  }
+  return Number(baseQty).toLocaleString()
+}
+
 export default function Variance() {
   const { clientId, profile, loading: authLoading } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
@@ -262,7 +271,7 @@ export default function Variance() {
                       <td><span className="badge badge-yellow">{row.category}</span></td>
                       <td style={{ color: 'var(--theme-text2)' }}>{row.item.uom}</td>
                       <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>{row.openQty > 0 ? row.openQty.toLocaleString() : '—'}</td>
-                      <td style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>{row.purchQty !== 0 ? row.purchQty.toLocaleString() : '—'}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>{row.purchQty !== 0 ? dispPurch(row.purchQty, row.item) : '—'}</td>
                       <td style={{ textAlign: 'right', color: 'var(--theme-red)' }}>{row.wasteQty > 0 ? row.wasteQty.toLocaleString() : '—'}</td>
                       <td style={{ textAlign: 'right', color: 'var(--theme-green)' }}>{row.closeQty > 0 ? row.closeQty.toLocaleString() : '—'}</td>
                       <td style={{ textAlign: 'right', fontWeight: 600 }}>{row.actualUsed !== 0 ? Number(row.actualUsed.toFixed(3)).toLocaleString() : '—'}</td>

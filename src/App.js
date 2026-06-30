@@ -59,6 +59,9 @@ import Roster from './modules/hr/roster/Roster'
 import HolidayCalendar from './modules/hr/holidays/HolidayCalendar'
 import Overtime from './modules/hr/overtime/Overtime'
 import HrDashboard from './modules/hr/dashboard/HrDashboard'
+import Pos from './modules/pos/Pos'
+import PosTableManagement from './modules/pos/tables/PosTableManagement'
+import PosStaff from './modules/pos/staff/PosStaff'
 import './components/Layout.css'
 
 export default function App() {
@@ -161,6 +164,11 @@ export default function App() {
               <Route path="/hr/roster"     element={<ModuleGate module="hr"><Roster /></ModuleGate>} />
               <Route path="/hr/holidays"   element={<ModuleGate module="hr"><HolidayCalendar /></ModuleGate>} />
               <Route path="/hr/overtime"   element={<ModuleGate module="hr"><Overtime /></ModuleGate>} />
+
+              {/* Crest POS — gated on pos_enabled */}
+              <Route path="/pos"        element={<ModuleGate module="pos"><Pos /></ModuleGate>} />
+              <Route path="/pos/tables" element={<ModuleGate module="pos"><PosTableManagement /></ModuleGate>} />
+              <Route path="/pos/staff"  element={<ModuleGate module="pos"><PosStaff /></ModuleGate>} />
 
               {/* Admin only */}
               <Route path="/admin/clients"

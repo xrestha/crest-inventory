@@ -12,6 +12,15 @@ import BsCalendarPicker from '../components/BsCalendarPicker'
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 const WASTAGE_REASONS = ['Spoilage', 'Expiry', 'Over-prep', 'Breakage', 'Spillage', 'Customer return', 'Other']
 
+function dispPurch(baseQty, item) {
+  const cf = parseFloat(item.conversion_factor) || 1
+  if (cf > 1 && item.purchase_unit) {
+    const puQty = (baseQty / cf).toLocaleString(undefined, { maximumFractionDigits: 3 })
+    return `${puQty} ${item.purchase_unit} (${Number(baseQty).toLocaleString()} ${item.uom})`
+  }
+  return Number(baseQty).toLocaleString()
+}
+
 export default function Stock() {
   const { clientId, profile, loading: authLoading, isAdmin, hasFeature } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
@@ -622,7 +631,7 @@ export default function Stock() {
                         <td><span className="badge badge-yellow">{item.categories?.name}</span></td>
                         <td style={{ color: 'var(--theme-text2)' }}>{item.uom}</td>
                         <td style={{ textAlign: 'right' }}>{row.opening !== '' ? Number(row.opening).toLocaleString() : '—'}</td>
-                        <td style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>{purchases[item.id] ? Number(purchases[item.id]).toLocaleString() : '—'}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>{purchQty > 0 ? dispPurch(purchQty, item) : '—'}</td>
                         <td style={{ textAlign: 'right', color: 'var(--theme-red)' }}>{returned > 0 ? `−${Number(returned).toLocaleString()}` : '—'}</td>
                         <td style={{ textAlign: 'right', color: 'var(--theme-red)' }}>{row.wastage ? Number(row.wastage).toLocaleString() : '—'}</td>
                         <td style={{ textAlign: 'right', color: '#a78bfa' }}>{staffQty > 0 ? Number(staffQty).toLocaleString() : '—'}</td>
@@ -931,7 +940,7 @@ export default function Stock() {
                       <div className="mobile-stock-card-meta">
                         <span className="mobile-stock-uom">{item.uom}</span>
                         {purchases[item.id] > 0 && (
-                          <span className="mobile-stock-ref">Purchased: {Number(purchases[item.id]).toLocaleString()}</span>
+                          <span className="mobile-stock-ref">Purchased: {dispPurch(Number(purchases[item.id]), item)}</span>
                         )}
                         {returned > 0 && (
                           <span className="mobile-stock-ref" style={{ color: 'var(--theme-red)' }}>Returned: −{Number(returned).toLocaleString()}</span>

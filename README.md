@@ -107,7 +107,7 @@ Architecture: single React app, single Supabase project, feature flags per clien
 |---|---|---|
 | Crest IMS | ✅ Live | All existing routes |
 | Crest HR | ✅ Live | `/hr/dashboard`, `/hr/employees`, `/hr/pay-setup`, `/hr/attendance`, `/hr/leave`, `/hr/holidays`, `/hr/overtime`, `/hr/payroll`, `/hr/reports`, `/hr/festival`, `/hr/advances`, `/hr/gratuity`, `/hr/settlement`, `/hr/roster` |
-| Crest POS | 🔲 Planned | — |
+| Crest POS | 🔧 Building | `/pos/tables` (supervisor+), `/pos/staff` (manager+); Orders, KOT, Billing, Shifts next |
 
 **Suite pricing:**
 | Suite Plan | Monthly | Annual /mo |
@@ -116,13 +116,168 @@ Architecture: single React app, single Supabase project, feature flags per clien
 | Suite Growth | NPR 22,000 | NPR 16,500 |
 | Suite Pro | NPR 32,000 | NPR 24,000 |
 
-**Module flags on `clients` table:** `ims_enabled` (DEFAULT true), `hr_enabled` (DEFAULT false), `pos_enabled`, `ims_plan`, `hr_plan`, `pos_plan`  
-**Admin UI:** AdminClients → **card module strip** — toggle IMS/HR/POS directly on each client card; **Modules tab** in drawer = plan tier selectors with individual Save buttons per module  
-**Route guard:** `src/components/ModuleGate.js` — wraps all IMS and HR routes in App.js; redirects to `/dashboard` when module is off (admin always bypasses)
+**Module flags on `clients` table:** `ims_enabled` (DEFAULT true), `hr_enabled` (DEFAULT false), `pos_enabled` (DEFAULT false, column added S193), `ims_plan`, `hr_plan`, `pos_plan` (column added S193)  
+**Admin UI:** AdminClients → **card module strip** — toggle IMS/HR/POS directly on each client card; Billing tab = live toggles + plan selector + subscription date per module (POS wired S193)  
+**Route guard:** `src/components/ModuleGate.js` — wraps all IMS, HR, and POS routes in App.js; redirects to `/dashboard` when module is off (admin always bypasses)  
+**POS role system (added S195):** `pos_role` column on `profiles` (`staff` / `supervisor` / `manager`). `hasPosAccess(minLevel)` in AuthContext. POS sidebar hidden entirely for users with no role. Tables → supervisor+; Staff → manager+. Crest admin always bypasses.
 
 ---
 
 ## Session Log
+
+### S195 — 2026-06-30 — POS Role System + Bug Fixes
+
+**POS 4-tier role model** (`staff` / `supervisor` / `manager` / admin):
+
+**DB (run in Supabase):**
+```sql
+ALTER TABLE profiles
+  ADD COLUMN IF NOT EXISTS pos_role text
+  CHECK (pos_role IN ('staff', 'supervisor', 'manager'));
+
+CREATE POLICY "profiles_pos_role_manager_update" ON profiles
+FOR UPDATE TO authenticated
+USING (
+  client_id = (SELECT client_id FROM profiles WHERE id = auth.uid())
+  AND (SELECT pos_role FROM profiles WHERE id = auth.uid()) = 'manager'
+)
+WITH CHECK (
+  client_id = (SELECT client_id FROM profiles WHERE id = auth.uid())
+);
+```
+
+**`src/context/AuthContext.js`:**
+- Added `pos_role` to profiles `.select()` string
+- `posEnabled` extracted as a variable (was inline in context value only)
+- `posRole` exposed: admin gets `'manager'`; client users get `profile.pos_role || null`
+- `hasPosAccess(minLevel)` exported — returns true for admin, checks `POS_RANK` for client users; returns false if `pos_role` is null
+
+**`src/components/Layout.js`:**
+- `POS_GROUPS` updated: Tables gets `minPosRole: 'supervisor'`; new "Admin" group with POS Staff (`minPosRole: 'manager'`)
+- POS sidebar block now hidden entirely if `posRole` is null (no role assigned)
+- Nav items filtered per `hasPosAccess(item.minPosRole)` before rendering
+- Sidebar footer now shows `POS · Supervisor` etc. instead of plain "Client"
+
+**`src/modules/pos/staff/PosStaff.jsx`** (new — `/pos/staff`):
+- Manager-only screen listing all client profiles
+- Dropdown to assign `staff / supervisor / manager` (or revoke access) per user
+- Live save on change with saving indicator
+- Role legend card at top explaining each level
+- Read-only view for non-managers with explanation message
+- Tip tooltips on POS Role and Last Seen columns
+- Redirects to `/pos/tables` if below manager
+
+**`src/modules/pos/tables/PosTableManagement.jsx`:**
+- Added `Navigate` import and `hasPosAccess('supervisor')` gate (redirects to `/pos` if below supervisor)
+- Fixed Section input in Add Table modal: removed pre-fill with `existingSections[0]` (was appearing as locked dropdown); replaced `form-select` class with plain text-input styles so dropdown arrow is gone
+
+**`src/App.js`:** Added `/pos/staff` route + `PosStaff` import
+
+**`src/pages/Help.js`:** Added POS Staff feature card with 4 tips
+
+**`src/utils/subscription.js`** (bug fix):
+- `getSubStatus` was only checking `ims_ends_at || subscription_ends_at` — POS-only clients with `pos_ends_at` set still showed "Trial · Xmo"
+- Fixed to take `Math.max` across all of `ims_ends_at`, `hr_ends_at`, `pos_ends_at`, `subscription_ends_at`
+
+**Setup flow:** Crest admin views as client → `/pos/staff` → assigns `manager` to client owner → owner logs in → assigns roles to their waiters.
+
+---
+
+### S194 — 2026-06-30 — Crest POS: Table Management
+
+**`src/modules/pos/tables/PosTableManagement.jsx`** (new page — `/pos/tables`):
+- **⚡ Quick Setup panel** — bulk generator: Prefix + Start# + Count + Section + Seats → one click creates e.g. "Table 1 … Table 10". Auto-expands on first visit (no tables yet), collapses once tables exist. Live preview line shows exactly what will be created. Max 50 per batch; run multiple times for different sections/prefixes. No drag-drop — faster than Toast/Square for initial setup.
+- Floor-plan grid of table cards: name, section, capacity, status badge
+- Status badge clickable directly on the card to cycle Available → Reserved → Occupied → Inactive (no modal needed)
+- Section filter tabs auto-appear when more than one section exists
+- 4 stat cards: Total Tables / Available / Occupied / Reserved (with Tip tooltips)
+- **Fab visible only after tables exist** — single-table add modal: Name + Section (datalist autocomplete) + Capacity (3 fields, no Sort Order clutter)
+- Edit modal (click any card): all fields + Status dropdown + Sort Order + Delete with confirm
+- Tip tooltips on all fields, stat cards, floor card status badge (explains future auto-Occupied), and seats display
+
+**`src/App.js`:** Added `/pos/tables` route + imported `PosTableManagement`
+
+**`src/components/Layout.js`:**
+- Replaced `POS_DASHBOARD` single link with `POS_GROUPS` collapsible group structure (mirrors HR pattern)
+- Currently: one group "Floor" with Tables; will grow as Orders, Shifts, Reports are added
+
+**`src/pages/Help.js`:** Added Crest POS section (gated on `posEnabled`) with Table Management feature card + 4 tips
+
+**DB (run in Supabase):**
+```sql
+CREATE TABLE IF NOT EXISTS pos_tables (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  client_id uuid REFERENCES clients(id) ON DELETE CASCADE NOT NULL,
+  name text NOT NULL,
+  section text,
+  capacity integer DEFAULT 2,
+  status text DEFAULT 'available' CHECK (status IN ('available','occupied','reserved','inactive')),
+  sort_order integer DEFAULT 0,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE pos_tables ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "client_own" ON pos_tables
+  USING ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin' OR client_id = (SELECT client_id FROM profiles WHERE id = auth.uid()))
+  WITH CHECK ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin' OR client_id = (SELECT client_id FROM profiles WHERE id = auth.uid()));
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.pos_tables TO authenticated;
+```
+
+---
+
+### S193 — 2026-06-30 — Crest POS infrastructure layer
+
+**Goal:** Wire up the POS module so it can be toggled on per client and routed to — before building any POS UI.
+
+**DB (run in Supabase):**
+- `ALTER TABLE clients ADD COLUMN IF NOT EXISTS pos_enabled boolean DEFAULT false`
+- `ALTER TABLE clients ADD COLUMN IF NOT EXISTS pos_plan text CHECK (pos_plan IN ('starter','growth','pro'))`
+
+**`src/context/AuthContext.js`:**
+- Added `pos_enabled, pos_plan` to clients `.select()` string
+- `posEnabled` now reads `profile?.clients?.pos_enabled ?? false` (was hardcoded false)
+- `posPlan` added to context value
+- `viewModules` effect now fetches `pos_enabled` and reflects it in `clientModules.pos`
+
+**`src/components/ModuleGate.js`:**
+- Added `posEnabled` from `useAuth()` + `if (module === 'pos' && !posEnabled) → /dashboard` guard
+
+**`src/App.js`:**
+- Imported `Pos` from `./modules/pos/Pos`
+- Added `/pos` route wrapped in `<ModuleGate module="pos">`
+
+**`src/components/Layout.js`:**
+- Added `POS_DASHBOARD = { to: '/pos', label: 'Point of Sale', icon: '⊕' }`
+- Added sidebar block gated on `clientModules.pos` (renders after HR nav block)
+
+**`src/pages/AdminClients.js`:**
+- Added `posEnabled` / `posPlan` state initialized from `client.pos_enabled` / `client.pos_plan`
+- `posEndsAt` converted from `const` to stateful (setter needed for billing date picker)
+- Added `handleTogglePos()` — instant save to `clients.pos_enabled`
+- POS live toggle added to the Modules section in Billing tab (alongside IMS/HR)
+- POS added to per-module subscription section (plan cards + end date picker)
+- `pos_plan` now saved in `handleSaveSub`
+- POS pill added to module pills on client card
+
+**Result:** Toggling POS on for a client in AdminClients → sidebar shows "Point of Sale" link → routes to placeholder page. Build clean (0 warnings).
+
+---
+
+### S192 — 2026-06-30 — Display improvements: purchase-unit in Stock & Variance + HR audit
+
+**Display improvements — purchase-unit equivalent in Net Purchased / Purchased columns:**
+- Added `dispPurch(baseQty, item)` helper to `src/pages/Stock.js` and `src/pages/Variance.js`
+- For items with `conversion_factor > 1` and `purchase_unit` set, shows `10 CTN (240 BTL)` format instead of raw base-unit qty
+- Applied to: **Net Purchased** column in Variance report, **Purchased** column in Stock Summary per-item table, **Purchased** ref on mobile stock cards
+- Falls back to plain base-unit display for items without conversion
+
+**HR module audit (code verified, memory corrected):**
+- All 7 of 8 "pending" HR features confirmed built: Gratuity Tracker, Final Settlement, OT Logging, Advances/Recovery, Annual TDS Certificate, Insurance+married-schedule TDS, TDS on festival allowance
+- Additional untracked features found: HR Dashboard, PaySetup/PayForm, Roster, Holiday Calendar, Employee Joining Form
+- **Service-charge pool distribution removed from scope** — will not be built in Crest HR
+
+**Shorthands added to memory:** `cb` = check for build (`CI=true npm run build`)
+
+---
 
 ### S191 — 2026-06-30 — Hotfix: restore admin_clear_audit_logs for authenticated users
 

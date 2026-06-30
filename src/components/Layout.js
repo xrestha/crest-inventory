@@ -57,6 +57,15 @@ const IMS_GROUPS = [
 ]
 const HR_DASHBOARD = { to: '/hr/dashboard', label: 'HR Dashboard', icon: '▦' }
 
+const POS_GROUPS = [
+  { key: 'pos-floor', label: 'Floor', items: [
+    { to: '/pos/tables', label: 'Tables', icon: '⊞', minPosRole: 'supervisor' },
+  ]},
+  { key: 'pos-admin', label: 'Admin', items: [
+    { to: '/pos/staff', label: 'POS Staff', icon: '👥', minPosRole: 'manager' },
+  ]},
+]
+
 const HR_GROUPS = [
   { key: 'hr-people', label: 'People', items: [
     { to: '/hr/employees',  label: 'Employees',        icon: '👤' },
@@ -83,7 +92,8 @@ const HR_GROUPS = [
 
 export default function Layout() {
   const { profile, isAdmin, plan, hasFeature, clientModules, signOut, adminViewClientId, switchAdminClient,
-          isTrial, trialExpired, trialDaysLeft, trialPurgeInDays, subscribeRequested, requestSubscription } = useAuth()
+          isTrial, trialExpired, trialDaysLeft, trialPurgeInDays, subscribeRequested, requestSubscription,
+          hasPosAccess, posRole } = useAuth()
   const { settings } = useSettings()
   const navigate = useNavigate()
   const clientName = profile?.clients?.name
@@ -462,6 +472,16 @@ export default function Layout() {
             </>
           )}
 
+          {clientModules.pos && (!isAdmin || adminViewClientId) && (isAdmin || posRole) && (
+            <>
+              <div className="sidebar-divider" />
+              {POS_GROUPS.map(group => renderGroup({
+                ...group,
+                items: group.items.filter(item => !item.minPosRole || hasPosAccess(item.minPosRole)),
+              }))}
+            </>
+          )}
+
           <div className="sidebar-divider" />
           <NavLink to="/help"
             className={({ isActive }) => `sidebar-link${isActive ? ' sidebar-link--active' : ''}`}
@@ -491,7 +511,9 @@ export default function Layout() {
             {!collapsed && (
               <div className="sidebar-user">
                 <div className="sidebar-user-name">{profile?.full_name || 'User'}</div>
-                <div className="sidebar-user-role">{isAdmin ? 'Admin' : 'Client'}</div>
+                <div className="sidebar-user-role">
+                  {isAdmin ? 'Admin' : posRole ? `POS · ${posRole.charAt(0).toUpperCase() + posRole.slice(1)}` : 'Client'}
+                </div>
               </div>
             )}
             <button onClick={handleSignOut} className="sidebar-signout" title="Sign out">⎋</button>

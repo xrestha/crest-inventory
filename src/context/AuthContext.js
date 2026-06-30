@@ -69,7 +69,7 @@ export function AuthProvider({ children }) {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, role, client_id')
+        .select('id, full_name, role, client_id, pos_role')
         .eq('id', userId)
         .single()
 
@@ -79,7 +79,7 @@ export function AuthProvider({ children }) {
       if (data?.client_id) {
         const { data: client } = await supabase
           .from('clients')
-          .select('id, name, location, is_premium, plan, trial_ends_at, subscription_ends_at, ims_ends_at, hr_ends_at, pos_ends_at, ims_enabled, hr_enabled, hr_plan, is_trial, trial_start_date, trial_expires_at, trial_purge_at, subscribe_requested')
+          .select('id, name, location, is_premium, plan, trial_ends_at, subscription_ends_at, ims_ends_at, hr_ends_at, pos_ends_at, ims_enabled, hr_enabled, hr_plan, pos_enabled, pos_plan, is_trial, trial_start_date, trial_expires_at, trial_purge_at, subscribe_requested')
           .eq('id', data.client_id)
           .single()
         if (mounted) data.clients = client
@@ -131,6 +131,17 @@ export function AuthProvider({ children }) {
   const isAdmin  = profile?.role === 'admin'
   const clientId = isAdmin ? adminViewClientId : (profile?.client_id || null)
 
+  const posEnabled = isAdmin || (profile?.clients?.pos_enabled ?? false)
+  // Admin gets 'manager' by default; client users use their explicit pos_role
+  const posRole    = isAdmin ? 'manager' : (profile?.pos_role || null)
+
+  const POS_RANK = { staff: 1, supervisor: 2, manager: 3 }
+  function hasPosAccess(minLevel) {
+    if (isAdmin) return true
+    if (!posEnabled) return false
+    return (POS_RANK[posRole] || 0) >= (POS_RANK[minLevel] || 0)
+  }
+
   function switchAdminClient(id, name) {
     setAdminViewClientId(id)
     setAdminViewClientName(name)
@@ -149,8 +160,8 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (!isAdmin || !adminViewClientId) { setViewModules(null); return }
     let cancelled = false
-    supabase.from('clients').select('ims_enabled, hr_enabled').eq('id', adminViewClientId).single()
-      .then(({ data }) => { if (!cancelled) setViewModules(data ? { ims: data.ims_enabled !== false, hr: !!data.hr_enabled, pos: false } : null) })
+    supabase.from('clients').select('ims_enabled, hr_enabled, pos_enabled').eq('id', adminViewClientId).single()
+      .then(({ data }) => { if (!cancelled) setViewModules(data ? { ims: data.ims_enabled !== false, hr: !!data.hr_enabled, pos: !!data.pos_enabled } : null) })
     return () => { cancelled = true }
   }, [isAdmin, adminViewClientId])
 
@@ -214,12 +225,12 @@ export function AuthProvider({ children }) {
       featureFlags, hasFeature,
       imsEnabled: isAdmin || (profile?.clients?.ims_enabled ?? true),
       hrEnabled: isAdmin || (profile?.clients?.hr_enabled ?? false),
-      // POS module not built yet; clients.pos_enabled column doesn't exist, so this is
-      // false for clients (true only for admin, like ims/hr). When POS launches, add
-      // `pos_enabled` to the clients .select(...) above and it will start reflecting reality.
-      posEnabled: isAdmin || (profile?.clients?.pos_enabled ?? false),
+      posEnabled,
+      posRole,
+      hasPosAccess,
       clientModules, // displayed client's actual subscription (nav + dashboard sections)
       hrPlan: isAdmin ? 'pro' : (profile?.clients?.hr_plan || null),
+      posPlan: isAdmin ? 'pro' : (profile?.clients?.pos_plan || null),
       adminViewClientId, adminViewClientName, switchAdminClient,
     }}>
       {children}
