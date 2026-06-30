@@ -752,12 +752,13 @@ export default function Purchases() {
 
               {error && <p style={{ color: 'var(--theme-red)', fontSize: 13, margin: '12px 0 0' }}>{error}</p>}
               <div className="form-actions" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center' }}>
-                <button className="btn btn-ghost" onClick={() => { setShowForm(false); setEditingGroupId(null) }} style={{ justifySelf: 'start' }}>Cancel</button>
+                <button className="btn btn-ghost" onClick={() => { setShowForm(false); setEditingGroupId(null) }}
+                  style={{ justifySelf: 'start', fontSize: 13, color: 'var(--theme-red)', borderColor: 'rgba(248,113,113,0.35)', background: 'rgba(248,113,113,0.07)' }}>Cancel</button>
                 <button className="btn" onClick={addBillLine}
-                  style={{ background: 'var(--theme-amber)', color: '#000', borderColor: 'var(--theme-amber)' }}>
+                  style={{ fontSize: 13, background: 'var(--theme-amber)', color: '#000', borderColor: 'var(--theme-amber)' }}>
                   + Add Item
                 </button>
-                <button className="btn btn-primary" onClick={saveBill} disabled={saving} style={{ justifySelf: 'end' }}>
+                <button className="btn btn-primary" onClick={saveBill} disabled={saving} style={{ justifySelf: 'end', fontSize: 13 }}>
                   {saving ? 'Saving…' : editingGroupId ? 'Update Bill' : `Save ${billLines.filter(l => l.item_id && parseFloat(l.qty) > 0 && parseFloat(l.rate) > 0).length || ''} Entr${billLines.filter(l => l.item_id && parseFloat(l.qty) > 0 && parseFloat(l.rate) > 0).length === 1 ? 'y' : 'ies'}`}
                 </button>
               </div>
