@@ -1,5 +1,13 @@
 import { useAuth } from '../../../context/AuthContext'
 
+// ── Auth hook helper ──────────────────────────────────────────────────────────
+
+function useClientName() {
+  const { profile, isAdmin, adminViewClientName } = useAuth()
+  if (isAdmin) return adminViewClientName || 'Organisation Name'
+  return profile?.clients?.name || 'Organisation Name'
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function Line({ label, wide, half }) {
@@ -70,8 +78,7 @@ function TextBox({ label, rows = 2 }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function EmployeeJoiningForm({ onClose }) {
-  const { profile } = useAuth()
-  const clientName = profile?.client_name || profile?.organization || 'Organisation Name'
+  const clientName = useClientName()
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.7)', overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 0' }}>
@@ -156,8 +163,8 @@ export default function EmployeeJoiningForm({ onClose }) {
         </FieldRow>
 
         <FieldRow>
-          <Line label="PAN No. (9-digit)" />
           <Line label="NID / Citizenship No." />
+          <Line label="PAN No. (9-digit, if applicable)" />
         </FieldRow>
 
         <FieldRow>
@@ -190,7 +197,6 @@ export default function EmployeeJoiningForm({ onClose }) {
 
         <FieldRow>
           <Line label="Reporting Supervisor" />
-          <Line label="Expected Retirement Date" />
         </FieldRow>
 
         <FieldRow>
