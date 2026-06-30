@@ -124,6 +124,20 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S189 — 2026-06-30 — Trial signup fixes + Danger Zone tooltips + Admin Clients dedup
+
+**Trial signup (`supabase/functions/admin-user-ops/index.ts`):**
+- Fixed `profiles_pkey` violation on all trial signups — `handle_new_user` trigger auto-inserts a bare profile on auth user creation; switched edge function from `insert` to `upsert` (onConflict: id) so our values always win
+- Friendly error message when email already registered: "An account with this email already exists. Please sign in instead." (detected via `code === '23505'` or `profiles_pkey` in message)
+
+**Login page (`src/pages/Login.js`):**
+- Frontend maps "already exists / already registered / profiles_pkey" errors to: "An account with this email already exists. Use the sign-in form above."
+
+**Admin Clients (`src/pages/AdminClients.js`):**
+- Trial clients now excluded from main client list (`filter(c => !c.is_trial)`) — they only appear in the Trial Accounts section at top
+- Added `Tip` tooltips to all three Danger Zone buttons: Clear All Conversions, Clear Client Data, Delete Client
+- Sidebar amber badge auto-clears after 7 days from signup; also clears immediately on Convert to Paid
+
 ### S188 — 2026-06-30 — Security hardening + sidebar trial badge redesign + orphaned user delete fix
 
 **Supabase security hardening (SQL run in dashboard — no code changes):**
