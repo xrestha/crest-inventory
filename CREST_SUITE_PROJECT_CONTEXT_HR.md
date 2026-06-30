@@ -2,6 +2,10 @@
 ### For Claude Code Reference
 **Crest Hospitality (Pvt. Ltd.) | Kathmandu, Nepal | Confidential**
 
+> **Last updated: S173, 2026-06-30**
+> Crest HR is live in production. Sessions 1–11 complete. Staff Roster built (S173) — weekly Sun–Sat + monthly BS board, customizable shift types, B&W print. Pending: HR Dashboard, OT management, TADA, incentives, roster publish flow.
+> DB migration required (S173): run `hr_shift_types` + `hr_roster` SQL in Supabase SQL editor — see README S173 entry.
+
 ---
 
 ## 1. COMPANY OVERVIEW
@@ -373,32 +377,31 @@ pos_discount_logs
 pos_reservations
 ```
 
-### HR Tables
+### HR Tables (actual — as built in live codebase)
 ```sql
-hr_employees
-hr_salary_structures
-hr_salary_components
-hr_leave_types
-hr_leave_applications
-hr_leave_balances
-hr_attendance            -- includes source field: pos_shift | manual | leave
-hr_rosters
-hr_roster_shifts
-hr_shift_templates       -- Morning, Afternoon, Evening, Split, Full Day, Night
-hr_overtime_entries
-hr_payroll_runs
-hr_payslips
-hr_payslip_items
-hr_ssf_challans
-hr_tds_entries
-hr_advances
-hr_advance_repayments
-hr_festival_allowances
-hr_tada_claims           -- travel and daily allowance per trip
-hr_incentives            -- performance, attendance, sales, discretionary
-hr_incentive_configs     -- recurring incentive rules per employee/department
-hr_holiday_calendar      -- client-specific holiday list per fiscal year
+-- BUILT ✅
+hr_employees              -- 60+ columns: personal, employment, pay basis, bank, SSF, nominee, addresses
+hr_salary_components      -- per-employee earnings/deductions (type: earning|deduction, calc_type: fixed|pct_of_basic)
+hr_leave_types            -- per-client leave types (seeded: Home/Annual, Sick, Bereavement, Maternity, Paternity, Unpaid)
+hr_leave_requests         -- leave applications (status: pending|approved|rejected|cancelled)
+hr_attendance             -- one row per employee per BS day (status: present|half_day|absent|paid_leave|unpaid_leave|weekly_off|holiday)
+hr_payroll_runs           -- one run per period (status: draft|finalized)
+hr_payslips               -- frozen payslip snapshot per employee per run (gross, ssf_employee, ssf_employer, tds, net_pay, …)
+hr_festival_allowances    -- per employee per bs_year+festival_name (status: draft|finalized)
+hr_advances               -- employee advances and loans (type: advance|loan, status: active|settled)
+hr_advance_repayments     -- repayment installments per advance
+hr_shift_types            -- per-client shift templates (name, color, start_time, end_time, hours, sort_order, active)
+hr_roster                 -- one row per employee per BS day (shift_type_id, bs_year, bs_month, bs_day)
+
+-- NOT YET BUILT ⏳
+hr_overtime_entries       -- planned: OT approval flow
+hr_tada_claims            -- planned: travel & daily allowance
+hr_incentives             -- planned: performance/attendance/sales/discretionary bonuses
+hr_incentive_configs      -- planned: recurring incentive rules per employee/dept
+hr_holiday_calendar       -- planned: client-specific Nepal public holiday list per fiscal year
 ```
+
+Note: `salary_structures` table not needed — salary basis (monthly/daily/hourly) and basic salary live on `hr_employees`; custom components in `hr_salary_components`. `hr_payslips` stores all computed values as frozen columns (no separate `hr_payslip_items` table). TDS and SSF are computed fields on `hr_payslips`, not separate tables.
 
 > Note: hr_service_charge_dist removed — service charge distribution is illegal per Nepal court ruling.
 
@@ -642,108 +645,91 @@ App
 
 ## 12. CREST HR — BUILD PLAN
 
-### Pre-Session Audit (Before Starting)
-1. Open `src/modules/hr/` — list all existing files and folders
-2. Check which `hr_*` tables exist in Supabase
-3. Confirm `hr_enabled` and `hr_plan` are present in `shared_clients`
+### Status Summary (as of S173, 2026-06-30)
+Crest HR is **live in production**. Sessions 1–10 are complete (with some sessions re-sequenced or merged). The original 12-session plan mapped roughly to the build, but actual implementation merged some sessions and skipped unbuilt items.
 
-### Session-by-Session Plan
+### Session Status Table
 
-| Session | Module | Est. Hours | Plan Gate |
+| Session | Module | Status | Actual Files Built |
 |---|---|---|---|
-| 1 | Employee Master | 2–3h | All plans |
-| 2 | Salary Structure | 1–2h | All / Growth |
-| 3 | Leave Management | 2–3h | All plans |
-| 4 | Staff Rostering | 3–4h | Growth+ |
-| 5 | Attendance Management | 1–2h | All plans |
-| 6 | Overtime Management | 1h | Growth+ |
-| 7 | SSF Computation | 1h | Growth+ |
-| 8 | Income Tax TDS | 1h | Growth+ |
-| 9 | Payroll Processing | 2–3h | All / Growth |
-| 10 | Festival Allowance + Advances | 1–2h | Growth+ |
-| 11 | HR Reports | 1–2h | Growth+ / Pro |
-| 12 | HR Dashboard Integration | 1h | All plans |
+| 1 | Employee Master | ✅ DONE | `hr/employees/EmployeeList.jsx`, `EmployeeForm.jsx`, `EmployeeProfile.jsx` |
+| 2 | Salary / Pay Setup | ✅ DONE | Pay setup tab in EmployeeForm; `hr_salary_components` table |
+| 3 | Leave Management | ✅ DONE | `hr/leave/LeaveManagement.jsx` |
+| 4 | Staff Rostering | ✅ DONE S173 | `hr/roster/Roster.jsx` — weekly (Sun–Sat) + monthly board |
+| 5 | Attendance Management | ✅ DONE | `hr/attendance/AttendanceSheet.jsx` |
+| 6 | Payroll Run | ✅ DONE | `hr/payroll/PayrollRun.jsx`, `payrollCompute.js`, `tds.js` |
+| 7 | SSF Challan | ✅ DONE (in Reports) | Report tab in `hr/reports/HRReports.jsx` |
+| 8 | TDS Engine | ✅ DONE | `hr/payroll/tds.js` — YTD cumulative, FY 2082/83 + FY 2083/84+ slabs |
+| 9 | Festival + Advances | ✅ DONE | `hr/festival/FestivalAllowance.jsx`, `hr/advances/Advances.jsx` |
+| 10 | HR Reports | ✅ DONE | `hr/reports/HRReports.jsx` — 6 report tabs |
+| 11 | Gratuity + Settlement | ✅ DONE | `hr/settlement/FinalSettlement.jsx`, gratuity tracker |
+| 12 | HR Dashboard | ⏳ PENDING | Planned: headcount KPIs, payroll-due alerts, leave queue |
 
-**Total estimate: 18–28 hours of focused build time.**
+### Pending (unbuilt)
+- HR Dashboard with KPIs (headcount, payroll due, leave queue, SSF challan due)
+- Overtime management (approval flow, 1.5× / 2× OT rate to payroll)
+- TADA claims
+- Incentive / bonus configuration
+- Holiday calendar per client per fiscal year
+- SSF export file for SSF portal upload
+- Employee self-service PWA (employee views own payslip, applies leave)
+- Biometric integration
+- Roster: publish + push notification to staff
+- Roster: shift swap request/approval flow
+- Roster: labour cost forecast overlay (actual cost vs budget per shift)
 
 ---
 
-### Session 1 — Employee Master
-Files: `hr/employees/EmployeeList.jsx`, `EmployeeForm.jsx`, `EmployeeProfile.jsx`
-Table: `hr_employees`
-Feature flag: none — all plans
-Done when: Add, edit, view, deactivate an employee works end-to-end.
+### Session 1 — Employee Master ✅ DONE
+Actual files: `hr/employees/EmployeeList.jsx`, `EmployeeForm.jsx`, `EmployeeProfile.jsx`
+Table: `hr_employees` (~60+ columns across personal, employment, pay, bank, SSF, nominee, address, emergency)
+Tabs in EmployeeForm: Personal, Employment, Pay, Bank & SSF
 
-### Session 2 — Salary Structure
-Files: `hr/salary/SalaryStructureForm.jsx`, `SalaryComponentList.jsx`
-Tables: `hr_salary_structures`, `hr_salary_components`
-Feature flag: Starter views own salary only. Growth+ builds/edits structures.
-Done when: Employee has a configured salary structure with basic + components.
+### Session 2 — Pay Setup ✅ DONE
+Actual approach: salary basis (monthly/daily/hourly) + basic salary live on `hr_employees`. Custom components in `hr_salary_components` (type: earning|deduction, calc_type: fixed|pct_of_basic). No separate `hr_salary_structures` table — was merged into employee record.
 
-### Session 3 — Leave Management
-Files: `hr/leave/LeaveTypeConfig.jsx`, `LeaveApplicationForm.jsx`, `LeaveApprovalQueue.jsx`, `LeaveBalanceDashboard.jsx`
-Tables: `hr_leave_types`, `hr_leave_applications`, `hr_leave_balances`
-Feature flag: all plans. Manager approval UI Growth+.
-Done when: Employee applies → manager approves → balance deducts.
+### Session 3 — Leave Management ✅ DONE
+Actual files: `hr/leave/LeaveManagement.jsx`
+Tables: `hr_leave_types`, `hr_leave_requests` (not `hr_leave_applications` or `hr_leave_balances`)
+6 seeded leave types: Home/Annual, Sick, Bereavement, Maternity, Paternity, Unpaid
 
-### Session 4 — Staff Rostering
-Files: `hr/roster/RosterBoard.jsx`, `ShiftTemplateConfig.jsx`, `RosterPublish.jsx`
-Tables: `hr_rosters`, `hr_roster_shifts`, `hr_shift_templates`
-Feature flag: Growth+ only. Starter sees lock badge.
-Done when: Manager builds a week, publishes, employees see shifts on PWA.
+### Session 4 — Staff Rostering ✅ DONE (S173, 2026-06-30)
+Actual files: `hr/roster/Roster.jsx`
+Tables: `hr_shift_types`, `hr_roster` (not the original `hr_rosters` + `hr_roster_shifts` + `hr_shift_templates` triple)
+See Section 14 for full implementation notes.
 
-### Session 5 — Attendance Management
-Files: `hr/attendance/AttendanceSheet.jsx`, `AttendanceEntry.jsx`
-Table: `hr_attendance` (with source field: pos_shift | manual | leave)
-Attendance input methods:
-  - Manual entry by manager — all plans, all staff
-  - POS pre-fill for FOH staff (waiters, cashiers) — Growth+, pulls from pos_shift_sessions
-  - Leave auto-block — approved leave marks day as L automatically
-  - No self check-in — manager enters all BOH attendance manually
-Done when: Monthly attendance sheet is complete and reconciled.
+### Session 5 — Attendance Management ✅ DONE
+Actual files: `hr/attendance/AttendanceSheet.jsx`
+Table: `hr_attendance`
+Statuses: present | half_day | absent | paid_leave | unpaid_leave | weekly_off | holiday
 
-### Session 6 — Overtime Management
-Files: `hr/overtime/OTEntryForm.jsx`, `OTApprovalQueue.jsx`
-Table: `hr_overtime_entries`
-OT rate formula: `(basic / 26 / 8) × hours × rate multiplier`
-Rate: 1.5x weekday, 2x public holiday
-Feature flag: Growth+
-Done when: Approved OT feeds into payroll run.
+### Session 6 — Payroll Run ✅ DONE
+Actual files: `hr/payroll/PayrollRun.jsx`, `payrollCompute.js` (pure functions), `tds.js` (TDS engine)
+Tables: `hr_payroll_runs`, `hr_payslips`
+Note: no separate `hr_payslip_items` table — all computed values are frozen columns on `hr_payslips`
 
-### Session 7 — SSF Computation
-Files: `hr/ssf/SSFSummary.jsx`, `SSFChallan.jsx`
-Utility: `shared/utils/ssfUtils.js`
-Table: `hr_ssf_challans`
-Feature flag: Growth+
-Done when: Monthly challan exports to Excel correctly.
+### Session 7 — SSF Challan ✅ DONE (in Reports)
+Actual: SSF challan is a report tab in HRReports, not a separate component. No `hr_ssf_challans` table — computed from finalized `hr_payslips`.
 
-### Session 8 — Income Tax TDS
-Files: `hr/tds/TDSComputation.jsx`
-Utility: `shared/utils/tdsUtils.js`
-Table: `hr_tds_entries`
-Feature flag: Growth+. Annual TDS certificate Pro only.
-Done when: Monthly TDS correctly computed per employee including female rebate.
+### Session 8 — TDS Engine ✅ DONE
+Actual files: `hr/payroll/tds.js`
+Approach: YTD cumulative projection. Handles FY 2082/83 slabs and FY 2083/84+ unified slabs. SSF contributors have 1% first slab waived.
 
-### Session 9 — Payroll Processing
-Files: `hr/payroll/PayrollRunForm.jsx`, `PayslipView.jsx`, `BankTransferList.jsx`
-Tables: `hr_payroll_runs`, `hr_payslips`, `hr_payslip_items`
-Feature flag: Starter gets basic payslip. Growth gets full run + bank list.
-Done when: Payroll runs end-to-end, payslip downloads, bank list exports.
+### Session 9 — Festival Allowance, Advances ✅ DONE
+Actual files: `hr/festival/FestivalAllowance.jsx`, `hr/advances/Advances.jsx`
+Tables: `hr_festival_allowances`, `hr_advances`, `hr_advance_repayments`
+Note: TADA and Incentives not yet built.
 
-### Session 10 — Festival Allowance, Advances, TADA, Incentives
-Files: `hr/festival/FestivalAllowanceRun.jsx`, `hr/advances/AdvanceRegister.jsx`, `hr/tada/TADAClaimForm.jsx`, `hr/tada/TADAApprovalQueue.jsx`, `hr/incentives/IncentiveConfig.jsx`, `hr/incentives/IncentiveApprovalQueue.jsx`
-Tables: `hr_festival_allowances`, `hr_advances`, `hr_advance_repayments`, `hr_tada_claims`, `hr_incentives`, `hr_incentive_configs`
-Feature flag: Growth+
-Done when: All variable payroll components feed correctly into payroll run.
+### Session 10 — HR Reports ✅ DONE
+Actual files: `hr/reports/HRReports.jsx`
+Report tabs: Payroll Summary | SSF Challan | Bank Transfer | TDS Report | Roster | TDS Certificate
 
-### Session 11 — HR Reports
-Reports: Headcount, monthly payroll summary, leave summary, SSF challan, labour cost % (Pro), TDS annual certificate (Pro), SSF annual statement (Pro)
-Feature flag: basic reports Growth+, compliance pack Pro.
+### Session 11 — Gratuity + Final Settlement ✅ DONE
+Actual files: `hr/settlement/FinalSettlement.jsx`
+No separate table — computed from `hr_employees` (hire date → service years) and payroll history
 
-### Session 12 — HR Dashboard
-File: `src/modules/hr/HRDashboard.jsx`
-Shows: headcount, present today vs rostered, pending leave approvals, payroll run due, SSF challan due, Labour Act violations
-Feature flag: all plans
+### Session 12 — HR Dashboard ⏳ PENDING
+Planned: headcount KPIs, present-today vs rostered, pending leave approvals, payroll-run-due alert, SSF-challan-due alert, Labour Act violations flag
 
 ---
 
@@ -844,7 +830,7 @@ Employer SSF cost:        NPR 2,600   (20%)
 True cost to employer:    NPR 27,600  (gross + employer SSF)
 ```
 
-### Nepal Income Tax Slabs (FY 2082/83)
+### Nepal Income Tax Slabs — FY 2082/83
 ```
 Up to NPR 5,00,000        →  1%
 NPR 5,00,001–7,00,000     → 10%
@@ -852,7 +838,21 @@ NPR 7,00,001–10,00,000    → 20%
 NPR 10,00,001–20,00,000   → 30%
 Above NPR 20,00,000       → 36%
 Female employee rebate: 10% on computed tax
+SSF contributor: 1% slab waived (first bracket taxed at 0%)
 ```
+
+### Nepal Income Tax Slabs — FY 2083/84+ (UNIFIED — current in tds.js)
+```
+Up to NPR 10,00,000       →  1%
+NPR 10,00,001–15,00,000   → 10%
+NPR 15,00,001–25,00,000   → 20%
+NPR 25,00,001–40,00,000   → 27%
+Above NPR 40,00,000       → 29%
+Female employee rebate: 10% on computed tax
+SSF contributor: 1% slab waived (first bracket taxed at 0%)
+```
+
+Both slab schedules live in `src/modules/hr/payroll/tds.js`. The TDS engine selects the correct slab based on the BS fiscal year of the payroll period (Shrawan 2083 or later = FY 2083/84 slabs). All TDS uses YTD cumulative income projection and marginal-rate computation.
 
 ### SSF Computation
 ```
@@ -863,61 +863,105 @@ Total SSF    = Basic Salary × 31%
 
 ---
 
-## 14. CREST HR — STAFF ROSTERING
+## 14. CREST HR — STAFF ROSTERING ✅ BUILT (S173, 2026-06-30)
 
-### What It Is
-A weekly schedule telling every employee which days they work, what shift, and what time. Manager builds and publishes it. Staff see their own schedule on PWA.
+### Status: Live in production
+File: `src/modules/hr/roster/Roster.jsx`
+Route: `/hr/roster` (wrapped in `<ModuleGate module="hr">`)
+Nav: Layout.js HR_ITEMS list — "Staff Roster" between Employees and Attendance
 
-### The Roster Board
-Grid: employees (rows) × days of week (columns) × shift blocks (cells)
+### What Was Actually Built
 
+**Two views:**
+- **Weekly board** — 7-column grid (Sun → Sat). Week starts Sunday. Navigates backward/forward by week.
+- **Monthly board** — full BS month (columns = days 1–N; N = `daysInBsMonth(year, month)`). Navigates by BS month.
+
+**Two tabs:**
+- **Board** — the roster grid (assign shifts to cells)
+- **Shift Types** — CRUD for custom shift templates per client
+
+**The Roster Board Grid:**
 ```
-                MON      TUE      WED      THU      FRI      SAT      SUN
-────────────────────────────────────────────────────────────────────────────
-Ramesh (Cook)   MORN     MORN     OFF      MORN     MORN     AFT      OFF
-Sita (Cashier)  AFT      AFT      AFT      OFF      AFT      AFT      MORN
-Bikash (KH)     MORN     OFF      MORN     MORN     OFF      MORN     MORN
+                SUN      MON      TUE      WED      THU      FRI      SAT     TOTAL
+────────────────────────────────────────────────────────────────────────────────────
+Ramesh (Cook)  [MORN]   [MORN]   [OFF]    [MORN]   [MORN]   [AFT]   [OFF]    48h
+Sita (Cashier) [AFT]    [AFT]    [AFT]    [OFF]    [AFT]    [AFT]   [MORN]   56h
+────────────────────────────────────────────────────────────────────────────────────
+DAY TOTAL       16h      16h      8h       8h       16h      16h     8h
+```
+Sticky first column (employee name). Column headers show BS date + day name.
+
+### DB Schema (actual)
+
+```sql
+-- Shift type definitions per client
+hr_shift_types (
+  id uuid PK,
+  client_id uuid FK,
+  name text,                -- "Morning", "Afternoon", etc. (user-defined)
+  color text,               -- hex color for the cell badge
+  start_time text,          -- "07:00" (nullable if split/custom)
+  end_time text,            -- "15:00" (nullable)
+  hours numeric,            -- can be user-entered or auto-computed from start/end
+  sort_order int,
+  active boolean,
+  created_at timestamptz
+)
+
+-- One row per employee per BS day assignment
+hr_roster (
+  id uuid PK,
+  client_id uuid FK,
+  employee_id uuid FK → hr_employees,
+  shift_type_id uuid FK → hr_shift_types (nullable — null = day off),
+  bs_year int,
+  bs_month int,
+  bs_day int,
+  created_at timestamptz,
+  UNIQUE (client_id, employee_id, bs_year, bs_month, bs_day)
+)
 ```
 
-### Shift Templates
-| Template | Code | Example Times |
-|---|---|---|
-| Morning | MORN | 07:00 → 15:00 |
-| Afternoon | AFT | 12:00 → 20:00 |
-| Evening | EVE | 15:00 → 23:00 |
-| Full Day | FULL | 09:00 → 18:00 |
-| Split | SPLIT | 09:00–13:00 + 17:00–21:00 |
-| Night | NIGHT | 23:00 → 07:00 |
-| Off | OFF | Rest day |
+### Default Shift Types Seeded on First Load
+| Name | Color | Start | End | Hours |
+|---|---|---|---|---|
+| Morning | #3B82F6 | 07:00 | 15:00 | 8 |
+| Afternoon | #F59E0B | 13:00 | 21:00 | 8 |
+| Evening | #8B5CF6 | 17:00 | 01:00 | 8 |
+| Night | #64748B | 21:00 | 07:00 | 8 |
+| Full Day | #10B981 | 09:00 | 18:00 | 9 |
+| Split | #EC4899 | null | null | null |
 
-### Automatic Checks
-| Check | Rule |
-|---|---|
-| Rest day | Flags 7 consecutive working days (Labour Act violation) |
-| Leave conflict | Approved leave auto-blocks cell — cannot assign shift |
-| OT warning | Flags if total weekly hours exceed threshold |
-| Coverage alert | Warns if shift has fewer than minimum configured staff |
+### Key Implementation Details
 
-### Publish Flow
-Manager hits Publish → push notification to all affected employees → they see their week on PWA.
+**BS-native throughout:** All roster data stored as `(bs_year, bs_month, bs_day)`. Weekly view converts 7 AD dates via `adToBs()`, groups by unique `{year, month}` combos, fetches each BS month separately (week can span two BS months).
 
-### Shift Swap (Growth+)
-Employee requests swap on PWA → colleague accepts → manager approves → roster updates.
+**Optimistic updates:** Cell click → state updates immediately → DB `upsert` fires in background. No loading spinner per cell.
 
-### Roster Connections to Other HR Modules
-| Connection | How |
-|---|---|
-| Attendance | Rostered = expected. Actual compared at month end |
-| Overtime | Hours beyond rostered → OT entry raised |
-| Leave | Approved leave auto-blocks roster cell |
-| Payroll | Absence deduction = rostered days marked absent |
-| Labour cost forecast | Roster hours × daily rate = estimated weekly wage bill |
+**ShiftPicker dropdown:** `createPortal` renders at `document.body`, anchored to clicked cell via `getBoundingClientRect()`. Closes on outside click or Escape. Lists active shift types with color dot + hours; "Clear (Day Off)" option at bottom.
 
-### Nepal-Specific
-- All dates and week labels in Bikram Sambat
-- Minimum 1 rest day per 7-day period (Nepal Labour Act)
-- Public holidays per Nepal fiscal year calendar
-- OT on public holidays = 2x (vs 1.5x on working days)
+**Hours auto-computation:** In ShiftSettings, entering start + end times auto-computes hours (overnight-safe: `if (mins < 0) mins += 24 * 60`). User can override by typing hours directly.
+
+**Print (A4 landscape, B&W):**
+```css
+@media print {
+  @page { size: A4 landscape; margin: 12mm 10mm; }
+  .roster-board, .roster-board * { background: #fff !important; color: #111 !important; }
+  .roster-sticky { position: static !important; }  /* prevents print clipping */
+  .roster-cell.filled { background: #e8e8e8 !important; }
+}
+```
+Print button calls `window.print()`. A print-only header renders period label + shift legend. Dark theme is fully overridden. Sticky column converted to static for print.
+
+### What Is NOT Yet Built (roster roadmap)
+- Publish flow → push notification to staff PWA
+- Shift swap request/approval
+- Labour Act 7-consecutive-day warning
+- Leave conflict auto-block (approved leave blocking roster cell)
+- Labour cost forecast overlay (rostered hours × daily rate)
+- OT flag when weekly hours exceed threshold
+- Coverage alert (min staff per shift)
+- Holiday calendar integration
 
 ---
 
