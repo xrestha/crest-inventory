@@ -55,21 +55,30 @@ const IMS_GROUPS = [
   { key: 'costing', label: 'Costing',    items: NAV.slice(9) },    // Recipe Costing, Menu Eng, Overheads
   { key: 'reports', label: 'Reports',    items: REPORTS },
 ]
-const HR_ITEMS = [
-  { to: '/hr/dashboard',  label: 'HR Dashboard',      icon: '▦'  },
-  { to: '/hr/employees',  label: 'Employees',         icon: '👤' },
-  { to: '/hr/pay-setup',  label: 'Pay Setup',         icon: '⚙'  },
-  { to: '/hr/roster',     label: 'Staff Roster',      icon: '📅' },
-  { to: '/hr/attendance', label: 'Attendance',        icon: '🗓️' },
-  { to: '/hr/leave',      label: 'Leave',             icon: '🏖️' },
-  { to: '/hr/holidays',   label: 'Holiday Calendar',  icon: '📆' },
-  { to: '/hr/overtime',   label: 'Overtime',          icon: '⏱'  },
-  { to: '/hr/payroll',    label: 'Payroll',           icon: '💵' },
-  { to: '/hr/reports',    label: 'HR Reports',        icon: '📊' },
-  { to: '/hr/festival',   label: 'Festival Allowance', icon: '🎉' },
-  { to: '/hr/advances',   label: 'Advances & Loans',   icon: '💳' },
-  { to: '/hr/gratuity',   label: 'Gratuity',           icon: '💰' },
-  { to: '/hr/settlement', label: 'Final Settlement',   icon: '🧾' },
+const HR_DASHBOARD = { to: '/hr/dashboard', label: 'HR Dashboard', icon: '▦' }
+
+const HR_GROUPS = [
+  { key: 'hr-people', label: 'People', items: [
+    { to: '/hr/employees',  label: 'Employees',        icon: '👤' },
+    { to: '/hr/pay-setup',  label: 'Pay Setup',        icon: '⚙'  },
+    { to: '/hr/holidays',   label: 'Holiday Calendar', icon: '📆' },
+  ]},
+  { key: 'hr-attendance', label: 'Attendance', items: [
+    { to: '/hr/roster',     label: 'Staff Roster',     icon: '📅' },
+    { to: '/hr/attendance', label: 'Attendance',       icon: '🗓️' },
+    { to: '/hr/leave',      label: 'Leave',            icon: '🏖️' },
+    { to: '/hr/overtime',   label: 'Overtime',         icon: '⏱'  },
+  ]},
+  { key: 'hr-payroll', label: 'Payroll', items: [
+    { to: '/hr/payroll',    label: 'Payroll',            icon: '💵' },
+    { to: '/hr/festival',   label: 'Festival Allowance', icon: '🎉' },
+    { to: '/hr/advances',   label: 'Advances & Loans',   icon: '💳' },
+  ]},
+  { key: 'hr-reports', label: 'Reports', items: [
+    { to: '/hr/reports',    label: 'HR Reports',       icon: '📊' },
+    { to: '/hr/gratuity',   label: 'Gratuity',         icon: '💰' },
+    { to: '/hr/settlement', label: 'Final Settlement', icon: '🧾' },
+  ]},
 ]
 
 export default function Layout() {
@@ -418,7 +427,8 @@ export default function Layout() {
           {clientModules.hr && (!isAdmin || adminViewClientId) && (
             <>
               <div className="sidebar-divider" />
-              {renderGroup({ key: 'hr', label: 'Human Resources', items: HR_ITEMS })}
+              {renderNavItem(HR_DASHBOARD)}
+              {HR_GROUPS.map(renderGroup)}
             </>
           )}
 

@@ -55,7 +55,7 @@ export default function Overtime() {
       const [{ data: p }, { data: emps }, { data: hols }] = await Promise.all([
         supabase.from('monthly_periods').select('*').eq('client_id', clientId)
           .order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
-        supabase.from('hr_employees').select('id, full_name, employee_code, pay_basis, status')
+        supabase.from('hr_employees').select('id, full_name, employee_code, pay_basis, basic_salary, status')
           .eq('client_id', clientId).in('status', ['active', 'probation']).order('full_name'),
         supabase.from('hr_holiday_calendar').select('bs_year, bs_month, bs_day, name, holiday_type')
           .eq('client_id', clientId),
@@ -180,6 +180,22 @@ export default function Overtime() {
     return `${ot_hours}h × ${mult}×`
   }
 
+  // Estimated OT pay for one entry. Returns null if no salary data.
+  function otAmt(entry, emp) {
+    const basic = parseFloat(emp?.basic_salary) || 0
+    if (!basic) return null
+    const mult = entry.ot_type === 'holiday' ? OT_HOLIDAY_MULTIPLIER : OT_MULTIPLIER
+    const hrs = parseFloat(entry.ot_hours) || 0
+    const monthDays = daysInBsMonth(entry.bs_year, entry.bs_month)
+    if (emp.pay_basis === 'hourly') return Math.round(hrs * basic * mult)
+    if (emp.pay_basis === 'daily')  return Math.round(hrs * (basic / 8) * mult)
+    return Math.round(hrs * (basic / (monthDays * 8)) * mult)
+  }
+
+  const approvedAmt = entries
+    .filter(e => e.status === 'approved')
+    .reduce((s, e) => { const a = otAmt(e, empMap[e.employee_id]); return a !== null ? s + a : s }, 0)
+
   return (
     <div className="page-container">
       {/* Header */}
@@ -225,6 +241,17 @@ export default function Overtime() {
           <div className="stat-value">{approvedHrs}</div>
           <div className="stat-sub">approved this period</div>
         </div>
+        <div className="stat-card">
+          <div className="stat-label">
+            <Tip text="Estimated OT pay for all approved entries this period. Based on each employee's basic salary and OT multiplier. Employees with no salary on file are excluded." width={300}>
+              Est. OT Cost
+            </Tip>
+          </div>
+          <div className="stat-value" style={{ fontSize: 18, color: '#c9a84c' }}>
+            {approvedAmt > 0 ? `NPR ${approvedAmt.toLocaleString('en-NP')}` : '—'}
+          </div>
+          <div className="stat-sub">approved entries</div>
+        </div>
       </div>
 
       {/* Status filter */}
@@ -266,6 +293,9 @@ export default function Overtime() {
                   <th style={{ textAlign: 'center' }}>
                     <Tip text="Overtime hours worked. Weekday OT = 1.5× hourly rate. Public holiday OT = 2× hourly rate (Nepal Labour Act)." width={280}>Hours × Rate</Tip>
                   </th>
+                  <th style={{ textAlign: 'right' }}>
+                    <Tip text="Estimated OT pay = hours × (basic ÷ days-in-month ÷ 8) × multiplier for monthly staff. Shown as '—' if no salary is on file." width={280}>Est. Amount</Tip>
+                  </th>
                   <th>
                     <Tip text="Weekday = 1.5×. Holiday = 2× (gazetted public holiday). Auto-detected from your Holiday Calendar when logging." width={280}>Type</Tip>
                   </th>
@@ -289,6 +319,9 @@ export default function Overtime() {
                       </td>
                       <td style={{ textAlign: 'center', fontWeight: 600, color: '#34d399' }}>
                         {otLabel(e.ot_type, e.ot_hours)}
+                      </td>
+                      <td style={{ textAlign: 'right', fontWeight: 600, color: '#c9a84c', fontSize: 13 }}>
+                        {(() => { const a = otAmt(e, emp); return a !== null ? `NPR ${a.toLocaleString('en-NP')}` : <span style={{ color: 'var(--theme-text3)', fontWeight: 400 }}>—</span> })()}
                       </td>
                       <td>
                         <span className={e.ot_type === 'holiday' ? 'badge-amber' : 'badge-gray'} style={{ fontSize: 11 }}>

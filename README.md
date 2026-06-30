@@ -124,6 +124,24 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S179 — 2026-06-30 — HR sidebar groups + Overtime Est. Amount column
+
+**HR sidebar rearranged into collapsible groups (`src/components/Layout.js`):**
+- Replaced flat `HR_ITEMS` (14 items in one group) with `HR_DASHBOARD` (pinned) + `HR_GROUPS` (4 collapsible sections)
+- Groups: **People** (Employees, Pay Setup, Holiday Calendar) · **Attendance** (Staff Roster, Attendance, Leave, Overtime) · **Payroll** (Payroll, Festival Allowance, Advances & Loans) · **Reports** (HR Reports, Gratuity, Final Settlement)
+- HR Dashboard pinned above the groups (mirrors IMS Dashboard pinned above `IMS_GROUPS`)
+- Active-route force-open and icon-collapsed mode work unchanged via existing `renderGroup` / `renderNavItem`
+
+**Overtime: Est. Amount column + Est. OT Cost stat card (`src/modules/hr/overtime/Overtime.jsx`):**
+- Employee fetch now includes `basic_salary`
+- `otAmt(entry, emp)` helper: `hours × (basic ÷ daysInMonth ÷ 8) × multiplier` (monthly); `hours × (basic ÷ 8) × multiplier` (daily); `hours × basic × multiplier` (hourly); returns `null` if no salary on file
+- New **Est. Amount** column in table — amber, right-aligned; shows `—` when salary missing
+- New **Est. OT Cost** stat card (4th) — sums approved entries only, excludes employees with no salary data
+
+**Files:** `src/components/Layout.js`, `src/modules/hr/overtime/Overtime.jsx`
+
+---
+
 ### S178 — 2026-06-30 — Festival Allowance: TDS reconciliation with payroll YTD
 
 **Updated `src/modules/hr/festival/FestivalAllowance.jsx`:**
