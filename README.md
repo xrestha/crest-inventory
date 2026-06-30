@@ -124,6 +124,12 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S184 — 2026-06-30 — Purchases: VAT pill replaced with amber sliding toggle switch
+
+- Replaced the `+ VAT / ✓ VAT 13%` pill button with a proper sliding toggle (34×18px track, 12px thumb)
+- Track turns amber when VAT is on; thumb slides right; label reads **VAT 13%** (amber/bold) or **VAT** (dim)
+- **File:** `src/pages/Purchases.js`
+
 ### S183 — 2026-06-30 — Items + Purchases: UI polish — Total field, VAT toggle, layout cleanup
 
 **Item Master (`src/pages/Items.js`):**
