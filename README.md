@@ -106,7 +106,7 @@ Architecture: single React app, single Supabase project, feature flags per clien
 | Module | Status | Routes |
 |---|---|---|
 | Crest IMS | ✅ Live | All existing routes |
-| Crest HR | ✅ Live | `/hr/employees`, `/hr/salary`, `/hr/attendance`, `/hr/leave`, `/hr/payroll`, `/hr/reports`, `/hr/festival`, `/hr/advances`, `/hr/gratuity`, `/hr/settlement`, `/hr/roster` |
+| Crest HR | ✅ Live | `/hr/employees`, `/hr/pay-setup`, `/hr/attendance`, `/hr/leave`, `/hr/holidays`, `/hr/payroll`, `/hr/reports`, `/hr/festival`, `/hr/advances`, `/hr/gratuity`, `/hr/settlement`, `/hr/roster` |
 | Crest POS | 🔲 Planned | — |
 
 **Suite pricing:**
@@ -123,6 +123,51 @@ Architecture: single React app, single Supabase project, feature flags per clien
 ---
 
 ## Session Log
+
+### S175 — 2026-06-30 — Holiday Calendar
+
+**New page — `src/modules/hr/holidays/HolidayCalendar.jsx`** (`/hr/holidays`, HR module gate):
+- Per-client Nepal public holiday list, grouped by BS fiscal year (Shrawan–Ashadh)
+- Two holiday types: **Public** (gazetted — 2× OT rate, all staff entitled to day off) and **Optional** (floating, employer discretion)
+- FY selector auto-defaults to current FY; prior-year FYs appear once holidays exist for them
+- **Seed Fixed** button auto-inserts 5 fixed-date Nepal gazetted holidays (safe to re-click — skips already-existing names):
+  - Constitution Day (Sambidhan Diwas) — Ashwin 3
+  - Prithvi Narayan Shah's Birthday — Poush 27
+  - Martyrs' Day (Sahid Diwas) — Magh 5
+  - National Democracy Day (Prajatantra Diwas) — Falgun 7
+  - Republic Day (Ganatantra Diwas) — Jestha 15 (next BS year)
+- Movable holidays (Dashain, Tihar, Holi, Buddha Jayanti, Teej, Eid, etc.) added manually from the Nepal government gazette each FY
+- Month selector auto-resolves the correct BS year (months 4–12 = FY start year; months 1–3 = FY start + 1)
+- Stat cards: Public count, Optional count, Total for selected FY
+- Full Add / Edit / Delete per row
+- Nav entry added to HR sidebar between Leave and Payroll
+
+**DB migration required — run in Supabase SQL editor:**
+```sql
+create table hr_holiday_calendar (
+  id uuid default gen_random_uuid() primary key,
+  client_id uuid not null references clients(id) on delete cascade,
+  bs_year int not null,
+  bs_month int not null check (bs_month between 1 and 12),
+  bs_day int not null check (bs_day between 1 and 32),
+  name text not null,
+  holiday_type text not null default 'public' check (holiday_type in ('public', 'optional')),
+  created_at timestamptz default now()
+);
+create index on hr_holiday_calendar(client_id, bs_year);
+alter table hr_holiday_calendar enable row level security;
+create policy "client_rw" on hr_holiday_calendar
+  using (
+    (select role from profiles where id = auth.uid()) = 'admin'
+    or client_id = (select client_id from profiles where id = auth.uid())
+  )
+  with check (
+    (select role from profiles where id = auth.uid()) = 'admin'
+    or client_id = (select client_id from profiles where id = auth.uid())
+  );
+```
+
+---
 
 ### S174 — 2026-06-30 — Monthly roster split, duplicate shift fix, employee joining print form
 
