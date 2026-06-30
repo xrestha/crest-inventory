@@ -362,42 +362,53 @@ export default function Layout() {
             <>
               <NavLink to="/admin/clients"
                 className={({ isActive }) => `sidebar-link${isActive ? ' sidebar-link--active' : ''}`}
+                style={newTrialCount > 0 && pendingTrialCount === 0 ? {
+                  borderLeft: '3px solid #f59e0b',
+                  background: 'rgba(245,158,11,0.10)',
+                  marginLeft: -3,
+                } : {}}
                 title={collapsed ? 'Clients' : undefined}
                 onClick={() => setMobileSidebarOpen(false)}>
                 <span className="sidebar-icon" style={{ position: 'relative' }}>
                   ⊛
                   {pendingTrialCount > 0 && (
                     <span style={{
-                      position: 'absolute', top: -4, right: -4,
-                      width: 8, height: 8, borderRadius: '50%',
-                      background: '#f87171',
-                      boxShadow: '0 0 0 0 rgba(248,113,113,0.7)',
+                      position: 'absolute', top: -6, right: -8,
+                      minWidth: 16, height: 16, borderRadius: 8,
+                      background: '#f87171', color: '#fff',
+                      fontSize: 10, fontWeight: 800,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      padding: '0 3px',
+                      boxShadow: '0 0 0 2px var(--theme-sidebar)',
                       animation: 'pulse-dot 1.5s infinite',
-                    }} />
+                    }}>{pendingTrialCount}</span>
                   )}
                   {pendingTrialCount === 0 && newTrialCount > 0 && (
                     <span style={{
-                      position: 'absolute', top: -4, right: -4,
-                      width: 8, height: 8, borderRadius: '50%',
-                      background: '#f59e0b',
-                      boxShadow: '0 0 0 0 rgba(245,158,11,0.7)',
+                      position: 'absolute', top: -6, right: -8,
+                      minWidth: 16, height: 16, borderRadius: 8,
+                      background: '#f59e0b', color: '#000',
+                      fontSize: 10, fontWeight: 800,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      padding: '0 3px',
+                      boxShadow: '0 0 0 2px var(--theme-sidebar)',
                       animation: 'pulse-dot 1.5s infinite',
-                    }} />
+                    }}>{newTrialCount}</span>
                   )}
                 </span>
                 {!collapsed && (
                   <span style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
                     Clients
                     {pendingTrialCount > 0 && (
-                      <span style={{ fontSize: 10, fontWeight: 800, background: '#f87171', color: '#fff', borderRadius: 10, padding: '1px 6px', lineHeight: 1.4 }}
+                      <span style={{ fontSize: 11, fontWeight: 800, background: '#f87171', color: '#fff', borderRadius: 10, padding: '2px 8px', lineHeight: 1.4 }}
                         title="Clients requesting to subscribe">
-                        {pendingTrialCount}
+                        {pendingTrialCount} want to sub
                       </span>
                     )}
                     {newTrialCount > 0 && (
-                      <span style={{ fontSize: 10, fontWeight: 800, background: '#f59e0b', color: '#000', borderRadius: 10, padding: '1px 6px', lineHeight: 1.4 }}
+                      <span style={{ fontSize: 11, fontWeight: 800, background: '#f59e0b', color: '#000', borderRadius: 10, padding: '2px 8px', lineHeight: 1.4 }}
                         title="New trial signups in the last 7 days">
-                        {newTrialCount} new
+                        {newTrialCount} NEW
                       </span>
                     )}
                   </span>
