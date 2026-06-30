@@ -124,6 +124,12 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S190 — 2026-06-30 — Items: per-UOM rate fix when Total is used
+
+**Item Master (`src/pages/Items.js`):**
+- Fixed "Per GM rate" showing wrong value when Total field is used: when Total is entered, Rate is back-calculated as `Total ÷ Purchase Qty` (already per base unit) — dividing by Qty again was wrong (e.g. 0.70 showed as 0.0007)
+- Now: when `amtDraft` is set, Per UOM rate displays `Rate` directly; when Total is blank and Rate entered directly (conversion setup), old `Rate ÷ Qty` formula still applies
+
 ### S189 — 2026-06-30 — Trial signup fixes + Danger Zone tooltips + Admin Clients dedup
 
 **Trial signup (`supabase/functions/admin-user-ops/index.ts`):**
