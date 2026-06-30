@@ -307,7 +307,12 @@ export default function Items() {
     loadItems()
   }
 
-  const perUom = (qty, rate) => qty && rate ? (rate / qty).toFixed(2) : '—'
+  const perUom = (qty, rate) => {
+    if (!qty || !rate) return '—'
+    const v = rate / qty
+    if (v < 0.01) return parseFloat(v.toFixed(6)).toString()
+    return v.toFixed(2)
+  }
 
   // Conversion preview string
   function conversionPreview(pu, bu, cf) {
