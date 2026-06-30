@@ -708,14 +708,6 @@ export default function Purchases() {
                         </>
                       )
                     })}
-                    <tr>
-                      <td colSpan={6} style={{ paddingTop: 12, paddingBottom: 4, textAlign: 'center' }}>
-                        <button className="btn" onClick={addBillLine}
-                          style={{ background: 'var(--theme-green)', color: '#fff', borderColor: 'var(--theme-green)' }}>
-                          + Add Item
-                        </button>
-                      </td>
-                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -759,9 +751,13 @@ export default function Purchases() {
               </div>
 
               {error && <p style={{ color: 'var(--theme-red)', fontSize: 13, margin: '12px 0 0' }}>{error}</p>}
-              <div className="form-actions">
+              <div className="form-actions" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center' }}>
                 <button className="btn btn-ghost" onClick={() => { setShowForm(false); setEditingGroupId(null) }}>Cancel</button>
-                <button className="btn btn-primary" onClick={saveBill} disabled={saving}>
+                <button className="btn" onClick={addBillLine}
+                  style={{ background: 'var(--theme-amber)', color: '#fff', borderColor: 'var(--theme-amber)' }}>
+                  + Add Item
+                </button>
+                <button className="btn btn-primary" onClick={saveBill} disabled={saving} style={{ justifySelf: 'end' }}>
                   {saving ? 'Saving…' : editingGroupId ? 'Update Bill' : `Save ${billLines.filter(l => l.item_id && parseFloat(l.qty) > 0 && parseFloat(l.rate) > 0).length || ''} Entr${billLines.filter(l => l.item_id && parseFloat(l.qty) > 0 && parseFloat(l.rate) > 0).length === 1 ? 'y' : 'ies'}`}
                 </button>
               </div>
