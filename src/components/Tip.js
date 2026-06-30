@@ -8,7 +8,9 @@ export default function Tip({ text, children, width = 220 }) {
   const handleEnter = () => {
     if (ref.current) {
       const rect = ref.current.getBoundingClientRect()
-      setPos({ x: rect.left + rect.width / 2, y: rect.top })
+      const x = rect.left + rect.width / 2
+      const clampedX = Math.min(Math.max(x, width / 2 + 8), window.innerWidth - width / 2 - 8)
+      setPos({ x: clampedX, y: rect.top })
     }
   }
 
