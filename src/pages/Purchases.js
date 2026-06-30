@@ -686,25 +686,28 @@ export default function Purchases() {
                           </tr>
                           <tr key={`${line._key}-sub`} style={{ borderBottom: '1px solid var(--theme-card)' }}>
                             <td colSpan={6} style={{ padding: '0 8px 8px 0' }}>
-                              <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
-                                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                  <input type="date" value={line.expiry_date}
-                                    onChange={e => updateBillLine(line._key, 'expiry_date', e.target.value)}
-                                    style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: 'var(--theme-text2)', outline: 'none', width: 170 }} />
-                                  <input type="number" min="0" value={line.shelf_life} placeholder="Shelf life (days)"
-                                    onChange={e => updateBillLine(line._key, 'shelf_life', e.target.value)}
-                                    title="Enter days to auto-fill expiry date"
-                                    style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: 'var(--theme-text2)', outline: 'none', width: 160, textAlign: 'right' }} />
-                                </div>
-                                {lineIdx === billLines.length - 1 && (
-                                  <button className="btn btn-ghost" style={{ fontSize: 12, padding: '6px 14px', flexShrink: 0 }} onClick={addBillLine}>+ Add Item</button>
-                                )}
+                              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                <input type="date" value={line.expiry_date}
+                                  onChange={e => updateBillLine(line._key, 'expiry_date', e.target.value)}
+                                  style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: 'var(--theme-text2)', outline: 'none', width: 170 }} />
+                                <input type="number" min="0" value={line.shelf_life} placeholder="Shelf life (days)"
+                                  onChange={e => updateBillLine(line._key, 'shelf_life', e.target.value)}
+                                  title="Enter days to auto-fill expiry date"
+                                  style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: 'var(--theme-text2)', outline: 'none', width: 160, textAlign: 'right' }} />
                               </div>
                             </td>
                           </tr>
                         </>
                       )
                     })}
+                    <tr>
+                      <td colSpan={6} style={{ paddingTop: 12, paddingBottom: 4, textAlign: 'center' }}>
+                        <button className="btn" onClick={addBillLine}
+                          style={{ background: 'var(--theme-green)', color: '#fff', borderColor: 'var(--theme-green)' }}>
+                          + Add Item
+                        </button>
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
