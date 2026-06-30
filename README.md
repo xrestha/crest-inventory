@@ -124,6 +124,14 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S185 — 2026-06-30 — Purchases: Add Purchase Bill — header layout & UX polish
+
+- **VAT toggle moved to header row** — now a bill-level switch between Invoice Ref and Payment (one toggle applies to all items; removed per-line toggle from the Rate cell)
+- **Invoice Ref shortened by ~30%** — header grid changed from `2fr 1fr 2fr 1fr` to `2fr 1fr 1.4fr auto 1fr`
+- **Fonts/inputs standardised** — all header form controls explicitly set to `fontSize: 13` matching the line-item cell inputs
+- **"+ Add Item" button moved** — from bottom-left to the right side of the last line's sub-row (under the Amount column), alongside Expiry and Shelf Life fields
+- **File:** `src/pages/Purchases.js`
+
 ### S184 — 2026-06-30 — Purchases: VAT pill replaced with amber sliding toggle switch
 
 - Replaced the `+ VAT / ✓ VAT 13%` pill button with a proper sliding toggle (34×18px track, 12px thumb)

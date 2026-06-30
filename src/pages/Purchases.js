@@ -11,7 +11,7 @@ import * as XLSX from 'xlsx'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 
-const EMPTY_HEADER = { vendor_id: '', bs_day: '', invoice_ref: '', payment_method: 'Cash', discount: '' }
+const EMPTY_HEADER = { vendor_id: '', bs_day: '', invoice_ref: '', payment_method: 'Cash', discount: '', vat_inclusive: false }
 const EMPTY_RETURN = { purchase_entry_id: '', qty: '', notes: '' }
 const PAYMENT_METHODS = ['Cash', 'Credit', 'FonePay']
 const newLine = () => ({ _key: Date.now() + Math.random(), item_id: '', qty: '', rate: '', expiry_date: '', shelf_life: '', vat_inclusive: false, _amtDraft: '' })
@@ -124,7 +124,8 @@ export default function Purchases() {
       bs_day: String(first.bs_day),
       invoice_ref: first.invoice_ref || '',
       payment_method: first.payment_method || 'Cash',
-      discount: first.discount_amount ? String(first.discount_amount) : ''
+      discount: first.discount_amount ? String(first.discount_amount) : '',
+      vat_inclusive: first.vat_inclusive || false,
     })
     setBillLines(groupEntries.map(e => {
       const item = items.find(i => i.id === e.item_id)
@@ -184,7 +185,7 @@ export default function Purchases() {
       const qty = parseFloat(l.qty)
       const amt = parseFloat(amtStr)
       const rate = (qty > 0 && amt > 0)
-        ? String((amt / qty / (l.vat_inclusive ? 1.13 : 1)).toFixed(5))
+        ? String((amt / qty / (billHeader.vat_inclusive ? 1.13 : 1)).toFixed(5))
         : l.rate
       return { ...l, _amtDraft: amtStr, rate }
     }))
@@ -218,7 +219,7 @@ export default function Purchases() {
         invoice_ref:     billHeader.invoice_ref.trim() || null,
         expiry_date:     l.expiry_date || null,
         payment_method:  billHeader.payment_method || 'Cash',
-        vat_inclusive:   l.vat_inclusive || false,
+        vat_inclusive:   billHeader.vat_inclusive || false,
         discount_amount: discountAmt,
       }
     })
@@ -561,10 +562,10 @@ export default function Purchases() {
           {showForm && (
             <Modal onClose={() => { setShowForm(false); setEditingGroupId(null) }} title={editingGroupId ? 'Edit Purchase Bill' : 'Add Purchase Bill'}>
               {/* Header row */}
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 2fr 1fr', gap: 14, marginBottom: 20 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1.4fr auto 1fr', gap: 14, marginBottom: 20, alignItems: 'end' }}>
                 <div className="form-field">
                   <label>Vendor</label>
-                  <select className="form-select" value={billHeader.vendor_id} onChange={e => setBillHeader(h => ({ ...h, vendor_id: e.target.value }))}>
+                  <select className="form-select" style={{ fontSize: 13 }} value={billHeader.vendor_id} onChange={e => setBillHeader(h => ({ ...h, vendor_id: e.target.value }))}>
                     <option value="">— None —</option>
                     {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
                   </select>
@@ -575,11 +576,27 @@ export default function Purchases() {
                 </div>
                 <div className="form-field">
                   <label><Tip text="Vendor's invoice or bill number. Shared across all items on this bill." width={240}>Invoice Ref</Tip></label>
-                  <input value={billHeader.invoice_ref} onChange={e => setBillHeader(h => ({ ...h, invoice_ref: e.target.value }))} placeholder="Optional" />
+                  <input value={billHeader.invoice_ref} onChange={e => setBillHeader(h => ({ ...h, invoice_ref: e.target.value }))} placeholder="Optional"
+                    style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
+                </div>
+                <div className="form-field">
+                  <label><Tip text="Toggle if this vendor's bill includes 13% VAT. Applies to all items on this bill." width={240}>VAT</Tip></label>
+                  <button
+                    type="button"
+                    onClick={() => setBillHeader(h => ({ ...h, vat_inclusive: !h.vat_inclusive }))}
+                    style={{ cursor: 'pointer', background: 'none', border: 'none', padding: '8px 4px', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
+                  >
+                    <div style={{ width: 34, height: 18, borderRadius: 9, background: billHeader.vat_inclusive ? '#f59e0b' : 'var(--theme-border)', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
+                      <div style={{ position: 'absolute', top: 3, left: billHeader.vat_inclusive ? 17 : 3, width: 12, height: 12, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: billHeader.vat_inclusive ? 700 : 400, color: billHeader.vat_inclusive ? '#f59e0b' : 'var(--theme-text3)', letterSpacing: '0.04em' }}>
+                      {billHeader.vat_inclusive ? 'VAT 13%' : 'No VAT'}
+                    </span>
+                  </button>
                 </div>
                 <div className="form-field">
                   <label><Tip text="Cash: paid on delivery. Credit: pay later. FonePay: digital payment. Applied to all items on this bill.">Payment</Tip></label>
-                  <select className="form-select" value={billHeader.payment_method} onChange={e => setBillHeader(h => ({ ...h, payment_method: e.target.value }))}>
+                  <select className="form-select" style={{ fontSize: 13 }} value={billHeader.payment_method} onChange={e => setBillHeader(h => ({ ...h, payment_method: e.target.value }))}>
                     {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
                 </div>
@@ -597,7 +614,7 @@ export default function Purchases() {
                       </th>
                       <th style={{ textAlign: 'right', fontSize: 11, color: 'var(--theme-text2)', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 90 }}>Qty *</th>
                       <th style={{ textAlign: 'right', fontSize: 11, color: 'var(--theme-text2)', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 115 }}>
-                        <Tip text="Enter the ex-VAT rate per unit. Toggle VAT below if this item attracts 13% VAT." width={250}>Rate (NPR) *</Tip>
+                        <Tip text="Enter the ex-VAT rate per unit. Toggle VAT in the header if this bill attracts 13% VAT." width={260}>Rate (NPR) *</Tip>
                       </th>
                       <th style={{ textAlign: 'right', fontSize: 11, color: 'var(--theme-text2)', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 115 }}>
                         <Tip text="Enter total paid for this line — Rate is back-calculated automatically." width={230}>Total (NPR)</Tip>
@@ -609,12 +626,12 @@ export default function Purchases() {
                     </tr>
                   </thead>
                   <tbody>
-                    {billLines.map((line) => {
+                    {billLines.map((line, lineIdx) => {
                       const selItem = items.find(i => i.id === line.item_id)
                       const cf = getCf(selItem)
                       const inputUnit = cf > 1 ? selItem.purchase_unit : (selItem?.uom || '')
                       const lineBase = (parseFloat(line.qty) || 0) * (parseFloat(line.rate) || 0)
-                      const lineAmount = line.vat_inclusive ? lineBase * 1.13 : lineBase
+                      const lineAmount = billHeader.vat_inclusive ? lineBase * 1.13 : lineBase
                       const cellInput = { background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none', width: '100%', textAlign: 'right' }
                       return (
                         <>
@@ -638,18 +655,6 @@ export default function Purchases() {
                               <input type="number" min="0" step="any" value={line.rate} placeholder="0"
                                 onChange={e => updateBillLine(line._key, 'rate', e.target.value)}
                                 style={cellInput} />
-                              <button
-                                type="button"
-                                onClick={() => updateBillLine(line._key, 'vat_inclusive', !line.vat_inclusive)}
-                                style={{ marginTop: 5, width: '100%', cursor: 'pointer', background: 'none', border: 'none', padding: '2px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-                              >
-                                <div style={{ width: 34, height: 18, borderRadius: 9, background: line.vat_inclusive ? '#f59e0b' : 'var(--theme-border)', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
-                                  <div style={{ position: 'absolute', top: 3, left: line.vat_inclusive ? 17 : 3, width: 12, height: 12, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
-                                </div>
-                                <span style={{ fontSize: 11, fontWeight: line.vat_inclusive ? 700 : 400, color: line.vat_inclusive ? '#f59e0b' : 'var(--theme-text3)', letterSpacing: '0.04em' }}>
-                                  {line.vat_inclusive ? 'VAT 13%' : 'VAT'}
-                                </span>
-                              </button>
                             </td>
                             <td style={{ padding: '6px 8px 4px', verticalAlign: 'middle' }}>
                               <input
@@ -666,7 +671,7 @@ export default function Purchases() {
                                   <div style={{ fontSize: 13, color: 'var(--theme-accent)', fontWeight: 600, paddingTop: 7 }}>
                                     {lineAmount.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                   </div>
-                                  {line.vat_inclusive && parseFloat(line.rate) > 0 && (
+                                  {billHeader.vat_inclusive && parseFloat(line.rate) > 0 && (
                                     <div style={{ fontSize: 10, color: 'var(--theme-amber)', marginTop: 2 }}>
                                       +VAT {(parseFloat(line.rate) * 0.13 * (parseFloat(line.qty) || 1)).toFixed(2)}
                                     </div>
@@ -681,14 +686,19 @@ export default function Purchases() {
                           </tr>
                           <tr key={`${line._key}-sub`} style={{ borderBottom: '1px solid var(--theme-card)' }}>
                             <td colSpan={6} style={{ padding: '0 8px 8px 0' }}>
-                              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                <input type="date" value={line.expiry_date}
-                                  onChange={e => updateBillLine(line._key, 'expiry_date', e.target.value)}
-                                  style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: 'var(--theme-text2)', outline: 'none', width: 170 }} />
-                                <input type="number" min="0" value={line.shelf_life} placeholder="Shelf life (days)"
-                                  onChange={e => updateBillLine(line._key, 'shelf_life', e.target.value)}
-                                  title="Enter days to auto-fill expiry date"
-                                  style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: 'var(--theme-text2)', outline: 'none', width: 160, textAlign: 'right' }} />
+                              <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                  <input type="date" value={line.expiry_date}
+                                    onChange={e => updateBillLine(line._key, 'expiry_date', e.target.value)}
+                                    style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: 'var(--theme-text2)', outline: 'none', width: 170 }} />
+                                  <input type="number" min="0" value={line.shelf_life} placeholder="Shelf life (days)"
+                                    onChange={e => updateBillLine(line._key, 'shelf_life', e.target.value)}
+                                    title="Enter days to auto-fill expiry date"
+                                    style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: 'var(--theme-text2)', outline: 'none', width: 160, textAlign: 'right' }} />
+                                </div>
+                                {lineIdx === billLines.length - 1 && (
+                                  <button className="btn btn-ghost" style={{ fontSize: 12, padding: '6px 14px', flexShrink: 0 }} onClick={addBillLine}>+ Add Item</button>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -699,11 +709,10 @@ export default function Purchases() {
                 </table>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 14, gap: 16 }}>
-                <button className="btn btn-ghost" style={{ fontSize: 12, padding: '6px 14px' }} onClick={addBillLine}>+ Add Item</button>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-end', marginTop: 14, gap: 16 }}>
                 {(() => {
                   const subTotal    = billLines.reduce((s, l) => s + (parseFloat(l.qty) || 0) * (parseFloat(l.rate) || 0), 0)
-                  const vatSubtotal = billLines.filter(l => l.vat_inclusive).reduce((s, l) => s + (parseFloat(l.qty) || 0) * (parseFloat(l.rate) || 0), 0)
+                  const vatSubtotal = billHeader.vat_inclusive ? subTotal : 0
                   const discount    = parseFloat(billHeader.discount) || 0
                   // Discount reduces the taxable base (applied before VAT, per Nepal IRD practice)
                   const vatTaxable  = subTotal > 0 ? vatSubtotal * (1 - discount / subTotal) : 0
