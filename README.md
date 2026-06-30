@@ -124,6 +124,20 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S186 — 2026-06-30 — Purchases + Non-VAT Report: discount header field, footer buttons, Non-VAT discount handling
+
+**Add Purchase Bill (`src/pages/Purchases.js`):**
+- **Discount field moved to header row** — always visible as a 90px fixed-width input (was hidden in totals section behind `subTotal > 0` gate); header grid now `2fr 1fr 1.4fr auto 90px 1fr`
+- **Footer row restructured** — 3-column grid: Cancel (left) · + Add Item (center) · Save Entries (right)
+- **+ Add Item button** — moved from table sub-row into footer; amber background, black font, `fontSize: 13`
+- **Cancel button** — red ghost style (matches Delete All); natural width via `justifySelf: start`; `fontSize: 13` on all three footer buttons for uniformity
+
+**Non-VAT Report (`src/pages/NonVatReport.js`):**
+- Bill-level `discount_amount` now subtracted from gross to produce net total (mirrors VatReport logic)
+- CA Summary gains conditional Gross / Discount / Net columns (Discount column only when any bill has a discount)
+- Empty state copy updated: references VAT toggle, not old per-line checkbox
+- Excel export includes Gross, Discount, Net columns
+
 ### S185 — 2026-06-30 — Purchases: Add Purchase Bill — header layout & UX polish
 
 - **VAT toggle moved to header row** — now a bill-level switch between Invoice Ref and Payment (one toggle applies to all items; removed per-line toggle from the Rate cell)
