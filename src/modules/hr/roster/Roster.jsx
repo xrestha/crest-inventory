@@ -404,6 +404,24 @@ export default function Roster() {
           .order('full_name'),
       ])
       let shifts = st || []
+
+      // Deduplicate by name — React Strict Mode double-invokes effects in dev,
+      // which can cause two concurrent seed inserts before either sees rows.
+      // Keep earliest sort_order per name; delete the extras from DB.
+      const byName = {}
+      const toDelete = []
+      for (const s of shifts) {
+        if (byName[s.name]) {
+          toDelete.push(s.id)
+        } else {
+          byName[s.name] = s
+        }
+      }
+      if (toDelete.length > 0) {
+        await supabase.from('hr_shift_types').delete().in('id', toDelete)
+        shifts = Object.values(byName).sort((a, b) => (a.sort_order ?? 99) - (b.sort_order ?? 99))
+      }
+
       if (shifts.length === 0) {
         const { data: seeded } = await supabase.from('hr_shift_types')
           .insert(DEFAULT_SHIFTS.map(s => ({ ...s, client_id: clientId }))).select()
