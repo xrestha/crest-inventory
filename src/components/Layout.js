@@ -56,6 +56,7 @@ const IMS_GROUPS = [
   { key: 'reports', label: 'Reports',    items: REPORTS },
 ]
 const HR_ITEMS = [
+  { to: '/hr/dashboard',  label: 'HR Dashboard',      icon: '▦'  },
   { to: '/hr/employees',  label: 'Employees',         icon: '👤' },
   { to: '/hr/pay-setup',  label: 'Pay Setup',         icon: '⚙'  },
   { to: '/hr/roster',     label: 'Staff Roster',      icon: '📅' },

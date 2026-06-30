@@ -210,6 +210,17 @@ const IMS_TIERS = [
 // ── HR feature data ───────────────────────────────────────────────────────────
 const HR_FEATURES = [
   {
+    icon: '▦', name: 'HR Dashboard',
+    guide: 'The HR command centre. Shows live headcount (active + probation), estimated basic payroll per month, pending leave requests, pending OT entries, advances outstanding, and employees retiring within 180 days. The payroll section summarises the last finalized run: net payable, employee SSF (11%), employer SSF (20%), and the total SSF challan amount to deposit — with the deposit deadline (15th of the following month). Pending leave requests and pending OT entries are listed below so you can click through to approve or reject without navigating away.',
+    tips: [
+      'All KPI cards are clickable — click any card to jump directly to the relevant page',
+      'SSF challan total = employee 11% + employer 20% from the last finalized payroll run; deposit with SSF by the 15th of the following BS month',
+      'Pending Leave and Pending OT count cards turn amber when items are waiting — clear them before running payroll so approved entries are included',
+      'The Basic Payroll / Month figure is basic salary only; full payroll (allowances, SSF, TDS, OT) appears in the Last Finalized Payroll section after the first payroll run',
+      '"Retiring Soon" counts active/probation employees whose retirement date (DOB + 60 years, from the Employee record) falls within 180 days — click to see them in the Employees list',
+    ]
+  },
+  {
     icon: '👤', name: 'Employees',
     guide: 'The Employee Master for Crest HR. Add and manage all staff — personal details, employment type, department, join date, and status (Active / Probation / Resigned / Terminated). Four tabs per employee: Personal (name, NID, date of birth, phone, address, emergency contact), Employment (type, department, designation, dates), Salary (basic salary, allowances, deductions with live net preview), and Bank / SSF (bank name, account number, branch, SSF number). Dashboard HR stat cards show Total Employees, Active count, and combined basic payroll/month.',
     tips: ['Employee code is auto-generated (EMP-001) — do not change it after payroll records are created', 'SSF contribution uses the standard 11% employee + 20% employer split, computed on basic salary capped at NPR 100,000/month', 'Probation employees are included in the active headcount and payroll total', 'HR module must be enabled by your admin before the Employees page appears in your sidebar']

@@ -106,7 +106,7 @@ Architecture: single React app, single Supabase project, feature flags per clien
 | Module | Status | Routes |
 |---|---|---|
 | Crest IMS | ✅ Live | All existing routes |
-| Crest HR | ✅ Live | `/hr/employees`, `/hr/pay-setup`, `/hr/attendance`, `/hr/leave`, `/hr/holidays`, `/hr/overtime`, `/hr/payroll`, `/hr/reports`, `/hr/festival`, `/hr/advances`, `/hr/gratuity`, `/hr/settlement`, `/hr/roster` |
+| Crest HR | ✅ Live | `/hr/dashboard`, `/hr/employees`, `/hr/pay-setup`, `/hr/attendance`, `/hr/leave`, `/hr/holidays`, `/hr/overtime`, `/hr/payroll`, `/hr/reports`, `/hr/festival`, `/hr/advances`, `/hr/gratuity`, `/hr/settlement`, `/hr/roster` |
 | Crest POS | 🔲 Planned | — |
 
 **Suite pricing:**
@@ -123,6 +123,32 @@ Architecture: single React app, single Supabase project, feature flags per clien
 ---
 
 ## Session Log
+
+### S177 — 2026-06-30 — HR Dashboard
+
+**New page — `src/modules/hr/dashboard/HrDashboard.jsx`** (`/hr/dashboard`, HR module gate, top of HR sidebar):
+
+**Headcount KPI row (6 cards):**
+- Active Staff (+ probation sub-label) → `/hr/employees`
+- Basic Payroll / Month (active + probation basic salary total) → `/hr/payroll`
+- Leave Pending (count, amber when >0) → `/hr/leave`
+- OT Pending (count, amber when >0) → `/hr/overtime`
+- Advances Outstanding (NPR total of active unsettled advances) → `/hr/advances`
+- Retiring Soon (active/probation retiring within 180 days, amber when >0) → `/hr/employees`
+
+**Last Finalized Payroll section (4 cards, only when a finalized run exists):**
+- Net Payable (total take-home from last finalized payroll)
+- SSF Employee (11% total)
+- SSF Employer (20% total)
+- SSF Total to Deposit (31% combined, amber, deposit deadline = 15th of next BS month) → `/hr/reports`
+
+**Pending queues (2-column layout):**
+- Left: pending leave requests table (employee / type / from / to) → click row or button → `/hr/leave`
+- Right: pending OT entries table (employee / BS date / hours / weekday or holiday) → click → `/hr/overtime`
+
+No DB migration needed — reads existing tables.
+
+---
 
 ### S176 — 2026-06-30 — Overtime Management
 

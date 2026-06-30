@@ -58,6 +58,7 @@ import FinalSettlement from './modules/hr/settlement/FinalSettlement'
 import Roster from './modules/hr/roster/Roster'
 import HolidayCalendar from './modules/hr/holidays/HolidayCalendar'
 import Overtime from './modules/hr/overtime/Overtime'
+import HrDashboard from './modules/hr/dashboard/HrDashboard'
 import './components/Layout.css'
 
 export default function App() {
@@ -146,6 +147,7 @@ export default function App() {
                 element={<ModuleGate module="ims"><PremiumGate featureKey="theoretical_variance" minPlan="pro"><TheoreticalVariance /></PremiumGate></ModuleGate>} />
 
               {/* Crest HR — gated on hr_enabled */}
+              <Route path="/hr/dashboard" element={<ModuleGate module="hr"><HrDashboard /></ModuleGate>} />
               <Route path="/hr/employees" element={<ModuleGate module="hr"><EmployeeList /></ModuleGate>} />
               <Route path="/hr/pay-setup" element={<ModuleGate module="hr"><PaySetup /></ModuleGate>} />
               <Route path="/hr/attendance" element={<ModuleGate module="hr"><AttendanceSheet /></ModuleGate>} />
