@@ -124,6 +124,21 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S188 — 2026-06-30 — Security hardening + sidebar trial badge redesign + orphaned user delete fix
+
+**Supabase security hardening (SQL run in dashboard — no code changes):**
+- Revoked `EXECUTE` from `PUBLIC` on 6 sensitive functions: `admin_clear_audit_logs`, `client_user_emails`, `find_user_id_by_email`, `request_subscription`, `handle_new_user`, `log_audit`
+- Granted back `EXECUTE` to `authenticated` on `request_subscription` (called by logged-in trial users)
+- Added `SET search_path = public` to 4 functions with mutable search_path: `my_client_id`, `is_admin`, `admin_clear_audit_logs`, `request_subscription`
+- Remaining acceptable warnings: `is_admin` + `my_client_id` (RLS dependency), Logos bucket listing, leaked password protection (Pro plan required)
+
+**Admin Clients (`src/pages/AdminClients.js`):**
+- Delete user now handles orphaned profiles gracefully — if auth user is already gone ("not found"), falls through and deletes the `profiles` row instead of blocking with an error
+
+**Sidebar (`src/components/Layout.js`):**
+- New trial badge redesigned for strong visual presence: number badge on icon (not tiny dot), amber left border + background tint on entire Clients row, bold "N NEW" pill (expanded) / number on icon (collapsed)
+- Red variant shows "N want to sub" when `subscribe_requested` clients exist; amber shows when new trials in last 7 days
+
 ### S187 — 2026-06-30 — Trial signup awareness: contact_person, signup time display, sidebar amber badge
 
 **Edge Function (`supabase/functions/admin-user-ops/index.ts`):**
