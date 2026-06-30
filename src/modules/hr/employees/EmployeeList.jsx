@@ -4,6 +4,7 @@ import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
 import Fab from '../../../components/Fab'
 import EmployeeForm from './EmployeeForm'
+import EmployeeJoiningForm from './EmployeeJoiningForm'
 
 const STATUS_COLORS = {
   active:      { color: '#34d399', bg: 'rgba(52,211,153,0.1)',  border: 'rgba(52,211,153,0.2)'  },
@@ -49,6 +50,7 @@ export default function EmployeeList() {
   const [retiringOnly, setRetiringOnly] = useState(false)
   const [drawerOpen, setDrawer]   = useState(false)
   const [editing, setEditing]     = useState(null)
+  const [printForm, setPrintForm] = useState(false)
 
   useEffect(() => {
     if (effectiveClientId) fetchEmployees()
@@ -105,6 +107,9 @@ export default function EmployeeList() {
           <h1 className="page-title">Employees</h1>
           <p className="page-subtitle">Employee master — personal info, employment details, salary and banking</p>
         </div>
+        <button className="btn btn-ghost" onClick={() => setPrintForm(true)} style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+          🖨 Print Joining Form
+        </button>
       </div>
 
       {/* Stat cards */}
@@ -296,6 +301,8 @@ export default function EmployeeList() {
       )}
 
       <Fab onClick={openAdd} label="+ Add Employee" show={!drawerOpen} />
+
+      {printForm && <EmployeeJoiningForm onClose={() => setPrintForm(false)} />}
     </div>
   )
 }
