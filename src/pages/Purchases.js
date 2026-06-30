@@ -562,7 +562,7 @@ export default function Purchases() {
           {showForm && (
             <Modal onClose={() => { setShowForm(false); setEditingGroupId(null) }} title={editingGroupId ? 'Edit Purchase Bill' : 'Add Purchase Bill'}>
               {/* Header row */}
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1.4fr auto 1fr', gap: 14, marginBottom: 20, alignItems: 'end' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1.4fr auto auto 1fr', gap: 14, marginBottom: 20, alignItems: 'end' }}>
                 <div className="form-field">
                   <label>Vendor</label>
                   <select className="form-select" style={{ fontSize: 13 }} value={billHeader.vendor_id} onChange={e => setBillHeader(h => ({ ...h, vendor_id: e.target.value }))}>
@@ -593,6 +593,14 @@ export default function Purchases() {
                       {billHeader.vat_inclusive ? 'VAT 13%' : 'No VAT'}
                     </span>
                   </button>
+                </div>
+                <div className="form-field">
+                  <label><Tip text="Promo or trade discount on the total bill. Applied before VAT — VAT is levied only on the net taxable amount." width={260}>Discount (NPR)</Tip></label>
+                  <input type="number" min="0" step="any"
+                    value={billHeader.discount}
+                    onChange={e => setBillHeader(h => ({ ...h, discount: e.target.value }))}
+                    placeholder="0"
+                    style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: 'var(--theme-red)', outline: 'none', width: '100%', boxSizing: 'border-box', textAlign: 'right' }} />
                 </div>
                 <div className="form-field">
                   <label><Tip text="Cash: paid on delivery. Credit: pay later. FonePay: digital payment. Applied to all items on this bill.">Payment</Tip></label>
@@ -727,17 +735,11 @@ export default function Purchases() {
                       <div style={{ color: 'var(--theme-text3)', marginBottom: 3 }}>
                         Subtotal (ex-VAT): <span style={{ color: 'var(--theme-text1)', fontWeight: 600, marginLeft: 8 }}>NPR {subTotal.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginBottom: discount > 0 ? 3 : 6 }}>
-                        <span style={{ color: 'var(--theme-text3)', fontSize: 12 }}><Tip text="Promo or trade discount given by the vendor on the total bill. Discount is applied before VAT — VAT is levied only on the net taxable amount." width={260}>Discount (NPR):</Tip></span>
-                        <span style={{ color: 'var(--theme-red)', fontSize: 12 }}>−</span>
-                        <input
-                          type="number" min="0" step="any"
-                          value={billHeader.discount}
-                          onChange={e => setBillHeader(h => ({ ...h, discount: e.target.value }))}
-                          placeholder="0.00"
-                          style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '5px 8px', fontSize: 12, color: 'var(--theme-red)', outline: 'none', width: 90, textAlign: 'right' }}
-                        />
-                      </div>
+                      {discount > 0 && (
+                        <div style={{ color: 'var(--theme-text3)', marginBottom: 3 }}>
+                          Discount: <span style={{ color: 'var(--theme-red)', fontWeight: 600, marginLeft: 8 }}>− NPR {discount.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                      )}
                       {discount > 0 && vatTotal > 0 && (
                         <div style={{ color: 'var(--theme-text3)', marginBottom: 3 }}>
                           Taxable: <span style={{ color: 'var(--theme-text1)', fontWeight: 600, marginLeft: 8 }}>NPR {(subTotal - discount).toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>

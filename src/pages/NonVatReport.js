@@ -12,15 +12,21 @@ function fmtNPR(n) {
 
 function buildVendorSummary(entries) {
   const map = {}
+  const billDiscounts = {}
   entries.forEach(e => {
+    const gid = e.purchase_group_id || e.id
+    if (!billDiscounts[gid]) billDiscounts[gid] = { disc: parseFloat(e.discount_amount) || 0, vendorKey: e.vendor_id || '__unknown__' }
     const key  = e.vendor_id || '__unknown__'
     const name = e.vendors?.name || 'Unknown Vendor'
     const pan  = e.vendors?.pan_vat_no || ''
-    if (!map[key]) map[key] = { name, pan, count: 0, total: 0 }
+    if (!map[key]) map[key] = { name, pan, count: 0, gross: 0, discount: 0 }
     map[key].count += 1
-    map[key].total += e.qty * e.rate
+    map[key].gross += e.qty * e.rate
   })
-  return Object.values(map).sort((a, b) => b.total - a.total)
+  Object.values(billDiscounts).forEach(({ disc, vendorKey }) => {
+    if (map[vendorKey]) map[vendorKey].discount += disc
+  })
+  return Object.values(map).sort((a, b) => (b.gross - b.discount) - (a.gross - a.discount))
 }
 
 export default function NonVatReport() {
@@ -60,7 +66,14 @@ export default function NonVatReport() {
     setLoading(false)
   }
 
-  const total         = entries.reduce((s, e) => s + e.qty * e.rate, 0)
+  const grossTotal    = entries.reduce((s, e) => s + e.qty * e.rate, 0)
+  const billDiscounts = {}
+  entries.forEach(e => {
+    const gid = e.purchase_group_id || e.id
+    if (!billDiscounts[gid]) billDiscounts[gid] = parseFloat(e.discount_amount) || 0
+  })
+  const totalDiscount = Object.values(billDiscounts).reduce((s, d) => s + d, 0)
+  const total         = grossTotal - totalDiscount
   const uniqueVendors = new Set(entries.map(e => e.vendors?.name).filter(Boolean)).size
   const avgPerEntry   = entries.length ? total / entries.length : 0
 
@@ -89,11 +102,13 @@ export default function NonVatReport() {
 
     // CA Summary sheet
     const caRows = vendorRows.map(v => ({
-      'Vendor':      v.name,
-      'PAN/VAT No.': v.pan,
-      '# Bills':     v.count,
-      'Total (NPR)': Number(v.total.toFixed(2)),
-      'VAT Credit':  'NIL',
+      'Vendor':        v.name,
+      'PAN/VAT No.':   v.pan,
+      '# Bills':       v.count,
+      'Gross (NPR)':   Number(v.gross.toFixed(2)),
+      'Discount (NPR)':Number(v.discount.toFixed(2)),
+      'Net (NPR)':     Number((v.gross - v.discount).toFixed(2)),
+      'VAT Credit':    'NIL',
     }))
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(caRows), 'CA Summary')
 
@@ -120,10 +135,10 @@ export default function NonVatReport() {
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 24 }}>
         <div className="stat-card">
           <div className="stat-label">
-            <Tip text="Total value of all non-VAT purchases this period — entries where 'VAT Incl.' was NOT ticked.">Total Non-VAT Purchases</Tip>
+            <Tip text="Net value of all non-VAT purchases this period (after any bill-level discounts).">Total Non-VAT Purchases</Tip>
           </div>
           <div className="stat-value gold" style={{ fontSize: 16 }}>NPR {Math.round(total).toLocaleString('en-NP')}</div>
-          <div className="stat-sub">{entries.length} entries</div>
+          <div className="stat-sub">{entries.length} entr{entries.length !== 1 ? 'ies' : 'y'}{totalDiscount > 0 ? ` · −NPR ${Math.round(totalDiscount).toLocaleString('en-NP')} disc.` : ''}</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">
@@ -166,7 +181,7 @@ export default function NonVatReport() {
           ) : entries.length === 0 ? (
             <div className="empty-state">
               <div className="empty-state-icon">₨</div>
-              <p className="empty-state-text">No non-VAT purchases this period. Entries without "VAT Incl. (13%)" ticked will appear here.</p>
+              <p className="empty-state-text">No non-VAT purchases this period. Bills with the VAT toggle off will appear here.</p>
             </div>
           ) : (
             <div className="table-wrap">
@@ -251,7 +266,9 @@ export default function NonVatReport() {
                     <th>Vendor</th>
                     <th><Tip text="PAN or VAT registration number of the supplier — add it in Vendors if missing.">PAN / VAT No.</Tip></th>
                     <th style={{ textAlign: 'right' }}><Tip text="Number of non-VAT purchase entries from this vendor this period."># Bills</Tip></th>
-                    <th style={{ textAlign: 'right' }}><Tip text="Total purchase amount — no VAT was charged by this supplier.">Total (NPR)</Tip></th>
+                    <th style={{ textAlign: 'right' }}><Tip text="Gross purchase amount before any bill-level discount.">Gross (NPR)</Tip></th>
+                    {totalDiscount > 0 && <th style={{ textAlign: 'right' }}><Tip text="Bill-level discount given by this vendor.">Discount</Tip></th>}
+                    <th style={{ textAlign: 'right' }}><Tip text="Net amount after discount — no VAT was charged by this supplier.">Net (NPR)</Tip></th>
                     <th style={{ textAlign: 'right' }}><Tip text="No input VAT credit is claimable on non-VAT purchases." width={220}>VAT Credit</Tip></th>
                   </tr>
                 </thead>
@@ -263,12 +280,16 @@ export default function NonVatReport() {
                         {v.pan || <span style={{ fontStyle: 'italic' }}>Missing — add in Vendors</span>}
                       </td>
                       <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>{v.count}</td>
-                      <td style={{ textAlign: 'right', color: 'var(--theme-accent)', fontWeight: 600 }}>{fmtNPR(v.total)}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--theme-text3)' }}>{fmtNPR(v.gross)}</td>
+                      {totalDiscount > 0 && <td style={{ textAlign: 'right', color: 'var(--theme-red)', fontSize: 12 }}>{v.discount > 0 ? `− ${fmtNPR(v.discount)}` : '—'}</td>}
+                      <td style={{ textAlign: 'right', color: 'var(--theme-accent)', fontWeight: 600 }}>{fmtNPR(v.gross - v.discount)}</td>
                       <td style={{ textAlign: 'right', color: 'var(--theme-red)', fontWeight: 500 }}>NIL</td>
                     </tr>
                   ))}
                   <tr style={{ borderTop: '2px solid var(--theme-border)', fontWeight: 700 }}>
                     <td colSpan={3} style={{ color: 'var(--theme-text2)', fontSize: 12 }}>PERIOD TOTAL</td>
+                    <td style={{ textAlign: 'right', color: 'var(--theme-text3)' }}>{fmtNPR(grossTotal)}</td>
+                    {totalDiscount > 0 && <td style={{ textAlign: 'right', color: 'var(--theme-red)' }}>− {fmtNPR(totalDiscount)}</td>}
                     <td style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>{fmtNPR(total)}</td>
                     <td style={{ textAlign: 'right', color: 'var(--theme-red)' }}>NIL</td>
                   </tr>
