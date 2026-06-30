@@ -124,6 +124,13 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S191 — 2026-06-30 — Hotfix: restore admin_clear_audit_logs for authenticated users
+
+**Supabase SQL (dashboard):**
+- S188 over-revoked `admin_clear_audit_logs` from `authenticated` — broke the Audit Log "Clear" button with "permission denied" error
+- Fix: `GRANT EXECUTE ON FUNCTION public.admin_clear_audit_logs(uuid, text, timestamptz) TO authenticated;`
+- Linter will still flag it as a warning (acceptable — function is the security boundary)
+
 ### S190 — 2026-06-30 — Items: per-UOM rate fix when Total is used
 
 **Item Master (`src/pages/Items.js`):**
