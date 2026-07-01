@@ -125,6 +125,19 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S199 — 2026-07-01 — Purchases: Expiry Date + Shelf Life as Inline Table Columns
+
+**Problem:** Expiry date and shelf-life fields were stacked below the item dropdown in a sub-row (or inline div), making the bill form feel cramped and disconnected from the other fields.
+
+**Changes (`src/pages/Purchases.js`):**
+- **Removed sub-row / inline-div layout** — expiry date and shelf life no longer live beneath the item dropdown.
+- **Two new table columns** — `Expiry Date` (140 px) and `Days` (95 px) added after Amount, before the delete button. Both sit on the same `<tr>` as Item, Qty, Rate, VAT, Total, Amount.
+- **Modal widened** — `maxWidth` raised from 960 → 1160 px.
+- **Table minWidth** raised from 640 → 920 px.
+- No logic changes — shelf-life → expiry auto-calc and all save/edit paths unchanged.
+
+---
+
 ### S198 — 2026-07-01 — Purchases: Per-Line VAT
 
 **Problem:** The "Add Purchase Bill" form had a single bill-level VAT toggle — all items on a bill were either all-taxable or all-non-taxable. Real vendor invoices can have mixed items (e.g. 4 of 10 items VAT-able).

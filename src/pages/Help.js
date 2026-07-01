@@ -30,8 +30,8 @@ const IMS_TIERS = [
       },
       {
         icon: '↓', name: 'Purchases',
-        guide: 'Record every ingredient purchase here. Select the item, vendor, day of month, quantity, rate, and payment method (Cash/Credit/FonePay). The rate auto-fills from the item master but can be overridden. Use the Returns tab to log items sent back to suppliers.',
-        tips: ['Enter purchases daily from the actual invoice — not from memory at month end', 'Always enter the actual invoice rate if it differs from the master rate', 'Add invoice reference number for audit trail', 'Returns auto-inherit rate and vendor from the original purchase']
+        guide: 'Record every ingredient purchase here. Each bill has a header (vendor, day, invoice ref, discount, payment method) and one row per item. Per row: select item, enter qty and rate, tick VAT if this line attracts 13% VAT, optionally enter an expiry date or shelf-life days (expiry auto-fills from the bill date). Use the Returns tab to log items sent back to suppliers.',
+        tips: ['Enter purchases daily from the actual invoice — not from memory at month end', 'Always enter the actual invoice rate if it differs from the master rate', 'Add invoice reference number for audit trail', 'VAT is per-line — tick only the items that are VAT-able on that invoice', 'Enter shelf-life days and the expiry date fills automatically from the bill date', 'Returns auto-inherit rate and vendor from the original purchase']
       },
       {
         icon: '⊞', name: 'Stock Count',
