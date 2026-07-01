@@ -41,6 +41,7 @@ import StockReport from './pages/StockReport'
 import DeadStock from './pages/DeadStock'
 import RecipeMargin from './pages/RecipeMargin'
 import MenuRepricing from './pages/MenuRepricing'
+import MenuPricing from './pages/MenuPricing'
 import PeriodComparison from './pages/PeriodComparison'
 import AnnualSummary from './pages/AnnualSummary'
 import OutstandingPayables from './pages/OutstandingPayables'
@@ -131,6 +132,8 @@ export default function App() {
                 element={<ModuleGate module="ims"><PremiumGate featureKey="dead_stock" minPlan="growth"><DeadStock /></PremiumGate></ModuleGate>} />
               <Route path="/recipe-margin"
                 element={<ModuleGate module="ims"><PremiumGate featureKey="recipe_margin" minPlan="growth"><RecipeMargin /></PremiumGate></ModuleGate>} />
+              <Route path="/menu-pricing"
+                element={<ModuleGate module="ims"><PremiumGate featureKey="menu_pricing" minPlan="starter"><MenuPricing /></PremiumGate></ModuleGate>} />
               <Route path="/menu-repricing"
                 element={<ModuleGate module="ims"><PremiumGate featureKey="menu_repricing" minPlan="growth"><MenuRepricing /></PremiumGate></ModuleGate>} />
               <Route path="/best-sellers"

@@ -18,6 +18,7 @@ const NAV = [
   { to: '/requisitions',     label: 'Requisitions',      icon: '↔', featureKey: 'requisitions',    minPlan: 'growth' },
   { to: '/sales',            label: 'Sales Entry',       icon: '↑', featureKey: 'sales_entry',     minPlan: 'starter' },
   { to: '/recipes',          label: 'Recipe Costing',    icon: '◈', featureKey: 'recipe_costing',  minPlan: 'growth' },
+  { to: '/menu-pricing',     label: 'Menu Pricing',      icon: '₨', featureKey: 'menu_pricing',    minPlan: 'starter' },
   { to: '/menu-engineering', label: 'Menu Engineering',  icon: '◈', featureKey: 'menu_engineering',minPlan: 'pro' },
   { to: '/overheads',        label: 'Overheads',         icon: '₿', featureKey: 'overheads',       minPlan: 'pro' },
 ]

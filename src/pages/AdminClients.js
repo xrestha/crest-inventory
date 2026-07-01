@@ -40,6 +40,7 @@ const DEFAULT_FLAGS = {
   outstanding_payables: null, shrinkage_report: null,
   staff_meals: null, settings: null,
   nutrition_facts: null, stock_report: null,
+  menu_pricing: null,
   menu_repricing: null,
 }
 
@@ -53,6 +54,7 @@ const FEATURE_GROUPS = [
     { key: null, label: 'Stock Count' },
   ]},
   { tier: 'starter', label: 'Starter Plan',     color: 'var(--theme-text3)', features: [
+    { key: 'menu_pricing',    label: 'Menu Pricing' },
     { key: 'sales_entry',     label: 'Sales Entry' },
     { key: 'payment_summary', label: 'Payment Summary' },
     { key: 'monthly_summary', label: 'Monthly Summary' },

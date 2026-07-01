@@ -49,6 +49,11 @@ const IMS_TIERS = [
     tier: 'starter', label: 'Starter Plan', planLabel: 'Starter', planColor: 'var(--theme-text3)',
     features: [
       {
+        icon: '₨', name: 'Menu Pricing',
+        guide: 'Internal pricing review tool. Shows all active menu items with their food cost, current menu price (VAT-inclusive), and FC%. Type a new VAT-inclusive price on any row to instantly see the new FC% and the price change — then hit Save to commit it to Recipe Costing.',
+        tips: ['Food cost is calculated live from current ingredient rates', 'The Change column shows + (price increase) or − (price decrease) vs current', 'FC% colours: green ≤30%, amber 31–38%, red >38%', 'Press Enter in the new-price field to save quickly', 'Saving updates the selling price in Recipe Costing — ex-VAT price is back-calculated automatically']
+      },
+      {
         icon: '↑', name: 'Sales Entry',
         guide: 'Record total qty sold per menu item for the period. Only items with a recipe appear here. Revenue is calculated automatically from selling price × qty sold. Use Bulk Entry for monthly POS totals.',
         tips: ['Sales data is required for the Variance Report to calculate theoretical usage', 'Sub-recipes are excluded — only top-level recipes appear here', 'You can update sales entries any time while the period is open']
