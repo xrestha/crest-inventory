@@ -411,7 +411,7 @@ export default function PosOrders() {
 
             <button
               className="btn btn-primary"
-              style={{ width: '100%', padding: '12px 0', fontSize: 16, marginBottom: 8, textAlign: 'center' }}
+              style={{ width: '100%', padding: '12px 0', fontSize: 16, marginBottom: 8, justifyContent: 'center' }}
               onClick={saveOrder}
               disabled={saving || orderItems.length === 0}
             >
@@ -485,14 +485,14 @@ export default function PosOrders() {
 
           <button
             className="btn btn-primary"
-            style={{ width: '100%', padding: '12px 0', fontSize: 15, marginBottom: 10, textAlign: 'center' }}
+            style={{ width: '100%', padding: '12px 0', fontSize: 15, marginBottom: 10, justifyContent: 'center' }}
             onClick={confirmCovers}
           >
             Open Order
           </button>
           <button
             className="btn btn-ghost"
-            style={{ width: '100%', padding: '8px 0', fontSize: 13, textAlign: 'center' }}
+            style={{ width: '100%', padding: '8px 0', fontSize: 13, justifyContent: 'center' }}
             onClick={() => { setCoversModal(false); setPendingTable(null) }}
           >
             Cancel
