@@ -65,13 +65,7 @@ export default function PosLogin() {
   function pickStaff(s) { setSelected(s); setPin(''); setError('') }
   function back()        { setSelected(null); setPin(''); setError('') }
 
-  function deactivate() {
-    localStorage.removeItem('pos_device_client_id')
-    localStorage.removeItem('pos_device_client_name')
-    navigate('/login', { replace: true })
-  }
-
-  const pinDots = Math.max(4, pin.length)
+const pinDots = Math.max(4, pin.length)
 
   return (
     <div style={{
