@@ -562,11 +562,11 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                     <input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
                   </div>
                   <div className="form-field">
-                    <label>Location</label>
+                    <label><Tip text="City or area where this property operates. Shown on reports and helps identify multi-location clients.">Location</Tip></label>
                     <input value={editForm.location} onChange={e => setEditForm({ ...editForm, location: e.target.value })} />
                   </div>
                   <div className="form-field">
-                    <label>Contact Person</label>
+                    <label><Tip text="Primary contact — owner or manager name used for billing and support correspondence.">Contact Person</Tip></label>
                     <input value={editForm.contact_person} onChange={e => setEditForm({ ...editForm, contact_person: e.target.value })} />
                   </div>
                   <div className="form-field">
@@ -684,7 +684,9 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                 </div>
 
                 {/* Billing cycle toggle */}
-                <p style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 8px' }}>Billing Cycle</p>
+                <p style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 8px' }}>
+                  <Tip text="Whether this client pays monthly or annually. Annual plans discount the monthly rate by 25%.">Billing Cycle</Tip>
+                </p>
                 <div style={{ display: 'flex', gap: 0, marginBottom: 24, background: 'var(--theme-bg)', borderRadius: 8, border: '1px solid var(--theme-border)', padding: 4, width: 'fit-content' }}>
                   {[{ key: 'monthly', label: 'Monthly' }, { key: 'annual', label: 'Annual · Save 25%' }].map(opt => (
                     <button key={opt.key} onClick={() => setBillingCycle(opt.key)} style={{
@@ -747,7 +749,9 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                         }
                       </p>
                       {/* Date picker */}
-                      <p style={{ fontSize: 11, color: 'var(--theme-text2)', margin: '0 0 6px' }}>Subscription end date</p>
+                      <p style={{ fontSize: 11, color: 'var(--theme-text2)', margin: '0 0 6px' }}>
+                        <Tip text="Date when this module's subscription expires. Client sees a warning in the last 7 days and is blocked after expiry." width={300}>Subscription end date</Tip>
+                      </p>
                       <div style={{ marginBottom: 8 }}>
                         <BsCalendarPicker value={mod.endsAt} onChange={mod.setEndsAt} clearable />
                       </div>
@@ -826,7 +830,7 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                       <input value={clientSettings.app_tagline || ''} onChange={e => setClientSettings({ ...clientSettings, app_tagline: e.target.value })} placeholder="e.g. Fresh bowls, made daily." />
                     </div>
                     <div className="form-field">
-                      <label>VAT Number</label>
+                      <label><Tip text="Client's VAT registration number, printed on invoices and used for IRD compliance reporting.">VAT Number</Tip></label>
                       <input value={clientSettings.vat_number || ''} onChange={e => setClientSettings({ ...clientSettings, vat_number: e.target.value })} />
                     </div>
                   </div>
@@ -895,11 +899,11 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                   </p>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
                     <div className="form-field">
-                      <label>FC Warning % (yellow)</label>
+                      <label><Tip text="When a recipe's food cost percentage exceeds this, the FC badge turns yellow in Recipe Costing and reports." width={280}>FC Warning % (yellow)</Tip></label>
                       <input type="number" value={clientSettings.fc_warning_pct || 35} onChange={e => setClientSettings({ ...clientSettings, fc_warning_pct: parseFloat(e.target.value) })} />
                     </div>
                     <div className="form-field">
-                      <label>FC Critical % (red)</label>
+                      <label><Tip text="When a recipe's food cost exceeds this, the badge turns red — the item is unprofitable at its current selling price." width={280}>FC Critical % (red)</Tip></label>
                       <input type="number" value={clientSettings.fc_critical_pct || 45} onChange={e => setClientSettings({ ...clientSettings, fc_critical_pct: parseFloat(e.target.value) })} />
                     </div>
                   </div>
@@ -912,11 +916,11 @@ function ClientDrawer({ client, onClose, onClientUpdated }) {
                   </p>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
                     <div className="form-field">
-                      <label>Expiry Warning (days)</label>
+                      <label><Tip text="Items expiring within this many days are flagged amber in the Expiry Tracker.">Expiry Warning (days)</Tip></label>
                       <input type="number" value={clientSettings.expiry_warning_days || 7} onChange={e => setClientSettings({ ...clientSettings, expiry_warning_days: parseInt(e.target.value) })} />
                     </div>
                     <div className="form-field">
-                      <label>Variance Flag %</label>
+                      <label><Tip text="Variance Report highlights items where actual vs. theoretical consumption differs by more than this percentage." width={280}>Variance Flag %</Tip></label>
                       <input type="number" value={clientSettings.variance_flag_pct || 10} onChange={e => setClientSettings({ ...clientSettings, variance_flag_pct: parseFloat(e.target.value) })} />
                     </div>
                   </div>
@@ -1350,11 +1354,11 @@ export default function AdminClients() {
               <input value={newForm.name} onChange={e => setNewForm({ ...newForm, name: e.target.value })} placeholder="e.g. Casa Acai Cafe" autoFocus />
             </div>
             <div className="form-field">
-              <label>Location</label>
+              <label><Tip text="City or area where this property operates. Shown on reports and helps identify multi-location clients.">Location</Tip></label>
               <input value={newForm.location} onChange={e => setNewForm({ ...newForm, location: e.target.value })} placeholder="e.g. Jhamsikhel, Kathmandu" />
             </div>
             <div className="form-field">
-              <label>Contact Person</label>
+              <label><Tip text="Primary contact — owner or manager name used for billing and support correspondence.">Contact Person</Tip></label>
               <input value={newForm.contact_person} onChange={e => setNewForm({ ...newForm, contact_person: e.target.value })} placeholder="Owner / Manager name" />
             </div>
             <div className="form-field">

@@ -4,6 +4,7 @@ import { useSettings } from '../context/SettingsContext'
 import { supabase } from '../supabaseClient'
 import Fab from '../components/Fab'
 import Modal from '../components/Modal'
+import Tip from '../components/Tip'
 
 const EMPTY_FORM = { name: '', contact_person: '', phone: '', address: '', pan_vat_no: '' }
 
@@ -154,7 +155,7 @@ export default function Vendors() {
               />
             </div>
             <div className="form-field">
-              <label>Contact Person</label>
+              <label><Tip text="Name of the sales rep or account manager at this supplier. Useful for direct contact on order issues.">Contact Person</Tip></label>
               <input
                 value={form.contact_person}
                 onChange={e => setForm({ ...form, contact_person: e.target.value })}
@@ -180,7 +181,7 @@ export default function Vendors() {
               />
             </div>
             <div className="form-field">
-              <label>PAN / VAT No.</label>
+              <label><Tip text="Supplier's PAN (Permanent Account Number) or VAT registration number. Required for VAT invoice reconciliation and IRD compliance." width={280}>PAN / VAT No.</Tip></label>
               <input
                 value={form.pan_vat_no}
                 onChange={e => setForm({ ...form, pan_vat_no: e.target.value })}
@@ -244,13 +245,13 @@ export default function Vendors() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Code</th>
+                  <th><Tip text="Auto-generated vendor code used as a short reference on purchase entries and reports.">Code</Tip></th>
                   <th>Vendor Name</th>
                   <th>Contact Person</th>
                   <th>Phone</th>
-                  <th>PAN/VAT No.</th>
+                  <th><Tip text="Supplier's PAN or VAT registration number — needed for VAT invoice reconciliation." width={260}>PAN/VAT No.</Tip></th>
                   <th>Address</th>
-                  <th>Status</th>
+                  <th><Tip text="Active vendors appear in purchase entry dropdowns. Inactive vendors are hidden but their purchase history is preserved." width={280}>Status</Tip></th>
                   <th></th>
                 </tr>
               </thead>

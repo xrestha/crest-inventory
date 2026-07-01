@@ -205,12 +205,12 @@ export default function EmployeeList() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Code</th>
+                <th><Tip text="Auto-generated employee code used as a short reference on payroll, attendance, and reports.">Code</Tip></th>
                 <th>Name</th>
                 <th>Designation</th>
                 <th>Department</th>
-                <th>Supervisor</th>
-                <th>Type</th>
+                <th><Tip text="Reporting manager for this employee — used in leave approval workflows.">Supervisor</Tip></th>
+                <th><Tip text="Employment type: Permanent, Probation, Contract, or Part-time. Affects payroll and leave accrual rules." width={280}>Type</Tip></th>
                 <th>
                   <Tip text="Date joined." width={160}>Join Date</Tip>
                 </th>

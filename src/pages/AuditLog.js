@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabaseClient'
+import Tip from '../components/Tip'
 
 const TABLE_LABELS = {
   purchase_entries: 'Purchase',
@@ -270,12 +271,12 @@ export default function AuditLog() {
           <table className="data-table">
             <thead>
               <tr>
-                <th style={{ whiteSpace: 'nowrap' }}>Time</th>
-                <th>Client</th>
-                <th>User</th>
-                <th style={{ textAlign: 'center' }}>Action</th>
-                <th>Area</th>
-                <th>Summary</th>
+                <th style={{ whiteSpace: 'nowrap' }}><Tip text="BS date and time (Nepal time) when the action was recorded." width={220}>Time</Tip></th>
+                <th><Tip text="The client property this change belongs to." width={200}>Client</Tip></th>
+                <th><Tip text="Email of the user who performed the action." width={220}>User</Tip></th>
+                <th style={{ textAlign: 'center' }}><Tip text="INSERT = new record created. UPDATE = existing record changed. DELETE = record removed." width={260}>Action</Tip></th>
+                <th><Tip text="The module or table the change was made in — e.g. Purchase, Recipe, Stock." width={240}>Area</Tip></th>
+                <th><Tip text="Human-readable description of what changed, including old and new values where applicable." width={260}>Summary</Tip></th>
               </tr>
             </thead>
             <tbody>

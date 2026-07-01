@@ -3,6 +3,7 @@ import { useSettings } from '../context/SettingsContext'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabaseClient'
 import { useTheme, PRESETS } from '../context/ThemeContext'
+import Tip from '../components/Tip'
 
 const ALL_TABS = ['Branding', 'Property', 'Thresholds', 'Item Codes', 'Vendor Codes', 'Sub-Recipe Codes', 'Recipe Categories', 'Contact', 'Data', 'Theme']
 
@@ -331,13 +332,13 @@ export default function Settings() {
           <p style={{ fontSize: 13, color: 'var(--theme-text2)', margin: '0 0 20px' }}>These appear on printed reports and the Monthly Summary header.</p>
           <div className="form-grid form-grid-2">
             {[
-              { key: 'property_address', label: 'Address', placeholder: 'e.g. Jhamsikhel, Lalitpur' },
-              { key: 'property_phone', label: 'Phone', placeholder: '01-XXXXXXX' },
-              { key: 'property_email', label: 'Email', placeholder: 'info@property.com' },
-              { key: 'vat_number', label: 'VAT Registration Number', placeholder: 'e.g. 123456789' },
+              { key: 'property_address', label: 'Address', placeholder: 'e.g. Jhamsikhel, Lalitpur', tip: null },
+              { key: 'property_phone', label: 'Phone', placeholder: '01-XXXXXXX', tip: null },
+              { key: 'property_email', label: 'Email', placeholder: 'info@property.com', tip: null },
+              { key: 'vat_number', label: 'VAT Registration Number', placeholder: 'e.g. 123456789', tip: 'Your business VAT registration number as issued by IRD Nepal. Printed on report headers and used for VAT invoice compliance.' },
             ].map(f => (
               <div key={f.key} className="form-field">
-                <label>{f.label}</label>
+                <label>{f.tip ? <Tip text={f.tip} width={280}>{f.label}</Tip> : f.label}</label>
                 <input value={form[f.key] || ''} onChange={e => update(f.key, e.target.value)} placeholder={f.placeholder} />
               </div>
             ))}
@@ -352,13 +353,13 @@ export default function Settings() {
           <p style={{ fontSize: 13, color: 'var(--theme-text2)', margin: '0 0 24px' }}>These control when the system flags warnings across reports and the dashboard.</p>
           <div className="form-grid form-grid-2">
             {[
-              { key: 'fc_warning_pct', label: 'Food Cost % — Warning threshold', placeholder: '35', suffix: '%', hint: 'Dashboard turns amber above this' },
-              { key: 'fc_critical_pct', label: 'Food Cost % — Critical threshold', placeholder: '45', suffix: '%', hint: 'Dashboard turns red above this' },
-              { key: 'expiry_warning_days', label: 'Expiry Warning — Days ahead', placeholder: '7', suffix: 'days', hint: 'FIFO report flags items expiring within this window' },
-              { key: 'variance_flag_pct', label: 'Variance Flag threshold', placeholder: '10', suffix: '%', hint: 'Variance report flags items above this %' },
+              { key: 'fc_warning_pct', label: 'Food Cost % — Warning threshold', placeholder: '35', suffix: '%', hint: 'Dashboard turns amber above this', tip: 'FC% above this value turns the dashboard FC% card amber. Nepal F&B benchmark: warn at 35–38%.' },
+              { key: 'fc_critical_pct', label: 'Food Cost % — Critical threshold', placeholder: '45', suffix: '%', hint: 'Dashboard turns red above this', tip: 'FC% above this value turns the dashboard FC% card red. Set this higher than the warning threshold.' },
+              { key: 'expiry_warning_days', label: 'Expiry Warning — Days ahead', placeholder: '7', suffix: 'days', hint: 'FIFO report flags items expiring within this window', tip: 'Items expiring within this many days are highlighted in the FIFO / Expiry report. E.g. 7 = flag anything expiring within a week.' },
+              { key: 'variance_flag_pct', label: 'Variance Flag threshold', placeholder: '10', suffix: '%', hint: 'Variance report flags items above this %', tip: 'Items with a usage variance above this % are highlighted in the Variance Report. E.g. 10 = flag when actual usage is >10% above theoretical.' },
             ].map(f => (
               <div key={f.key} className="form-field">
-                <label>{f.label}</label>
+                <label><Tip text={f.tip} width={280}>{f.label}</Tip></label>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <input type="number" value={form[f.key] || ''} onChange={e => update(f.key, e.target.value)} placeholder={f.placeholder} style={{ width: 100 }} />
                   <span style={{ fontSize: 13, color: 'var(--theme-text2)' }}>{f.suffix}</span>
@@ -379,7 +380,7 @@ export default function Settings() {
           </p>
           <div className="form-grid form-grid-2">
             <div className="form-field">
-              <label>Code Prefix</label>
+              <label><Tip text="Short prefix added before the sequential number on every item code. E.g. 'ITM' → ITM-001. Changing this and regenerating will renumber all items." width={280}>Code Prefix</Tip></label>
               <input
                 value={form.item_code_prefix || ''}
                 onChange={e => update('item_code_prefix', e.target.value.toUpperCase())}
@@ -419,7 +420,7 @@ export default function Settings() {
           </p>
           <div className="form-grid form-grid-2">
             <div className="form-field">
-              <label>Code Prefix</label>
+              <label><Tip text="Short prefix added before the sequential number on every vendor code. E.g. 'VND' → VND-001." width={260}>Code Prefix</Tip></label>
               <input
                 value={form.vendor_code_prefix || ''}
                 onChange={e => update('vendor_code_prefix', e.target.value.toUpperCase())}
@@ -459,7 +460,7 @@ export default function Settings() {
           </p>
           <div className="form-grid form-grid-2">
             <div className="form-field">
-              <label>Code Prefix</label>
+              <label><Tip text="Short prefix for sub-recipe codes. E.g. 'SRC' → SRC-001. Sub-recipes appear as reusable ingredients inside other recipes." width={270}>Code Prefix</Tip></label>
               <input
                 value={form.sub_recipe_code_prefix || ''}
                 onChange={e => update('sub_recipe_code_prefix', e.target.value.toUpperCase())}

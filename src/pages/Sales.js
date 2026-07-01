@@ -251,7 +251,7 @@ export default function Sales() {
           <div className="stat-sub">of {recipes.length} active recipes</div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">Period Revenue</div>
+          <div className="stat-label"><Tip text="Total ex-VAT revenue for the period = sum of (Qty Sold × Selling Price) across all items. Used as the denominator for Food Cost %." width={280}>Period Revenue</Tip></div>
           <div className="stat-value gold" style={{ fontSize: 18 }}>
             NPR {totalRevenue.toLocaleString('en-NP', { maximumFractionDigits: 0 })}
           </div>
@@ -341,10 +341,10 @@ export default function Sales() {
                     <thead>
                       <tr>
                         <th>Menu Item</th>
-                        <th>Category</th>
-                        <th style={{ textAlign: 'right' }}>Selling Price</th>
-                        <th style={{ textAlign: 'right', width: 160 }}>Total Qty Sold</th>
-                        <th style={{ textAlign: 'right' }}>Period Revenue</th>
+                        <th><Tip text="Recipe category — Food, Beverage, Dessert, etc. Filter by category using the tabs above." width={240}>Category</Tip></th>
+                        <th style={{ textAlign: 'right' }}><Tip text="Ex-VAT selling price per portion as set in Recipe Costing." width={230}>Selling Price</Tip></th>
+                        <th style={{ textAlign: 'right', width: 160 }}><Tip text="Total portions sold across the entire period. Enter or edit in the Qty Sold column." width={240}>Total Qty Sold</Tip></th>
+                        <th style={{ textAlign: 'right' }}><Tip text="Total revenue = Qty Sold × Selling Price (ex-VAT). Used in food cost % and variance calculations." width={260}>Period Revenue</Tip></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -481,10 +481,10 @@ export default function Sales() {
                     <thead>
                       <tr>
                         <th>Menu Item</th>
-                        <th>Category</th>
-                        <th style={{ textAlign: 'right' }}>Selling Price</th>
-                        <th style={{ textAlign: 'right', width: 160 }}>Qty Sold (Day {selectedDay})</th>
-                        <th style={{ textAlign: 'right' }}>Day Revenue</th>
+                        <th><Tip text="Recipe category — Food, Beverage, Dessert, etc." width={210}>Category</Tip></th>
+                        <th style={{ textAlign: 'right' }}><Tip text="Ex-VAT selling price per portion as set in Recipe Costing." width={230}>Selling Price</Tip></th>
+                        <th style={{ textAlign: 'right', width: 160 }}><Tip text="Portions sold on this specific day. Saved separately from the monthly bulk total." width={250}>Qty Sold (Day {selectedDay})</Tip></th>
+                        <th style={{ textAlign: 'right' }}><Tip text="Revenue for this item on this day = Qty × Selling Price (ex-VAT)." width={240}>Day Revenue</Tip></th>
                       </tr>
                     </thead>
                     <tbody>

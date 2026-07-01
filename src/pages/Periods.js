@@ -420,7 +420,7 @@ export default function Periods() {
           <h3 style={{ margin: '0 0 20px', fontSize: 15, color: 'var(--theme-text1)' }}>Create Period</h3>
           <div className="form-grid form-grid-2" style={{ maxWidth: 400 }}>
             <div className="form-field">
-              <label>BS Year</label>
+              <label><Tip text="Bikram Sambat year. Nepal fiscal year runs Shrawan (month 4) to Ashadh (month 3) of the following BS year." width={270}>BS Year</Tip></label>
               <input
                 type="number"
                 value={form.bs_year}
@@ -429,7 +429,7 @@ export default function Periods() {
               />
             </div>
             <div className="form-field">
-              <label>BS Month</label>
+              <label><Tip text="Bikram Sambat month (1 = Baisakh … 12 = Chaitra). One period per month — purchases, stock, and sales are all scoped to this period." width={280}>BS Month</Tip></label>
               <select value={form.bs_month} onChange={e => setForm({ ...form, bs_month: e.target.value })}>
                 {BS_MONTHS.map((m, i) => (
                   <option key={i} value={i + 1}>{i + 1} — {m}</option>
@@ -495,10 +495,10 @@ export default function Periods() {
               <thead>
                 <tr>
                   <th>Period</th>
-                  <th>BS Year</th>
-                  <th>BS Month</th>
-                  <th>Status</th>
-                  <th>Created</th>
+                  <th><Tip text="Bikram Sambat year this period belongs to." width={200}>BS Year</Tip></th>
+                  <th><Tip text="Bikram Sambat month (1 = Baisakh … 12 = Chaitra)." width={220}>BS Month</Tip></th>
+                  <th><Tip text="Open: data entry is active. Closed: period is locked — no further purchases, stock, or sales can be added." width={280}>Status</Tip></th>
+                  <th><Tip text="Date the period was created in the system." width={200}>Created</Tip></th>
                   <th></th>
                 </tr>
               </thead>

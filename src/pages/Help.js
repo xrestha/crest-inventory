@@ -241,6 +241,18 @@ const HR_FEATURES = [
     tips: ['Pick the day, set statuses, then click Save Day — each day is saved as a complete set for all active employees', 'Saturdays default to Weekly Off (Nepal standard) — change anyone who actually worked', 'Public holidays are marked manually — use the "All Holiday" button or set Holiday per employee', 'The Hours column only appears for hourly-paid employees; OT hours can be entered for anyone', 'Overtime is captured here and paid at 1.5× the normal hourly rate during the payroll run', 'Only active and probation employees appear on the sheet']
   },
   {
+    icon: '📋', name: 'Roster',
+    guide: 'Plan weekly or monthly staff shifts. Two view modes: Monthly (pick a BS month, click any cell to assign a shift for that employee on that day) and Weekly (7-day grid centred on the selected week). Built-in shifts — Morning, Afternoon, Evening, Night, Full Day, Split — each colour-coded; right-click a cell for a quick action menu or click the + / × icons. An employee can have multiple shifts on the same day. The Shifts tab lets you customise shift names, times, and colours. Export to Excel to share or print the schedule.',
+    tips: [
+      'Plan the roster before the month starts — it helps forecast labour cost and avoids scheduling conflicts',
+      'Roster is for planning only — Attendance is the official record that feeds payroll',
+      'Right-click a cell (or use the inline icons) to assign or clear a shift quickly',
+      'An employee can carry more than one shift on the same day — useful for split shifts',
+      'The Shifts tab lets you rename and recolour any shift to match your venue\'s terminology',
+      'Use Export Excel to share the printed schedule with department heads',
+    ]
+  },
+  {
     icon: '🏖️', name: 'Leave',
     guide: 'Tracks leave entitlements, requests, and balances. New clients start with Nepal\'s Labour Act 2074 leave types pre-loaded — Home/Annual (18 days), Sick (12), Bereavement (13), Maternity (98), Paternity (15), and Unpaid — which an admin can edit on the Leave Types tab. Record a request on the Requests tab (employee, type, BS start/end dates, reason); the system counts working days only, excluding Saturdays. An admin approves or rejects: approving automatically marks those days in Attendance as Paid or Unpaid Leave for the matching month, so Payroll deducts unpaid leave on its own. The Balances tab shows each employee\'s used / quota per leave type for the year, with an Excel export.',
     tips: ['Six Nepal Labour Act leave types are seeded automatically the first time you open the page', 'Leave is counted in working days — Saturdays (weekly off) are never deducted from the balance', 'Approving a request writes the Attendance rows for you; rejecting or cancelling an approved request reverts those days to Present', 'A matching monthly Period must exist for the leave dates — if not, approval warns you which month to create, then re-approve', 'Unpaid leave flows into Payroll as an absence deduction; paid leave does not reduce pay', 'Maternity (98 days) and Paternity (15) are per-event statutory entitlements, not annual quotas', 'Carry-forward is recorded for reference but unused days do not yet roll over automatically']
@@ -663,6 +675,16 @@ export default function Help() {
               </div>
               {[
                 {
+                  icon: '🔐', name: 'POS Login', path: '/pos/login',
+                  desc: 'The PIN entry screen that POS staff see when opening the system. Staff tap their name and enter their 4–6 digit PIN to access the POS. The Owner button (top-right) lets the property owner log in with their full email + password for manager-level access. Only staff with a POS role assigned appear on the screen.',
+                  tips: [
+                    'PINs are set or reset in POS → Staff — staff cannot change their own PIN',
+                    'Only staff with a POS role assigned appear on the login screen; users without a role see nothing',
+                    'Forgotten PIN? Go to POS → Staff → Reset PIN beside the staff member\'s name',
+                    'The Owner login gives full access — share it only with trusted management',
+                  ],
+                },
+                {
                   icon: '⊞', name: 'Table Management', path: '/pos/tables',
                   desc: 'Set up your restaurant floor plan — create tables, assign them to sections (Main Hall, Bar, Outdoor), set capacity, and track status (Available / Occupied / Reserved / Inactive). Requires Supervisor role or above.',
                   tips: [
@@ -684,6 +706,31 @@ export default function Help() {
                 },
               ].map(feat => (
                 <FeatureCard key={feat.name} feat={feat} moduleKey="pos" />
+              ))}
+            </div>
+          )}
+
+          {/* ── Admin Tools ── */}
+          {isAdmin && (
+            <div style={{ marginBottom: 32 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 12, borderBottom: '2px solid rgba(248,113,113,0.2)' }}>
+                <span style={{ fontSize: 18, color: 'var(--theme-red)' }}>⚙</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--theme-text1)', fontFamily: 'Georgia, serif' }}>Admin Tools</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--theme-red)', background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.2)', padding: '2px 8px', borderRadius: 10 }}>Crest Admin Only</span>
+              </div>
+              {[
+                {
+                  icon: '◷', name: 'Audit Log',
+                  guide: 'A full event log of every significant action in the system — creates, updates, deletes, period opens/closes, payroll runs, and admin operations. Each row shows the timestamp, client, user, action type, module area, and a plain-English summary of what changed. Filter by area (IMS, HR, POS, Admin) or search by user. Useful for investigating data discrepancies or tracking who changed what.',
+                  tips: [
+                    'Filter by "Area" to narrow down to IMS, HR, POS, or Admin actions',
+                    'Search by user name or email to trace all actions by a specific person',
+                    'The Summary column shows a human-readable description — e.g. "Updated selling price on Chicken Momo to NPR 300"',
+                    'Audit entries cannot be edited or deleted — they are the permanent record',
+                  ],
+                },
+              ].map(feat => (
+                <FeatureCard key={feat.name} feat={feat} moduleKey="admin" />
               ))}
             </div>
           )}
