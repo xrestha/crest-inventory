@@ -30,8 +30,8 @@ Works natively in Bikram Sambat (BS) calendar · NPR currency · FonePay payment
 ### Plans
 | Plan | Monthly | Annual /mo | Includes |
 |---|---|---|---|
-| Starter | NPR 5,000 | NPR 3,750 | Dashboard, Items, Vendors, Periods, Purchases, Stock, Help + Sales Entry, Payment Summary, Monthly Summary, Annual Summary, Reorder Report, VAT Report, Non-VAT Report, Wastage Report, Settings |
-| Growth | NPR 8,000 | NPR 6,000 | + Recipes, Variance, Budget vs Actual, Best Sellers, Purchase Orders, Requisitions, Dead Stock, Recipe Margin, Outstanding Payables, Staff Meals |
+| Starter | NPR 5,000 | NPR 3,750 | Dashboard, Items, Vendors, Periods, Purchases, Stock, Help + Sales Entry, Payment Summary, Monthly Summary, Annual Summary, Reorder Report, VAT Report, Non-VAT Report, Wastage Report, Settings, Stock Report, Menu Pricing |
+| Growth | NPR 8,000 | NPR 6,000 | + Recipes, Variance, Budget vs Actual, Best Sellers, Purchase Orders, Requisitions, Dead Stock, Recipe Margin, Outstanding Payables, Staff Meals, Menu Repricing |
 | Pro | NPR 12,000 | NPR 9,000 | + Menu Engineering, FIFO, Vendor Report, Supplier Price Tracker, Overheads, Period Comparison, Theoretical Variance, Shrinkage Report |
 
 Starter: 1-month free trial. Annual = 25% off monthly.
@@ -78,6 +78,13 @@ Starter: 1-month free trial. Annual = 25% off monthly.
 | `/theoretical-variance` | Pro | `theoretical_variance` |
 | `/admin/clients` | Admin only | — |
 | `/admin/audit` | Admin only | — |
+| `/stock-report` | **Starter+** | `stock_report` |
+| `/menu-pricing` | **Starter+** | `menu_pricing` |
+| `/menu-repricing` | Growth+ | `menu_repricing` |
+| `/pos` | posEnabled (manager+) | — |
+| `/pos/login` | Public (no auth) | — |
+| `/pos/tables` | posEnabled (supervisor+) | — |
+| `/pos/staff` | posEnabled (manager+) | — |
 
 ---
 
@@ -124,6 +131,22 @@ Architecture: single React app, single Supabase project, feature flags per clien
 ---
 
 ## Session Log
+
+### S204 — 2026-07-01 — Memory sync + Stock.css CSS variable cleanup
+
+**Memory files updated** to reflect full current state (S193–S203):
+- `memory/product_roadmap.md` — HR marked fully complete (all 12 sessions done S177); POS status changed from "Planned" to "Building Now" with built-features table (Tables, PIN Login, Staff CRUD, Custom Roles, Menu Pricing), DB columns, edge function actions, RPCs, and ordered next-build list; Owner Dashboard gate confirmed (build last, Suite-only); HR deferred list updated (TADA, incentives, self-service PWA, biometric, roster publish/swap/forecast)
+- `memory/project_modules.md` — Routes table updated with `/menu-pricing`, `/stock-report`, `/menu-repricing`, `/pos`, `/pos/login`, `/pos/tables`, `/pos/staff`; STARTER_KEYS updated to include `menu_pricing` + `stock_report`; GROWTH_KEYS updated to include `menu_repricing`; POS section expanded with full role system, edge function actions, RPC signatures, and DB column additions; HR pending list added; note corrected: `clients.pos_enabled` column NOW EXISTS (added S193)
+- `memory/MEMORY.md` index — Product Roadmap description updated
+
+**`src/pages/Stock.css` — CSS variable cleanup**
+- All 12 hardcoded hex values replaced with CSS variables (25 total occurrences)
+- `#181c27` → `var(--theme-card)` · `#2a2f3d` → `var(--theme-border)` · `#9ca3af` → `var(--theme-text3)` · `#c9a84c` → `var(--theme-accent)` · `#e8e0d0` → `var(--theme-text1)` · `#6b7280` → `var(--theme-text2)` · `#0f1117` (input) → `var(--theme-input-bg)` · `#0f1117` (save bar bg) → `var(--theme-bg)` · `rgba(201,168,76,0.15)` → `var(--theme-focus-ring)`
+- Three rgba tints with no direct variable use `color-mix()`: `rgba(201,168,76,0.25)` → `color-mix(in srgb, var(--theme-accent) 25%, transparent)` · `rgba(201,168,76,0.35)` → `color-mix(in srgb, var(--theme-accent) 35%, transparent)` · `rgba(251,191,36,0.5)` → `color-mix(in srgb, var(--theme-amber) 50%, transparent)`
+- Stock.css now fully theme-aware — mobile stock count UI (category strip, progress bar, item cards, save bar) adapts to all 9 presets
+- **Files:** `src/pages/Stock.css`
+
+---
 
 ### S203 — 2026-07-01 — POS staff access-level sync + PIN-picker lock flow
 
