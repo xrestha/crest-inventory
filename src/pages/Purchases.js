@@ -560,7 +560,7 @@ export default function Purchases() {
         <>
           {/* ── BILL FORM (new or edit) ── */}
           {showForm && (
-            <Modal onClose={() => { setShowForm(false); setEditingGroupId(null) }} title={editingGroupId ? 'Edit Purchase Bill' : 'Add Purchase Bill'}>
+            <Modal onClose={() => { setShowForm(false); setEditingGroupId(null) }} title={editingGroupId ? 'Edit Purchase Bill' : 'Add Purchase Bill'} maxWidth={1160}>
               {/* Header row */}
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1.4fr auto 90px 1fr', gap: 14, marginBottom: 20, alignItems: 'end' }}>
                 <div className="form-field">
@@ -620,26 +620,32 @@ export default function Purchases() {
 
               {/* Line items table — mirrors vendor bill: Item | Qty | NetRate | NetAmt | VAT */}
               <div className="table-wrap">
-                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 920 }}>
                   <thead>
                     <tr>
                       <th style={{ textAlign: 'left', fontSize: 11, color: 'var(--theme-text2)', padding: '0 8px 10px 0', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                        <Tip text="Select the item. Expiry date and shelf-life days appear beneath the dropdown on each row." width={250}>Item *</Tip>
+                        <Tip text="Select the item to purchase." width={200}>Item *</Tip>
                       </th>
-                      <th style={{ textAlign: 'right', fontSize: 11, color: 'var(--theme-text2)', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 90 }}>Qty *</th>
-                      <th style={{ textAlign: 'right', fontSize: 11, color: 'var(--theme-text2)', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 115 }}>
+                      <th style={{ textAlign: 'right', fontSize: 11, color: 'var(--theme-text2)', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 82 }}>Qty *</th>
+                      <th style={{ textAlign: 'right', fontSize: 11, color: 'var(--theme-text2)', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 105 }}>
                         <Tip text="Enter the ex-VAT rate per unit. Check the VAT box on each line for items attracting 13% VAT." width={270}>Rate (NPR) *</Tip>
                       </th>
-                      <th style={{ textAlign: 'center', fontSize: 11, color: 'var(--theme-text2)', padding: '0 4px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 44 }}>
+                      <th style={{ textAlign: 'center', fontSize: 11, color: 'var(--theme-text2)', padding: '0 4px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 40 }}>
                         <Tip text="Check to apply 13% VAT to this line item only." width={210}>VAT</Tip>
                       </th>
-                      <th style={{ textAlign: 'right', fontSize: 11, color: 'var(--theme-text2)', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 115 }}>
+                      <th style={{ textAlign: 'right', fontSize: 11, color: 'var(--theme-text2)', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 105 }}>
                         <Tip text="Enter total paid for this line — Rate is back-calculated automatically." width={230}>Total (NPR)</Tip>
                       </th>
-                      <th style={{ textAlign: 'right', fontSize: 11, color: 'var(--theme-text2)', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 115 }}>
+                      <th style={{ textAlign: 'right', fontSize: 11, color: 'var(--theme-text2)', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 105 }}>
                         <Tip text="Amount = Qty × Rate. For VAT items: Qty × Rate × 1.13 (what you actually pay)." width={240}>Amount</Tip>
                       </th>
-                      <th style={{ width: 32 }}></th>
+                      <th style={{ textAlign: 'left', fontSize: 11, color: 'var(--theme-text2)', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 140 }}>
+                        <Tip text="Expiry date of this batch (AD). Fill Shelf Life to auto-calculate." width={230}>Expiry Date</Tip>
+                      </th>
+                      <th style={{ textAlign: 'right', fontSize: 11, color: 'var(--theme-text2)', padding: '0 8px 10px', textTransform: 'uppercase', letterSpacing: '0.07em', width: 95 }}>
+                        <Tip text="Enter shelf-life in days and the expiry date will be auto-filled from the bill date." width={240}>Days</Tip>
+                      </th>
+                      <th style={{ width: 28 }}></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -652,22 +658,13 @@ export default function Purchases() {
                       const cellInput = { background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none', width: '100%', textAlign: 'right' }
                       return (
                           <tr key={line._key} style={{ borderBottom: '1px solid var(--theme-card)' }}>
-                            <td style={{ padding: '6px 8px 4px 0', verticalAlign: 'middle' }}>
+                            <td style={{ padding: '6px 8px 6px 0', verticalAlign: 'middle' }}>
                               <SearchableSelect
                                 value={line.item_id}
                                 onChange={v => updateBillLine(line._key, 'item_id', v)}
                                 options={itemOptions}
                                 placeholder="— Select item —"
                               />
-                              <div style={{ display: 'flex', gap: 6, marginTop: 5 }}>
-                                <input type="date" value={line.expiry_date}
-                                  onChange={e => updateBillLine(line._key, 'expiry_date', e.target.value)}
-                                  style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '5px 8px', fontSize: 12, color: 'var(--theme-text2)', outline: 'none', flex: '0 0 155px' }} />
-                                <input type="number" min="0" value={line.shelf_life} placeholder="Shelf life (days)"
-                                  onChange={e => updateBillLine(line._key, 'shelf_life', e.target.value)}
-                                  title="Enter days to auto-fill expiry date"
-                                  style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '5px 8px', fontSize: 12, color: 'var(--theme-text2)', outline: 'none', flex: '1 1 0', minWidth: 0, textAlign: 'right' }} />
-                              </div>
                             </td>
                             <td style={{ padding: '6px 8px 4px', verticalAlign: 'middle' }}>
                               <input type="number" min="0" step="any" value={line.qty} placeholder="0"
@@ -713,7 +710,18 @@ export default function Purchases() {
                                 </>
                               )}
                             </td>
-                            <td style={{ padding: '6px 0 4px', verticalAlign: 'middle', textAlign: 'right' }}>
+                            <td style={{ padding: '6px 8px 6px', verticalAlign: 'middle' }}>
+                              <input type="date" value={line.expiry_date}
+                                onChange={e => updateBillLine(line._key, 'expiry_date', e.target.value)}
+                                style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '7px 8px', fontSize: 12, color: 'var(--theme-text2)', outline: 'none', width: '100%' }} />
+                            </td>
+                            <td style={{ padding: '6px 8px 6px', verticalAlign: 'middle' }}>
+                              <input type="number" min="0" value={line.shelf_life} placeholder="Days"
+                                onChange={e => updateBillLine(line._key, 'shelf_life', e.target.value)}
+                                title="Enter days to auto-fill expiry date"
+                                style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '7px 8px', fontSize: 12, color: 'var(--theme-text2)', outline: 'none', width: '100%', textAlign: 'right' }} />
+                            </td>
+                            <td style={{ padding: '6px 0 6px', verticalAlign: 'middle', textAlign: 'right' }}>
                               <button onClick={() => removeBillLine(line._key)}
                                 style={{ background: 'none', border: 'none', color: 'var(--theme-text2)', cursor: 'pointer', fontSize: 18, padding: '4px', lineHeight: 1 }}>×</button>
                             </td>
