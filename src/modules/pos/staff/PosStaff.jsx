@@ -79,14 +79,25 @@ export default function PosStaff() {
       const { error } = await supabase.from('settings').insert({ client_id: clientId, pos_custom_roles: roles })
       err = error
     }
-    if (err) { setRolesError('Error saving roles: ' + err.message); setRolesSaving(false); return }
+    if (err) { setRolesError('Error saving roles: ' + err.message); setRolesSaving(false); return false }
     setCustomRoles(roles)
     setRolesSaving(false)
+    return true
   }
 
-  function updateCustomRoleLevel(i, level) {
+  async function updateCustomRoleLevel(i, level) {
+    const changedLabel = customRoles[i].label
     const updated = customRoles.map((r, idx) => idx === i ? { ...r, level } : r)
-    saveRoles(updated)
+    const ok = await saveRoles(updated)
+    if (!ok) return
+    // Sync existing staff whose job title matches the changed role
+    const affected = staff.filter(p => p.pos_job_title === changedLabel && p.pos_role !== level)
+    for (const p of affected) {
+      const { error } = await supabase.functions.invoke('admin-user-ops', {
+        body: { action: 'update_pos_role', userId: p.id, pos_role: level, pos_job_title: changedLabel },
+      })
+      if (!error) setStaff(prev => prev.map(s => s.id === p.id ? { ...s, pos_role: level } : s))
+    }
   }
 
   function addCustomRole() {
