@@ -1030,11 +1030,10 @@ function FeatureAccessModal({ client, onClose }) {
   // IMS plan grid for an HR-only client.
   const imsEnabled = client.ims_enabled !== false
   const hrEnabled  = !!client.hr_enabled
-  // Header reflects the module that's actually active for this client, with the plan the
-  // admin selected for it in the Modules tab — for an HR-only client that's hr_plan, not
-  // the (irrelevant) IMS plan.
-  const activeModule = imsEnabled ? 'IMS' : (hrEnabled ? 'HR' : 'IMS')
-  const activePlan   = (imsEnabled ? client.plan : (hrEnabled ? client.hr_plan : client.plan)) || 'starter'
+  const posEnabled = !!client.pos_enabled
+  // Header reflects the primary active module and plan.
+  const activeModule = imsEnabled ? 'IMS' : (posEnabled ? 'POS' : (hrEnabled ? 'HR' : 'IMS'))
+  const activePlan   = (imsEnabled ? client.plan : (posEnabled ? client.pos_plan : (hrEnabled ? client.hr_plan : client.plan))) || 'starter'
   const activeColor  = activePlan === 'pro' ? 'var(--theme-accent)' : activePlan === 'growth' ? 'var(--theme-green)' : 'var(--theme-text3)'
   const activeLabel  = activePlan.charAt(0).toUpperCase() + activePlan.slice(1)
 
@@ -1074,23 +1073,62 @@ function FeatureAccessModal({ client, onClose }) {
             <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--theme-text2)' }}>
               {client.name} ·{' '}
               <span style={{ fontWeight: 700, color: activeColor }}>{activeModule} {activeLabel} Plan</span>
-              {imsEnabled && <span style={{ marginLeft: 10, fontSize: 11, color: 'var(--theme-text3)' }}>Checkboxes override plan — check to grant, uncheck to revoke</span>}
+              {(imsEnabled || posEnabled) && <span style={{ marginLeft: 10, fontSize: 11, color: 'var(--theme-text3)' }}>Checkboxes override plan — check to grant, uncheck to revoke</span>}
             </p>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--theme-text2)', fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: '2px 6px' }}>✕</button>
         </div>
 
-        {/* IMS disabled — these IMS feature grants would be inert (ModuleGate blocks all IMS routes) */}
-        {!imsEnabled ? (
+        {/* No active module — feature grants would be inert */}
+        {!imsEnabled && !posEnabled ? (
           <div style={{ padding: '32px 24px', textAlign: 'center' }}>
-            <p style={{ margin: 0, fontSize: 13, color: 'var(--theme-text1)', fontWeight: 600 }}>Granular feature access applies to Crest IMS only</p>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--theme-text1)', fontWeight: 600 }}>Enable a module to manage feature access</p>
             <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--theme-text2)', lineHeight: 1.5 }}>
               {hrEnabled && <>This client is on <strong>Crest HR</strong> (<span style={{ color: activeColor, fontWeight: 700 }}>{activeLabel}</span>) — HR access is set by its plan tier in the Modules tab, not per-feature.<br/></>}
-              To manage IMS features here, enable the <strong>Crest IMS</strong> module from the client card.
+              Enable <strong>Crest IMS</strong> or <strong>Crest POS</strong> from the client card to manage feature access here.
             </p>
           </div>
+        ) : !imsEnabled ? (
+        /* POS-only client — just show POS feature flags */
+        <div style={{ padding: '16px 24px 24px' }}>
+          <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--theme-text2)' }}>POS feature overrides — grant features above this client's POS plan tier.</p>
+          {loading ? <p style={{ color: 'var(--theme-text2)', fontSize: 13 }}>Loading…</p>
+            : [{ key: 'menu_pricing', label: 'Menu Pricing' }].map(feat => {
+                const isAdminGranted = flags[feat.key] === true
+                return (
+                  <div key={feat.key}
+                    onClick={() => toggleFeat(feat.key, isAdminGranted)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      background: 'var(--theme-bg)', borderRadius: 6, padding: '6px 8px', maxWidth: 220,
+                      border: `1px solid ${isAdminGranted ? 'var(--theme-accent)50' : 'var(--theme-border)'}`,
+                      cursor: 'pointer', transition: 'border-color 0.15s',
+                    }}>
+                    <div style={{
+                      width: 16, height: 16, borderRadius: 3, flexShrink: 0,
+                      background: isAdminGranted ? 'var(--theme-accent)' : 'transparent',
+                      border: `2px solid ${isAdminGranted ? 'var(--theme-accent)' : 'var(--theme-text3)'}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
+                    }}>
+                      {isAdminGranted && <span style={{ color: '#000', fontSize: 10, fontWeight: 900, lineHeight: 1 }}>✓</span>}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <span style={{ fontSize: 12, color: isAdminGranted ? 'var(--theme-text1)' : 'var(--theme-text2)' }}>{feat.label}</span>
+                      {isAdminGranted && (
+                        <span style={{
+                          marginLeft: 6, fontSize: 9, fontWeight: 700, color: 'var(--theme-accent)',
+                          background: 'var(--theme-accent)18', border: '1px solid var(--theme-accent)35',
+                          borderRadius: 3, padding: '1px 4px', verticalAlign: 'middle',
+                        }}>Override</span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })
+          }
+        </div>
         ) : (
-        /* Body — 4-column layout, one plan tier per column, no scroll */
+        /* IMS client (possibly also POS) — full feature grid */
         <div style={{ padding: '16px 24px 8px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0 14px', alignItems: 'start' }}>
           {loading ? <p style={{ color: 'var(--theme-text2)', fontSize: 13, gridColumn: '1/-1' }}>Loading…</p> : FEATURE_GROUPS.map(group => {
             const planIncluded = isPlanIncluded(group.tier, clientPlan)
@@ -1178,7 +1216,7 @@ function FeatureAccessModal({ client, onClose }) {
           </span>
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 14px' }} onClick={onClose}>Close</button>
-            {imsEnabled && (
+            {(imsEnabled || posEnabled) && (
               <button className="btn btn-primary" style={{ fontSize: 12, padding: '5px 14px' }} onClick={handleSave} disabled={saving}>
                 {saving ? 'Saving…' : 'Save'}
               </button>
