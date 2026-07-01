@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
     const isCallerManager = profile?.pos_role === 'manager'
     const isPosPrivileged = isCallerAdmin || isCallerManager
 
-    if (action === 'create_pos_staff' || action === 'reset_pos_pin') {
+    if (action === 'create_pos_staff' || action === 'reset_pos_pin' || action === 'delete_pos_staff') {
       if (!isPosPrivileged) return json({ error: 'Forbidden' }, 403)
     }
 
@@ -154,6 +154,23 @@ Deno.serve(async (req) => {
       }
 
       return json({ success: true, userId: authData.user.id })
+    }
+
+    // ── Delete a POS staff member ─────────────────────────────────────────────
+    if (action === 'delete_pos_staff') {
+      const { userId } = params
+      if (!userId) return json({ error: 'userId is required' }, 400)
+
+      if (!isCallerAdmin) {
+        const { data: targetProfile } = await admin
+          .from('profiles').select('client_id, pos_role').eq('id', userId).single()
+        if (targetProfile?.client_id !== profile?.client_id) return json({ error: 'Forbidden' }, 403)
+        if (targetProfile?.pos_role === 'manager') return json({ error: 'Managers can only be deleted by admin' }, 403)
+      }
+
+      const { error: delErr } = await admin.auth.admin.deleteUser(userId)
+      if (delErr) return json({ error: delErr.message }, 400)
+      return json({ success: true })
     }
 
     // ── Reset a POS staff PIN ─────────────────────────────────────────────────

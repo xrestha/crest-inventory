@@ -125,6 +125,27 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S197 — 2026-07-01 — POS Login Model Clarification + Delete Staff
+
+**Access model clarified:**
+- Main client (owner) logs in with email + password via `/login`
+- Everyone else (manager / supervisor / staff) logs in via PIN on `/pos/login`
+- All POS accounts are created via "Add Staff" (name + PIN + role) — no email required
+
+**`src/modules/pos/login/PosLogin.jsx`:**
+- Reverted manager filter — managers now appear on the PIN picker (they use PINs like everyone else)
+- "Manager login" footer link renamed to "Owner login" — clarifies it's for the main client account only
+
+**`src/modules/pos/staff/PosStaff.jsx`:**
+- Delete button added (red, alongside Reset PIN); triggers `window.confirm` before proceeding
+- "PIN" column header renamed to "Actions"
+- Managers can delete staff/supervisors; only admin can delete managers
+
+**`supabase/functions/admin-user-ops/index.ts`:**
+- `delete_pos_staff` action added (before admin-only guard): calls `admin.auth.admin.deleteUser()` which cascades profile deletion; managers blocked from deleting other managers
+
+---
+
 ### S196 — 2026-06-30 — POS Staff Creation + Device Activation + PIN Login
 
 **POS Add Staff (name + PIN only):**

@@ -76,6 +76,20 @@ export default function PosStaff() {
     setAddModal(false); setAdding(false); load()
   }
 
+  // ── Delete staff ──────────────────────────────────────────────────────────
+  async function deleteStaff(p) {
+    if (!window.confirm(`Delete ${p.full_name}? This cannot be undone.`)) return
+    const { data, error } = await supabase.functions.invoke('admin-user-ops', {
+      body: { action: 'delete_pos_staff', userId: p.id },
+    })
+    if (error || data?.error) {
+      let detail = data?.error || error?.message || 'Failed to delete'
+      try { const b = await error?.context?.json(); detail = b?.error || detail } catch (_) {}
+      setMsg('Error: ' + detail); return
+    }
+    load()
+  }
+
   // ── Reset PIN ──────────────────────────────────────────────────────────────
   function openReset(p) { setPinTarget(p); setNewPin(''); setPinMsg(''); }
 
@@ -166,7 +180,7 @@ export default function PosStaff() {
                 <th>
                   <Tip text="Last time this user was active in the app">Last Seen</Tip>
                 </th>
-                {canEdit && <th style={{ width: 120 }}>PIN</th>}
+                {canEdit && <th style={{ width: 200 }}>Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -206,13 +220,22 @@ export default function PosStaff() {
                   </td>
                   {canEdit && (
                     <td>
-                      <button
-                        className="btn btn-ghost"
-                        style={{ fontSize: 12, padding: '4px 10px' }}
-                        onClick={() => openReset(p)}
-                      >
-                        Reset PIN
-                      </button>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          className="btn btn-ghost"
+                          style={{ fontSize: 12, padding: '4px 10px' }}
+                          onClick={() => openReset(p)}
+                        >
+                          Reset PIN
+                        </button>
+                        <button
+                          className="btn btn-ghost"
+                          style={{ fontSize: 12, padding: '4px 10px', color: 'var(--theme-red)', borderColor: 'var(--theme-red)' }}
+                          onClick={() => deleteStaff(p)}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   )}
                 </tr>

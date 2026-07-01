@@ -138,7 +138,7 @@ export default function PosLogin() {
               Deactivate device
             </button>
             <a href="/login" style={{ fontSize: 12, color: 'var(--theme-text3)' }}>
-              Manager login
+              Owner login
             </a>
           </div>
         </div>
