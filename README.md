@@ -125,6 +125,20 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S203 — 2026-07-01 — POS staff access-level sync + PIN-picker lock flow
+
+Bug fixes for POS staff role mismatches and sign-out UX. No DB changes.
+
+**`src/modules/pos/staff/PosStaff.jsx`**
+- Merged `load()` + `loadRoles()` into a single `init()` that runs both in parallel on mount. After loading, it silently detects and fixes any staff whose `pos_role` in the DB doesn't match the permission level configured for their `pos_job_title` (e.g. staff created before custom roles were properly configured all had `pos_role = 'staff'`). Fixes are applied via the `update_pos_role` edge function and reflected in local state immediately.
+- Removed dead `loadRoles()` function (superseded by `init()`).
+
+**`src/components/Layout.js`**
+- `handleSignOut`: POS staff (has `posRole`, device bound via `pos_device_client_id` in localStorage) now redirect to `/pos/login` instead of `/login` after signing out. Owner and admin still go to `/login`. Matches standard POS shift-handoff behavior — staff tap lock and land back at the PIN picker.
+- Sign-out button tooltip updated to "Lock POS" for staff, "Sign out" for everyone else.
+
+---
+
 ### S202 — 2026-07-01 — POS onboarding fixes + dashboard improvements
 
 Bug fixes discovered while onboarding the first real POS client (Choila Bhatti). No DB changes.
