@@ -125,6 +125,29 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S202 — 2026-07-01 — POS onboarding fixes + dashboard improvements
+
+Bug fixes discovered while onboarding the first real POS client (Choila Bhatti). No DB changes.
+
+**`src/components/Layout.js`**
+- POS sidebar was hidden for the client owner because the guard `(isAdmin || posRole)` excluded owners (`posRole = null` by design). Fixed to `(isAdmin || posRole || isOwner)`.
+
+**`src/context/AuthContext.js`**
+- `plan` was reading the legacy `plan` column only, so POS-only clients (IMS off) showed "Starter" in the sidebar. Now derives the highest tier across all enabled module plans (`ims_plan`, `hr_plan`, `pos_plan`).
+
+**`src/pages/Dashboard.js`**
+- "No open period" banner was showing for IMS-off clients (HR-only, POS-only) because `loadStats()` is skipped when IMS is off, leaving `activePeriod = null`. Gated the banner on `clientModules.ims`.
+- Page `<h1>` title is now dynamic: Admin → `Admin Dashboard`; single-module clients → `Inventory / HR / POS Dashboard`; multi-module → `Dashboard`.
+
+**`src/modules/pos/login/PosLogin.jsx`**
+- Removed unused `deactivate()` function left over from S197 (was causing CI build failure).
+
+**`src/modules/pos/staff/PosStaff.jsx`**
+- Manage Roles modal: replaced static level badge with an editable dropdown per row — changing permission level auto-saves without needing to remove and re-add.
+- Errors from `saveRoles` now surface inside the modal via `rolesError` state (was writing to `msg` state behind the modal overlay, effectively invisible).
+
+---
+
 ### S201 — 2026-07-01 — Comprehensive tooltip audit + Help.js missing entries
 
 Full sweep of all pages and HR/POS modules for missing `<Tip>` tooltips. All gaps filled. No DB changes.
