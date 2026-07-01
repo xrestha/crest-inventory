@@ -61,6 +61,7 @@ import HolidayCalendar from './modules/hr/holidays/HolidayCalendar'
 import Overtime from './modules/hr/overtime/Overtime'
 import HrDashboard from './modules/hr/dashboard/HrDashboard'
 import Pos from './modules/pos/Pos'
+import PosOrders from './modules/pos/orders/PosOrders'
 import PosTableManagement from './modules/pos/tables/PosTableManagement'
 import PosStaff from './modules/pos/staff/PosStaff'
 import PosLogin from './modules/pos/login/PosLogin'
@@ -177,6 +178,7 @@ export default function App() {
 
               {/* Crest POS — gated on pos_enabled */}
               <Route path="/pos"        element={<ModuleGate module="pos"><Pos /></ModuleGate>} />
+              <Route path="/pos/orders" element={<ModuleGate module="pos"><PosOrders /></ModuleGate>} />
               <Route path="/pos/tables" element={<ModuleGate module="pos"><PosTableManagement /></ModuleGate>} />
               <Route path="/pos/staff"  element={<ModuleGate module="pos"><PosStaff /></ModuleGate>} />
 

@@ -132,6 +132,34 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S205 — 2026-07-01 — POS Order Taking (`/pos/orders`)
+
+New page for taking table orders. Full-screen two-panel UI: left = menu browser, right = live order bill.
+
+**SQL run (Supabase):**
+```sql
+CREATE TABLE pos_orders (id uuid PK, client_id, table_id, table_name, status DEFAULT 'open', covers DEFAULT 1, notes, opened_by, opened_at, closed_at, created_at)
+CREATE TABLE pos_order_items (id uuid PK, order_id FK→pos_orders CASCADE, client_id, recipe_id, name, qty, unit_price ex-VAT, vat_rate, notes, sent_to_kot bool DEFAULT false, created_at)
+-- RLS + GRANT on both tables
+```
+
+**`src/modules/pos/orders/PosOrders.jsx`** (new)
+- **Floor view** — table grid showing running total + item count on occupied tables; accent border on tables with open orders; "Takeaway" button for non-table orders
+- **Order screen** — `position: fixed` full-screen overlay (hides sidebar entirely for max screen space)
+  - Top bar: back button, section label, covers stepper
+  - Left panel: category tabs + item grid; items gated on `pos_enabled` (`or('pos_enabled.is.null,pos_enabled.eq.true')`); qty badge on items already in the order
+  - Right panel (320px): order items list with `−`/`+` qty steppers + `×` remove; Subtotal (ex-VAT) / VAT / TOTAL breakdown; **Save Order** / **Update Order** button; KOT + Charge buttons stubbed out (disabled, tooltipped "coming next session")
+- On first save: creates `pos_orders` row, inserts all items, auto-sets table status → `occupied`
+- On update: syncs covers to order, delete-all + re-insert items (KOT session will add smarter diffing)
+- Accessible to all `pos_role` levels including staff (supervisor/manager auto-pass via `hasPosAccess`)
+- Menu loads lazily on first open to avoid loading all recipes on the floor view
+
+**`src/App.js`** — added `PosOrders` import + `/pos/orders` route (ModuleGate pos)
+**`src/components/Layout.js`** — added `Orders` nav item (icon ◉, minPosRole: 'staff') to `pos-floor` group above Tables
+**`src/modules/pos/Pos.js`** — removed "Order taking" from coming-soon text
+
+---
+
 ### S204 — 2026-07-01 — Memory sync + Stock.css CSS variable cleanup
 
 **Memory files updated** to reflect full current state (S193–S203):
