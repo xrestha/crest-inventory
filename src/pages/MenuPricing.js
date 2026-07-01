@@ -13,6 +13,8 @@ function vatOf(r) {
   return (r.vat_rate === null || r.vat_rate === undefined) ? 0.13 : parseFloat(r.vat_rate)
 }
 
+const EMPTY_FORM = { name: '', category: '', price: '', vatRate: 0.13 }
+
 export default function MenuPricing() {
   const { clientId, profile } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
@@ -23,6 +25,11 @@ export default function MenuPricing() {
   const [saving, setSaving]     = useState({})   // { id: bool }
   const [errors, setErrors]     = useState({})   // { id: string }
   const [toggling, setToggling] = useState({})   // { id: bool }
+
+  const [addModal, setAddModal] = useState(false)
+  const [addForm,  setAddForm]  = useState(EMPTY_FORM)
+  const [addSaving, setAddSaving] = useState(false)
+  const [addError,  setAddError]  = useState('')
 
   const load = useCallback(async () => {
     if (!effectiveClientId) return
@@ -110,6 +117,27 @@ export default function MenuPricing() {
     setSaving(s => ({ ...s, [recipe.id]: false }))
   }
 
+  async function saveNewItem() {
+    if (!addForm.name.trim()) { setAddError('Name is required.'); return }
+    const priceNum = parseFloat(addForm.price)
+    if (!priceNum || priceNum <= 0) { setAddError('Enter a valid price.'); return }
+    const exVat = priceNum / (1 + addForm.vatRate)
+    setAddSaving(true); setAddError('')
+    const { error } = await supabase.from('recipes').insert({
+      client_id:    effectiveClientId,
+      name:         addForm.name.trim(),
+      category:     addForm.category.trim() || 'Other',
+      selling_price: parseFloat(exVat.toFixed(4)),
+      vat_rate:     addForm.vatRate,
+      is_active:    true,
+      pos_enabled:  true,
+    })
+    setAddSaving(false)
+    if (error) { setAddError(error.message); return }
+    setAddModal(false); setAddForm(EMPTY_FORM)
+    load()
+  }
+
   const th = (align, tip, label, width) => (
     <th style={{ textAlign: align || 'left', width }}>
       {tip ? <Tip text={tip} width={240}>{label}</Tip> : label}
@@ -121,11 +149,16 @@ export default function MenuPricing() {
 
   return (
     <div className="page-container">
-      <div style={{ marginBottom: 20 }}>
-        <h1 className="page-title">Menu Pricing</h1>
-        <p className="page-subtitle">
-          Review food cost and update menu prices. Toggle <strong>On POS</strong> to control which items appear on the POS order screen.
-        </p>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div>
+          <h1 className="page-title">Menu Pricing</h1>
+          <p className="page-subtitle">
+            Review food cost and update menu prices. Toggle <strong>On POS</strong> to control which items appear on the POS order screen.
+          </p>
+        </div>
+        <button className="btn btn-primary" style={{ flexShrink: 0 }} onClick={() => { setAddForm(EMPTY_FORM); setAddError(''); setAddModal(true) }}>
+          + Add Item
+        </button>
       </div>
 
       {/* POS summary strip */}
@@ -157,7 +190,7 @@ export default function MenuPricing() {
       {loading ? (
         <div className="loading-state">Loading…</div>
       ) : display.length === 0 ? (
-        <div className="empty-state">No menu items found. Add recipes in Recipe Costing first.</div>
+        <div className="empty-state">No menu items found. Use <strong>+ Add Item</strong> above to add your first item.</div>
       ) : (
         <div className="table-wrap">
           <table className="data-table">
@@ -257,6 +290,90 @@ export default function MenuPricing() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* ── Add Item Modal ── */}
+      {addModal && (
+        <div onClick={e => { if (e.target === e.currentTarget) setAddModal(false) }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
+          <div style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 12, width: 'min(440px, 96vw)', padding: '24px 28px', boxShadow: '0 16px 48px rgba(0,0,0,0.4)' }}>
+            <h3 style={{ margin: '0 0 20px', fontSize: 16, color: 'var(--theme-text1)' }}>Add Menu Item</h3>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={{ fontSize: 12, color: 'var(--theme-text2)', display: 'block', marginBottom: 5 }}>Item Name *</label>
+                <input
+                  autoFocus
+                  value={addForm.name}
+                  onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))}
+                  onKeyDown={e => e.key === 'Enter' && saveNewItem()}
+                  placeholder="e.g. Cappuccino"
+                  style={{ width: '100%', boxSizing: 'border-box', background: 'var(--theme-input-bg)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '8px 10px', fontSize: 13, color: 'var(--theme-text1)' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, color: 'var(--theme-text2)', display: 'block', marginBottom: 5 }}>Category</label>
+                <input
+                  list="menu-cats"
+                  value={addForm.category}
+                  onChange={e => setAddForm(f => ({ ...f, category: e.target.value }))}
+                  placeholder="Beverage / Food / Dessert / Other"
+                  style={{ width: '100%', boxSizing: 'border-box', background: 'var(--theme-input-bg)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '8px 10px', fontSize: 13, color: 'var(--theme-text1)' }}
+                />
+                <datalist id="menu-cats">
+                  {['Beverage', 'Food', 'Dessert', 'Snack', 'Other',
+                    ...Array.from(new Set(recipes.map(r => r.category))).sort()
+                  ].filter((v, i, a) => a.indexOf(v) === i).map(c => <option key={c} value={c} />)}
+                </datalist>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, color: 'var(--theme-text2)', display: 'block', marginBottom: 5 }}>VAT</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {[{ label: 'VAT 13%', val: 0.13 }, { label: 'No VAT', val: 0 }].map(opt => (
+                    <button key={opt.val} onClick={() => setAddForm(f => ({ ...f, vatRate: opt.val }))}
+                      style={{
+                        flex: 1, padding: '7px 0', borderRadius: 6, fontSize: 13, cursor: 'pointer',
+                        background: addForm.vatRate === opt.val ? 'var(--theme-accent)' : 'var(--theme-input-bg)',
+                        color: addForm.vatRate === opt.val ? 'var(--theme-accent-text, #000)' : 'var(--theme-text2)',
+                        border: `1px solid ${addForm.vatRate === opt.val ? 'var(--theme-accent)' : 'var(--theme-border)'}`,
+                        fontWeight: addForm.vatRate === opt.val ? 700 : 400,
+                      }}>{opt.label}</button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, color: 'var(--theme-text2)', display: 'block', marginBottom: 5 }}>
+                  Menu Price (incl. VAT) *
+                </label>
+                <input
+                  type="number" min="0" step="any"
+                  value={addForm.price}
+                  onChange={e => setAddForm(f => ({ ...f, price: e.target.value }))}
+                  onKeyDown={e => e.key === 'Enter' && saveNewItem()}
+                  placeholder="e.g. 290"
+                  style={{ width: '100%', boxSizing: 'border-box', background: 'var(--theme-input-bg)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '8px 10px', fontSize: 13, color: 'var(--theme-text1)' }}
+                />
+                {addForm.price && parseFloat(addForm.price) > 0 && (
+                  <div style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 4 }}>
+                    Ex-VAT: NPR {(parseFloat(addForm.price) / (1 + addForm.vatRate)).toFixed(2)}
+                  </div>
+                )}
+              </div>
+
+              {addError && <p style={{ margin: 0, fontSize: 12, color: 'var(--theme-red)' }}>{addError}</p>}
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+              <button className="btn btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setAddModal(false)}>Cancel</button>
+              <button className="btn btn-primary" style={{ flex: 2, justifyContent: 'center' }} onClick={saveNewItem} disabled={addSaving}>
+                {addSaving ? 'Saving…' : 'Add to Menu'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
