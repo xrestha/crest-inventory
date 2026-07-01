@@ -26,10 +26,11 @@ export default function MenuPricing() {
   const [errors, setErrors]     = useState({})   // { id: string }
   const [toggling, setToggling] = useState({})   // { id: bool }
 
-  const [addModal, setAddModal] = useState(false)
-  const [addForm,  setAddForm]  = useState(EMPTY_FORM)
-  const [addSaving, setAddSaving] = useState(false)
-  const [addError,  setAddError]  = useState('')
+  const [addModal,   setAddModal]   = useState(false)
+  const [addForm,    setAddForm]    = useState(EMPTY_FORM)
+  const [addSaving,  setAddSaving]  = useState(false)
+  const [addError,   setAddError]   = useState('')
+  const [refreshing, setRefreshing] = useState(false)
 
   const load = useCallback(async () => {
     if (!effectiveClientId) return
@@ -289,6 +290,12 @@ export default function MenuPricing() {
     </div>
   )
 
+  async function refreshCosts() {
+    setRefreshing(true)
+    await load()
+    setRefreshing(false)
+  }
+
   /* ── IMS view (full food-cost table) ─────────────────────────────────────── */
   return (
     <div className="page-container">
@@ -299,9 +306,14 @@ export default function MenuPricing() {
             Review food cost and update menu prices. Toggle <strong>On POS</strong> to control which items appear on the POS order screen.
           </p>
         </div>
-        <button className="btn btn-primary" style={{ flexShrink: 0 }} onClick={() => { setAddForm(EMPTY_FORM); setAddError(''); setAddModal(true) }}>
-          + Add Item
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+          <button className="btn btn-ghost" onClick={refreshCosts} disabled={refreshing}>
+            {refreshing ? 'Refreshing…' : '↻ Refresh Costs'}
+          </button>
+          <button className="btn btn-primary" onClick={() => { setAddForm(EMPTY_FORM); setAddError(''); setAddModal(true) }}>
+            + Add Item
+          </button>
+        </div>
       </div>
 
       {/* POS summary strip */}
