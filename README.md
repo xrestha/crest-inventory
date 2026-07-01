@@ -125,6 +125,29 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S197 — 2026-07-01 — POS Login Model Clarification + Delete Staff + Integration Foundations
+
+**POS ↔ IMS ↔ HR integration foundations:**
+
+Two schema migrations run to wire the three modules together before POS screens are built:
+
+```sql
+-- Distinguishes POS auto-writes from manual IMS sales entries in reports
+ALTER TABLE sales_entries
+  ADD COLUMN IF NOT EXISTS source text DEFAULT 'manual'
+  CHECK (source IN ('manual', 'pos'));
+
+-- Links POS staff account → HR employee; enables future shift→attendance sync
+ALTER TABLE profiles
+  ADD COLUMN IF NOT EXISTS hr_employee_id uuid REFERENCES hr_employees(id) ON DELETE SET NULL;
+```
+
+**Integration design (deferred until order-taking is built):**
+- POS writes to `sales_entries` with `source = 'pos'` → IMS Best Sellers, Variance, Recipe Margin light up automatically
+- `stock_movements` perpetual ledger (new table, not yet created) — POS sale explodes recipe → negative movements per ingredient
+- `pos_orders` / `pos_order_items` tables — to be created when `/pos/orders` is built
+- `hr_employee_id` on profiles → POS shift close writes hours to `hr_attendance` for payroll
+
 ### S197 — 2026-07-01 — POS Login Model Clarification + Delete Staff
 
 **Access model clarified:**
