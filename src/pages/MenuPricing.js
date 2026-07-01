@@ -118,13 +118,13 @@ export default function MenuPricing() {
             <thead>
               <tr>
                 {th('left',  null, '#', 36)}
-                {th('left',  null, 'Item')}
-                {th('right', 'Total ingredient cost per portion at current item rates.', 'Food Cost', 100)}
-                {th('right', 'Current menu price (VAT-inclusive) saved in Recipe Costing.', 'Current Price', 120)}
-                {th('right', 'Food cost ÷ ex-VAT price. Green ≤30%, amber 31–38%, red >38%.', 'FC %', 80)}
-                {th('right', 'Type a new VAT-inclusive menu price. FC% and change update live.', 'New Price (incl VAT)', 150)}
-                {th('right', 'FC% if the new price is applied.', 'New FC %', 90)}
-                {th('right', 'New price minus current price.', 'Change', 90)}
+                {th('left',  'Recipe name, category, and VAT status. VAT 13% items: selling price includes 13% VAT. No VAT items are sold at the price as entered.', 'Item')}
+                {th('right', 'Total ingredient cost per portion at current item rates from the Item Master.', 'Food Cost', 100)}
+                {th('right', 'Current VAT-inclusive menu price saved in Recipe Costing. Calculated as selling price × (1 + VAT rate).', 'Current Price', 120)}
+                {th('right', 'Food cost ÷ ex-VAT selling price. Green ≤30%, amber 31–38%, red >38%. Nepal F&B target: 28–35%.', 'FC %', 80)}
+                {th('right', 'Enter a new VAT-inclusive menu price. The ex-VAT price and FC% are back-calculated automatically. Press Enter to save.', 'New Price (incl VAT)', 150)}
+                {th('right', 'Projected FC% at the new price. Updates live as you type.', 'New FC %', 90)}
+                {th('right', 'Difference between new and current VAT-inclusive price. Green = price increase, red = price decrease.', 'Change', 90)}
                 {th(null, null, '', 80)}
               </tr>
             </thead>
@@ -144,7 +144,11 @@ export default function MenuPricing() {
                     <td>
                       <strong>{r.name}</strong>
                       <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginTop: 2 }}>
-                        {r.category}{r.vat > 0 ? ' · VAT 13%' : ' · No VAT'}
+                        {r.category}
+                        {r.vat > 0
+                          ? <Tip text="VAT-registered item. Menu price includes 13% VAT. FC% is calculated on the ex-VAT portion." width={260}> · VAT 13%</Tip>
+                          : <Tip text="No VAT on this item. Menu price = ex-VAT price. FC% = food cost ÷ full selling price." width={240}> · No VAT</Tip>
+                        }
                       </div>
                     </td>
                     <td style={{ textAlign: 'right' }}>
