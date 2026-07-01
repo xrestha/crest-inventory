@@ -132,6 +132,21 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S206 — 2026-07-01 — POS order-taking polish + admin feature access fix
+
+**`src/pages/AdminClients.js` — FeatureAccessModal**
+- Previously blocked admin from granting any feature flags when `ims_enabled = false` ("Crest IMS only" wall)
+- Replaced single `!imsEnabled` guard with three-branch ternary: (1) neither IMS nor POS → updated block message; (2) POS-only → slim grid showing only `menu_pricing` toggle (manually grantable, not plan-locked); (3) IMS enabled → full `FEATURE_GROUPS` grid as before
+- Added `posEnabled = !!client.pos_enabled`; header `activeModule` now reads `POS` for POS-only clients; Save button + hint text shown in POS-only mode too
+
+**`src/modules/pos/orders/PosOrders.jsx` — covers modal + UI polish**
+- **Covers modal on new table**: tapping an available table now shows a modal asking for cover count before entering the order screen; tables with an existing open order skip the modal
+- **Numpad input**: replaced +/− stepper with a full 3×3 digit pad (1–9, CLR, 0, ⌫); digits append to string display; caps at 99; defaults to 1 if confirmed empty
+- **Button centering**: all full-width buttons use `justifyContent: 'center'` (`.btn` is `inline-flex`; `textAlign` alone had no effect)
+- **Cancel button**: matched Open Order button size; styled `btn-danger` (red)
+
+---
+
 ### S205 — 2026-07-01 — POS Order Taking (`/pos/orders`)
 
 New page for taking table orders. Full-screen two-panel UI: left = menu browser, right = live order bill.
