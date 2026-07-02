@@ -52,7 +52,6 @@ export default function PosOrders() {
   const [botCategories, setBotCategories] = useState(new Set(['Beverage']))
   // ME-driven suggestion chips
   const [suggestions,       setSuggestions]       = useState([])
-  const [suggestAfter,      setSuggestAfter]      = useState(null)
   const [manualSuggestions, setManualSuggestions] = useState({}) // { recipeId: [suggestedRecipeId] }
 
   useEffect(() => {
@@ -232,8 +231,7 @@ export default function PosOrders() {
 
     // Layer 2 + 3: immediate suggestions from local data
     const initial = rank()
-    if (initial.length === 0) { setSuggestions([]); setSuggestAfter(null); return }
-    setSuggestAfter(recipe.id)
+    if (initial.length === 0) { setSuggestions([]); return }
     setSuggestions(initial)
 
     // Layer 1: co-occurrence (async — re-ranks on arrival)
@@ -418,7 +416,7 @@ export default function PosOrders() {
 
   function backToFloor() {
     setView('floor'); setActiveTable(null); setOrderId(null); setOrderItems([]); setMsg('')
-    setSuggestions([]); setSuggestAfter(null)
+    setSuggestions([])
     setMenuLoaded(false)
   }
 
@@ -629,7 +627,7 @@ export default function PosOrders() {
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
                 <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--theme-text3)' }}>Pair with</span>
                 <button
-                  onClick={() => { setSuggestions([]); setSuggestAfter(null) }}
+                  onClick={() => setSuggestions([])}
                   style={{ background: 'none', border: 'none', color: 'var(--theme-text3)', cursor: 'pointer', fontSize: 14, padding: 0, marginLeft: 'auto', lineHeight: 1 }}
                 >✕</button>
               </div>
