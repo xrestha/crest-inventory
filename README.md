@@ -132,6 +132,21 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S220 — 2026-07-02 — POS Billing: Credit payment method (Manager+, mandatory buyer ID)
+
+**DB migration run ✓:**
+```sql
+ALTER TABLE pos_orders DROP CONSTRAINT IF EXISTS pos_orders_payment_method_check;
+ALTER TABLE pos_orders ADD CONSTRAINT pos_orders_payment_method_check
+  CHECK (payment_method IN ('Cash','Card','eSewa','Khalti','FonePay','Credit'));
+```
+
+**`src/modules/pos/orders/PosOrders.jsx` — Pay tab**
+- New **Credit** button on the payment-method row, styled red to stand out from Cash/Card/eSewa/Khalti/FonePay, visible only to Manager+ (`hasPosAccess('manager')`) — stricter than Discount's Supervisor+.
+- Researched how Toast/Lightspeed handle this (House Accounts / Customer Credit): the order **closes normally as a real sale** — consumes a Tax Invoice/Bill number, writes `sales_entries`, counts in revenue reporting immediately — only the *collection* is deferred, not the sale itself. Crest's Credit button follows the same accrual pattern: `payment_method: 'Credit'`, `paid_amount` is the full billed total (not the amount actually collected), no Tender/Change shown (same as Card/eSewa/etc).
+- New shared `requireBuyerId` computed flag (`discountAmt > 0 || payMethod === 'Credit'`) — buyer Name + Phone become compulsory under either condition, reusing the exact same red-border/disabled-Confirm-button mechanism built for Discount in S219 rather than duplicating it.
+- **Known gap, deliberately deferred (per user decision):** no outstanding-balance ledger or "mark as collected" action yet — a Credit bill just sits as billed-but-uncollected. Fast-follow scope (not this session): a small `customers` table (dedup by phone, already captured on every buyer-required order) backing both a Credit balance/collection view and a general customer lookup; plus a combined Discount/Void/Comp "Sales Exception Report" (industry-standard pattern per SpotOn/Rezku — tracked by reason/employee/date, not three separate reports).
+
 ### S219 — 2026-07-02 — POS Billing: order-level Discount (₨/% toggle, mandatory reason + buyer ID)
 
 **DB migration run ✓:**

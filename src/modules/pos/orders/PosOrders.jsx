@@ -558,8 +558,11 @@ export default function PosOrders() {
     if ((closeType === 'void' || closeType === 'writeoff') && !closeReason) {
       setCloseMsg('error:Select a reason.'); return
     }
-    if (closeType === 'paid' && discountAmt > 0 && (!discountReason || !buyerName.trim() || !buyerPhone.trim())) {
-      setCloseMsg('error:A discount requires a reason and buyer Name + Phone.'); return
+    if (closeType === 'paid' && discountAmt > 0 && !discountReason) {
+      setCloseMsg('error:Select a discount reason.'); return
+    }
+    if (closeType === 'paid' && requireBuyerId && (!buyerName.trim() || !buyerPhone.trim())) {
+      setCloseMsg('error:Buyer Name + Phone are required for a discount or Credit sale.'); return
     }
     setClosing(true); setCloseMsg('')
 
@@ -852,6 +855,9 @@ export default function PosOrders() {
   const discRatio = subEx > 0 ? discountAmt / subEx : 0
   const payVatAmt = vatAmt * (1 - discRatio)
   const payTotal  = Math.round(subEx - discountAmt + payVatAmt)
+  // Buyer Name + Phone become compulsory (not just optional) whenever a discount is applied, or
+  // when the bill is going on Credit — both cases need an identifiable, audited record.
+  const requireBuyerId = discountAmt > 0 || payMethod === 'Credit'
 
   // Live bill/slip preview inside the Billing modal — built from the exact same functions used
   // for the real print, so what the cashier sees always matches what will actually print.
@@ -1286,9 +1292,11 @@ export default function PosOrders() {
             {billingTab === 'pay' && (
               <div style={{ marginBottom: 16 }}>
                 <p style={{ fontSize: 11, color: 'var(--theme-text3)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 8px' }}>
-                  Buyer details {discountAmt > 0 ? (
+                  Buyer details {requireBuyerId ? (
                     <span style={{ color: 'var(--theme-red)', textTransform: 'none', letterSpacing: 'normal' }}>
-                      <Tip text="Name and Phone are required whenever a discount is applied, so there's an identifiable record of who received it.">(Name + Phone required for this discount)</Tip>
+                      <Tip text="Name and Phone are required whenever a discount is applied or the bill goes on Credit, so there's an identifiable record.">
+                        {payMethod === 'Credit' ? '(Name + Phone required for Credit)' : '(Name + Phone required for this discount)'}
+                      </Tip>
                     </span>
                   ) : (
                     <Tip text="Optional for transactions ≤ NPR 10,000 (IRD abbreviated-invoice exemption). Fill in if the customer requests a full invoice with their own PAN.">(optional)</Tip>
@@ -1296,11 +1304,11 @@ export default function PosOrders() {
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
                   <input placeholder="Name" value={buyerName} onChange={e => setBuyerName(e.target.value)}
-                    style={{ ...billInput, borderColor: discountAmt > 0 && !buyerName.trim() ? 'var(--theme-red)' : 'var(--theme-border)' }} />
+                    style={{ ...billInput, borderColor: requireBuyerId && !buyerName.trim() ? 'var(--theme-red)' : 'var(--theme-border)' }} />
                   <input placeholder="PAN No." value={buyerPan} onChange={e => setBuyerPan(e.target.value)} style={billInput} />
                   <input placeholder="Address" value={buyerAddress} onChange={e => setBuyerAddress(e.target.value)} style={billInput} />
                   <input placeholder="Phone" value={buyerPhone} onChange={e => setBuyerPhone(e.target.value)}
-                    style={{ ...billInput, borderColor: discountAmt > 0 && !buyerPhone.trim() ? 'var(--theme-red)' : 'var(--theme-border)' }} />
+                    style={{ ...billInput, borderColor: requireBuyerId && !buyerPhone.trim() ? 'var(--theme-red)' : 'var(--theme-border)' }} />
                 </div>
                 <input placeholder="Remarks" value={billRemarks} onChange={e => setBillRemarks(e.target.value)} style={{ ...billInput, width: '100%' }} />
               </div>
@@ -1318,6 +1326,17 @@ export default function PosOrders() {
                       border: `1px solid ${payMethod === m ? 'var(--theme-accent)' : 'var(--theme-border)'}`,
                     }}>{m}</button>
                   ))}
+                  {hasPosAccess('manager') && (
+                    <Tip text="Bill closes normally (counts as a sale, consumes an invoice number) but no payment is collected now — the customer owes this amount. Manager+ only. Collection tracking is coming in a future update; for now, track outstanding Credit bills manually via Recent Bills.">
+                      <button onClick={() => setPayMethod('Credit')} style={{
+                        padding: '8px 16px', borderRadius: 7, fontSize: 13, cursor: 'pointer',
+                        fontWeight: payMethod === 'Credit' ? 700 : 400,
+                        background: payMethod === 'Credit' ? 'var(--theme-red)' : 'var(--theme-input-bg)',
+                        color: payMethod === 'Credit' ? '#fff' : 'var(--theme-red)',
+                        border: '1px solid var(--theme-red)',
+                      }}>Credit</button>
+                    </Tip>
+                  )}
                 </div>
 
                 <p style={{ fontSize: 11, color: 'var(--theme-text3)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 8px' }}>
@@ -1373,7 +1392,7 @@ export default function PosOrders() {
                 {closeMsg && <p style={{ margin: '0 0 10px', fontSize: 12, color: closeMsg.startsWith('error:') ? 'var(--theme-red)' : 'var(--theme-green)' }}>{closeMsg.replace(/^(error|ok):/, '')}</p>}
                 <button className="btn btn-primary" style={{ width: '100%', padding: '11px 0', justifyContent: 'center' }}
                   onClick={() => closeOrder('paid')}
-                  disabled={closing || (discountAmt > 0 && (!discountReason || !buyerName.trim() || !buyerPhone.trim()))}>
+                  disabled={closing || (discountAmt > 0 && !discountReason) || (requireBuyerId && (!buyerName.trim() || !buyerPhone.trim()))}>
                   {closing ? 'Processing…' : `Confirm Payment — ${fmtNpr(payTotal)}`}
                 </button>
               </>
