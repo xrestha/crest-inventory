@@ -23,38 +23,44 @@ const NAV = [
   { to: '/overheads',        label: 'Overheads',         icon: '₿', featureKey: 'overheads',       minPlan: 'pro' },
 ]
 
+// cat: which characteristic report-group the item renders under in the sidebar
 const REPORTS = [
-  // Starter — all plans
-  { to: '/summary',              label: 'Monthly Summary',      icon: '◻', featureKey: 'monthly_summary'    },
-  { to: '/annual-summary',       label: 'Annual Summary',       icon: '◫', featureKey: 'annual_summary'     },
-  { to: '/stock-report',         label: 'Stock Report',         icon: '▤', featureKey: 'stock_report'       },
-  { to: '/reorder',              label: 'Reorder Report',       icon: '↻', featureKey: 'reorder_report'     },
-  { to: '/vat-report',           label: 'VAT Report',           icon: '₨', featureKey: 'vat_report'         },
-  { to: '/non-vat-report',      label: 'Non-VAT Report',       icon: '₨', featureKey: 'non_vat_report'     },
-  { to: '/wastage-report',       label: 'Wastage Report',       icon: '⚠', featureKey: 'wastage_report'     },
-  // Growth
-  { to: '/payments',             label: 'Payment Summary',      icon: '⊕', featureKey: 'payment_summary',   minPlan: 'starter' },
-  { to: '/variance',             label: 'Variance Report',      icon: '△', featureKey: 'variance_report',   minPlan: 'growth' },
-  { to: '/budget',               label: 'Budget vs Actual',     icon: '◎', featureKey: 'budget_vs_actual',  minPlan: 'growth' },
-  { to: '/best-sellers',         label: 'Best & Worst Sellers', icon: '▲', featureKey: 'best_sellers',      minPlan: 'growth' },
-  { to: '/dead-stock',           label: 'Dead Stock',           icon: '⊘', featureKey: 'dead_stock',        minPlan: 'growth' },
-  { to: '/recipe-margin',        label: 'Recipe Margin',        icon: '◈', featureKey: 'recipe_margin',     minPlan: 'growth' },
-  { to: '/menu-repricing',       label: 'Menu Repricing',       icon: '↗', featureKey: 'menu_repricing',    minPlan: 'growth' },
-  { to: '/payables',             label: 'Outstanding Payables', icon: '₨', featureKey: 'outstanding_payables', minPlan: 'growth' },
-  // Pro
-  { to: '/vendors-report',       label: 'Vendor Report',        icon: '⊙', featureKey: 'vendor_report',        minPlan: 'pro' },
-  { to: '/fifo',                 label: 'FIFO / Expiry',        icon: '◷', featureKey: 'fifo_report',          minPlan: 'pro' },
-  { to: '/supplier-prices',      label: 'Price Tracker',        icon: '₨', featureKey: 'price_tracker',        minPlan: 'pro' },
-  { to: '/theoretical-variance', label: 'Theoretical Variance', icon: '⊿', featureKey: 'theoretical_variance', minPlan: 'pro' },
-  { to: '/period-comparison',    label: 'Period Comparison',    icon: '⇄', featureKey: 'period_comparison',    minPlan: 'pro' },
-  { to: '/shrinkage',            label: 'Shrinkage Report',     icon: '⚠', featureKey: 'shrinkage_report',    minPlan: 'pro' },
+  // Summaries & planning
+  { to: '/summary',              label: 'Monthly Summary',      icon: '◻', featureKey: 'monthly_summary',   cat: 'summary' },
+  { to: '/annual-summary',       label: 'Annual Summary',       icon: '◫', featureKey: 'annual_summary',    cat: 'summary' },
+  { to: '/period-comparison',    label: 'Period Comparison',    icon: '⇄', featureKey: 'period_comparison', cat: 'summary', minPlan: 'pro' },
+  { to: '/budget',               label: 'Budget vs Actual',     icon: '◎', featureKey: 'budget_vs_actual',  cat: 'summary', minPlan: 'growth' },
+  // Stock & variance
+  { to: '/stock-report',         label: 'Stock Report',         icon: '▤', featureKey: 'stock_report',         cat: 'stock' },
+  { to: '/reorder',              label: 'Reorder Report',       icon: '↻', featureKey: 'reorder_report',       cat: 'stock' },
+  { to: '/wastage-report',       label: 'Wastage Report',       icon: '⚠', featureKey: 'wastage_report',       cat: 'stock' },
+  { to: '/dead-stock',           label: 'Dead Stock',           icon: '⊘', featureKey: 'dead_stock',           cat: 'stock', minPlan: 'growth' },
+  { to: '/variance',             label: 'Variance Report',      icon: '△', featureKey: 'variance_report',      cat: 'stock', minPlan: 'growth' },
+  { to: '/fifo',                 label: 'FIFO / Expiry',        icon: '◷', featureKey: 'fifo_report',           cat: 'stock', minPlan: 'pro' },
+  { to: '/theoretical-variance', label: 'Theoretical Variance', icon: '⊿', featureKey: 'theoretical_variance', cat: 'stock', minPlan: 'pro' },
+  { to: '/shrinkage',            label: 'Shrinkage Report',     icon: '⚠', featureKey: 'shrinkage_report',     cat: 'stock', minPlan: 'pro' },
+  // Money & tax
+  { to: '/vat-report',           label: 'VAT Report',           icon: '₨', featureKey: 'vat_report',           cat: 'money' },
+  { to: '/non-vat-report',      label: 'Non-VAT Report',       icon: '₨', featureKey: 'non_vat_report',       cat: 'money' },
+  { to: '/payments',             label: 'Payment Summary',      icon: '⊕', featureKey: 'payment_summary',      cat: 'money', minPlan: 'starter' },
+  { to: '/payables',             label: 'Outstanding Payables', icon: '₨', featureKey: 'outstanding_payables', cat: 'money', minPlan: 'growth' },
+  // Menu & vendors
+  { to: '/best-sellers',         label: 'Best & Worst Sellers', icon: '▲', featureKey: 'best_sellers',   cat: 'menu', minPlan: 'growth' },
+  { to: '/recipe-margin',        label: 'Recipe Margin',        icon: '◈', featureKey: 'recipe_margin',  cat: 'menu', minPlan: 'growth' },
+  { to: '/menu-repricing',       label: 'Menu Repricing',       icon: '↗', featureKey: 'menu_repricing', cat: 'menu', minPlan: 'growth' },
+  { to: '/supplier-prices',      label: 'Price Tracker',        icon: '₨', featureKey: 'price_tracker',  cat: 'menu', minPlan: 'pro' },
+  { to: '/vendors-report',       label: 'Vendor Report',        icon: '⊙', featureKey: 'vendor_report',  cat: 'menu', minPlan: 'pro' },
 ]
 
 // Collapsible nav groups for the IMS sidebar (Dashboard stays pinned above; Settings below).
+// Reports are split by characteristic instead of one 20+-item list — open just the slice you need.
 const IMS_GROUPS = [
-  { key: 'ops',     label: 'Operations', items: NAV.slice(1, 9) }, // Periods … Sales Entry
-  { key: 'costing', label: 'Costing',    items: NAV.slice(9) },    // Recipe Costing, Menu Eng, Overheads
-  { key: 'reports', label: 'Reports',    items: REPORTS },
+  { key: 'ops',             label: 'Operations',       items: NAV.slice(1, 9) }, // Periods … Sales Entry
+  { key: 'costing',         label: 'Costing',          items: NAV.slice(9) },    // Recipe Costing … Overheads
+  { key: 'reports-summary', label: 'Summary Reports',  items: REPORTS.filter(r => r.cat === 'summary') },
+  { key: 'reports-stock',   label: 'Stock Reports',    items: REPORTS.filter(r => r.cat === 'stock') },
+  { key: 'reports-money',   label: 'Finance Reports',  items: REPORTS.filter(r => r.cat === 'money') },
+  { key: 'reports-menu',    label: 'Menu & Vendors',   items: REPORTS.filter(r => r.cat === 'menu') },
 ]
 const HR_DASHBOARD = { to: '/hr/dashboard', label: 'HR Dashboard', icon: '▦' }
 
@@ -65,9 +71,13 @@ const POS_GROUPS = [
   { key: 'pos-floor', label: 'Floor', items: [
     { to: '/pos/orders', label: 'Orders', icon: '◉', minPosRole: 'staff' },
     { to: '/pos/tables', label: 'Tables', icon: '⊞', minPosRole: 'supervisor' },
+    { to: '/pos/customers', label: 'Customers', icon: '👤', minPosRole: 'supervisor' },
   ]},
   { key: 'pos-menu', label: 'Menu', items: [
     { to: '/menu-pricing', label: 'Menu Pricing', icon: '₨', featureKey: 'menu_pricing', minPlan: 'starter', minPosRole: 'manager' },
+  ]},
+  { key: 'pos-reports', label: 'Reports', items: [
+    { to: '/pos/exceptions', label: 'Exceptions', icon: '⚠', minPosRole: 'manager' },
   ]},
   { key: 'pos-admin', label: 'Admin', items: [
     { to: '/pos/staff', label: 'POS Staff', icon: '👥', minPosRole: 'manager' },
@@ -115,13 +125,13 @@ export default function Layout() {
   const dropdownRef = useRef(null)
   const location = useLocation()
 
-  // Collapsible nav groups: defaults — Operations/Costing/HR open, Reports collapsed.
+  // Collapsible nav groups: defaults — Operations/Costing/HR open, report groups collapsed.
   const [openGroups, setOpenGroups] = useState(() => {
     try { return JSON.parse(localStorage.getItem('crest_nav_groups')) || {} } catch { return {} }
   })
   function groupOpen(key, state = openGroups) {
     if (state[key] !== undefined) return state[key]
-    return key !== 'reports' // collapsed by default only for the long Reports list
+    return !key.startsWith('reports') // report groups start collapsed
   }
   function toggleGroup(key) {
     setOpenGroups(prev => {
@@ -130,6 +140,23 @@ export default function Layout() {
       return next
     })
   }
+
+  // Rail + flyout panel: the icon rail shows one button per module; the 220px panel shows only
+  // the selected module's links. The panel follows the route (navigating into /hr selects the HR
+  // panel), but a rail click switches panels without navigating.
+  const [activePanel, setActivePanel] = useState(null) // resolved against module visibility below
+  useEffect(() => {
+    const p = location.pathname
+    if (p === '/menu-pricing') { setActivePanel(prev => prev === 'pos' ? 'pos' : 'ims'); return } // shared IMS/POS route — don't yank a POS user over to IMS
+    if (p.startsWith('/pos')) setActivePanel('pos')
+    else if (p.startsWith('/hr')) setActivePanel('hr')
+    else if (p.startsWith('/admin')) setActivePanel('admin')
+    else if ([...NAV, ...REPORTS].some(i => p === i.to || p.startsWith(i.to + '/')) || p === '/settings') {
+      // /periods and /settings also live in the admin panel — don't switch away from it
+      setActivePanel(prev => (prev === 'admin' && (p === '/periods' || p === '/settings')) ? 'admin' : 'ims')
+    }
+    // any other route (/help, /pricing, …) keeps the current panel
+  }, [location.pathname])
 
   useEffect(() => {
     if (!clientDropdownOpen) return
@@ -169,21 +196,19 @@ export default function Layout() {
     return (
       <NavLink key={item.to} to={item.to}
         className={({ isActive }) => `sidebar-link${isActive ? ' sidebar-link--active' : ''}`}
-        title={collapsed ? item.label : undefined}
         onClick={() => setMobileSidebarOpen(false)}>
         <span className="sidebar-icon">{item.icon}</span>
-        {!collapsed && item.label}
+        {item.label}
       </NavLink>
     )
   }
 
   // Collapsible group: header (label · count · chevron) + its items. The group containing
-  // the current route is force-open so you always see where you are. In icon-collapsed mode
-  // we skip headers and render items flat.
+  // the current route is force-open so you always see where you are.
   function renderGroup(group) {
     const items = unlockedItems(group.items)
     if (items.length === 0) return null
-    if (collapsed) return <div key={group.key}>{items.map(renderNavItem)}</div>
+    if (!group.label) return <div key={group.key}>{items.map(renderNavItem)}</div> // unlabeled groups render flat, no header
     const hasActive = items.some(i => location.pathname === i.to || location.pathname.startsWith(i.to + '/'))
     const open = groupOpen(group.key) || hasActive
     return (
@@ -209,6 +234,26 @@ export default function Layout() {
     )
   }
 
+  // Which module panels exist for this user, and which one is showing.
+  // activePanel (route-synced) is resolved against visibility — if it points at a module this
+  // user can't see (or nothing is selected yet), fall back to the first available panel.
+  const imsVisible = clientModules.ims && (!isAdmin || adminViewClientId)
+  const hrVisible  = clientModules.hr  && (!isAdmin || adminViewClientId)
+  const posVisible = clientModules.pos && (!isAdmin || adminViewClientId) && (isAdmin || posRole || isOwner)
+  const panelOrder = [
+    isAdmin && 'admin',
+    imsVisible && 'ims',
+    hrVisible && 'hr',
+    posVisible && 'pos',
+  ].filter(Boolean)
+  const panel = panelOrder.includes(activePanel) ? activePanel : panelOrder[0]
+  const PANEL_TITLES = { admin: 'Admin', ims: 'Crest IMS', hr: 'Crest HR', pos: 'Crest POS' }
+
+  function openPanel(key) {
+    setActivePanel(key)
+    setCollapsed(false)
+  }
+
   function renderUpgradeTeaser() {
     if (isAdmin || plan === 'pro') return null
     const nextTier  = plan === 'growth' ? 'pro' : 'growth'
@@ -220,18 +265,6 @@ export default function Layout() {
     if (locked.length === 0) return null
     const shown = locked.slice(0, 5)
     const more  = locked.length - shown.length
-
-    if (collapsed) {
-      return (
-        <div style={{ padding: '4px 6px', textAlign: 'center', marginTop: 4 }}>
-          <div
-            onClick={() => navigate('/pricing')}
-            title={`Upgrade to ${tierLabel}`}
-            style={{ fontSize: 9, fontWeight: 800, color: tierColor, background: `${tierColor}18`, border: `1px solid ${tierColor}40`, borderRadius: 4, padding: '4px 6px', cursor: 'pointer' }}
-          >↑</div>
-        </div>
-      )
-    }
 
     return (
       <div style={{ margin: '4px 8px 2px', border: `1px solid ${tierColor}25`, borderRadius: 7, padding: '10px 12px', background: `${tierColor}07` }}>
@@ -259,31 +292,69 @@ export default function Layout() {
   return (
     <div className="layout-root">
       {mobileSidebarOpen && <div className="sidebar-overlay" onClick={() => setMobileSidebarOpen(false)} />}
-      <aside className={`sidebar${collapsed ? ' sidebar--collapsed' : ''}${mobileSidebarOpen ? ' mobile-open' : ''}`}>
+      <div className={`sidebar-wrap${mobileSidebarOpen ? ' mobile-open' : ''}`}>
 
-        {/* Brand + toggle button */}
-        <div className="sidebar-brand">
-          {settings?.logo_url
-            ? <img src={settings.logo_url} alt="logo" style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: 4, flexShrink: 0 }} />
-            : <span aria-label="Crest" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, fontSize: 26, lineHeight: 1, color: 'var(--theme-accent)', flexShrink: 0 }}>⬢</span>
-          }
-          {!collapsed && (
-            <div style={{ flex: 1 }}>
-              <div className="sidebar-brand-name">{settings?.app_name || 'Crest'}</div>
-              <div className="sidebar-brand-sub">Inventory</div>
-            </div>
+        {/* Icon rail — one button per module; the panel beside it shows that module's links */}
+        <div className="sidebar-rail">
+          <div className="rail-brand" title={settings?.app_name || 'Crest'}>
+            {settings?.logo_url
+              ? <img src={settings.logo_url} alt="logo" style={{ width: 28, height: 28, objectFit: 'contain', borderRadius: 4 }} />
+              : <span aria-label="Crest" style={{ fontSize: 22, lineHeight: 1, color: 'var(--theme-accent)' }}>⬢</span>}
+          </div>
+
+          {isAdmin && (
+            <button className={`rail-btn${panel === 'admin' && !collapsed ? ' rail-btn--active' : ''}`}
+              title="Admin" onClick={() => openPanel('admin')}>
+              <span style={{ position: 'relative' }}>
+                ⊛
+                {(pendingTrialCount > 0 || newTrialCount > 0) && (
+                  <span style={{
+                    position: 'absolute', top: -3, right: -7, width: 9, height: 9, borderRadius: '50%',
+                    background: pendingTrialCount > 0 ? '#f87171' : '#f59e0b',
+                    boxShadow: '0 0 0 2px var(--theme-sidebar)', animation: 'pulse-dot 1.5s infinite',
+                  }} />
+                )}
+              </span>
+            </button>
           )}
-          <button
-            className="sidebar-toggle"
-            onClick={() => setCollapsed(c => !c)}
-            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {collapsed ? '›' : '‹'}
-          </button>
+          {imsVisible && (
+            <button className={`rail-btn${panel === 'ims' && !collapsed ? ' rail-btn--active' : ''}`}
+              title="Crest IMS" onClick={() => openPanel('ims')}>▤</button>
+          )}
+          {hrVisible && (
+            <button className={`rail-btn${panel === 'hr' && !collapsed ? ' rail-btn--active' : ''}`}
+              title="Crest HR" onClick={() => openPanel('hr')}>👥</button>
+          )}
+          {posVisible && (
+            <button className={`rail-btn${panel === 'pos' && !collapsed ? ' rail-btn--active' : ''}`}
+              title="Crest POS" onClick={() => openPanel('pos')}>◉</button>
+          )}
+
+          <div style={{ flex: 1 }} />
+
+          <NavLink to="/help" title="Help"
+            className={({ isActive }) => `rail-btn${isActive ? ' rail-btn--active' : ''}`}
+            onClick={() => setMobileSidebarOpen(false)}>?</NavLink>
+          <button className="rail-btn" title={collapsed ? 'Show menu' : 'Hide menu'}
+            onClick={() => setCollapsed(c => !c)}>{collapsed ? '›' : '‹'}</button>
+          <button className="rail-btn rail-btn--signout" title={posRole ? 'Lock POS' : 'Sign out'}
+            onClick={handleSignOut}>⎋</button>
+        </div>
+
+        {/* Flyout panel — only the selected module's links */}
+        {!collapsed && (
+        <aside className="sidebar">
+
+        {/* Panel title */}
+        <div className="sidebar-brand">
+          <div style={{ flex: 1 }}>
+            <div className="sidebar-brand-name">{PANEL_TITLES[panel] || settings?.app_name || 'Crest'}</div>
+            <div className="sidebar-brand-sub">{settings?.app_name || 'Crest Inventory'}</div>
+          </div>
         </div>
 
         {/* Role / client badge */}
-        {!collapsed && (
+        {(() => (
           isAdmin ? (
             <div className="sidebar-client" ref={dropdownRef}>
               <span className="sidebar-client-label">{adminViewClientId ? 'Viewing' : 'Admin View'}</span>
@@ -372,13 +443,12 @@ export default function Layout() {
               })()}
             </div>
           ) : null
-        )}
+        ))()}
 
         <nav className="sidebar-nav">
-          {renderNavItem(NAV[0])}
-
-          {isAdmin && (
+          {panel === 'admin' && isAdmin && (
             <>
+              {renderNavItem(NAV[0])}
               <NavLink to="/admin/clients"
                 className={({ isActive }) => `sidebar-link${isActive ? ' sidebar-link--active' : ''}`}
                 style={newTrialCount > 0 && pendingTrialCount === 0 ? {
@@ -386,80 +456,33 @@ export default function Layout() {
                   background: 'rgba(245,158,11,0.10)',
                   marginLeft: -3,
                 } : {}}
-                title={collapsed ? 'Clients' : undefined}
                 onClick={() => setMobileSidebarOpen(false)}>
-                <span className="sidebar-icon" style={{ position: 'relative' }}>
-                  ⊛
+                <span className="sidebar-icon">⊛</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
+                  Clients
                   {pendingTrialCount > 0 && (
-                    <span style={{
-                      position: 'absolute', top: -6, right: -8,
-                      minWidth: 16, height: 16, borderRadius: 8,
-                      background: '#f87171', color: '#fff',
-                      fontSize: 10, fontWeight: 800,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      padding: '0 3px',
-                      boxShadow: '0 0 0 2px var(--theme-sidebar)',
-                      animation: 'pulse-dot 1.5s infinite',
-                    }}>{pendingTrialCount}</span>
+                    <span style={{ fontSize: 11, fontWeight: 800, background: '#f87171', color: '#fff', borderRadius: 10, padding: '2px 8px', lineHeight: 1.4 }}
+                      title="Clients requesting to subscribe">
+                      {pendingTrialCount} want to sub
+                    </span>
                   )}
-                  {pendingTrialCount === 0 && newTrialCount > 0 && (
-                    <span style={{
-                      position: 'absolute', top: -6, right: -8,
-                      minWidth: 16, height: 16, borderRadius: 8,
-                      background: '#f59e0b', color: '#000',
-                      fontSize: 10, fontWeight: 800,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      padding: '0 3px',
-                      boxShadow: '0 0 0 2px var(--theme-sidebar)',
-                      animation: 'pulse-dot 1.5s infinite',
-                    }}>{newTrialCount}</span>
+                  {newTrialCount > 0 && (
+                    <span style={{ fontSize: 11, fontWeight: 800, background: '#f59e0b', color: '#000', borderRadius: 10, padding: '2px 8px', lineHeight: 1.4 }}
+                      title="New trial signups in the last 7 days">
+                      {newTrialCount} NEW
+                    </span>
                   )}
                 </span>
-                {!collapsed && (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
-                    Clients
-                    {pendingTrialCount > 0 && (
-                      <span style={{ fontSize: 11, fontWeight: 800, background: '#f87171', color: '#fff', borderRadius: 10, padding: '2px 8px', lineHeight: 1.4 }}
-                        title="Clients requesting to subscribe">
-                        {pendingTrialCount} want to sub
-                      </span>
-                    )}
-                    {newTrialCount > 0 && (
-                      <span style={{ fontSize: 11, fontWeight: 800, background: '#f59e0b', color: '#000', borderRadius: 10, padding: '2px 8px', lineHeight: 1.4 }}
-                        title="New trial signups in the last 7 days">
-                        {newTrialCount} NEW
-                      </span>
-                    )}
-                  </span>
-                )}
               </NavLink>
-              <NavLink to="/periods"
-                className={({ isActive }) => `sidebar-link${isActive ? ' sidebar-link--active' : ''}`}
-                title={collapsed ? 'Periods' : undefined}
-                onClick={() => setMobileSidebarOpen(false)}>
-                <span className="sidebar-icon">◷</span>
-                {!collapsed && 'Periods'}
-              </NavLink>
-              <NavLink to="/admin/audit"
-                className={({ isActive }) => `sidebar-link${isActive ? ' sidebar-link--active' : ''}`}
-                title={collapsed ? 'Audit Log' : undefined}
-                onClick={() => setMobileSidebarOpen(false)}>
-                <span className="sidebar-icon">◈</span>
-                {!collapsed && 'Audit Log'}
-              </NavLink>
-              <NavLink to="/settings"
-                className={({ isActive }) => `sidebar-link${isActive ? ' sidebar-link--active' : ''}`}
-                title={collapsed ? 'Settings' : undefined}
-                onClick={() => setMobileSidebarOpen(false)}>
-                <span className="sidebar-icon">⚙</span>
-                {!collapsed && 'Settings'}
-              </NavLink>
-              <div className="sidebar-divider" />
+              {renderNavItem({ to: '/periods', label: 'Periods', icon: '◷' })}
+              {renderNavItem({ to: '/admin/audit', label: 'Audit Log', icon: '◈' })}
+              {renderNavItem({ to: '/settings', label: 'Settings', icon: '⚙' })}
             </>
           )}
 
-          {clientModules.ims && (!isAdmin || adminViewClientId) && (
+          {panel === 'ims' && imsVisible && (
             <>
+              {renderNavItem(NAV[0])}
               {IMS_GROUPS.map(renderGroup)}
 
               {renderUpgradeTeaser()}
@@ -473,36 +496,25 @@ export default function Layout() {
             </>
           )}
 
-          {clientModules.hr && (!isAdmin || adminViewClientId) && (
+          {panel === 'hr' && hrVisible && (
             <>
-              <div className="sidebar-divider" />
               {renderNavItem(HR_DASHBOARD)}
               {HR_GROUPS.map(renderGroup)}
             </>
           )}
 
-          {clientModules.pos && (!isAdmin || adminViewClientId) && (isAdmin || posRole || isOwner) && (
+          {panel === 'pos' && posVisible && (
             <>
-              <div className="sidebar-divider" />
               {POS_GROUPS.map(group => renderGroup({
                 ...group,
                 items: group.items.filter(item => !item.minPosRole || hasPosAccess(item.minPosRole)),
               }))}
             </>
           )}
-
-          <div className="sidebar-divider" />
-          <NavLink to="/help"
-            className={({ isActive }) => `sidebar-link${isActive ? ' sidebar-link--active' : ''}`}
-            title={collapsed ? 'Help' : undefined}
-            onClick={() => setMobileSidebarOpen(false)}>
-            <span className="sidebar-icon">?</span>
-            {!collapsed && 'Help'}
-          </NavLink>
         </nav>
 
         <div className="sidebar-footer">
-          {!isAdmin && plan !== 'pro' && !collapsed && (
+          {!isAdmin && plan !== 'pro' && (
             <button
               onClick={() => navigate('/pricing')}
               style={{
@@ -516,22 +528,19 @@ export default function Layout() {
               {plan === 'growth' ? 'Growth' : 'Starter'} · Upgrade ↑
             </button>
           )}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            {!collapsed && (
-              <div className="sidebar-user">
-                <div className="sidebar-user-name">{profile?.full_name || 'User'}</div>
-                <div className="sidebar-user-role">
-                  {isAdmin ? 'Admin' : isOwner ? 'Owner' : posRole ? `POS · ${posRole.charAt(0).toUpperCase() + posRole.slice(1)}` : 'Client'}
-                </div>
-              </div>
-            )}
-            <button onClick={handleSignOut} className="sidebar-signout" title={posRole ? 'Lock POS' : 'Sign out'}>⎋</button>
+          <div className="sidebar-user">
+            <div className="sidebar-user-name">{profile?.full_name || 'User'}</div>
+            <div className="sidebar-user-role">
+              {isAdmin ? 'Admin' : isOwner ? 'Owner' : posRole ? `POS · ${posRole.charAt(0).toUpperCase() + posRole.slice(1)}` : 'Client'}
+            </div>
           </div>
         </div>
-      </aside>
+        </aside>
+        )}
+      </div>
 
       <main className={`main-content${collapsed ? ' main-content--collapsed' : ''}`}>
-        <button className="mobile-hamburger" onClick={() => setMobileSidebarOpen(true)}>☰</button>
+        <button className="mobile-hamburger" onClick={() => { setMobileSidebarOpen(true); setCollapsed(false) }}>☰</button>
 
         {/* Trial banners — shown from day 4 onwards and after expiry */}
         {isTrial && !trialExpired && trialDaysLeft <= 4 && (

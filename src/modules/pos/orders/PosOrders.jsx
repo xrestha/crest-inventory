@@ -596,6 +596,15 @@ export default function PosOrders() {
 
     if (closeType !== 'void') await writeSalesEntries()
 
+    // Auto-build the customer book: any bill with buyer Name + Phone (required for discounts and
+    // Credit sales) adds/updates a pos_customers row keyed by phone. Non-fatal — never blocks billing.
+    if (buyerName.trim() && buyerPhone.trim()) {
+      const custRow = { client_id: clientId, name: buyerName.trim(), phone: buyerPhone.trim(), updated_at: new Date().toISOString() }
+      if (buyerAddress.trim()) custRow.address = buyerAddress.trim()
+      if (buyerPan.trim())     custRow.pan     = buyerPan.trim()
+      await supabase.from('pos_customers').upsert(custRow, { onConflict: 'client_id,phone' })
+    }
+
     if (activeTable?.id) {
       await supabase.from('pos_tables').update({ status: 'available' }).eq('id', activeTable.id)
     }
@@ -1327,7 +1336,7 @@ export default function PosOrders() {
                     }}>{m}</button>
                   ))}
                   {hasPosAccess('manager') && (
-                    <Tip text="Bill closes normally (counts as a sale, consumes an invoice number) but no payment is collected now — the customer owes this amount. Manager+ only. Collection tracking is coming in a future update; for now, track outstanding Credit bills manually via Recent Bills.">
+                    <Tip text="Bill closes normally (counts as a sale, consumes an invoice number) but no payment is collected now — the customer owes this amount. Manager+ only. Collect it later from Customers → Outstanding Credit.">
                       <button onClick={() => setPayMethod('Credit')} style={{
                         padding: '8px 16px', borderRadius: 7, fontSize: 13, cursor: 'pointer',
                         fontWeight: payMethod === 'Credit' ? 700 : 400,

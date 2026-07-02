@@ -386,6 +386,7 @@ const PRICE_PLANS = [
 ]
 
 const FAQ = [
+  { q: 'How does the sidebar work? I have a lot of pages.', a: 'The sidebar has two parts: a narrow icon rail on the far left with one icon per module (Crest IMS, Crest HR, Crest POS), and a panel beside it showing only the selected module\'s pages. Click a module icon to switch panels — the panel also follows you automatically when you navigate (e.g. opening a POS page selects the POS panel). Inside the panel, pages are grouped by task (Operations, Costing, report categories) — click a group header to expand or collapse it; your choices are remembered on this device. The ‹ button near the bottom of the rail hides the panel entirely, leaving just the icon rail; Help and Sign out live on the rail too.' },
   { q: 'Why is my food cost % so high?', a: 'Common causes: purchases entered without closing stock (inflates COGS), over-portioning, wastage not recorded, theft, or supplier price increases not reflected in selling prices. Check the Variance Report to identify the biggest leaks.' },
   { q: 'What if I forgot to enter a purchase?', a: 'Go to Purchases, select the correct period, and add the entry with the correct day. The system recalculates everything automatically.' },
   { q: 'How do I correct a wrong entry?', a: 'Every entry has an Edit button. Click it, correct the values, and save. No need to delete and re-enter.' },
@@ -721,8 +722,30 @@ export default function Help() {
                     'Buyer Name/Address/PAN/Phone on the Charge screen are optional — IRD allows omitting them for bills up to NPR 10,000, but fill them in if a customer requests a full invoice',
                     'Discount on the Pay tab supports a flat NPR amount or a percentage (toggle between ₨/%) — it reduces the pre-VAT taxable amount, with VAT recalculated on the discounted base, not just subtracted off the total',
                     'Applying any discount makes buyer Name and Phone compulsory (not just optional) and requires picking a Discount Reason — gives an identifiable, audited record of who received it. Customize the reason list in Table Management → Discounts',
-                    'Credit (red button, Manager+ only) closes the bill normally — it counts as a sale and consumes a Tax Invoice/Bill number — but no payment is collected now; the customer owes the amount. Buyer Name and Phone are compulsory, same as a discount. There is no outstanding-balance/collection report yet — track Credit bills manually via Recent Bills until that\'s built',
+                    'Credit (red button, Manager+ only) closes the bill normally — it counts as a sale and consumes a Tax Invoice/Bill number — but no payment is collected now; the customer owes the amount. Buyer Name and Phone are compulsory, same as a discount. Collect it later from Customers → Outstanding Credit',
                     '📄 Recent Bills (floor view) lists everything closed today and lets you reprint a bill — the printout is labelled ORIGINAL-COPY the first time, SECOND-COPY the second, THIRD-COPY the third, and REPRINT #N after that (matches Nepal IRD\'s Rule 17 buyer/authority/seller copy terminology)',
+                  ],
+                },
+                {
+                  icon: '👤', name: 'Customers', path: '/pos/customers',
+                  desc: 'Customer book built automatically from billed orders — every bill closed with buyer Name + Phone (required for any discount or Credit sale) adds or updates a customer, keyed by phone number. The Outstanding Credit tab lists Credit bills awaiting collection with a one-tap Settle action. Requires Supervisor role or above.',
+                  tips: [
+                    'No manual data entry — the book fills itself as bills are closed with buyer details. Repeat customers are matched by phone number, so their name/address/PAN stay up to date automatically',
+                    'Click any customer row to see their full order history — every billed order under that phone number, including payment method and any outstanding Credit',
+                    'Outstanding Credit tab: when a customer comes back to pay, hit Settle and pick the payment method they actually used (Cash/Card/eSewa/Khalti/FonePay) — the bill is marked collected with who recorded it and when',
+                    'The Age column shows how long each credit bill has been outstanding — chase the old ones first',
+                    'Settling is Supervisor+ (routine cashier work); issuing credit at Charge stays Manager+ only',
+                  ],
+                },
+                {
+                  icon: '⚠', name: 'Sales Exceptions', path: '/pos/exceptions',
+                  desc: 'Every discount, void, and complimentary in one report — revenue that leaked, filterable by BS date range, exception type, and staff member. Discounts show the amount knocked off; Voids show the menu value forgone (incl. VAT); Comps show food cost, matching the Complimentary Slip. Requires Manager role or above.',
+                  tips: [
+                    'The By Staff Member table is the report\'s real job — one cashier discounting far more than everyone else is worth a conversation (training gap or permission creep)',
+                    'A quiet report is a healthy one — a sudden spike in voids usually means order-entry mistakes, not fraud',
+                    'Amounts mean different things per type: Discount = NPR knocked off the bill, Void = full menu value that was cancelled, Comp = ingredient cost of what was served free',
+                    'Use the ⬇ Excel button to hand the filtered list to your accountant — includes both AD date and BS Miti columns',
+                    'Defaults to the current BS month — widen the range for a quarterly or fiscal-year view',
                   ],
                 },
                 {

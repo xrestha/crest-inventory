@@ -132,6 +132,66 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S223 — 2026-07-02 — Sidebar rebuilt as icon rail + flyout panel (VS Code / Azure Portal pattern)
+
+No DB migration. `src/components/Layout.js`, `Layout.css`, Help FAQ entry, service-worker cache bump (v14 → v15, breaking CSS change).
+
+The sidebar had grown to ~50 links/headers when all three modules were enabled — group-level collapsing existed, but the modules' groups still stacked vertically, forcing constant scrolling. Started as a module-level accordion (built, then superseded within the same session by user decision), landed on the industry-standard **rail + flyout panel** pattern:
+
+- **Icon rail (56px, always visible)** — one icon per module: Admin ⊛ (Crest admin only, with a pulsing red/amber dot when trial signups need attention), IMS ▤, HR 👥, POS ◉ — plus Help, a panel show/hide toggle, and Sign out pinned at the bottom. The brand logo sits at the top.
+- **Flyout panel (220px)** — shows *only the selected module's* links: panel title, the admin client-switcher / plan badge (unchanged), the module's collapsible task groups, the upgrade teaser (IMS), and the user identity footer. Switching modules swaps the panel content — nothing ever stacks, nothing scrolls past other modules.
+- **Panel follows the route** — navigating into `/hr/...` selects the HR panel, `/pos/...` the POS panel, etc. Two shared-route guards: `/menu-pricing` (lives in both IMS and POS) won't yank a POS user over to the IMS panel, and `/periods`+`/settings` won't switch an admin away from the Admin panel. Clicking a rail icon switches panels *without* navigating, so you can peek at another module's pages.
+- **Collapse = rail only** — the ‹ toggle hides the panel entirely (main content reflows to 56px margin); clicking any module icon brings it back. Mobile hamburger opens rail + panel together as an overlay.
+- **IMS Reports split by characteristic** (kept from the accordion iteration): the single 21-item "Reports" group is now **Summary Reports** / **Stock Reports** / **Finance Reports** / **Menu & Vendors**, all default-collapsed — open just the slice you need. `REPORTS` gained a `cat` field; the flat array is preserved because the upgrade teaser reads it.
+
+### S222 — 2026-07-02 — POS Sales Exception Report (Discounts + Voids + Comps, by reason & staff)
+
+No DB migration — every field this report reads (`close_type`, `close_reason`, `discount_amount`, `discount_reason`, `closed_by`, `closed_at`) already exists on `pos_orders`.
+
+Second of the three agreed fast-follows (Customers ✓ → **Exception Report** → Shift management). Follows the industry-standard single-report pattern (SpotOn/Rezku/Toast "sales exception report"): Discounts, Voids, and Comps together — all three are revenue that leaked — rather than three siloed reports.
+
+**`src/modules/pos/reports/PosExceptionReport.jsx`** (new page, route `/pos/exceptions`, Manager+, new "Reports" sidebar group under POS — shift management's X/Z reports will join it later)
+- **Filters**: BS date range (two `BsCalendarPicker`s, defaults to current BS month → today), exception type pills (All/Discounts/Voids/Comps), staff dropdown (populated only with staff who actually closed exceptions in range).
+- **Valuation per type** — each means something different, deliberately: Discount = NPR knocked off (`discount_amount`); Void = full menu value forgone incl. VAT (summed live from `pos_order_items`); Comp = **food cost** via `computeRecipeCosts()` (one batched call across all comp orders' recipe ids), matching how the Complimentary Slip itself values comps.
+- **Stat cards**: Discounts total, Voided Value, Comp Food Cost, Total Exceptions — each with count + Tip explaining what the number means.
+- **By Staff Member rollup** — the report's real job: per-staff counts and totals per type, sorted by total leaked, so an owner can spot one cashier discounting far more than everyone else (training gap or permission creep).
+- **Detail table**: BS date + time, Bill No (TI/PB/NC formatted), table, type badge (gold/red/amber), reason, amount, closed-by.
+- **⬇ Excel export** (SheetJS, same pattern as IMS reports) of the filtered detail list with both AD date and BS Miti columns — accountant-ready.
+
+### S221 — 2026-07-02 — POS Customers page + Credit collection tracking
+
+**DB migration run ✓:**
+```sql
+CREATE TABLE IF NOT EXISTS pos_customers (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id  uuid NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  name       text NOT NULL,
+  phone      text NOT NULL,
+  address    text,
+  pan        text,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
+  UNIQUE (client_id, phone)
+);
+ALTER TABLE pos_customers ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "pos_customers_client" ON pos_customers FOR ALL TO authenticated
+  USING (client_id = (SELECT client_id FROM profiles WHERE id = auth.uid())
+         OR (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin');
+GRANT ALL ON pos_customers TO authenticated;
+
+ALTER TABLE pos_orders ADD COLUMN IF NOT EXISTS credit_settled_at     timestamptz;
+ALTER TABLE pos_orders ADD COLUMN IF NOT EXISTS credit_settled_by     uuid REFERENCES profiles(id) ON DELETE SET NULL;
+ALTER TABLE pos_orders ADD COLUMN IF NOT EXISTS credit_settled_method text CHECK (credit_settled_method IN ('Cash','Card','eSewa','Khalti','FonePay'));
+```
+
+First of the three agreed fast-follows (Customers + Credit collection → Sales Exception Report → Shift management).
+
+**`src/modules/pos/customers/PosCustomers.jsx`** (new page, route `/pos/customers`, Supervisor+, sidebar "Floor" group)
+- **Customers tab** — customer book built automatically, zero manual entry: `closeOrder()` in PosOrders.jsx now upserts a `pos_customers` row (keyed `client_id + phone`) whenever a bill closes with buyer Name + Phone filled in — which every discount and Credit sale requires. Address/PAN only overwrite when provided, so a later bill with blank address doesn't wipe a saved one. Non-fatal: if the upsert fails (e.g. migration not yet run), billing itself is unaffected. Searchable by name/phone; clicking a row lazy-loads that customer's full order history (matched by `buyer_phone`) with per-order payment method and Credit collected/outstanding badges.
+- **Outstanding Credit tab** — lists unsettled Credit bills (`payment_method='Credit'`, `credit_settled_at IS NULL`) with stat cards (total outstanding, bill count), bill age ("chase the old ones first"), and a **Settle** action: pick the method the customer actually paid with (Cash/Card/eSewa/Khalti/FonePay) → writes `credit_settled_at/by/method`. Full settle only (no partial payments — per user decision). Collected bills show below as history. Settling is Supervisor+ (routine cashier work); *issuing* credit stays Manager+.
+- No backfill of old orders (per user decision) — the book fills organically from now on.
+- Design decisions made via user Q&A: full-settle-only, dedicated page (not crammed into the floor view), Supervisor+ settle, no backfill.
+
 ### S220 — 2026-07-02 — POS Billing: Credit payment method (Manager+, mandatory buyer ID)
 
 **DB migration run ✓:**
