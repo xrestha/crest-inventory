@@ -132,9 +132,31 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
-### S224 — 2026-07-02 — POS Shift Management (X/Z reports, denomination-based cash drawer counts)
+### S225 — 2026-07-02 — Dynamic payment QR on bills + Billing modal (NepalPay/FonePay EMVCo)
 
 **DB migration required:**
+```sql
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS payment_qr_data text;
+```
+
+Closes the last "Coming soon" item (QR payments) at the **dynamic QR** tier — per-bill QR with the exact amount pre-filled, no provider API onboarding needed. (Full webhook auto-confirmation remains a future, per-client-onboarded project.)
+
+**How it works** — every Nepali payment QR (FonePay/NepalPay/eSewa merchant QR) is an EMVCo merchant-presented TLV payload ending in a CRC-16/CCITT-FALSE checksum. A static standee QR becomes a per-bill dynamic QR by pure string manipulation: set tag 01 → "12" (one-time), inject tag 54 = the bill's exact amount, recompute the checksum. The customer's banking app then shows the amount pre-filled and locked — no fat-finger errors, no API involved.
+
+**`src/utils/emvQr.js`** (new) — `crc16()`, `parseEmvQr()` (TLV parser), `validateEmvQr()` (structure + checksum + merchant-name checks, friendly error messages), `buildDynamicQr(base, amount)` (tag surgery + CRC recompute, keeps tags in ascending order). Logic verified with a Node round-trip test: static → dynamic → re-validates, garbage and tampered payloads rejected. New dependency: `qrcode` (^1.5.4) renders payloads to data-URL images client-side.
+
+**`src/pages/Settings.js` — Property tab (one-time setup)** — new "Payment QR (merchant payload)" textarea: the owner scans their counter standee with any QR-reader app (yields the raw `000201…` text) and pastes it. Live validation shows "✓ Valid payment QR — merchant: {name}" (parsed from tag 59) plus a rendered preview QR to scan-test with a banking app *before* saving, or a specific error (malformed / checksum mismatch / not a payment QR). Invalid saved data is harmless — generation re-validates and simply renders no QR.
+
+**`src/modules/pos/orders/PosOrders.jsx`**
+- **Billing modal (Pay tab)** — when the payment method is eSewa/Khalti/FonePay and a merchant payload is configured, a scan-to-pay QR card appears above Confirm Payment, regenerating live as the total changes (e.g. while a discount is typed) — always encodes the exact current `payTotal`.
+- **Printed bill** — `buildBillHtml()` gained an optional `qrUrl` param: a "Scan to pay — amount pre-filled" QR block prints between the amount-in-words and the thank-you line. `printBill()` (and therefore reprints) generates it from the order's actual `paid_amount`; the live preview iframe shows the same QR via the shared builder, so preview and print can't drift. Complimentary slips get no QR (nothing to pay).
+- Data-URL images render instantly in the print window (no network fetch), so the existing 300ms print delay is safe.
+- **Known limitation (by design):** no payment confirmation — the app generates the QR but can't know the money landed; the cashier confirms after seeing it on the merchant app. Auto-confirmation = FonePay/eSewa webhook integration, a separate future project requiring per-client merchant API credentials.
+- Hooks note: the computed-totals block (`subEx`…`payTotal`) moved above the `hasPosAccess` early return so the QR-regeneration `useEffect` satisfies the rules-of-hooks — pure derivation, no behavior change.
+
+### S224 — 2026-07-02 — POS Shift Management (X/Z reports, denomination-based cash drawer counts)
+
+**DB migration run ✓:**
 ```sql
 CREATE TABLE IF NOT EXISTS pos_shifts (
   id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -3,9 +3,11 @@ import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
+import QRCode from 'qrcode'
 import { adToBs, BS_MONTHS, getBsToday, getBsFiscalYear } from '../../../utils/bsCalendar'
 import { numberToWordsNpr } from '../../../utils/numberToWords'
 import { computeRecipeCosts } from '../../../utils/recipeCost'
+import { buildDynamicQr } from '../../../utils/emvQr'
 
 const vatOf  = r => (r.vat_rate === null || r.vat_rate === undefined) ? 0.13 : parseFloat(r.vat_rate)
 const fmtNpr = n => `NPR ${Math.round(n).toLocaleString()}`
@@ -75,7 +77,7 @@ export default function PosOrders() {
 
   /* ── billing / invoice settings (loaded once per client) ── */
   const [billingSettings, setBillingSettings] = useState({
-    is_vat_registered: true, invoice_prefix: '', vat_number: '', property_address: '', property_phone: '',
+    is_vat_registered: true, invoice_prefix: '', vat_number: '', property_address: '', property_phone: '', payment_qr_data: '',
   })
 
   /* ── Billing modal ── */
@@ -98,6 +100,7 @@ export default function PosOrders() {
   const [discountReasons, setDiscountReasons] = useState(DEFAULT_DISCOUNT_REASONS)
   const [hscMap,      setHscMap]      = useState({}) // { recipeId: hscCode } — fetched once when Billing modal opens
   const [openShiftId, setOpenShiftId] = useState(null) // cached, not queried per-close — see loadOpenShift()
+  const [billQrUrl,   setBillQrUrl]   = useState('')   // per-bill dynamic payment QR (data URL), regenerated as the total changes
 
   /* ── Recent Bills / Reprint ── */
   const [recentBillsOpen, setRecentBillsOpen] = useState(false)
@@ -108,7 +111,7 @@ export default function PosOrders() {
     if (!clientId) return
     loadFloor()
     supabase.from('settings')
-      .select('pos_bot_categories, pos_note_presets, pos_discount_reasons, is_vat_registered, invoice_prefix, vat_number, property_address, property_phone')
+      .select('pos_bot_categories, pos_note_presets, pos_discount_reasons, is_vat_registered, invoice_prefix, vat_number, property_address, property_phone, payment_qr_data')
       .eq('client_id', clientId).maybeSingle()
       .then(({ data }) => {
         const arr = data?.pos_bot_categories
@@ -121,11 +124,43 @@ export default function PosOrders() {
           vat_number:        data?.vat_number || '',
           property_address:  data?.property_address || '',
           property_phone:    data?.property_phone || '',
+          payment_qr_data:   data?.payment_qr_data || '',
         })
       })
     supabase.from('clients').select('name').eq('id', clientId).single()
       .then(({ data }) => setOutletName(data?.name || ''))
   }, [clientId]) // eslint-disable-line
+
+  /* ── computed totals ── */
+  const subEx    = orderItems.reduce((s, i) => s + i.qty * i.unit_price, 0)
+  const vatAmt   = orderItems.reduce((s, i) => s + i.qty * i.unit_price * (i.vat_rate ?? 0), 0)
+  const total    = Math.round(subEx + vatAmt) // rounded to the nearest rupee — matches the bill's Net Amount/Round Off line
+  const compTotal = orderItems.reduce((s, i) => s + i.qty * (compCostMap[i.recipe_id] || 0), 0)
+
+  // Discount reduces the pre-VAT taxable base, then VAT is recalculated on the discounted amount
+  // (same rule as purchase_entries.discount_amount in Purchases.js) — not a flat subtraction off total.
+  const discountAmt = (() => {
+    const v = parseFloat(discountStr) || 0
+    if (v <= 0 || subEx <= 0) return 0
+    return discountMode === 'percent' ? Math.min(subEx, subEx * v / 100) : Math.min(subEx, v)
+  })()
+  const discRatio = subEx > 0 ? discountAmt / subEx : 0
+  const payVatAmt = vatAmt * (1 - discRatio)
+  const payTotal  = Math.round(subEx - discountAmt + payVatAmt)
+  // Buyer Name + Phone become compulsory (not just optional) whenever a discount is applied, or
+  // when the bill is going on Credit — both cases need an identifiable, audited record.
+  const requireBuyerId = discountAmt > 0 || payMethod === 'Credit'
+
+  // Regenerate the dynamic payment QR as the payable total changes (discount typed, items
+  // edited) — the modal QR and print preview always encode the exact current amount.
+  // makeBillQr is a hoisted function declaration, so calling it from here is safe even though
+  // it appears later in the file.
+  useEffect(() => {
+    if (!billingOpen || !billingSettings.payment_qr_data || !(payTotal > 0)) { setBillQrUrl(''); return }
+    let cancelled = false
+    makeBillQr(payTotal).then(url => { if (!cancelled) setBillQrUrl(url) })
+    return () => { cancelled = true }
+  }, [billingOpen, payTotal, billingSettings.payment_qr_data]) // eslint-disable-line
 
   if (!hasPosAccess('staff')) return <Navigate to="/pos" replace />
 
@@ -637,7 +672,18 @@ export default function PosOrders() {
 
   // Pure HTML builder — no side effects, no DB calls. Shared by the actual print (printBill)
   // and the live in-modal preview, so the preview can never drift out of sync with what prints.
-  function buildBillHtml(order, items, copyLabel) {
+  // Per-bill dynamic payment QR: the merchant's static QR payload (Settings → Payment QR) with
+  // this bill's exact amount injected (EMVCo tag 54) and the checksum recomputed — customer
+  // scans and the amount arrives pre-filled/locked in their banking app. Pure string work, no
+  // provider API. Returns a data-URL image, or '' if not configured / payload invalid.
+  async function makeBillQr(amount) {
+    if (!billingSettings.payment_qr_data || !(amount > 0)) return ''
+    const payload = buildDynamicQr(billingSettings.payment_qr_data, amount)
+    if (!payload) return ''
+    try { return await QRCode.toDataURL(payload, { margin: 1, width: 200 }) } catch { return '' }
+  }
+
+  function buildBillHtml(order, items, copyLabel, qrUrl) {
     const vatReg      = billingSettings.is_vat_registered
     const prefix      = billingSettings.invoice_prefix || ''
     const invoiceNo   = order.invoice_no != null
@@ -735,6 +781,13 @@ export default function PosOrders() {
   <hr>
   <div style="font-size:11px; margin:4px 0">Rs. ${numberToWordsNpr(net)} only</div>
   <hr>
+  ${qrUrl ? `
+  <div class="c" style="margin:6px 0">
+    <img src="${qrUrl}" alt="Scan to pay" style="width:120px;height:120px;display:block;margin:0 auto" />
+    <div style="font-size:11px;margin-top:2px">Scan to pay ${net.toFixed(0)} — amount pre-filled</div>
+  </div>
+  <hr>
+  ` : ''}
   <div class="c" style="font-size:11px">Thank you for stopping by! We hope to see you again soon.</div>
 </body></html>`
   }
@@ -742,7 +795,8 @@ export default function PosOrders() {
   async function printBill(order, items) {
     const newCount = (order.print_count || 0) + 1
     await supabase.from('pos_orders').update({ print_count: newCount }).eq('id', order.id)
-    printHtml(buildBillHtml(order, items, COPY_LABEL(newCount)))
+    const qrUrl = await makeBillQr(order.paid_amount)
+    printHtml(buildBillHtml(order, items, COPY_LABEL(newCount), qrUrl))
   }
 
   // Complimentary items were never sold — this is an internal cost-tracking slip, not a Tax
@@ -865,26 +919,6 @@ export default function PosOrders() {
     setMenuLoaded(false)
   }
 
-  /* ── computed totals ── */
-  const subEx    = orderItems.reduce((s, i) => s + i.qty * i.unit_price, 0)
-  const vatAmt   = orderItems.reduce((s, i) => s + i.qty * i.unit_price * (i.vat_rate ?? 0), 0)
-  const total    = Math.round(subEx + vatAmt) // rounded to the nearest rupee — matches the bill's Net Amount/Round Off line
-  const compTotal = orderItems.reduce((s, i) => s + i.qty * (compCostMap[i.recipe_id] || 0), 0)
-
-  // Discount reduces the pre-VAT taxable base, then VAT is recalculated on the discounted amount
-  // (same rule as purchase_entries.discount_amount in Purchases.js) — not a flat subtraction off total.
-  const discountAmt = (() => {
-    const v = parseFloat(discountStr) || 0
-    if (v <= 0 || subEx <= 0) return 0
-    return discountMode === 'percent' ? Math.min(subEx, subEx * v / 100) : Math.min(subEx, v)
-  })()
-  const discRatio = subEx > 0 ? discountAmt / subEx : 0
-  const payVatAmt = vatAmt * (1 - discRatio)
-  const payTotal  = Math.round(subEx - discountAmt + payVatAmt)
-  // Buyer Name + Phone become compulsory (not just optional) whenever a discount is applied, or
-  // when the bill is going on Credit — both cases need an identifiable, audited record.
-  const requireBuyerId = discountAmt > 0 || payMethod === 'Credit'
-
   // Live bill/slip preview inside the Billing modal — built from the exact same functions used
   // for the real print, so what the cashier sees always matches what will actually print.
   const previewDraftOrder = {
@@ -897,7 +931,7 @@ export default function PosOrders() {
     table_name: activeTable?.name, order_no: orderNo, print_count: 0,
   }
   const previewHtml = !billingOpen ? null
-    : billingTab === 'pay' ? buildBillHtml(previewDraftOrder, orderItems, 'PREVIEW')
+    : billingTab === 'pay' ? buildBillHtml(previewDraftOrder, orderItems, 'PREVIEW', billQrUrl)
     : billingTab === 'writeoff' ? buildCompSlipHtml(previewDraftOrder, orderItems, compCostMap, 'PREVIEW')
     : null
   const kotCount = orderItems.filter(i => !i.sent_to_kot && !botCategories.has(i.category || 'Other')).length
@@ -1413,6 +1447,15 @@ export default function PosOrders() {
                         {fmtNpr(Math.max(0, (parseFloat(tenderedStr) || payTotal) - payTotal))}
                       </div>
                     </div>
+                  </div>
+                )}
+                {['eSewa', 'Khalti', 'FonePay'].includes(payMethod) && billQrUrl && (
+                  <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 14, padding: '10px 12px', background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 8 }}>
+                    <img src={billQrUrl} alt="Scan to pay" style={{ width: 110, height: 110, background: '#fff', borderRadius: 6, padding: 4, flexShrink: 0 }} />
+                    <p style={{ fontSize: 12, color: 'var(--theme-text2)', margin: 0, lineHeight: 1.6 }}>
+                      Customer scans to pay <strong>{fmtNpr(payTotal)}</strong> — the amount arrives pre-filled and locked
+                      in their app, so it can't be mistyped. Confirm once you see the payment land on your merchant app.
+                    </p>
                   </div>
                 )}
                 {closeMsg && <p style={{ margin: '0 0 10px', fontSize: 12, color: closeMsg.startsWith('error:') ? 'var(--theme-red)' : 'var(--theme-green)' }}>{closeMsg.replace(/^(error|ok):/, '')}</p>}
