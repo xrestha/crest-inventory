@@ -132,6 +132,10 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S213 — 2026-07-02 — Dashboard: trend chart tooltip label color fix
+
+**`src/pages/Dashboard.js`** — daily trend chart Tooltip (Purchases/Sales/Projection) had no `labelStyle`, so the "Day N" label rendered in Recharts' default dark text — unreadable on the dark theme card. Added `labelStyle={{ color: '#fff' }}`.
+
 ### S212 — 2026-07-02 — Purchases: item count in Add Purchase Bill summary
 
 **`src/pages/Purchases.js`** — bill footer now shows an "Items: N" line above Taxable/Non-taxable, counting valid lines (item selected, qty > 0, rate > 0) — same count already used for the "Save N Entries" button label.
