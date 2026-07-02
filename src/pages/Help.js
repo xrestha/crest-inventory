@@ -686,12 +686,25 @@ export default function Help() {
                 },
                 {
                   icon: '⊞', name: 'Table Management', path: '/pos/tables',
-                  desc: 'Set up your restaurant floor plan — create tables, assign them to sections (Main Hall, Bar, Outdoor), set capacity, and track status (Available / Occupied / Reserved / Inactive). Requires Supervisor role or above.',
+                  desc: 'Set up your restaurant floor plan — create tables, assign them to sections (Main Hall, Bar, Outdoor), set capacity, and track status (Available / Occupied / Reserved / Inactive). The Ticket Routing tab lets you assign each recipe category to KOT (kitchen) or BOT (bar) so tickets print at the right station automatically. Requires Supervisor role or above.',
                   tips: [
                     'Click a status badge directly on the floor grid to cycle it — no need to open the editor',
                     'Use sections to group tables by area; the section filter tabs appear automatically once you have more than one section',
                     'Sort Order controls the display sequence within a section — use multiples of 10 (10, 20, 30) to leave room for reordering',
                     'Inactive status removes a table from active service without deleting it — useful for tables under repair or seasonal areas',
+                    'Ticket Routing: go to the Ticket Routing tab to set which categories print at the kitchen (KOT) vs the bar (BOT). Default is Beverage → BOT, everything else → KOT',
+                  ],
+                },
+                {
+                  icon: '🍽', name: 'Order Taking', path: '/pos/orders',
+                  desc: 'Full-screen order entry. Tap a table from the floor plan to open it — enter covers, browse the menu by category, and tap items to add them. Pressing Send Order saves the order and automatically fires KOT and BOT tickets to their respective stations in one tap. For additions to an existing order, add the item (an amber +N badge shows the new quantity), then press KOT or BOT when ready to send just the additions.',
+                  tips: [
+                    'Send Order (new table) = save + auto-print KOT and BOT in one tap — no extra button presses needed',
+                    'Update Order (existing table) = save only; use KOT/BOT buttons to send additions to the kitchen or bar',
+                    'The amber +N badge on an item means that many extra have been added since the last ticket was sent',
+                    'The green ✓ KOT / ✓ BOT badge means the ticket for that item has already been sent to the station',
+                    'KOT and BOT badges on the buttons show how many unsent items are waiting to be sent',
+                    'Configure which categories go to KOT vs BOT in Table Management → Ticket Routing',
                   ],
                 },
                 {
