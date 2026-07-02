@@ -744,8 +744,12 @@ export default function Purchases() {
                   const grandTotal     = subTotal - discount + vatTotal
                   if (subTotal === 0) return null
                   const fmt = n => n.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                  const itemCount = billLines.filter(l => l.item_id && parseFloat(l.qty) > 0 && parseFloat(l.rate) > 0).length
                   return (
                     <div style={{ textAlign: 'right', fontSize: 13, minWidth: 300 }}>
+                      <div style={{ color: 'var(--theme-text3)', marginBottom: 3 }}>
+                        Items: <span style={{ color: 'var(--theme-text1)', fontWeight: 600, marginLeft: 8 }}>{itemCount}</span>
+                      </div>
                       {taxableBase > 0 && (
                         <div style={{ color: 'var(--theme-text3)', marginBottom: 3 }}>
                           Taxable (ex-VAT): <span style={{ color: 'var(--theme-text1)', fontWeight: 600, marginLeft: 8 }}>NPR {fmt(taxableBase)}</span>
