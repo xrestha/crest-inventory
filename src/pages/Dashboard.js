@@ -1110,6 +1110,7 @@ export default function Dashboard() {
                       <YAxis tick={{ fill: '#9ca3af', fontSize: big ? 11 : 9 }} tickLine={false} axisLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} width={big ? 40 : 32} />
                       <Tooltip
                         contentStyle={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, fontSize: big ? 12 : 11 }}
+                        labelStyle={{ color: '#fff' }}
                         formatter={(value, name) => [`NPR ${Math.round(Number(value)).toLocaleString()}`, name]}
                         labelFormatter={l => l}
                       />
