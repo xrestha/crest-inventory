@@ -132,6 +132,32 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S209 — 2026-07-02 — Auto-send KOT/BOT + Tooltips + Help page + Upsell/ME design
+
+**`src/modules/pos/orders/PosOrders.jsx` — auto-send on new order**
+- `Send Order` (new table) now auto-fires KOT and BOT tickets immediately on first save — no extra button press needed
+- `Update Order` (existing order) saves only; staff press KOT/BOT manually for additions (delta tracking unchanged)
+- Button label changed: "Save Order" → "Send Order" for new orders; spinner shows "Sending…"
+- `saveOrder()`: captures `wasNew = !orderId` before `performSave()`; on new order marks all items `sent_to_kot: true` in DB, updates local state, prints both tickets
+
+**Tooltips added**
+- KOT button: "Kitchen Order Ticket — sends unsent food items to the kitchen printer. Badge shows how many items are waiting."
+- BOT button: "Bar Order Ticket — sends unsent bar/beverage items to the bar printer."
+- ✓ KOT/BOT sent badge: explains ticket already sent, only press again for additions
+- +N amber badge: explains how many extra added since last ticket, prompts KOT/BOT
+- Ticket Routing tab: explains KOT/BOT concept on hover
+
+**`src/pages/Help.js` — new Order Taking entry + Table Management update**
+- Added full Order Taking entry with 6 tips covering Send Order auto-send, +N badge, ✓ badge, routing config
+- Updated Table Management entry to describe Ticket Routing tab and default Beverage → BOT behaviour
+
+**Research & design: Upsell / Cross-sell + Menu Engineering integration**
+- Researched ME quadrant strategies (Stars, Plowhorses, Puzzles, Dogs) and their point-of-sale implications
+- Designed three-layer suggestion engine: co-occurrence (Layer 1) + ME filter overlay (Layer 2) + chips UI (Layer 3)
+- Key insight: ME filter corrects co-occurrence — suppresses Dogs, redirects Plowhorse cross-sells to high-margin categories, injects Puzzles that never appear in co-occurrence because nobody orders them unprompted
+- Architecture: `me_class` column on `recipes` (written back when ME report runs) + `recipe_suggestions` table + co-occurrence query + JS filter logic
+- Feature gating: POS Starter = category nudge; POS Growth = manual suggestions; POS+IMS Growth = co-occurrence; POS+IMS Pro = full ME filter + Puzzle injection
+
 ### S208 — 2026-07-02 — KOT \& BOT + Ticket Routing + Menu Pricing food cost fix
 
 **`src/pages/MenuPricing.js` — sub-recipe food cost fix**
