@@ -151,7 +151,7 @@ Researched IRD (Nepal Inland Revenue Department) VAT/PAN billing rules before bu
 
 **HSC Code — redesigned mid-session after a regression.** Originally added as a `recipes.hsc_code` field editable inline in both `MenuPricing.js` branches, denormalized onto `pos_order_items.hsc_code` at order-save time. That broke Menu Pricing (blank item list) **and silently broke core Order Taking** — `loadMenu()`, `openTable()`, and `performSave()` all referenced the not-yet-migrated columns, so menu loading, opening an existing order, and saving/updating any order all failed until the migration ran. Redesigned: `recipes.hsc_code` is now the only column (no `pos_order_items.hsc_code` — removed from the migration below); `printBill()` does a live `.in('id', recipeIds)` lookup by `recipe_id` at print time instead of denormalizing. Editing UI moved out of Menu Pricing entirely into a single new **HSC Codes** tab in `src/modules/pos/tables/PosTableManagement.jsx` (alongside Tables / Ticket Routing / Quick Notes), lazy-loaded so it can't break any other tab or screen if the migration hasn't run yet — only that one tab would show empty until then. Researched the actual IRD rule while fixing the tooltip copy too: HSC is only mandatory for items that are **imported goods sold as-is** (e.g. imported bottled drinks), never for freshly prepared dishes — the field stays optional/blank for the vast majority of any F&B menu.
 
-**DB migration (S215) — not yet run**
+**DB migration (S215) — run ✓ 2026-07-02**
 ```sql
 ALTER TABLE pos_orders ADD COLUMN IF NOT EXISTS close_type      text CHECK (close_type IN ('paid','writeoff','void'));
 ALTER TABLE pos_orders ADD COLUMN IF NOT EXISTS payment_method  text CHECK (payment_method IN ('Cash','Card','eSewa','Khalti','FonePay'));
