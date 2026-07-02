@@ -50,6 +50,10 @@ export default function PosOrders() {
   const [msg,         setMsg]         = useState('')
   // categories that route to BOT — loaded from settings, default to ['Beverage']
   const [botCategories, setBotCategories] = useState(new Set(['Beverage']))
+  // ME-driven suggestion chips
+  const [suggestions,       setSuggestions]       = useState([])
+  const [suggestAfter,      setSuggestAfter]      = useState(null)
+  const [manualSuggestions, setManualSuggestions] = useState({}) // { recipeId: [suggestedRecipeId] }
 
   useEffect(() => {
     if (!clientId) return
@@ -92,15 +96,29 @@ export default function PosOrders() {
 
   async function loadMenu() {
     if (!clientId || menuLoaded) return
-    const { data } = await supabase
-      .from('recipes')
-      .select('id, name, category, selling_price, vat_rate')
-      .eq('client_id', clientId)
-      .eq('is_active', true)
-      .eq('pos_enabled', true)
-      .neq('category', 'Sub-Recipe')
-      .order('name')
+    const [{ data }, { data: suggData }] = await Promise.all([
+      supabase
+        .from('recipes')
+        .select('id, name, category, selling_price, vat_rate, me_class')
+        .eq('client_id', clientId)
+        .eq('is_active', true)
+        .eq('pos_enabled', true)
+        .neq('category', 'Sub-Recipe')
+        .order('name'),
+      supabase
+        .from('recipe_suggestions')
+        .select('recipe_id, suggest_recipe_id')
+        .eq('client_id', clientId),
+    ])
     setMenu(data || [])
+    if (suggData) {
+      const map = {}
+      suggData.forEach(s => {
+        if (!map[s.recipe_id]) map[s.recipe_id] = []
+        map[s.recipe_id].push(s.suggest_recipe_id)
+      })
+      setManualSuggestions(map)
+    }
     setMenuLoaded(true)
   }
 
@@ -182,6 +200,51 @@ export default function PosOrders() {
       }]
     })
     setMsg('')
+    computeSuggestions(recipe)
+  }
+
+  async function computeSuggestions(recipe) {
+    const currentIds  = new Set([...orderItems.map(i => i.recipe_id), recipe.id])
+    const hasMeData   = menu.some(r => r.me_class)
+    const isPlowhouse = recipe.me_class === 'plowhouse'
+    const triggerCat  = recipe.category || 'Other'
+    const manualIds   = new Set(manualSuggestions[recipe.id] || [])
+
+    function calcScore(r, coMap = {}, maxCo = 0) {
+      if (manualIds.has(r.id)) return 100
+      let s = 0
+      if (hasMeData) {
+        s = r.me_class === 'star' ? 10 : r.me_class === 'puzzle' ? 6 : 2
+        if (r.category !== triggerCat) s += 3
+        if (isPlowhouse && r.category === triggerCat) s -= 4
+      }
+      if (coMap[r.id] && maxCo > 0) s += (coMap[r.id] / maxCo) * 5
+      return s
+    }
+
+    function rank(coMap = {}, maxCo = 0) {
+      return menu
+        .filter(r => !currentIds.has(r.id) && (manualIds.has(r.id) || r.me_class !== 'dog'))
+        .map(r => ({ ...r, _score: calcScore(r, coMap, maxCo), _manual: manualIds.has(r.id) }))
+        .sort((a, b) => b._score - a._score)
+        .slice(0, 4)
+    }
+
+    // Layer 2 + 3: immediate suggestions from local data
+    const initial = rank()
+    if (initial.length === 0) { setSuggestions([]); setSuggestAfter(null); return }
+    setSuggestAfter(recipe.id)
+    setSuggestions(initial)
+
+    // Layer 1: co-occurrence (async — re-ranks on arrival)
+    if (!clientId) return
+    const { data: coData } = await supabase.rpc('get_cooccurrence', {
+      p_client_id: clientId, p_recipe_id: recipe.id, p_days: 90,
+    })
+    if (!coData?.length) return
+    const coMap = Object.fromEntries(coData.map(r => [r.paired_recipe_id, Number(r.co_count)]))
+    const maxCo = Math.max(...Object.values(coMap))
+    setSuggestions(rank(coMap, maxCo))
   }
 
   function setQty(idx, qty) {
@@ -355,6 +418,8 @@ export default function PosOrders() {
 
   function backToFloor() {
     setView('floor'); setActiveTable(null); setOrderId(null); setOrderItems([]); setMsg('')
+    setSuggestions([]); setSuggestAfter(null)
+    setMenuLoaded(false)
   }
 
   /* ── computed totals ── */
@@ -553,6 +618,50 @@ export default function PosOrders() {
               )
             })}
           </div>
+
+          {/* ── ME suggestion chips ── */}
+          {suggestions.length > 0 && (
+            <div style={{
+              borderTop: '1px solid var(--theme-border)', flexShrink: 0,
+              padding: '8px 14px',
+              background: 'color-mix(in srgb, var(--theme-accent) 5%, var(--theme-card))',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--theme-text3)' }}>Pair with</span>
+                <button
+                  onClick={() => { setSuggestions([]); setSuggestAfter(null) }}
+                  style={{ background: 'none', border: 'none', color: 'var(--theme-text3)', cursor: 'pointer', fontSize: 14, padding: 0, marginLeft: 'auto', lineHeight: 1 }}
+                >✕</button>
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {suggestions.map(r => {
+                  const price        = Math.round((parseFloat(r.selling_price) || 0) * (1 + vatOf(r)))
+                  const isChefsPick  = r.me_class === 'puzzle' && !r._manual
+                  return (
+                    <button
+                      key={r.id}
+                      onClick={() => addItem(r)}
+                      style={{
+                        background: 'var(--theme-card)',
+                        border: `1px solid ${r._manual ? 'var(--theme-accent)' : isChefsPick ? 'var(--theme-amber)' : 'var(--theme-border)'}`,
+                        borderRadius: 14, padding: '5px 10px', fontSize: 12, cursor: 'pointer',
+                        color: 'var(--theme-text1)', display: 'flex', flexDirection: 'column', gap: 1, textAlign: 'left',
+                      }}
+                    >
+                      {r._manual && (
+                        <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--theme-accent)', letterSpacing: 0.5 }}>PAIRED</span>
+                      )}
+                      {isChefsPick && (
+                        <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--theme-amber)', letterSpacing: 0.5 }}>CHEF'S PICK</span>
+                      )}
+                      <span>{r.name}</span>
+                      <span style={{ fontSize: 10, color: 'var(--theme-accent)' }}>+NPR {price}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Totals + action buttons */}
           <div style={{ borderTop: '2px solid var(--theme-border)', padding: '12px 14px', flexShrink: 0 }}>

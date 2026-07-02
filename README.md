@@ -132,6 +132,35 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S210 — 2026-07-02 — Upsell/Cross-sell ME suggestion engine (all 3 layers)
+
+**`src/pages/MenuEngineering.js` — me_class writeback**
+- After classifying all recipes, fires background upsert of `me_class` to DB per item (`r.quadrant.toLowerCase()`)
+- Silent, no UI impact — next POS menu load picks up quadrant data automatically
+
+**`src/modules/pos/orders/PosOrders.jsx` — suggestion chips (3 layers)**
+- `me_class` added to menu select query; `manualSuggestions` state loaded from `recipe_suggestions` table alongside menu
+- `menuLoaded` reset in `backToFloor()` so menu reloads fresh on each table open (picks up new me_class writes)
+- `computeSuggestions(recipe)` — async, fires on every `addItem()`:
+  - **Layer 3 (immediate)**: manual pairings from `recipe_suggestions` score 100 — always first, accent-color "PAIRED" badge
+  - **Layer 2 (immediate)**: ME scoring — Stars 10, Puzzles 6, others 2; cross-category +3 always; Plowhouse same-category −4; Puzzles get amber "CHEF'S PICK" badge
+  - **Layer 1 (async re-rank)**: `get_cooccurrence` RPC fires after initial chips shown; adds 0–5 co-occurrence bonus then re-ranks
+- "Pair with" chip strip shown between order items and totals; ✕ dismiss; chips show name + price + badge
+
+**`src/pages/MenuPricing.js` — manual pairings UI (POS-only view only)**
+- "Pair" inline link added to each row in the POS-only slim table (clients without IMS)
+- Clicking opens "Pair with" modal: searchable checklist of all other items, checkbox multi-select, Save (N) button
+- `suggMap` state loaded in `load()` from `recipe_suggestions`; updates locally on save
+- IMS view unchanged (IMS+POS clients use ME intelligence; manual pairings not needed)
+
+**DB migrations run (S210)**
+- `ALTER TABLE recipes ADD COLUMN IF NOT EXISTS me_class text CHECK (me_class IN ('star','plowhouse','puzzle','dog'))`
+- `CREATE TABLE recipe_suggestions (...)` with RLS + policy + GRANT
+- `CREATE OR REPLACE FUNCTION get_cooccurrence(...)` RPC — co-occurrence join on `pos_order_items` + `pos_orders`, 90-day window, top 10
+
+**Memory**
+- `feedback_menu_pricing_branches.md` — always ask which branch (POS-only or IMS) before editing MenuPricing.js
+
 ### S209 — 2026-07-02 — Auto-send KOT/BOT + Tooltips + Help page + Upsell/ME design
 
 **`src/modules/pos/orders/PosOrders.jsx` — auto-send on new order**

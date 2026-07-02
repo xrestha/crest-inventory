@@ -32,6 +32,12 @@ export default function MenuPricing() {
   const [addError,   setAddError]   = useState('')
   const [refreshing, setRefreshing] = useState(false)
 
+  const [suggMap,       setSuggMap]       = useState({})   // { recipeId: [suggestedRecipeId] }
+  const [suggestModal,  setSuggestModal]  = useState(null) // recipe object
+  const [pairingDraft,  setPairingDraft]  = useState(new Set())
+  const [pairingSaving, setPairingSaving] = useState(false)
+  const [pairingSearch, setPairingSearch] = useState('')
+
   const load = useCallback(async () => {
     if (!effectiveClientId) return
     setLoading(true)
@@ -109,6 +115,19 @@ export default function MenuPricing() {
     })
 
     setRecipes(processed)
+
+    // Load manual pairings (recipe_suggestions)
+    const { data: suggData } = await supabase
+      .from('recipe_suggestions')
+      .select('recipe_id, suggest_recipe_id')
+      .eq('client_id', effectiveClientId)
+    const sMap = {}
+    ;(suggData || []).forEach(s => {
+      if (!sMap[s.recipe_id]) sMap[s.recipe_id] = []
+      sMap[s.recipe_id].push(s.suggest_recipe_id)
+    })
+    setSuggMap(sMap)
+
     setLoading(false)
   }, [effectiveClientId])
 
@@ -253,6 +272,12 @@ export default function MenuPricing() {
                       {r.vat > 0
                         ? <Tip text="Menu price includes 13% VAT." width={200}> · VAT 13%</Tip>
                         : <Tip text="No VAT on this item." width={160}> · No VAT</Tip>}
+                      {' · '}
+                      <Tip text="Set which items appear as 'Pair with' suggestions when staff tap this item on the POS order screen." width={260}>
+                        <button onClick={() => openSuggestModal(r)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 11, color: (suggMap[r.id]?.length || 0) > 0 ? 'var(--theme-accent)' : 'var(--theme-text3)', textDecoration: 'underline' }}>
+                          {(suggMap[r.id]?.length || 0) > 0 ? `${suggMap[r.id].length} pairing${suggMap[r.id].length !== 1 ? 's' : ''}` : 'Pair'}
+                        </button>
+                      </Tip>
                     </div>
                   </td>
                   <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--theme-text1)' }}>
@@ -262,6 +287,48 @@ export default function MenuPricing() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* ── Pair With Modal (POS-only clients) ── */}
+      {suggestModal && (
+        <div onClick={e => { if (e.target === e.currentTarget) setSuggestModal(null) }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
+          <div style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 12, width: 'min(480px, 96vw)', padding: '24px 28px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 16px 48px rgba(0,0,0,0.4)' }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: 16, color: 'var(--theme-text1)' }}>Pair with — {suggestModal.name}</h3>
+            <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--theme-text3)' }}>
+              Checked items appear as "Pair with" chips when staff tap this item on the POS order screen.
+            </p>
+            <input
+              autoFocus
+              placeholder="Search items…"
+              value={pairingSearch}
+              onChange={e => setPairingSearch(e.target.value)}
+              style={{ background: 'var(--theme-input-bg)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '8px 10px', fontSize: 13, color: 'var(--theme-text1)', marginBottom: 10, flexShrink: 0 }}
+            />
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {recipes
+                .filter(r => r.id !== suggestModal.id && r.name.toLowerCase().includes(pairingSearch.toLowerCase()))
+                .map(r => (
+                  <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 6, cursor: 'pointer', background: pairingDraft.has(r.id) ? 'color-mix(in srgb, var(--theme-accent) 10%, var(--theme-card))' : 'transparent' }}>
+                    <input type="checkbox" checked={pairingDraft.has(r.id)}
+                      onChange={() => setPairingDraft(s => { const n = new Set(s); n.has(r.id) ? n.delete(r.id) : n.add(r.id); return n })}
+                      style={{ accentColor: 'var(--theme-accent)', cursor: 'pointer', width: 15, height: 15, flexShrink: 0 }}
+                    />
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--theme-text1)' }}>{r.name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--theme-text3)' }}>{r.category} · {r.inclVat > 0 ? `NPR ${r.inclVat.toFixed(0)}` : '—'}</div>
+                    </div>
+                  </label>
+                ))}
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--theme-border)', flexShrink: 0 }}>
+              <button className="btn btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setSuggestModal(null)}>Cancel</button>
+              <button className="btn btn-primary" style={{ flex: 2, justifyContent: 'center' }} onClick={savePairings} disabled={pairingSaving}>
+                {pairingSaving ? 'Saving…' : `Save${pairingDraft.size > 0 ? ` (${pairingDraft.size})` : ''}`}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -328,6 +395,34 @@ export default function MenuPricing() {
       )}
     </div>
   )
+
+  function openSuggestModal(recipe) {
+    setSuggestModal(recipe)
+    setPairingDraft(new Set(suggMap[recipe.id] || []))
+    setPairingSearch('')
+  }
+
+  async function savePairings() {
+    if (!suggestModal) return
+    setPairingSaving(true)
+    const recipeId = suggestModal.id
+    await supabase.from('recipe_suggestions').delete()
+      .eq('recipe_id', recipeId).eq('client_id', effectiveClientId)
+    const newIds = [...pairingDraft]
+    if (newIds.length > 0) {
+      await supabase.from('recipe_suggestions').insert(
+        newIds.map((suggestRecipeId, i) => ({
+          client_id:         effectiveClientId,
+          recipe_id:         recipeId,
+          suggest_recipe_id: suggestRecipeId,
+          sort_order:        i,
+        }))
+      )
+    }
+    setSuggMap(m => ({ ...m, [recipeId]: newIds }))
+    setPairingSaving(false)
+    setSuggestModal(null)
+  }
 
   async function refreshCosts() {
     setRefreshing(true)
@@ -484,6 +579,48 @@ export default function MenuPricing() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* ── Pair With Modal ── */}
+      {suggestModal && (
+        <div onClick={e => { if (e.target === e.currentTarget) setSuggestModal(null) }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
+          <div style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 12, width: 'min(480px, 96vw)', padding: '24px 28px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 16px 48px rgba(0,0,0,0.4)' }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: 16, color: 'var(--theme-text1)' }}>Pair with — {suggestModal.name}</h3>
+            <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--theme-text3)' }}>
+              Checked items appear as "Pair with" chips when staff tap this item on the POS order screen.
+            </p>
+            <input
+              autoFocus
+              placeholder="Search items…"
+              value={pairingSearch}
+              onChange={e => setPairingSearch(e.target.value)}
+              style={{ background: 'var(--theme-input-bg)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '8px 10px', fontSize: 13, color: 'var(--theme-text1)', marginBottom: 10, flexShrink: 0 }}
+            />
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {recipes
+                .filter(r => r.id !== suggestModal.id && r.name.toLowerCase().includes(pairingSearch.toLowerCase()))
+                .map(r => (
+                  <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 6, cursor: 'pointer', background: pairingDraft.has(r.id) ? 'color-mix(in srgb, var(--theme-accent) 10%, var(--theme-card))' : 'transparent' }}>
+                    <input type="checkbox" checked={pairingDraft.has(r.id)}
+                      onChange={() => setPairingDraft(s => { const n = new Set(s); n.has(r.id) ? n.delete(r.id) : n.add(r.id); return n })}
+                      style={{ accentColor: 'var(--theme-accent)', cursor: 'pointer', width: 15, height: 15, flexShrink: 0 }}
+                    />
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--theme-text1)' }}>{r.name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--theme-text3)' }}>{r.category} · {r.inclVat > 0 ? `NPR ${r.inclVat.toFixed(0)}` : '—'}</div>
+                    </div>
+                  </label>
+                ))}
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--theme-border)', flexShrink: 0 }}>
+              <button className="btn btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setSuggestModal(null)}>Cancel</button>
+              <button className="btn btn-primary" style={{ flex: 2, justifyContent: 'center' }} onClick={savePairings} disabled={pairingSaving}>
+                {pairingSaving ? 'Saving…' : `Save${pairingDraft.size > 0 ? ` (${pairingDraft.size})` : ''}`}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

@@ -166,6 +166,10 @@ export default function MenuEngineering() {
 
     setItems(final)
     setLoading(false)
+    // Background: write me_class to DB — read by POS suggestion engine on next menu load
+    final.forEach(r => {
+      supabase.from('recipes').update({ me_class: r.quadrant.toLowerCase() }).eq('id', r.id)
+    })
   }
 
   const filtered = useMemo(() => {
