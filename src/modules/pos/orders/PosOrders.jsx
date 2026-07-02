@@ -251,10 +251,25 @@ export default function PosOrders() {
     if (!clientId) return
     if (orderItems.length === 0) { setMsg('error:Add at least one item.'); return }
     setSaving(true); setMsg('')
+
+    const wasNew = !orderId
     const oid = await performSave()
+    if (!oid) { setSaving(false); setMsg('error:Save failed.'); return }
+
+    if (wasNew) {
+      // Auto-send all items to their stations on first save
+      const kotItems = orderItems.filter(i => !botCategories.has(i.category || 'Other'))
+      const botItems = orderItems.filter(i =>  botCategories.has(i.category || 'Other'))
+      await supabase.from('pos_order_items').update({ sent_to_kot: true }).eq('order_id', oid)
+      setOrderItems(prev => prev.map(i => ({ ...i, sent_to_kot: true, sent_qty: i.qty })))
+      if (kotItems.length > 0) printTicket('KOT', kotItems)
+      if (botItems.length > 0) printTicket('BOT', botItems)
+      setMsg('ok:Order sent!')
+    } else {
+      setMsg('ok:Saved.')
+    }
+
     setSaving(false)
-    if (!oid) { setMsg('error:Save failed.'); return }
-    setMsg('ok:Saved.')
   }
 
   /* ── KOT / BOT ── */
@@ -558,7 +573,7 @@ export default function PosOrders() {
               onClick={saveOrder}
               disabled={saving || orderItems.length === 0}
             >
-              {saving ? 'Saving…' : orderId ? 'Update Order' : 'Save Order'}
+              {saving ? 'Sending…' : orderId ? 'Update Order' : 'Send Order'}
             </button>
 
             <div style={{ display: 'flex', gap: 8 }}>
