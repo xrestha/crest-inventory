@@ -16,7 +16,7 @@ const STATUS_LABEL = { available: 'Available', occupied: 'Occupied', reserved: '
 const PAYMENT_METHODS = ['Cash', 'Card', 'eSewa', 'Khalti', 'FonePay']
 const VOID_REASONS    = ['Wrong table', 'Duplicate order', 'Test order', 'Order entry mistake', 'Other']
 const COMP_REASONS    = ['Walkout / unpaid', 'Customer goodwill', 'Customer complaint', 'Staff error', 'Owners', 'Company Guest', 'Other']
-const COPY_LABEL      = n => n <= 1 ? 'ORIGINAL' : n === 2 ? 'DUPLICATE' : n === 3 ? 'TRIPLICATE' : `REPRINT #${n}`
+const COPY_LABEL      = n => n <= 1 ? 'ORIGINAL-COPY' : n === 2 ? 'SECOND-COPY' : n === 3 ? 'THIRD-COPY' : `REPRINT #${n}`
 
 const btnSm = {
   width: 26, height: 26, borderRadius: 4,
@@ -610,10 +610,13 @@ export default function PosOrders() {
     const bsDateStr   = `${bs.day} ${BS_MONTHS[bs.month - 1]} ${bs.year}`
     const payLabel    = order.payment_method || ''
 
-    const subEx  = items.reduce((s, i) => s + i.qty * i.unit_price, 0)
-    const vatAmt = vatReg ? items.reduce((s, i) => s + i.qty * i.unit_price * (i.vat_rate ?? 0), 0) : 0
-    const gross  = subEx + vatAmt
-    const net    = gross
+    const subEx    = items.reduce((s, i) => s + i.qty * i.unit_price, 0)
+    const vatAmt   = vatReg ? items.reduce((s, i) => s + i.qty * i.unit_price * (i.vat_rate ?? 0), 0) : 0
+    const discount = 0 // no discount feature yet — printed as 0.00 per IRD invoice format
+    const grossAmt = subEx
+    const rawNet   = grossAmt - discount + vatAmt
+    const net      = Math.round(rawNet) // rounded to the nearest rupee so Net Amount matches the amount-in-words line
+    const roundOff = net - rawNet
     const taxableBase    = vatReg ? items.filter(i => (i.vat_rate ?? 0) > 0).reduce((s, i) => s + i.qty * i.unit_price, 0) : 0
     const nonTaxableBase = vatReg ? items.filter(i => !(i.vat_rate > 0)).reduce((s, i) => s + i.qty * i.unit_price, 0) : subEx
     const totalQty = items.reduce((s, i) => s + i.qty, 0)
@@ -624,48 +627,56 @@ export default function PosOrders() {
 <html><head><title>Bill</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:'Courier New',monospace; font-size:12px; width:80mm; padding:8px 10px; }
+  body { font-family:'Courier New',monospace; font-size:11px; width:80mm; padding:8px 10px; margin:0 auto; }
   .c   { text-align:center; }
   .b   { font-weight:bold; }
-  .lg  { font-size:16px; letter-spacing:1px; }
+  .lg  { font-size:15px; letter-spacing:1px; }
   hr   { border:none; border-top:1px dashed #000; margin:6px 0; }
   .row { display:flex; justify-content:space-between; align-items:baseline; padding:2px 0; }
-  table { width:100%; border-collapse:collapse; font-size:11px; }
-  th, td { text-align:left; padding:2px 0; }
-  th:last-child, td:last-child { text-align:right; }
-  .tot  { font-weight:bold; font-size:14px; }
-  .copy { font-size:10px; letter-spacing:1px; }
+  table { width:100%; border-collapse:collapse; font-size:11px; table-layout:fixed; }
+  th, td { text-align:left; padding:2px 4px 2px 0; word-wrap:break-word; }
+  th:last-child, td:last-child { padding-right:0; }
+  th:nth-child(1), td:nth-child(1) { width:19px; }
+  th:nth-child(2), td:nth-child(2) { width:24px; }
+  th:nth-child(4), td:nth-child(4) { width:26px; text-align:center; padding-right:0; }
+  th:nth-child(5), td:nth-child(5) { width:46px; text-align:right; }
+  th:nth-child(6), td:nth-child(6) { width:54px; text-align:right; }
+  .tot  { font-weight:bold; font-size:13px; }
+  .copy { font-size:11px; letter-spacing:1px; }
 </style>
 </head><body>
-  <div class="c copy">${copyLabel}</div>
-  ${outletName ? `<div class="c b" style="font-size:14px">${outletName}</div>` : ''}
-  ${billingSettings.property_address ? `<div class="c" style="font-size:10px">${billingSettings.property_address}</div>` : ''}
-  ${billingSettings.property_phone ? `<div class="c" style="font-size:10px">${billingSettings.property_phone}</div>` : ''}
-  ${billingSettings.vat_number ? `<div class="c" style="font-size:10px">PAN No.: ${billingSettings.vat_number}</div>` : ''}
+  ${outletName ? `<div class="c b" style="font-size:13px">${outletName}</div>` : ''}
+  ${billingSettings.property_address ? `<div class="c" style="font-size:11px">${billingSettings.property_address}</div>` : ''}
+  ${billingSettings.property_phone ? `<div class="c" style="font-size:11px">${billingSettings.property_phone}</div>` : ''}
+  ${billingSettings.vat_number ? `<div class="c" style="font-size:11px">${vatReg ? 'VAT No' : 'PAN No'}: ${billingSettings.vat_number}</div>` : ''}
   <div class="c b lg" style="margin-top:4px">${vatReg ? 'TAX INVOICE' : 'BILL'}</div>
+  <div class="c copy">${copyLabel}</div>
   <hr>
   <div class="row"><span>Bill No:</span><span class="b">${invoiceNo}</span></div>
   <div class="row"><span>Date:</span><span>${adDateStr}</span></div>
   <div class="row"><span>Miti:</span><span>${bsDateStr}</span></div>
   <div class="row"><span>Name:</span><span>${order.buyer_name || ''}</span></div>
   <div class="row"><span>Address:</span><span>${order.buyer_address || ''}</span></div>
-  <div class="row"><span>PAN No:</span><span>${order.buyer_pan || ''}</span></div>
-  <div class="row"><span>Phone:</span><span>${order.buyer_phone || ''}</span></div>
+  <div class="row"><span>PAN No: ${order.buyer_pan || ''}</span><span>Phone: ${order.buyer_phone || ''}</span></div>
   <div class="row"><span>Payment Mode:</span><span>${payLabel}</span></div>
   <div class="row"><span>Remarks:</span><span>${order.bill_remarks || ''}</span></div>
+  <div class="row" style="font-size:11px;color:#555"><span>${tableName === 'Takeaway' ? 'Takeaway' : `Dine-In: ${tableName}`}</span><span>${nowStr}</span></div>
+  <div style="font-size:11px;color:#555">Cashier: ${profile?.full_name || ''}</div>
   <hr>
   <table>
-    <thead><tr><th>Item</th><th>HSC</th><th>Qty</th><th>Amount</th></tr></thead>
+    <thead><tr><th>Sn</th><th>HSC</th><th>Particulars</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead>
     <tbody>
-      ${items.map(i => `<tr><td>${i.name}</td><td>${hscMap[i.recipe_id] || ''}</td><td>${i.qty}</td><td>${(i.qty * i.unit_price).toFixed(2)}</td></tr>`).join('')}
+      ${items.map((i, idx) => `<tr><td>${idx + 1}</td><td>${hscMap[i.recipe_id] || ''}</td><td>${i.name}</td><td>${i.qty}</td><td>${i.unit_price.toFixed(2)}</td><td>${(i.qty * i.unit_price).toFixed(2)}</td></tr>`).join('')}
     </tbody>
   </table>
   <hr>
-  <div class="row"><span>Gross Amount:</span><span>${gross.toFixed(2)}</span></div>
+  <div class="row"><span>Gross Amount:</span><span>${grossAmt.toFixed(2)}</span></div>
+  <div class="row"><span>Discount:</span><span>${discount.toFixed(2)}</span></div>
   ${vatReg ? `
   <div class="row"><span>Taxable:</span><span>${taxableBase.toFixed(2)}</span></div>
   <div class="row"><span>Nontaxable:</span><span>${nonTaxableBase.toFixed(2)}</span></div>
   <div class="row"><span>VAT 13%:</span><span>${vatAmt.toFixed(2)}</span></div>
+  <div class="row"><span>Round Off:</span><span>${roundOff >= 0 ? '+' : ''}${roundOff.toFixed(2)}</span></div>
   ` : ''}
   <div class="row tot"><span>Net Amount:</span><span>${net.toFixed(2)}</span></div>
   <hr>
@@ -676,10 +687,7 @@ export default function PosOrders() {
   <hr>
   <div style="font-size:11px; margin:4px 0">Rs. ${numberToWordsNpr(net)} only</div>
   <hr>
-  <div class="c" style="font-size:11px">Thank you for visiting us.</div>
-  <hr>
-  <div class="row" style="font-size:10px;color:#555"><span>Counter: ${tableName}</span><span>${nowStr}</span></div>
-  <div style="font-size:10px;color:#555">Cashier: ${profile?.full_name || ''}</div>
+  <div class="c" style="font-size:11px">Thank you for stopping by! We hope to see you again soon.</div>
 </body></html>`
   }
 
@@ -710,23 +718,23 @@ export default function PosOrders() {
 <html><head><title>Complimentary Slip</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:'Courier New',monospace; font-size:12px; width:80mm; padding:8px 10px; }
+  body { font-family:'Courier New',monospace; font-size:11px; width:80mm; padding:8px 10px; margin:0 auto; }
   .c   { text-align:center; }
   .b   { font-weight:bold; }
-  .lg  { font-size:15px; letter-spacing:1px; }
+  .lg  { font-size:14px; letter-spacing:1px; }
   hr   { border:none; border-top:1px dashed #000; margin:6px 0; }
   .row { display:flex; justify-content:space-between; align-items:baseline; padding:2px 0; }
   table { width:100%; border-collapse:collapse; font-size:11px; }
   th, td { text-align:left; padding:2px 0; }
   th:last-child, td:last-child { text-align:right; }
-  .tot  { font-weight:bold; font-size:13px; }
-  .copy { font-size:10px; letter-spacing:1px; }
+  .tot  { font-weight:bold; font-size:12px; }
+  .copy { font-size:11px; letter-spacing:1px; }
 </style>
 </head><body>
   <div class="c copy">${copyLabel}</div>
-  ${outletName ? `<div class="c b" style="font-size:14px">${outletName}</div>` : ''}
+  ${outletName ? `<div class="c b" style="font-size:13px">${outletName}</div>` : ''}
   <div class="c b lg" style="margin-top:4px">COMPLIMENTARY SLIP</div>
-  <div class="c" style="font-size:10px">Internal record — not a Tax Invoice or PAN Bill</div>
+  <div class="c" style="font-size:11px">Internal record — not a Tax Invoice or PAN Bill</div>
   <hr>
   <div class="row"><span>No:</span><span class="b">${ncNo}</span></div>
   <div class="row"><span>Order Ref:</span><span>#${order.order_no ?? ''}</span></div>
@@ -747,7 +755,7 @@ export default function PosOrders() {
   <div class="row"><span>Total Qty:</span><span>${totalQty}</span></div>
   <div class="row tot"><span>Total Food Cost:</span><span>NPR ${totalCost.toFixed(2)}</span></div>
   <hr>
-  <div class="row" style="font-size:10px;color:#555"><span>Table: ${tableName}</span><span>${nowStr}</span></div>
+  <div class="row" style="font-size:11px;color:#555"><span>Table: ${tableName}</span><span>${nowStr}</span></div>
 </body></html>`
   }
 
@@ -812,7 +820,7 @@ export default function PosOrders() {
   /* ── computed totals ── */
   const subEx    = orderItems.reduce((s, i) => s + i.qty * i.unit_price, 0)
   const vatAmt   = orderItems.reduce((s, i) => s + i.qty * i.unit_price * (i.vat_rate ?? 0), 0)
-  const total    = subEx + vatAmt
+  const total    = Math.round(subEx + vatAmt) // rounded to the nearest rupee — matches the bill's Net Amount/Round Off line
   const compTotal = orderItems.reduce((s, i) => s + i.qty * (compCostMap[i.recipe_id] || 0), 0)
 
   // Live bill/slip preview inside the Billing modal — built from the exact same functions used
@@ -1196,7 +1204,25 @@ export default function PosOrders() {
           onClick={e => { if (e.target === e.currentTarget && !closing) setBillingOpen(false) }}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}
         >
-          <div style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 14, width: 'min(480px, 96vw)', maxHeight: '90vh', overflowY: 'auto', padding: '24px 28px', boxShadow: '0 16px 48px rgba(0,0,0,0.4)' }}>
+          <div style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 14, width: 'min(980px, 96vw)', maxHeight: '90vh', boxShadow: '0 16px 48px rgba(0,0,0,0.4)', display: 'flex', overflow: 'hidden' }}>
+          <div style={{ width: 418, flexShrink: 0, background: 'var(--theme-sidebar)', borderRight: '1px solid var(--theme-border)', padding: '24px 20px', overflowY: 'auto', maxHeight: '90vh' }}>
+            <p style={{ fontSize: 11, color: 'var(--theme-text3)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 10px' }}>
+              {billingTab === 'writeoff' ? 'Complimentary slip preview' : 'Bill preview'} <Tip text="Live preview built from the same layout that actually prints — updates as you fill in the fields to the right. The invoice/NC number shown here is a placeholder; the real one is assigned when you confirm.">(live)</Tip>
+            </p>
+            {previewHtml ? (
+              <iframe
+                title="bill-preview"
+                srcDoc={previewHtml}
+                scrolling="no"
+                style={{ width: 378, height: 820, border: '1px solid var(--theme-border)', borderRadius: 8, background: '#fff', display: 'block', overflow: 'hidden' }}
+              />
+            ) : billingTab === 'void' && (
+              <p style={{ fontSize: 12, color: 'var(--theme-text3)', fontStyle: 'italic' }}>
+                No document prints for a Void — the order is treated as if it never happened.
+              </p>
+            )}
+          </div>
+          <div style={{ flex: 1, minWidth: 0, overflowY: 'auto', maxHeight: '90vh', padding: '24px 28px' }}>
             <h3 style={{ margin: '0 0 4px', fontSize: 18, color: 'var(--theme-text1)' }}>
               {activeTable ? activeTable.name : 'Takeaway'}
             </h3>
@@ -1312,27 +1338,11 @@ export default function PosOrders() {
               </>
             )}
 
-            {previewHtml ? (
-              <div style={{ marginTop: 16 }}>
-                <p style={{ fontSize: 11, color: 'var(--theme-text3)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 8px' }}>
-                  {billingTab === 'writeoff' ? 'Complimentary slip preview' : 'Bill preview'} <Tip text="Live preview built from the same layout that actually prints — updates as you fill in the fields above. The invoice/NC number shown here is a placeholder; the real one is assigned when you confirm.">(live)</Tip>
-                </p>
-                <iframe
-                  title="bill-preview"
-                  srcDoc={previewHtml}
-                  style={{ width: 300, maxWidth: '100%', height: 360, border: '1px solid var(--theme-border)', borderRadius: 8, background: '#fff', display: 'block', margin: '0 auto' }}
-                />
-              </div>
-            ) : billingTab === 'void' && (
-              <p style={{ marginTop: 16, fontSize: 12, color: 'var(--theme-text3)', fontStyle: 'italic' }}>
-                No document prints for a Void — the order is treated as if it never happened.
-              </p>
-            )}
-
             <button className="btn btn-ghost" style={{ width: '100%', padding: '9px 0', justifyContent: 'center', marginTop: 14, fontSize: 13 }}
               onClick={() => setBillingOpen(false)} disabled={closing}>
               Cancel
             </button>
+          </div>
           </div>
         </div>
       )}

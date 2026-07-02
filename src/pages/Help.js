@@ -718,7 +718,7 @@ export default function Help() {
                     'Both the Charge modal\'s total and item list switch to food-cost values while the Complimentary tab is open, and a live preview of the actual bill/slip layout appears in the modal as you fill in the fields — it always matches exactly what will print',
                     'Whether the printed bill says "TAX INVOICE" (with a VAT breakdown) or plain "BILL" (PAN only, no VAT) depends on the VAT Registered toggle an admin sets per client — see Settings below',
                     'Buyer Name/Address/PAN/Phone on the Charge screen are optional — IRD allows omitting them for bills up to NPR 10,000, but fill them in if a customer requests a full invoice',
-                    '📄 Recent Bills (floor view) lists everything closed today and lets you reprint a bill — the printout is labelled ORIGINAL the first time, DUPLICATE the second, TRIPLICATE the third, and REPRINT #N after that',
+                    '📄 Recent Bills (floor view) lists everything closed today and lets you reprint a bill — the printout is labelled ORIGINAL-COPY the first time, SECOND-COPY the second, THIRD-COPY the third, and REPRINT #N after that (matches Nepal IRD\'s Rule 17 buyer/authority/seller copy terminology)',
                   ],
                 },
                 {

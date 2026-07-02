@@ -132,6 +132,25 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S218 — 2026-07-02 — Tax Invoice/Bill print overhaul: two-column preview, Gross Amount fix, Round Off, IRD copy terms
+
+No DB migration.
+
+**`src/modules/pos/orders/PosOrders.jsx` — Billing modal & print templates**
+- Billing modal restructured to a two-column layout: live bill/slip preview pinned on the left (sized to 100mm, with the 80mm receipt body centered inside — no lopsided blank gap), form fields/tabs/buttons scrollable on the right. Modal widened to `min(980px, 96vw)`.
+- **Fixed a real Gross Amount bug** — `buildBillHtml()` was computing `gross = subEx + vatAmt` and `net = gross`, so Gross Amount and Net Amount printed the identical VAT-inclusive figure. Gross Amount now correctly shows the ex-VAT sum (`subEx`), matching the reference Casa Acai invoice where Gross = Taxable when there's no discount.
+- Added a **Discount** row (hardcoded `0.00` — no discount feature exists yet, but IRD-format invoices expect the line) between Gross Amount and Taxable/VAT.
+- Added a **Rate** column and reordered the item table to `Sn | HSC | Particulars | Qty | Rate | Amount`, matching the reference invoice. Fixed-width columns (`table-layout:fixed`) to stop header text (Qty, Sn) from wrapping and numeric columns from squashing together.
+- Combined buyer PAN No/Phone into a single row; kept Remarks.
+- Moved the Dine-In/Table + Cashier identity line up from the bottom footer to directly after Remarks (before the item table).
+- Relabeled that identity line from "Counter:" to **"Dine-In: {table}"** / **"Takeaway"** — researched that "Counter:" is quick-service terminology; table-service receipts standardly show "Table"/"Server" (confirmed via Toast POS docs).
+- **Round Off row** — `net` is now rounded to the nearest rupee so Net Amount matches the amount-in-words line (previously could print e.g. "1039.99" next to "Rs. One Thousand Forty only" — a visible mismatch). New "Round Off: +0.01"-style row between VAT 13% and Net Amount. The modal's live total/Confirm Payment amount/`paid_amount` is rounded the same way so what's charged always matches what prints.
+- Relabeled "PAN No.:" to conditional **"VAT No: "** (VAT-registered) / **"PAN No: "** (non-VAT) for the outlet's own registration number.
+- **Copy-label terminology corrected to match Nepal IRD's Rule 17 wording** — researched and confirmed IRD's three-copy rule is Original (buyer) / Duplicate (produced to authorities on demand) / Triplicate (seller's own record). Relabeled `COPY_LABEL()` from ORIGINAL/DUPLICATE/TRIPLICATE to **ORIGINAL-COPY/SECOND-COPY/THIRD-COPY**, moved to print below the TAX INVOICE/BILL header instead of at the very top.
+- All font sizes reduced by 1px across both the Tax Invoice/Bill and Complimentary Slip templates; footer message changed to "Thank you for stopping by! We hope to see you again soon."
+
+**Sources:** [BizSewa — Nepal VAT Tax Invoice Formats (Schedule 5)](https://bizsewa.com/nepal-amends-vat-rules-new-tax-invoice-formats-introduced-new-vat-bill-format/), [Union Nepal — VAT Bill in Nepal](https://www.unionnepal.com/vat-bill-in-nepal), [Nepal Taxes — Provisions Relating to Invoices](https://nepaltaxes.com/provisions-relating-to-invoices-guide-to-invoice-abbreviated-tax-invoice/), [Toast — Configuring customer printed receipts](https://doc.toasttab.com/doc/platformguide/adminReceiptSetup.html)
+
 ### S217 — 2026-07-02 — Complimentary Slip polish: outlet name, NC sequence, more reasons, live bill preview
 
 **DB migration required** — re-run `assign_pos_invoice_no()` (idempotent `CREATE OR REPLACE`, safe to re-apply):
