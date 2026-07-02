@@ -713,7 +713,9 @@ export default function Help() {
                     'Tap "+ Add note" under any order item to send a special instruction (e.g. "no onion") to the kitchen/bar — it prints indented under that item on the ticket. Preset chips from Table Management → Quick Notes appear while you type',
                     'Editing or adding a note after a ticket was already sent clears its ✓ sent badge — press KOT/BOT again to send the update to the station',
                     'The floor view shows an amber "⚠ pending" pill and per-table badge for any table with items added but not yet sent to the kitchen/bar — a quick way to catch orders that were never fired',
-                    'Charge → closes the table: Pay (any staff) collects Cash/Card/eSewa/Khalti/FonePay and prints a Tax Invoice or Bill; Void (Supervisor+) cancels a mistake with no revenue impact; Write-off (Manager+) closes an unpaid walkout — still counts as a sale for food-cost accuracy, but ₨0 is collected',
+                    'Charge → closes the table — Supervisor role or above only, hidden entirely for Staff. Pay collects Cash/Card/eSewa/Khalti/FonePay and prints a Tax Invoice or Bill; Void cancels a mistake with no revenue impact; Complimentary (Manager+) closes a walkout or comp — ₨0 is collected but it still counts against food-cost/inventory reporting',
+                    'Complimentary prints an internal Complimentary Slip, not a Tax Invoice or PAN Bill — its own sequential NC-01 style number (separate from Tax Invoice/Bill numbers), each line valued at food cost (not menu price) so comps don\'t distort your P&L',
+                    'Both the Charge modal\'s total and item list switch to food-cost values while the Complimentary tab is open, and a live preview of the actual bill/slip layout appears in the modal as you fill in the fields — it always matches exactly what will print',
                     'Whether the printed bill says "TAX INVOICE" (with a VAT breakdown) or plain "BILL" (PAN only, no VAT) depends on the VAT Registered toggle an admin sets per client — see Settings below',
                     'Buyer Name/Address/PAN/Phone on the Charge screen are optional — IRD allows omitting them for bills up to NPR 10,000, but fill them in if a customer requests a full invoice',
                     '📄 Recent Bills (floor view) lists everything closed today and lets you reprint a bill — the printout is labelled ORIGINAL the first time, DUPLICATE the second, TRIPLICATE the third, and REPRINT #N after that',
@@ -721,7 +723,7 @@ export default function Help() {
                 },
                 {
                   icon: '👥', name: 'POS Staff', path: '/pos/staff',
-                  desc: 'Assign POS roles to your team. Only staff with a role assigned can see POS screens. Roles: Staff (order-taking), Supervisor (+ table setup, voids), Manager (+ reports, role assignment). Requires Manager role or above.',
+                  desc: 'Assign POS roles to your team. Only staff with a role assigned can see POS screens. Roles: Staff (order-taking only), Supervisor (+ table setup, billing/Charge, void), Manager (+ Complimentary, reports, role assignment). Requires Manager role or above.',
                   tips: [
                     'Start by assigning the owner/manager account the Manager role — they can then assign roles to the rest of the team',
                     'Staff role = waiters who take orders only. They cannot access Table Management or reports',

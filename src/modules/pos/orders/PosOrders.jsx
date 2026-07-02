@@ -5,6 +5,7 @@ import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
 import { adToBs, BS_MONTHS, getBsToday, getBsFiscalYear } from '../../../utils/bsCalendar'
 import { numberToWordsNpr } from '../../../utils/numberToWords'
+import { computeRecipeCosts } from '../../../utils/recipeCost'
 
 const vatOf  = r => (r.vat_rate === null || r.vat_rate === undefined) ? 0.13 : parseFloat(r.vat_rate)
 const fmtNpr = n => `NPR ${Math.round(n).toLocaleString()}`
@@ -12,10 +13,10 @@ const fmtNpr = n => `NPR ${Math.round(n).toLocaleString()}`
 const STATUS_BADGE = { available: 'badge-green', occupied: 'badge-red', reserved: 'badge-amber', inactive: 'badge-gray' }
 const STATUS_LABEL = { available: 'Available', occupied: 'Occupied', reserved: 'Reserved', inactive: 'Inactive' }
 
-const PAYMENT_METHODS  = ['Cash', 'Card', 'eSewa', 'Khalti', 'FonePay']
-const VOID_REASONS     = ['Wrong table', 'Duplicate order', 'Test order', 'Order entry mistake', 'Other']
-const WRITEOFF_REASONS = ['Walkout / unpaid', 'Complimentary', 'Customer complaint', 'Staff error', 'Other']
-const COPY_LABEL       = n => n <= 1 ? 'ORIGINAL' : n === 2 ? 'DUPLICATE' : n === 3 ? 'TRIPLICATE' : `REPRINT #${n}`
+const PAYMENT_METHODS = ['Cash', 'Card', 'eSewa', 'Khalti', 'FonePay']
+const VOID_REASONS    = ['Wrong table', 'Duplicate order', 'Test order', 'Order entry mistake', 'Other']
+const COMP_REASONS    = ['Walkout / unpaid', 'Customer goodwill', 'Customer complaint', 'Staff error', 'Owners', 'Company Guest', 'Other']
+const COPY_LABEL      = n => n <= 1 ? 'ORIGINAL' : n === 2 ? 'DUPLICATE' : n === 3 ? 'TRIPLICATE' : `REPRINT #${n}`
 
 const btnSm = {
   width: 26, height: 26, borderRadius: 4,
@@ -89,6 +90,8 @@ export default function PosOrders() {
   const [billRemarks,  setBillRemarks]  = useState('')
   const [closing,     setClosing]     = useState(false)
   const [closeMsg,    setCloseMsg]    = useState('')
+  const [compCostMap, setCompCostMap] = useState({}) // { recipeId: foodCostPerPortion } — fetched when Complimentary tab opens
+  const [hscMap,      setHscMap]      = useState({}) // { recipeId: hscCode } — fetched once when Billing modal opens
 
   /* ── Recent Bills / Reprint ── */
   const [recentBillsOpen, setRecentBillsOpen] = useState(false)
@@ -505,14 +508,28 @@ export default function PosOrders() {
 
   /* ── Billing / Charge ── */
 
-  function openBilling() {
+  async function openBilling() {
     setBillingTab('pay')
     setPayMethod('Cash')
     setTenderedStr('')
     setCloseReason('')
     setBuyerName(''); setBuyerAddress(''); setBuyerPan(''); setBuyerPhone(''); setBillRemarks('')
     setCloseMsg('')
+    setCompCostMap({})
+    setHscMap({})
     setBillingOpen(true)
+    const recipeIds = orderItems.map(i => i.recipe_id).filter(Boolean)
+    if (recipeIds.length > 0) {
+      const { data } = await supabase.from('recipes').select('id, hsc_code').in('id', recipeIds)
+      setHscMap(Object.fromEntries((data || []).map(r => [r.id, r.hsc_code])))
+    }
+  }
+
+  async function openCompTab() {
+    setBillingTab('writeoff'); setCloseMsg('')
+    const recipeIds = orderItems.map(i => i.recipe_id).filter(Boolean)
+    const map = await computeRecipeCosts(supabase, recipeIds)
+    setCompCostMap(map)
   }
 
   async function writeSalesEntries() {
@@ -551,6 +568,9 @@ export default function PosOrders() {
       bill_remarks:     billRemarks.trim() || null,
       closed_by:        profile?.id || null,
       closed_at:        new Date().toISOString(),
+      // Both Pay and Complimentary get their own sequential number (TI/PB for Pay, NC for
+      // Complimentary) — the DB trigger partitions the counter by close_type so the two
+      // sequences never share numbers. Void never gets one (order was never fulfilled).
       ...(closeType !== 'void' ? { invoice_fy: getBsFiscalYear(today.year, today.month) } : {}),
     }
 
@@ -565,7 +585,8 @@ export default function PosOrders() {
       await supabase.from('pos_tables').update({ status: 'available' }).eq('id', activeTable.id)
     }
 
-    if (closeType !== 'void') await printBill(updated, orderItems)
+    if (closeType === 'paid') await printBill(updated, orderItems)
+    if (closeType === 'writeoff') await printCompSlip(updated, orderItems)
 
     setClosing(false)
     setBillingOpen(false)
@@ -573,31 +594,21 @@ export default function PosOrders() {
     backToFloor()
   }
 
-  async function printBill(order, items) {
-    const newCount = (order.print_count || 0) + 1
-    await supabase.from('pos_orders').update({ print_count: newCount }).eq('id', order.id)
-
-    // HSC codes live on recipes (set in Table Management → HSC Codes), looked up fresh at print
-    // time rather than denormalized onto pos_order_items — keeps the core order-save path from
-    // ever depending on this rarely-used field.
-    const recipeIds = items.map(i => i.recipe_id).filter(Boolean)
-    let hscMap = {}
-    if (recipeIds.length > 0) {
-      const { data: hscData } = await supabase.from('recipes').select('id, hsc_code').in('id', recipeIds)
-      hscMap = Object.fromEntries((hscData || []).map(r => [r.id, r.hsc_code]))
-    }
-
+  // Pure HTML builder — no side effects, no DB calls. Shared by the actual print (printBill)
+  // and the live in-modal preview, so the preview can never drift out of sync with what prints.
+  function buildBillHtml(order, items, copyLabel) {
     const vatReg      = billingSettings.is_vat_registered
     const prefix      = billingSettings.invoice_prefix || ''
-    const invoiceNo   = `${vatReg ? 'TI' : 'PB'}${order.invoice_no ?? ''}-${prefix}${prefix ? '-' : ''}${order.invoice_fy || ''}`
+    const invoiceNo   = order.invoice_no != null
+      ? `${vatReg ? 'TI' : 'PB'}${order.invoice_no}-${prefix}${prefix ? '-' : ''}${order.invoice_fy || ''}`
+      : `${vatReg ? 'TI' : 'PB'}-(on confirm)`
     const tableName   = activeTable?.name || order.table_name || 'Takeaway'
     const now         = new Date()
     const nowStr      = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
     const adDateStr   = now.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' })
     const bs          = adToBs(now)
     const bsDateStr   = `${bs.day} ${BS_MONTHS[bs.month - 1]} ${bs.year}`
-    const isWriteoff  = order.close_type === 'writeoff'
-    const payLabel    = isWriteoff ? 'Written-off / Unpaid' : (order.payment_method || '')
+    const payLabel    = order.payment_method || ''
 
     const subEx  = items.reduce((s, i) => s + i.qty * i.unit_price, 0)
     const vatAmt = vatReg ? items.reduce((s, i) => s + i.qty * i.unit_price * (i.vat_rate ?? 0), 0) : 0
@@ -609,7 +620,7 @@ export default function PosOrders() {
     const tendered = order.tendered_amount ?? net
     const change   = payLabel === 'Cash' ? Math.max(0, tendered - net) : 0
 
-    const html = `<!DOCTYPE html>
+    return `<!DOCTYPE html>
 <html><head><title>Bill</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
@@ -626,7 +637,7 @@ export default function PosOrders() {
   .copy { font-size:10px; letter-spacing:1px; }
 </style>
 </head><body>
-  <div class="c copy">${COPY_LABEL(newCount)}</div>
+  <div class="c copy">${copyLabel}</div>
   ${outletName ? `<div class="c b" style="font-size:14px">${outletName}</div>` : ''}
   ${billingSettings.property_address ? `<div class="c" style="font-size:10px">${billingSettings.property_address}</div>` : ''}
   ${billingSettings.property_phone ? `<div class="c" style="font-size:10px">${billingSettings.property_phone}</div>` : ''}
@@ -670,8 +681,82 @@ export default function PosOrders() {
   <div class="row" style="font-size:10px;color:#555"><span>Counter: ${tableName}</span><span>${nowStr}</span></div>
   <div style="font-size:10px;color:#555">Cashier: ${profile?.full_name || ''}</div>
 </body></html>`
+  }
 
-    printHtml(html)
+  async function printBill(order, items) {
+    const newCount = (order.print_count || 0) + 1
+    await supabase.from('pos_orders').update({ print_count: newCount }).eq('id', order.id)
+    printHtml(buildBillHtml(order, items, COPY_LABEL(newCount)))
+  }
+
+  // Complimentary items were never sold — this is an internal cost-tracking slip, not a Tax
+  // Invoice or PAN Bill: no VAT/PAN, own NC-prefixed sequence (separate from TI/PB), and line
+  // amounts are valued at food cost (not menu price) so the P&L impact isn't distorted by
+  // retail pricing. Standard practice per restaurant accounting for comps.
+  // Pure builder (see buildBillHtml) — shared by printCompSlip and the live in-modal preview.
+  function buildCompSlipHtml(order, items, costMap, copyLabel) {
+    const ncNo      = order.invoice_no != null ? `NC-${String(order.invoice_no).padStart(2, '0')}` : 'NC-(on confirm)'
+    const tableName = activeTable?.name || order.table_name || 'Takeaway'
+    const now       = new Date()
+    const nowStr    = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    const adDateStr = now.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    const bs        = adToBs(now)
+    const bsDateStr = `${bs.day} ${BS_MONTHS[bs.month - 1]} ${bs.year}`
+
+    const totalQty  = items.reduce((s, i) => s + i.qty, 0)
+    const totalCost = items.reduce((s, i) => s + i.qty * (costMap[i.recipe_id] || 0), 0)
+
+    return `<!DOCTYPE html>
+<html><head><title>Complimentary Slip</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Courier New',monospace; font-size:12px; width:80mm; padding:8px 10px; }
+  .c   { text-align:center; }
+  .b   { font-weight:bold; }
+  .lg  { font-size:15px; letter-spacing:1px; }
+  hr   { border:none; border-top:1px dashed #000; margin:6px 0; }
+  .row { display:flex; justify-content:space-between; align-items:baseline; padding:2px 0; }
+  table { width:100%; border-collapse:collapse; font-size:11px; }
+  th, td { text-align:left; padding:2px 0; }
+  th:last-child, td:last-child { text-align:right; }
+  .tot  { font-weight:bold; font-size:13px; }
+  .copy { font-size:10px; letter-spacing:1px; }
+</style>
+</head><body>
+  <div class="c copy">${copyLabel}</div>
+  ${outletName ? `<div class="c b" style="font-size:14px">${outletName}</div>` : ''}
+  <div class="c b lg" style="margin-top:4px">COMPLIMENTARY SLIP</div>
+  <div class="c" style="font-size:10px">Internal record — not a Tax Invoice or PAN Bill</div>
+  <hr>
+  <div class="row"><span>No:</span><span class="b">${ncNo}</span></div>
+  <div class="row"><span>Order Ref:</span><span>#${order.order_no ?? ''}</span></div>
+  <div class="row"><span>Table:</span><span>${tableName}</span></div>
+  <div class="row"><span>Date:</span><span>${adDateStr}</span></div>
+  <div class="row"><span>Miti:</span><span>${bsDateStr}</span></div>
+  <div class="row"><span>Reason:</span><span>${order.close_reason || ''}</span></div>
+  <div class="row"><span>Authorized by:</span><span>${profile?.full_name || ''}</span></div>
+  <div class="row"><span>Remarks:</span><span>${order.bill_remarks || ''}</span></div>
+  <hr>
+  <table>
+    <thead><tr><th>Item</th><th>Qty</th><th>Cost</th></tr></thead>
+    <tbody>
+      ${items.map(i => `<tr><td>${i.name}</td><td>${i.qty}</td><td>${(i.qty * (costMap[i.recipe_id] || 0)).toFixed(2)}</td></tr>`).join('')}
+    </tbody>
+  </table>
+  <hr>
+  <div class="row"><span>Total Qty:</span><span>${totalQty}</span></div>
+  <div class="row tot"><span>Total Food Cost:</span><span>NPR ${totalCost.toFixed(2)}</span></div>
+  <hr>
+  <div class="row" style="font-size:10px;color:#555"><span>Table: ${tableName}</span><span>${nowStr}</span></div>
+</body></html>`
+  }
+
+  async function printCompSlip(order, items) {
+    const newCount = (order.print_count || 0) + 1
+    await supabase.from('pos_orders').update({ print_count: newCount }).eq('id', order.id)
+    const recipeIds = items.map(i => i.recipe_id).filter(Boolean)
+    const costMap = await computeRecipeCosts(supabase, recipeIds)
+    printHtml(buildCompSlipHtml(order, items, costMap, COPY_LABEL(newCount)))
   }
 
   async function loadRecentBills() {
@@ -696,7 +781,11 @@ export default function PosOrders() {
     const { data: order } = await supabase.from('pos_orders').select('*').eq('id', orderRow.id).single()
     const { data: items } = await supabase.from('pos_order_items').select('*').eq('order_id', orderRow.id)
     if (!order) return
-    await printBill(order, items || [])
+    if (order.close_type === 'writeoff') {
+      await printCompSlip(order, items || [])
+    } else {
+      await printBill(order, items || [])
+    }
     setRecentBills(prev => prev.map(o => o.id === orderRow.id ? { ...o, print_count: (o.print_count || 0) + 1 } : o))
   }
 
@@ -724,6 +813,22 @@ export default function PosOrders() {
   const subEx    = orderItems.reduce((s, i) => s + i.qty * i.unit_price, 0)
   const vatAmt   = orderItems.reduce((s, i) => s + i.qty * i.unit_price * (i.vat_rate ?? 0), 0)
   const total    = subEx + vatAmt
+  const compTotal = orderItems.reduce((s, i) => s + i.qty * (compCostMap[i.recipe_id] || 0), 0)
+
+  // Live bill/slip preview inside the Billing modal — built from the exact same functions used
+  // for the real print, so what the cashier sees always matches what will actually print.
+  const previewDraftOrder = {
+    invoice_no: null, invoice_fy: null,
+    payment_method: payMethod,
+    tendered_amount: payMethod === 'Cash' ? (parseFloat(tenderedStr) || total) : null,
+    buyer_name: buyerName, buyer_address: buyerAddress, buyer_pan: buyerPan, buyer_phone: buyerPhone,
+    bill_remarks: billRemarks, close_reason: closeReason,
+    table_name: activeTable?.name, order_no: orderNo, print_count: 0,
+  }
+  const previewHtml = !billingOpen ? null
+    : billingTab === 'pay' ? buildBillHtml(previewDraftOrder, orderItems, 'PREVIEW')
+    : billingTab === 'writeoff' ? buildCompSlipHtml(previewDraftOrder, orderItems, compCostMap, 'PREVIEW')
+    : null
   const kotCount = orderItems.filter(i => !i.sent_to_kot && !botCategories.has(i.category || 'Other')).length
   const botCount = orderItems.filter(i => !i.sent_to_kot && botCategories.has(i.category || 'Other')).length
 
@@ -1069,14 +1174,16 @@ export default function PosOrders() {
                   )}
                 </button>
               </Tip>
-              <Tip text="Close this table — collect payment, or void/write-off if unpaid. Order must be saved first.">
-                <button className="btn btn-ghost"
-                  style={{ flex: 1, padding: '8px 0', fontSize: 13, justifyContent: 'center' }}
-                  onClick={openBilling}
-                  disabled={saving || !orderId}>
-                  Charge →
-                </button>
-              </Tip>
+              {hasPosAccess('supervisor') && (
+                <Tip text="Close this table — collect payment, or void/write-off if unpaid. Order must be saved first. Supervisor role or above.">
+                  <button className="btn btn-ghost"
+                    style={{ flex: 1, padding: '8px 0', fontSize: 13, justifyContent: 'center' }}
+                    onClick={openBilling}
+                    disabled={saving || !orderId}>
+                    Charge →
+                  </button>
+                </Tip>
+              )}
             </div>
           </div>
         </div>
@@ -1093,7 +1200,10 @@ export default function PosOrders() {
             <h3 style={{ margin: '0 0 4px', fontSize: 18, color: 'var(--theme-text1)' }}>
               {activeTable ? activeTable.name : 'Takeaway'}
             </h3>
-            <p style={{ margin: '0 0 16px', fontSize: 20, fontWeight: 700, color: 'var(--theme-accent)' }}>{fmtNpr(total)}</p>
+            <p style={{ margin: '0 0 14px', fontSize: 20, fontWeight: 700, color: 'var(--theme-accent)' }}>
+              {fmtNpr(billingTab === 'writeoff' ? compTotal : total)}
+              {billingTab === 'writeoff' && <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--theme-text3)', marginLeft: 8 }}>(food cost, not menu price)</span>}
+            </p>
 
             {(kotCount + botCount) > 0 && (
               <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--theme-amber)', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 6, padding: '8px 10px' }}>
@@ -1107,11 +1217,11 @@ export default function PosOrders() {
                 <button className={`tab-btn${billingTab === 'void' ? ' tab-btn--active' : ''}`} onClick={() => { setBillingTab('void'); setCloseMsg('') }}>Void</button>
               )}
               {hasPosAccess('manager') && (
-                <button className={`tab-btn${billingTab === 'writeoff' ? ' tab-btn--active' : ''}`} onClick={() => { setBillingTab('writeoff'); setCloseMsg('') }}>Write-off</button>
+                <button className={`tab-btn${billingTab === 'writeoff' ? ' tab-btn--active' : ''}`} onClick={openCompTab}>Complimentary</button>
               )}
             </div>
 
-            {(billingTab === 'pay' || billingTab === 'writeoff') && (
+            {billingTab === 'pay' && (
               <div style={{ marginBottom: 16 }}>
                 <p style={{ fontSize: 11, color: 'var(--theme-text3)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 8px' }}>
                   Buyer details <Tip text="Optional for transactions ≤ NPR 10,000 (IRD abbreviated-invoice exemption). Fill in if the customer requests a full invoice with their own PAN.">(optional)</Tip>
@@ -1171,7 +1281,7 @@ export default function PosOrders() {
                 </select>
                 {orderItems.some(i => i.sent_to_kot) && (
                   <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--theme-amber)' }}>
-                    ⚠ Some items were already sent to the kitchen/bar — consider Write-off instead so food cost isn't lost.
+                    ⚠ Some items were already sent to the kitchen/bar — consider Complimentary instead so food cost isn't lost.
                   </p>
                 )}
                 {closeMsg && <p style={{ margin: '0 0 10px', fontSize: 12, color: closeMsg.startsWith('error:') ? 'var(--theme-red)' : 'var(--theme-green)' }}>{closeMsg.replace(/^(error|ok):/, '')}</p>}
@@ -1187,20 +1297,39 @@ export default function PosOrders() {
                 <label style={{ fontSize: 11, color: 'var(--theme-text3)', display: 'block', marginBottom: 4 }}>Reason</label>
                 <select className="form-select" style={{ width: '100%', marginBottom: 12 }} value={closeReason} onChange={e => setCloseReason(e.target.value)}>
                   <option value="">— Select —</option>
-                  {WRITEOFF_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                  {COMP_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
                 </select>
+                <input placeholder="Remarks (optional)" value={billRemarks} onChange={e => setBillRemarks(e.target.value)} style={{ ...billInput, width: '100%', marginBottom: 12 }} />
                 <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--theme-text3)' }}>
-                  ₨0 is collected, but this still counts as a sale for food-cost accuracy — a bill still prints.
+                  ₨0 is collected, but this still counts against food-cost/inventory reporting. Prints an internal
+                  Complimentary Slip valued at food cost — not a Tax Invoice or PAN Bill, no outlet name shown.
                 </p>
                 {closeMsg && <p style={{ margin: '0 0 10px', fontSize: 12, color: closeMsg.startsWith('error:') ? 'var(--theme-red)' : 'var(--theme-green)' }}>{closeMsg.replace(/^(error|ok):/, '')}</p>}
                 <button className="btn" style={{ width: '100%', padding: '11px 0', justifyContent: 'center', background: 'var(--theme-amber)', color: '#000', borderColor: 'var(--theme-amber)' }}
                   onClick={() => closeOrder('writeoff')} disabled={closing || !closeReason}>
-                  {closing ? 'Processing…' : 'Write Off (₨0 collected)'}
+                  {closing ? 'Processing…' : 'Mark Complimentary (₨0 collected)'}
                 </button>
               </>
             )}
 
-            <button className="btn btn-ghost" style={{ width: '100%', padding: '9px 0', justifyContent: 'center', marginTop: 10, fontSize: 13 }}
+            {previewHtml ? (
+              <div style={{ marginTop: 16 }}>
+                <p style={{ fontSize: 11, color: 'var(--theme-text3)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 8px' }}>
+                  {billingTab === 'writeoff' ? 'Complimentary slip preview' : 'Bill preview'} <Tip text="Live preview built from the same layout that actually prints — updates as you fill in the fields above. The invoice/NC number shown here is a placeholder; the real one is assigned when you confirm.">(live)</Tip>
+                </p>
+                <iframe
+                  title="bill-preview"
+                  srcDoc={previewHtml}
+                  style={{ width: 300, maxWidth: '100%', height: 360, border: '1px solid var(--theme-border)', borderRadius: 8, background: '#fff', display: 'block', margin: '0 auto' }}
+                />
+              </div>
+            ) : billingTab === 'void' && (
+              <p style={{ marginTop: 16, fontSize: 12, color: 'var(--theme-text3)', fontStyle: 'italic' }}>
+                No document prints for a Void — the order is treated as if it never happened.
+              </p>
+            )}
+
+            <button className="btn btn-ghost" style={{ width: '100%', padding: '9px 0', justifyContent: 'center', marginTop: 14, fontSize: 13 }}
               onClick={() => setBillingOpen(false)} disabled={closing}>
               Cancel
             </button>
@@ -1409,7 +1538,7 @@ export default function PosOrders() {
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--theme-text1)' }}>
                     {o.table_name || 'Takeaway'} {o.close_type === 'void' && <span style={{ color: 'var(--theme-red)', fontSize: 11 }}>(Void)</span>}
-                    {o.close_type === 'writeoff' && <span style={{ color: 'var(--theme-amber)', fontSize: 11 }}>(Write-off)</span>}
+                    {o.close_type === 'writeoff' && <span style={{ color: 'var(--theme-amber)', fontSize: 11 }}>(Complimentary)</span>}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--theme-text3)' }}>
                     {o.invoice_no ? `Inv #${o.invoice_no}` : `Order #${o.order_no}`} · {new Date(o.closed_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}

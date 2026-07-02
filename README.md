@@ -132,6 +132,47 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S217 — 2026-07-02 — Complimentary Slip polish: outlet name, NC sequence, more reasons, live bill preview
+
+**DB migration required** — re-run `assign_pos_invoice_no()` (idempotent `CREATE OR REPLACE`, safe to re-apply):
+```sql
+CREATE OR REPLACE FUNCTION assign_pos_invoice_no()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF NEW.status = 'billed' AND NEW.invoice_no IS NULL AND NEW.invoice_fy IS NOT NULL THEN
+    PERFORM pg_advisory_xact_lock(hashtext('pos_invoice_no:' || NEW.client_id::text || ':' || NEW.invoice_fy || ':' || NEW.close_type));
+    SELECT COALESCE(MAX(invoice_no), 0) + 1 INTO NEW.invoice_no
+    FROM pos_orders WHERE client_id = NEW.client_id AND invoice_fy = NEW.invoice_fy AND close_type = NEW.close_type;
+  END IF;
+  RETURN NEW;
+END $$;
+```
+Adds `close_type` to the partition key so Pay (TI/PB) and Complimentary (NC) get **independent counters** instead of sharing one sequence.
+
+**`src/modules/pos/orders/PosOrders.jsx`**
+- **Complimentary Slip now prints the outlet name** (reversing S216's "no company name" call) and a **sequential `NC-01`-style number**, same per-fiscal-year reset mechanic as Tax Invoice/PAN Bill numbers but its own counter (see migration above). `closeOrder()` now sets `invoice_fy` for Complimentary too, not just Pay.
+- **`COMP_REASONS`** gained `Owners` and `Company Guest` alongside the existing walkout/goodwill/complaint/staff-error/other options.
+- **Food-cost preview fix** — the modal's on-screen item list was always showing menu price, even on the Complimentary tab, so what the cashier saw didn't match what the slip would print. New `openCompTab()` fetches `computeRecipeCosts()` into `compCostMap` as soon as that tab opens; the header total and item list both switch to food-cost values while on it.
+- **Live bill/slip preview** — `printBill()`/`printCompSlip()` split into pure `buildBillHtml()`/`buildCompSlipHtml()` (no DB calls, no side effects) plus a thin orchestrator that fetches data and prints. The same pure builders now also render a **live preview** inside the modal (an `<iframe srcDoc={...}>`, real 80mm receipt layout, updates as buyer/payment/reason fields are typed) — guarantees the preview can never drift from what actually prints, since it's the exact same code path. Void has no preview (nothing prints for a Void).
+
+### S216 — 2026-07-02 — Billing refinements: itemized review, Supervisor-only Charge, Write-off → Complimentary
+
+Follow-on polish to S215's Billing/Charge screen, no DB migration needed.
+
+**`src/modules/pos/orders/PosOrders.jsx` — Billing modal**
+- **Itemized order review** — the modal previously showed only the grand total with no line items, so a cashier had no way to visually verify what they were about to charge/void/comp before confirming. Researched checkout UX practice ([Baymard](https://baymard.com/learn/checkout-flow-ux-optimization), [TouchBistro](https://www.touchbistro.com/blog/the-ultimate-guide-to-payment-processing-for-restaurants/)) — a visible order summary before payment is standard. Added a scrollable item list (`×N Name — NPR amount`, notes indented italic, same convention as KOT/BOT tickets) between the total and the tab bar, visible on all three tabs.
+- **Charge → is now Supervisor+ only, hidden entirely for Staff** — previously any staff could open the Pay tab. The button no longer renders at all (not just disabled) for `pos_role='staff'`, matching how Void/Write-off were already hidden for lower roles. Corrected the role-permission strip in `PosStaff.jsx` (`PERMISSION_LEVELS`) and Help.js copy to match — Staff = "Take orders, view floor" only, billing moved to Supervisor's description.
+- **Write-off renamed to Complimentary, and redesigned as an internal document — not a Tax Invoice or PAN Bill.** Researched restaurant accounting practice for comps: industry term is "NC" (No Charge), synonymous with "Comp" — an item that was made and served but not charged, which must still count in sales/inventory/food-cost reporting (unlike a Void, which never happened). Confirmed via [Restaurant365](https://www.restaurant365.com/blog/how-to-reduce-restaurant-comps-and-voids/) and [ARF Financial](https://www.arffinancial.com/restaurant-comps-on-the-pl/) that standard practice values comps **at food cost, not menu price**, so retail pricing doesn't distort the P&L.
+  - `close_type: 'writeoff'` (DB value unchanged — only the user-facing label changed) no longer gets a sequential `invoice_no`/`invoice_fy` — a comped item was never sold, so it can't be a Tax Invoice or PAN Bill and must not consume that numbering sequence
+  - New `printCompSlip()` prints a distinct **"COMPLIMENTARY SLIP"** — explicitly labelled "Internal record — not a Tax Invoice or PAN Bill", **no outlet/company name printed at all**, no PAN/VAT number, no invoice number. Shows internal order #, reason, who authorized it, and each line valued at **food cost** (via new `computeRecipeCosts()` util) instead of menu price
+  - Buyer Name/Address/PAN/Phone fields removed from this tab (irrelevant — it's not a tax document); replaced with a simple optional Remarks field
+  - `sales_entries` still written exactly as before — the "still counts in food-cost/inventory reporting" requirement was already true from S215, unchanged here
+  - Reprint (Recent Bills) now branches to `printCompSlip()` for `close_type='writeoff'` orders instead of `printBill()`
+
+**`src/utils/recipeCost.js`** — new `computeRecipeCosts(supabase, recipeIds)`, mirrors `MenuPricing.js`'s cost-per-portion calculation (ingredient rate × qty ÷ yield%, one level of sub-recipe recursion), scoped to an arbitrary recipe id list rather than the client's full menu. Not yet deduplicated against `MenuPricing.js`'s inline version — a future cleanup, not done this session to avoid touching a working page.
+
+**Sources:** [Baymard — Checkout Flow UX](https://baymard.com/learn/checkout-flow-ux-optimization), [TouchBistro — Restaurant Payment Processing](https://www.touchbistro.com/blog/the-ultimate-guide-to-payment-processing-for-restaurants/), [Reelo — Comps glossary](https://reelo.io/glossary/comps/), [Restaurant365 — Comps vs Voids](https://www.restaurant365.com/blog/how-to-reduce-restaurant-comps-and-voids/), [ARF Financial — Accounting for Comps on the P&L](https://www.arffinancial.com/restaurant-comps-on-the-pl/), [David Scott Peters — Void vs Comp](https://www.davidscottpeters.com/blog/Independent-Restaurant-Tip-for-Difference-Between-a-Void-and-a-Comp)
+
 ### S215 — 2026-07-02 — Billing / Charge screen — Void/Write-off + Nepal IRD tax-invoice compliance
 
 Researched IRD (Nepal Inland Revenue Department) VAT/PAN billing rules before building — see sources at the bottom of this entry. Built the entire close-a-table flow from scratch; previously `pos_orders.status` never left `'open'` and nothing released a table back to `'available'`.

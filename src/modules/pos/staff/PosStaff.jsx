@@ -5,8 +5,8 @@ import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
 
 const PERMISSION_LEVELS = [
-  { value: 'staff',      label: 'Staff',      desc: 'Take orders, view floor, close bills' },
-  { value: 'supervisor', label: 'Supervisor',  desc: 'Staff + table setup, void, open/close shift' },
+  { value: 'staff',      label: 'Staff',      desc: 'Take orders, view floor' },
+  { value: 'supervisor', label: 'Supervisor',  desc: 'Staff + close bills, table setup, void, open/close shift' },
   { value: 'manager',    label: 'Manager',     desc: 'Supervisor + reports, staff role assignment' },
 ]
 const DEFAULT_ROLES = [
