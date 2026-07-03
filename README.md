@@ -132,6 +132,66 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S228 — 2026-07-03 — IMS stock deduction trigger: `stock_movements` ledger + Reorder Report Book Stock
+
+**SQL run:**
+```sql
+create table stock_movements (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid not null references clients(id),
+  item_id uuid not null references items(id),
+  period_id uuid not null references monthly_periods(id),
+  bs_day int,
+  qty numeric not null,               -- signed: negative = depletion
+  source text not null,                -- 'pos_sale' | 'pos_comp'
+  ref_id uuid references pos_orders(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index stock_movements_client_item_idx on stock_movements(client_id, item_id);
+create index stock_movements_period_idx on stock_movements(period_id);
+alter table stock_movements enable row level security;
+create policy stock_movements_all on stock_movements for all using (
+  (select role from profiles where id = auth.uid()) = 'admin'
+  or client_id = (select client_id from profiles where id = auth.uid())
+);
+
+-- Required follow-up — table-level grants aren't automatic for tables created via raw SQL
+-- (only via the Table Editor UI). Without this, every insert/select fails with 42501
+-- "permission denied for table stock_movements", RLS notwithstanding — RLS only governs which
+-- rows a role can touch, not whether it can touch the table at all.
+grant select, insert on public.stock_movements to authenticated;
+-- PostgREST also caches schema/privilege info; the GRANT above didn't take effect via the API
+-- until this was run too:
+notify pgrst, 'reload schema';
+```
+
+First piece of the POS → IMS stock integration (roadmap: "IMS stock deduction trigger, recipe →
+stock_movements"). POS sales already wrote `sales_entries` for revenue/food-cost reporting but
+never touched actual stock quantities — Stock/Reorder were fully month-end-physical-count
+dependent. This adds a perpetual append-only depletion ledger, written on every POS Charge/Payment
+and Complimentary close, plus a first visible payoff in Reorder Report.
+
+**New shared helper — `src/utils/recipeCost.js`: `explodeRecipeIngredients(supabase, recipeIds)`**
+- Batch API (avoids N+1): takes an array of recipe ids, returns `{ [recipeId]: {item_id, qty}[] }` — raw-ingredient quantities per one unit/portion, yield_pct-trimmed, sub-recipe yield_qty-scaled
+- Recurses through `recipe_ingredients.sub_recipe_id` to **arbitrary depth** via an iterative frontier-fetch loop (capped at 5 rounds)
+- Used by the new POS depletion writer, the Reorder Report fix below, **and** `computeRecipeCosts` (rewritten to build on top of this helper instead of its own one-level-deep sub-recipe fetch — fixes a confirmed bug where a sub-recipe nested inside another sub-recipe silently costed ₨0; affected Complimentary Slip valuation for any client with 2+ levels of sub-recipe nesting)
+
+**POS close → ledger — `src/modules/pos/orders/PosOrders.jsx`**
+- `writeSalesEntries()` (already ran on both `'paid'` and `'writeoff'` closes for `sales_entries`) now also explodes each order item's recipe, aggregates ingredient qty across the whole order, and bulk-inserts negative `stock_movements` rows (`source: 'pos_sale'` or `'pos_comp'`, `ref_id: orderId`)
+- Best-effort — wrapped in try/catch, never blocks or fails the bill close (matches the existing `sales_entries` insert's own error-discarding posture). Fixed a real bug found during live testing: the initial version didn't destructure `{ error }` from the `stock_movements` insert — Supabase-js doesn't throw on a failed insert (RLS/permission/constraint errors resolve as `{ data: null, error }`, not a rejected promise), so the try/catch never saw the 42501 permission error below and failures were completely silent. Now explicitly checks `{ error: moveErr }` and `console.error`s it.
+- No negative-stock blocking — ledger can drift, physical count remains the source of truth (existing product philosophy)
+- No offline-queue support — POS order-close itself has no offline path yet (separate unbuilt roadmap item)
+- **Verified live 2026-07-03**: real POS sale → `stock_movements` row written → Reorder Report Book Stock decremented correctly on the next sale (63 → 62). One deployment gotcha hit and documented above (missing `GRANT`/schema-cache reload) — several test sales made during that troubleshooting window wrote to `sales_entries` (unaffected, unconditional) but not `stock_movements` (blocked), so Book Stock and Current Stock started from different baselines for this item; expected one-time artifact of today's testing, not a bug — resolved itself going forward once the grant took effect.
+
+**Reorder Report bug fix + Book Stock column — `src/pages/ReorderReport.js`**
+- Fixed: the inline `usageMap` calc only counted direct-item recipe ingredients and silently skipped any ingredient that was itself a sub-recipe (`if (sold > 0 && ri.item_id)` dropped `sub_recipe_id` rows entirely, no `yield_pct` trim applied either) — under-reported usage, over-stated Current Stock, for any recipe built on a sub-recipe. Now uses `explodeRecipeIngredients` for correct recursive usage. Same bug exists in `Variance.js` — not touched this session, separate future fix.
+- New **Book Stock** column: live running stock from `stock_movements` (`openQty + netPurch − wasteQty + Σmovements`), shown only when the item has ≥1 movement row this period (else "—", so non-POS/IMS-only clients never see a misleading "0 used"). Deliberately kept separate from "Current Stock" (still `sales_entries`-sourced, covers manual entries too) rather than replacing it — replacing would zero out usage tracking for clients without POS
+- Excel export and Tip tooltips updated to match
+
+**Help.js** — Reorder Report entry + new "Book Stock" glossary term explain the new column and what triggers it.
+
+- **Files:** `src/utils/recipeCost.js`, `src/modules/pos/orders/PosOrders.jsx`, `src/pages/ReorderReport.js`, `src/pages/Help.js`
+
 ### S227 — 2026-07-03 — POS Order screen: button redesign, print-doc fixes, Tip positioning bug
 
 No DB migration. UI/print polish pass on `/pos/orders`, driven by iterative screenshot feedback.

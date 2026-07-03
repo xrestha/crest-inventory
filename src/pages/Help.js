@@ -80,8 +80,8 @@ const IMS_TIERS = [
       },
       {
         icon: '⚑', name: 'Reorder Report',
-        guide: 'Flags items running below their par level. Theoretical stock = Opening + Net Purchases − Wastage − Usage. Set par levels inline on the report. "✕ Clear All Par" resets all par levels at once.',
-        tips: ['Set par levels based on supplier lead time × daily usage rate', 'Review the reorder report weekly, not just at month end']
+        guide: 'Flags items running below their par level. Theoretical stock = Opening + Net Purchases − Wastage − Usage. Set par levels inline on the report. "✕ Clear All Par" resets all par levels at once. Book Stock is a separate, live column fed by Crest POS — every time a POS order is charged or marked Complimentary, the recipe is exploded into its raw ingredients (recursing through sub-recipes) and a depletion entry is recorded automatically. Book Stock shows "—" for items with no POS sales this period; it does not replace Current Stock, which still reflects manual Sales Entry too.',
+        tips: ['Set par levels based on supplier lead time × daily usage rate', 'Review the reorder report weekly, not just at month end', 'Book Stock only reflects POS-recorded sales/comps — if you also log sales manually, Current Stock is the more complete number']
       },
       {
         icon: '⊛', name: 'VAT Report',
@@ -336,6 +336,7 @@ const GLOSSARY = [
   { term: 'Conversion Factor', def: 'How many base units are in one purchase unit. E.g. 1 case = 24 bottles → conversion factor = 24.' },
   { term: 'BS Calendar',      def: 'Bikram Sambat calendar used in Nepal. The system works natively in BS months.' },
   { term: 'Par Level',        def: 'Minimum stock quantity before reordering. Used in the Reorder Report to flag items running low.' },
+  { term: 'Book Stock',       def: 'Live stock count fed by Crest POS — decremented automatically on every POS sale/comp close, shown in the Reorder Report. Only reflects POS activity; physical stock count remains the source of truth.' },
   { term: 'SSF',              def: 'Social Security Fund (सामाजिक सुरक्षा कोष). Nepal mandatory contribution: 11% employee + 20% employer of basic salary.' },
 ]
 

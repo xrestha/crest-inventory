@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabaseClient'
 import * as XLSX from 'xlsx'
 import Tip from '../components/Tip'
+import { explodeRecipeIngredients } from '../utils/recipeCost'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 
@@ -53,9 +54,9 @@ export default function ReorderReport() {
       { data: purchases },
       { data: returns },
       { data: wastages },
-      { data: clientRecipes },
       { data: sales },
-      { data: pars }
+      { data: pars },
+      { data: movements }
     ] = await Promise.all([
       supabase.from('items').select('*, categories(name)').eq('client_id', effectiveClientId).eq('is_active', true).eq('is_sub_recipe', false).order('name'),
       supabase.from('opening_stock').select('item_id, qty').eq('period_id', periodId),
@@ -63,15 +64,10 @@ export default function ReorderReport() {
       supabase.from('purchase_entries').select('item_id, qty').eq('period_id', periodId),
       supabase.from('vendor_returns').select('item_id, qty').eq('period_id', periodId),
       supabase.from('wastages').select('item_id, qty').eq('period_id', periodId),
-      supabase.from('recipes').select('id').eq('client_id', effectiveClientId),
       supabase.from('sales_entries').select('recipe_id, qty_sold').eq('period_id', periodId),
-      supabase.from('par_levels').select('*').eq('client_id', effectiveClientId)
+      supabase.from('par_levels').select('*').eq('client_id', effectiveClientId),
+      supabase.from('stock_movements').select('item_id, qty').eq('period_id', periodId)
     ])
-
-    const reorderRecipeIds = (clientRecipes || []).map(r => r.id)
-    const { data: recipeIngs } = reorderRecipeIds.length > 0
-      ? await supabase.from('recipe_ingredients').select('recipe_id, item_id, qty_per_portion').in('recipe_id', reorderRecipeIds)
-      : { data: [] }
 
     const parMap = {}
     ;(pars || []).forEach(p => { parMap[p.item_id] = { id: p.id, par_qty: parseFloat(p.par_qty) || 0 } })
@@ -86,11 +82,17 @@ export default function ReorderReport() {
     ;(purchases || []).forEach(r => { purchMap[r.item_id] = (purchMap[r.item_id] || 0) + (parseFloat(r.qty) || 0) })
     ;(returns   || []).forEach(r => { purchMap[r.item_id] = (purchMap[r.item_id] || 0) - (parseFloat(r.qty) || 0) })
 
+    const movementMap = {}
+    ;(movements || []).forEach(m => { movementMap[m.item_id] = (movementMap[m.item_id] || 0) + (parseFloat(m.qty) || 0) })
+
     const soldMap = {}; (sales || []).forEach(s => { soldMap[s.recipe_id] = (soldMap[s.recipe_id] || 0) + (parseFloat(s.qty_sold) || 0) })
+    const soldRecipeIds = Object.keys(soldMap).filter(id => soldMap[id] > 0)
+    const breakdown = await explodeRecipeIngredients(supabase, soldRecipeIds)
     const usageMap = {}
-    ;(recipeIngs || []).forEach(ri => {
-      const sold = soldMap[ri.recipe_id] || 0
-      if (sold > 0 && ri.item_id) usageMap[ri.item_id] = (usageMap[ri.item_id] || 0) + sold * parseFloat(ri.qty_per_portion)
+    soldRecipeIds.forEach(recipeId => {
+      (breakdown[recipeId] || []).forEach(({ item_id, qty }) => {
+        usageMap[item_id] = (usageMap[item_id] || 0) + qty * soldMap[recipeId]
+      })
     })
 
     const built = (items || []).map(item => {
@@ -106,10 +108,13 @@ export default function ReorderReport() {
       const par = parMap[item.id]?.par_qty || 0
       const shortfall = Math.max(0, par - currentStock)
       const needsReorder = par > 0 && currentStock <= par
+      const hasMovements = item.id in movementMap
+      const bookStock = hasMovements ? Math.max(0, openQty + netPurch - wasteQty + movementMap[item.id]) : null
 
       return {
         item, openQty, purchQty: netPurch, wasteQty, usageQty,
         currentStock, stockSource: hasClosing ? 'closing' : 'theoretical',
+        bookStock, hasMovements,
         par, shortfall, needsReorder,
         category: item.categories?.name || 'Uncategorised',
         unitValue: parseFloat(item.per_uom_rate) || 0,
@@ -172,6 +177,7 @@ export default function ReorderReport() {
       'UOM': r.item.uom,
       'Par Level': r.par || '',
       'Current Stock': parseFloat(r.currentStock.toFixed(3)),
+      'Book Stock (POS)': r.hasMovements ? parseFloat(r.bookStock.toFixed(3)) : '',
       'Stock Source': r.stockSource === 'closing' ? 'Physical Count' : 'Theoretical (Net Purchases)',
       'Shortfall': r.shortfall > 0 ? parseFloat(r.shortfall.toFixed(3)) : '',
       'Unit Rate (NPR)': r.unitValue,
@@ -179,7 +185,7 @@ export default function ReorderReport() {
       'Status': r.needsReorder ? 'REORDER' : r.par === 0 ? 'No Par Set' : 'OK'
     }))
     const ws = XLSX.utils.json_to_sheet(data)
-    ws['!cols'] = [22,10,18,8,10,14,24,10,14,18,10].map(w => ({ wch: w }))
+    ws['!cols'] = [22,10,18,8,10,14,14,24,10,14,18,10].map(w => ({ wch: w }))
     const wb = XLSX.utils.book_new()
     const period = selectedPeriod ? `${BS_MONTHS[selectedPeriod.bs_month - 1]} ${selectedPeriod.bs_year}` : 'Report'
     XLSX.utils.book_append_sheet(wb, ws, 'Reorder Report')
@@ -277,6 +283,7 @@ export default function ReorderReport() {
                   <th>Item</th><th>Category</th><th>UOM</th>
                   <th style={{ textAlign: 'right' }}><Tip text="Minimum stock you want on hand at all times. Set this per item — when stock falls to or below par, a reorder is triggered." width={240}>Par Level</Tip></th>
                   <th style={{ textAlign: 'right' }}>Current Stock</th>
+                  <th style={{ textAlign: 'right' }}><Tip text="Live stock based on POS sales/comps recorded this period. Shown only for items sold through POS — '—' means no POS activity yet, not zero usage." width={260}>Book Stock</Tip></th>
                   <th><Tip text="Physical = based on your closing count entry. Calc'd = estimated from Opening + Net Purchases − Usage − Wastage (less reliable)." width={250}>Source</Tip></th>
                   <th style={{ textAlign: 'right' }}><Tip text="Par Level − Current Stock. The quantity you need to order to get back to par." width={210}>Shortfall</Tip></th>
                   <th style={{ textAlign: 'right' }}>Est. Value (NPR)</th>
@@ -319,6 +326,9 @@ export default function ReorderReport() {
                         <td style={{ textAlign: 'right', fontWeight: 600, color: row.needsReorder ? 'var(--theme-red)' : 'var(--theme-green)' }}>
                           {row.currentStock.toFixed(2)}
                         </td>
+                        <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>
+                          {row.hasMovements ? row.bookStock.toFixed(2) : '—'}
+                        </td>
                         <td>
                           <Tip text={row.stockSource === 'closing' ? 'Physical closing count entered via stock count.' : 'Calculated: Opening + Net Purchases − Usage − Wastage'} width={240}>
                             <span className={`badge ${row.stockSource === 'closing' ? 'badge-green' : 'badge-gray'}`}>
@@ -346,7 +356,7 @@ export default function ReorderReport() {
               {reorderCount > 0 && filterStatus === 'reorder' && (
                 <tfoot>
                   <tr style={{ borderTop: '2px solid var(--theme-border)' }}>
-                    <td colSpan={7} style={{ fontWeight: 700, color: 'var(--theme-text2)', paddingTop: 12 }}>Total estimated purchase needed</td>
+                    <td colSpan={8} style={{ fontWeight: 700, color: 'var(--theme-text2)', paddingTop: 12 }}>Total estimated purchase needed</td>
                     <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-red)', fontSize: 15, paddingTop: 12 }}>
                       NPR {totalShortfallValue.toLocaleString('en-NP', { maximumFractionDigits: 0 })}
                     </td>

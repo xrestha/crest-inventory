@@ -6,7 +6,7 @@ import Tip from '../../../components/Tip'
 import QRCode from 'qrcode'
 import { adToBs, BS_MONTHS, getBsToday, getBsFiscalYear } from '../../../utils/bsCalendar'
 import { numberToWordsNpr } from '../../../utils/numberToWords'
-import { computeRecipeCosts } from '../../../utils/recipeCost'
+import { computeRecipeCosts, explodeRecipeIngredients } from '../../../utils/recipeCost'
 import { buildDynamicQr } from '../../../utils/emvQr'
 
 const vatOf  = r => (r.vat_rate === null || r.vat_rate === undefined) ? 0.13 : parseFloat(r.vat_rate)
@@ -586,7 +586,7 @@ export default function PosOrders() {
     setCompCostMap(map)
   }
 
-  async function writeSalesEntries() {
+  async function writeSalesEntries(closeType) {
     const { data: periods } = await supabase
       .from('monthly_periods').select('*').eq('client_id', clientId)
       .order('bs_year', { ascending: false }).order('bs_month', { ascending: false })
@@ -594,10 +594,35 @@ export default function PosOrders() {
     if (!open) return
     const today = getBsToday()
     if (today.year !== open.bs_year || today.month !== open.bs_month) return
-    const rows = orderItems
-      .filter(i => i.recipe_id)
-      .map(i => ({ period_id: open.id, recipe_id: i.recipe_id, bs_day: today.day, qty_sold: i.qty, source: 'pos' }))
+
+    const soldItems = orderItems.filter(i => i.recipe_id)
+    const rows = soldItems.map(i => ({ period_id: open.id, recipe_id: i.recipe_id, bs_day: today.day, qty_sold: i.qty, source: 'pos' }))
     if (rows.length > 0) await supabase.from('sales_entries').insert(rows)
+
+    // Best-effort stock depletion — never blocks or fails the close (matches the sales_entries
+    // insert above, which also discards its error rather than rolling back the bill).
+    try {
+      const recipeIds = [...new Set(soldItems.map(i => i.recipe_id))]
+      if (recipeIds.length > 0) {
+        const breakdown = await explodeRecipeIngredients(supabase, recipeIds)
+        const agg = {}
+        soldItems.forEach(i => {
+          (breakdown[i.recipe_id] || []).forEach(({ item_id, qty }) => {
+            agg[item_id] = (agg[item_id] || 0) + qty * i.qty
+          })
+        })
+        const movementRows = Object.entries(agg).map(([item_id, qty]) => ({
+          client_id: clientId, item_id, period_id: open.id, bs_day: today.day, qty: -qty,
+          source: closeType === 'writeoff' ? 'pos_comp' : 'pos_sale', ref_id: orderId,
+        }))
+        if (movementRows.length > 0) {
+          const { error: moveErr } = await supabase.from('stock_movements').insert(movementRows)
+          if (moveErr) console.error('stock_movements write failed:', moveErr)
+        }
+      }
+    } catch (err) {
+      console.error('stock_movements write failed:', err)
+    }
   }
 
   async function closeOrder(closeType) {
@@ -646,7 +671,7 @@ export default function PosOrders() {
       .select('*').single()
     if (error) { setCloseMsg('error:' + error.message); setClosing(false); return }
 
-    if (closeType !== 'void') await writeSalesEntries()
+    if (closeType !== 'void') await writeSalesEntries(closeType)
 
     // Auto-build the customer book: any bill with buyer Name + Phone (required for discounts and
     // Credit sales) adds/updates a pos_customers row keyed by phone. Non-fatal — never blocks billing.

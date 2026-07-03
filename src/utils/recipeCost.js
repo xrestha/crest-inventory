@@ -8,53 +8,76 @@ export function getSuggestedPrice(cost, vatRate = 0.13, targetFcPct = 0.30) {
   return Math.ceil((basePrice * (1 + vatRate)) / 5) * 5
 }
 
-// Food cost per portion for a set of recipes, including one level of sub-recipe nesting.
-// Mirrors the cost calculation in src/pages/MenuPricing.js, scoped to an arbitrary recipe id
-// list — used e.g. to value a complimentary/comp item at cost rather than menu price. Requires
-// a live Supabase client since it fetches recipe_ingredients/items rates directly.
+// Explodes a batch of recipes into their raw-ingredient quantities per one unit/portion,
+// recursing through sub-recipes to arbitrary depth via an iterative frontier-fetch loop (capped
+// at 5 rounds). Returns { [recipeId]: [{ item_id, qty }] } — qty is base-UOM, yield_pct-trimmed
+// and sub-recipe yield_qty-scaled, duplicate item_ids aggregated per recipe. Caller multiplies by
+// their own qty (this returns per-one-unit quantities). Requires a live Supabase client.
+export async function explodeRecipeIngredients(supabase, recipeIds) {
+  if (!recipeIds || recipeIds.length === 0) return {}
+
+  const { data: topIng } = await supabase
+    .from('recipe_ingredients')
+    .select('recipe_id, qty_per_portion, item_id, sub_recipe_id, items(yield_pct)')
+    .in('recipe_id', recipeIds)
+
+  const allIng = [...(topIng || [])]
+  const recipeMeta = {} // sub_recipe id -> { id, yield_qty }
+  let frontier = [...new Set(allIng.map(r => r.sub_recipe_id).filter(Boolean))]
+  for (let round = 0; round < 5 && frontier.length > 0; round++) {
+    const [{ data: sr }, { data: si }] = await Promise.all([
+      supabase.from('recipes').select('id, yield_qty').in('id', frontier),
+      supabase.from('recipe_ingredients').select('recipe_id, qty_per_portion, item_id, sub_recipe_id, items(yield_pct)').in('recipe_id', frontier),
+    ])
+    ;(sr || []).forEach(r => { recipeMeta[r.id] = r })
+    allIng.push(...(si || []))
+    frontier = [...new Set((si || []).map(r => r.sub_recipe_id).filter(Boolean))].filter(id => !recipeMeta[id])
+  }
+
+  function explode(recipeId, scale, depth) {
+    if (depth > 10) return [] // guard against runaway/cyclic sub-recipe refs
+    const result = []
+    for (const r of allIng.filter(x => x.recipe_id === recipeId)) {
+      const qty = parseFloat(r.qty_per_portion || 0) * scale
+      if (r.item_id) {
+        const yf = (parseFloat(r.items?.yield_pct) || 100) / 100
+        result.push({ item_id: r.item_id, qty: qty / yf })
+      } else if (r.sub_recipe_id) {
+        const sr = recipeMeta[r.sub_recipe_id]
+        if (sr) result.push(...explode(r.sub_recipe_id, qty / (parseFloat(sr.yield_qty) || 1), depth + 1))
+      }
+    }
+    return result
+  }
+
+  const out = {}
+  for (const recipeId of recipeIds) {
+    const agg = {}
+    explode(recipeId, 1, 0).forEach(({ item_id, qty }) => { agg[item_id] = (agg[item_id] || 0) + qty })
+    out[recipeId] = Object.entries(agg).map(([item_id, qty]) => ({ item_id, qty }))
+  }
+  return out
+}
+
+// Food cost per portion for a set of recipes, recursing through sub-recipes to arbitrary depth
+// (built on explodeRecipeIngredients above, so it shares the same correct recursion — no longer
+// limited to one level of sub-recipe nesting). Mirrors the cost calculation in
+// src/pages/MenuPricing.js, scoped to an arbitrary recipe id list — used e.g. to value a
+// complimentary/comp item at cost rather than menu price. Requires a live Supabase client.
 export async function computeRecipeCosts(supabase, recipeIds) {
   if (!recipeIds || recipeIds.length === 0) return {}
 
-  const { data: ing } = await supabase
-    .from('recipe_ingredients')
-    .select('recipe_id, qty_per_portion, item_id, sub_recipe_id, items(per_uom_rate, yield_pct)')
-    .in('recipe_id', recipeIds)
+  const breakdown = await explodeRecipeIngredients(supabase, recipeIds)
+  const itemIds = [...new Set(Object.values(breakdown).flatMap(rows => rows.map(r => r.item_id)))]
+  if (itemIds.length === 0) return {}
 
-  const subIds = [...new Set((ing || []).map(r => r.sub_recipe_id).filter(Boolean))]
-  let subRecipes = [], subIng = []
-  if (subIds.length > 0) {
-    const [{ data: sr }, { data: si }] = await Promise.all([
-      supabase.from('recipes').select('id, yield_qty').in('id', subIds),
-      supabase.from('recipe_ingredients').select('recipe_id, qty_per_portion, item_id, sub_recipe_id, items(per_uom_rate, yield_pct)').in('recipe_id', subIds),
-    ])
-    subRecipes = sr || []
-    subIng = si || []
-  }
-
-  function subCostPerUnit(srId, depth) {
-    if (depth > 5) return 0 // guard against runaway/cyclic sub-recipe refs
-    const sr = subRecipes.find(r => r.id === srId)
-    if (!sr) return 0
-    let total = 0
-    for (const r of subIng.filter(x => x.recipe_id === srId)) {
-      if (r.item_id && r.items) {
-        const yf = (parseFloat(r.items.yield_pct) || 100) / 100
-        total += (parseFloat(r.qty_per_portion || 0) / yf) * parseFloat(r.items.per_uom_rate || 0)
-      } else if (r.sub_recipe_id) {
-        total += parseFloat(r.qty_per_portion || 0) * subCostPerUnit(r.sub_recipe_id, depth + 1)
-      }
-    }
-    return total / (parseFloat(sr.yield_qty) || 1)
-  }
+  const { data: rates } = await supabase.from('items').select('id, per_uom_rate').in('id', itemIds)
+  const rateMap = {}
+  ;(rates || []).forEach(i => { rateMap[i.id] = parseFloat(i.per_uom_rate) || 0 })
 
   const costMap = {}
-  for (const r of (ing || [])) {
-    if (r.item_id && r.items) {
-      const yf = (parseFloat(r.items.yield_pct) || 100) / 100
-      costMap[r.recipe_id] = (costMap[r.recipe_id] || 0) + (parseFloat(r.qty_per_portion || 0) / yf) * parseFloat(r.items.per_uom_rate || 0)
-    } else if (r.sub_recipe_id) {
-      costMap[r.recipe_id] = (costMap[r.recipe_id] || 0) + parseFloat(r.qty_per_portion || 0) * subCostPerUnit(r.sub_recipe_id, 1)
-    }
+  for (const recipeId of recipeIds) {
+    costMap[recipeId] = (breakdown[recipeId] || []).reduce((sum, { item_id, qty }) => sum + qty * (rateMap[item_id] || 0), 0)
   }
   return costMap
 }
