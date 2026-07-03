@@ -8,6 +8,8 @@ import { adToBs, BS_MONTHS, getBsToday, getBsFiscalYear } from '../../../utils/b
 import { numberToWordsNpr } from '../../../utils/numberToWords'
 import { computeRecipeCosts, explodeRecipeIngredients } from '../../../utils/recipeCost'
 import { buildDynamicQr } from '../../../utils/emvQr'
+import { computeOrderAmounts } from '../../../utils/posBillingMath'
+import IssueCreditNoteModal from '../creditnotes/IssueCreditNoteModal'
 
 const vatOf  = r => (r.vat_rate === null || r.vat_rate === undefined) ? 0.13 : parseFloat(r.vat_rate)
 const fmtNpr = n => `NPR ${Math.round(n).toLocaleString()}`
@@ -117,6 +119,7 @@ export default function PosOrders() {
   const [recentBillsOpen, setRecentBillsOpen] = useState(false)
   const [recentBills,     setRecentBills]     = useState([])
   const [recentBillsLoad, setRecentBillsLoad] = useState(false)
+  const [creditNoteOrder, setCreditNoteOrder] = useState(null) // order row currently in the Issue Credit Note modal
 
   useEffect(() => {
     if (!clientId) return
@@ -782,23 +785,8 @@ export default function PosOrders() {
     // the live `tenders` state (in-modal preview) — same shape either way.
     const isSplitBill = payLabel === 'Split' && payments && payments.length > 0
 
-    const subEx    = items.reduce((s, i) => s + i.qty * i.unit_price, 0)
-    const vatAmt   = vatReg ? items.reduce((s, i) => s + i.qty * i.unit_price * (i.vat_rate ?? 0), 0) : 0
-    const discount = order.discount_amount || 0
-    // Discount reduces the pre-VAT taxable base; VAT is recalculated on the discounted amount
-    // (same rule as purchase_entries.discount_amount) — a proportional/blended-rate simplification
-    // since this is an order-level (not per-line) discount.
-    const discRatio = subEx > 0 ? discount / subEx : 0
-    const netVatAmt = vatAmt * (1 - discRatio)
-    const grossAmt = subEx
-    const rawNet   = grossAmt - discount + netVatAmt
-    const net      = Math.round(rawNet) // rounded to the nearest rupee so Net Amount matches the amount-in-words line
-    const roundOff = net - rawNet
-    const taxableBaseRaw    = vatReg ? items.filter(i => (i.vat_rate ?? 0) > 0).reduce((s, i) => s + i.qty * i.unit_price, 0) : 0
-    const nonTaxableBaseRaw = vatReg ? items.filter(i => !(i.vat_rate > 0)).reduce((s, i) => s + i.qty * i.unit_price, 0) : subEx
-    const taxableBase    = taxableBaseRaw * (1 - discRatio)
-    const nonTaxableBase = nonTaxableBaseRaw * (1 - discRatio)
-    const totalQty = items.reduce((s, i) => s + i.qty, 0)
+    const { grossAmt, discount, taxableBase, nonTaxableBase, vatAmt: netVatAmt, net, roundOff, totalQty } =
+      computeOrderAmounts(order, items, vatReg)
     const tendered = order.tendered_amount ?? net
     const change   = !isSplitBill && payLabel === 'Cash' ? Math.max(0, tendered - net) : 0
 
@@ -1026,7 +1014,7 @@ export default function PosOrders() {
     const today = getBsToday()
     const { data } = await supabase
       .from('pos_orders')
-      .select('id, table_name, invoice_no, invoice_fy, close_type, paid_amount, closed_at, order_no')
+      .select('id, table_name, invoice_no, invoice_fy, close_type, paid_amount, closed_at, order_no, credit_note_id, buyer_name, buyer_address, buyer_pan, buyer_phone, discount_amount')
       .eq('client_id', clientId)
       .in('status', ['billed', 'voided'])
       .order('closed_at', { ascending: false })
@@ -2006,6 +1994,11 @@ export default function PosOrders() {
                   {o.close_type !== 'void' && (
                     <button className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 10px' }} onClick={() => reprintBill(o)}>Reprint</button>
                   )}
+                  {o.close_type === 'paid' && !o.credit_note_id && hasPosAccess('manager') && (
+                    <Tip text="Issue a formal Credit Note against this bill — corrects revenue for a billing/price/tax error. Does not affect stock.">
+                      <button className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 10px' }} onClick={() => setCreditNoteOrder(o)}>Credit Note</button>
+                    </Tip>
+                  )}
                 </div>
               </div>
             ))}
@@ -2016,6 +2009,17 @@ export default function PosOrders() {
           </button>
         </div>
       </div>
+    )}
+
+    {creditNoteOrder && (
+      <IssueCreditNoteModal
+        order={creditNoteOrder}
+        onClose={() => setCreditNoteOrder(null)}
+        onIssued={created => {
+          setRecentBills(prev => prev.map(o => o.id === creditNoteOrder.id ? { ...o, credit_note_id: created.id } : o))
+          setCreditNoteOrder(null)
+        }}
+      />
     )}
     </>
   )

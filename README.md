@@ -132,6 +132,73 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S234 — 2026-07-03 — POS IRD Compliance: Credit Note workflow (Rule 20) + One Lakh Above Report (Annexure 13)
+
+Researched Nepal IRD's actual legal requirements for POS billing in-depth (VAT Rules 2053, Electronic Billing Procedure 2074, Computerized Invoicing Procedure 2072) to separate genuine compliance gaps from competitor-feature noise, then built the two items that turned out to be real legal requirements rather than nice-to-haves. Everything else (item/customer/category-wise sales reports, KOT-vs-Prebill reconciliation, full accounting-ledger parity) stays deferred — business-analytics convenience, not IRD-mandated.
+
+**DB migration required:**
+```sql
+CREATE TABLE IF NOT EXISTS pos_credit_notes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id uuid NOT NULL REFERENCES clients(id),
+  order_id uuid NOT NULL REFERENCES pos_orders(id),
+  credit_note_no integer,
+  invoice_fy text NOT NULL,
+  original_invoice_no integer NOT NULL,
+  original_invoice_label text NOT NULL,
+  original_invoice_date_bs text NOT NULL,
+  reason text NOT NULL,
+  gross_amount numeric NOT NULL DEFAULT 0,
+  discount_amount numeric NOT NULL DEFAULT 0,
+  taxable_amount numeric NOT NULL DEFAULT 0,
+  non_taxable_amount numeric NOT NULL DEFAULT 0,
+  vat_amount numeric NOT NULL DEFAULT 0,
+  net_amount numeric NOT NULL DEFAULT 0,
+  buyer_name text, buyer_address text, buyer_pan text, buyer_phone text,
+  issued_by uuid REFERENCES profiles(id) ON DELETE SET NULL,
+  print_count integer NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS pos_credit_notes_order_id_key ON pos_credit_notes(order_id);
+
+ALTER TABLE pos_orders ADD COLUMN IF NOT EXISTS credit_note_id uuid REFERENCES pos_credit_notes(id);
+
+CREATE OR REPLACE FUNCTION assign_pos_credit_note_no()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF NEW.credit_note_no IS NULL THEN
+    PERFORM pg_advisory_xact_lock(hashtext('pos_credit_note_no:' || NEW.client_id::text || ':' || NEW.invoice_fy));
+    SELECT COALESCE(MAX(credit_note_no), 0) + 1 INTO NEW.credit_note_no
+    FROM pos_credit_notes WHERE client_id = NEW.client_id AND invoice_fy = NEW.invoice_fy;
+  END IF;
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS trg_assign_pos_credit_note_no ON pos_credit_notes;
+CREATE TRIGGER trg_assign_pos_credit_note_no BEFORE INSERT ON pos_credit_notes
+  FOR EACH ROW EXECUTE FUNCTION assign_pos_credit_note_no();
+
+ALTER TABLE pos_credit_notes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "client_own" ON pos_credit_notes
+  USING ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin' OR client_id = (SELECT client_id FROM profiles WHERE id = auth.uid()))
+  WITH CHECK ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin' OR client_id = (SELECT client_id FROM profiles WHERE id = auth.uid()));
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.pos_credit_notes TO authenticated;
+NOTIFY pgrst, 'reload schema';
+```
+
+**Credit Note workflow (`src/modules/pos/creditnotes/`, new module)** — corrects an already-billed order per VAT Rules 2053, Rule 20, which requires a formal Credit Note (8 mandatory fields, one of which is the original invoice number+date) whenever the value of billed goods/services changes, plus a monthly record of every credit/debit note issued (Rule 20(2)). Only whole-order corrections in this v1 (matches "correcting an already-billed order"); item-level credit notes are a fast-follow, same as item-level Complimentary is already separately deferred.
+- `IssueCreditNoteModal.jsx` — shared modal (self-contained: fetches its own settings/outlet/HSC data so it works identically from either entry point below). Manager+ gated. On confirm: inserts `pos_credit_notes` (trigger assigns `credit_note_no`, partitioned by `client_id + invoice_fy` — same advisory-lock pattern as `assign_pos_invoice_no()`), stamps `pos_orders.credit_note_id` (also DB-unique-indexed so a bill can only ever be credited once), best-effort posts negative `sales_entries` for the credited items into **today's currently-open period** (source `pos_credit`) so Monthly Summary/Recipe Margin/Best Sellers reflect the correction, then prints the Credit Note. **Deliberately does not touch `stock_movements`** — the food was already served; this corrects billing/tax, not stock (confirmed decision, since credit notes here are price/billing corrections, not returned-food events).
+- `creditNoteHtml.js` — `buildCreditNoteHtml()`/`printCreditNote()`, same 80mm thermal layout family and ORIGINAL-COPY/SECOND-COPY/THIRD-COPY reprint convention as `buildBillHtml`/`buildCompSlipHtml`. Prints all 8 Rule 20(1) fields: serial no. (`CN{n}-{prefix}-{fy}`), issue date, supplier name/address/registration, recipient name/address/registration, original invoice number+date, itemized goods/services, credited amount, credited VAT.
+- Two entry points into the same modal: a "Credit Note" quick action next to Reprint in `PosOrders.jsx`'s Recent Bills modal (same-day corrections, `PosOrders.jsx`), and a full `CreditNotes.jsx` page (`/pos/credit-notes`) with an "Issue New" tab (BS date-range + invoice-number search across *any* date, not just today) and a "Credit Note Book" tab — the Rule 20(2) monthly register, with reprint + Excel export + TOTAL footer, laid out to match the competitor Credit Note Book Report referenced during research.
+- Only bills closed as Pay (`close_type='paid'`) are eligible — Complimentary is already a ₨0 internal document and Void never had revenue to correct.
+
+**`src/utils/posBillingMath.js` (new)** — extracted `computeOrderAmounts(order, items, vatReg)` out of `buildBillHtml`'s inline Gross/Discount/Taxable/Non-Taxable/VAT/Net math so the Credit Note print layout and the new One Lakh Above Report compute identically to the original bill instead of re-deriving the formula a second/third time. `buildBillHtml` refactored to call it — behavior-preserving, verified bill output unchanged.
+
+**One Lakh Above Report (`src/modules/pos/reports/OneLakhAboveReport.jsx`, new, `/pos/one-lakh-report`)** — Nepal VAT return Annexure 13 (अनुसूची १३): any party whose cumulative transactions exceed NPR 1,00,000 in a fiscal year must be disclosed by name+PAN. No schema change — reads existing `pos_orders`/`pos_order_items`. Fiscal-year selector (from distinct `invoice_fy` values already stored per order — simpler than `AnnualSummary.js`'s period-iteration approach, no date-derivation needed). Groups Pay-closed bills by `buyer_pan` (or `buyer_name`, or a `CASH SALES / WALK-IN` bucket) across the fiscal year, using the shared `computeOrderAmounts()`. Flags rows over the threshold: `⚠ Missing PAN` if no PAN on file (the actionable signal — ask for PAN on their next visit), plain `Annexure 13` badge if PAN is already present. Excel export, Manager+ gated.
+
+**Explicitly out of scope this session** (deferred, not IRD-mandated): competitor-parity reports (Category/Customer/Item/Hourly/Supplier-wise sales, KOT-vs-Prebill-vs-Sales reconciliation), the `sales_entries`/`purchase_entries` hard-delete pattern in `Sales.js`/`Purchases.js` (only relevant near the NRs 5 crore certification threshold), purchase-side Annexure 13 (vendor one-lakh-above — `VatReport.js`/`NonVatReport.js` already have a per-vendor summary as partial scaffolding), and the open legal question of whether software certification is required below the Tier-2 threshold (not an engineering task — recommend confirming with an accountant).
+
+**Files:** `src/modules/pos/creditnotes/IssueCreditNoteModal.jsx`, `src/modules/pos/creditnotes/CreditNotes.jsx`, `src/modules/pos/creditnotes/creditNoteHtml.js`, `src/modules/pos/reports/OneLakhAboveReport.jsx`, `src/utils/posBillingMath.js`, `src/modules/pos/orders/PosOrders.jsx`, `src/App.js`, `src/components/Layout.js`, `src/pages/Help.js`
+
 ### S233 — 2026-07-03 — Admin Dashboard POS module bug fixes (count, badge, MRR) + module pill color consistency
 
 No DB migration. Two-file bug fix from the user noticing a POS-subscribed client (BHATTI CHOILA) wasn't showing up as such anywhere in Admin.

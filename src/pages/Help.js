@@ -777,6 +777,27 @@ export default function Help() {
                   ],
                 },
                 {
+                  icon: '↩', name: 'Credit Notes', path: '/pos/credit-notes',
+                  desc: 'Formally correct an already-billed order — required by Nepal VAT Rules 2053, Rule 20 whenever the value of billed goods/services changes (billing errors, price corrections, tax corrections). Issue New searches past bills by BS date range or invoice number; Credit Note Book is the running register every Credit Note ever issued, as required by Rule 20(2). Requires Manager role or above.',
+                  tips: [
+                    'A Credit Note reduces this month\'s revenue (sales_entries) so Monthly Summary/Recipe Margin/Best Sellers stay accurate — it does not reverse stock/ingredient depletion, since the food was already served. This is a billing/tax correction, not a returned-food event',
+                    'Only bills closed as Pay (not Complimentary or Void) can get a Credit Note — a Complimentary is already a ₨0 internal document, and a Void never had revenue to correct',
+                    'Each bill can only be credited once — the Credit Note button disappears from a bill once one has been issued against it',
+                    'The Credit Note prints with all 8 fields Rule 20 requires: serial number, date, your business details, the buyer\'s details, the original invoice number + date, item details, credited amount, and credited VAT',
+                    'Reprints relabel automatically — ORIGINAL-COPY the first time, SECOND-COPY, THIRD-COPY after that, same convention as the Tax Invoice',
+                  ],
+                },
+                {
+                  icon: '⚑', name: 'One Lakh Above Report', path: '/pos/one-lakh-report',
+                  desc: 'Nepal VAT return Annexure 13 (अनुसूची १३): any single party whose cumulative transactions exceed NPR 1,00,000 in a fiscal year must be disclosed by name + PAN. This report groups POS sales by buyer PAN (or name if no PAN) across a full BS fiscal year and flags who crosses the threshold. Requires Manager role or above.',
+                  tips: [
+                    '⚠ Missing PAN means a party crossed NPR 1,00,000 without ever having their PAN recorded on a bill — worth asking for it on their next visit',
+                    'Annexure 13 badge means the party is over the threshold and already has a PAN on file — ready to disclose as-is',
+                    'Only Pay-closed bills count — Complimentary and Void are excluded, since Annexure 13 concerns actual paying-party transactions',
+                    'Rows with no buyer name at all are grouped as "CASH SALES / WALK-IN"',
+                  ],
+                },
+                {
                   icon: '⏱', name: 'Shifts', path: '/pos/shifts',
                   desc: 'Open a shift with a starting cash count, watch live sales totals as the shift runs (X-report), and reconcile the drawer against expected cash when it ends (Z-report). Requires Supervisor role or above.',
                   tips: [

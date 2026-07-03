@@ -79,6 +79,8 @@ const POS_GROUPS = [
   ]},
   { key: 'pos-reports', label: 'Reports', items: [
     { to: '/pos/exceptions', label: 'Exceptions', icon: '⚠', minPosRole: 'manager' },
+    { to: '/pos/credit-notes', label: 'Credit Notes', icon: '↩', minPosRole: 'manager' },
+    { to: '/pos/one-lakh-report', label: '1L+ Report', icon: '⚑', minPosRole: 'manager' },
   ]},
   { key: 'pos-admin', label: 'Admin', items: [
     { to: '/pos/staff', label: 'POS Staff', icon: '👥', minPosRole: 'manager' },

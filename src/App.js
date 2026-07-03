@@ -67,6 +67,8 @@ import PosStaff from './modules/pos/staff/PosStaff'
 import PosCustomers from './modules/pos/customers/PosCustomers'
 import PosExceptionReport from './modules/pos/reports/PosExceptionReport'
 import PosShifts from './modules/pos/shifts/PosShifts'
+import CreditNotes from './modules/pos/creditnotes/CreditNotes'
+import OneLakhAboveReport from './modules/pos/reports/OneLakhAboveReport'
 import PosLogin from './modules/pos/login/PosLogin'
 import './components/Layout.css'
 
@@ -186,6 +188,8 @@ export default function App() {
               <Route path="/pos/customers" element={<ModuleGate module="pos"><PosCustomers /></ModuleGate>} />
               <Route path="/pos/shifts" element={<ModuleGate module="pos"><PosShifts /></ModuleGate>} />
               <Route path="/pos/exceptions" element={<ModuleGate module="pos"><PosExceptionReport /></ModuleGate>} />
+              <Route path="/pos/credit-notes" element={<ModuleGate module="pos"><CreditNotes /></ModuleGate>} />
+              <Route path="/pos/one-lakh-report" element={<ModuleGate module="pos"><OneLakhAboveReport /></ModuleGate>} />
               <Route path="/pos/staff"  element={<ModuleGate module="pos"><PosStaff /></ModuleGate>} />
 
               {/* Admin only */}
