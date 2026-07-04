@@ -112,6 +112,7 @@ export default function SalesReport() {
   const hourlyRows = useMemo(() => {
     const buckets = Array.from({ length: 24 }, (_, h) => ({ hour: h, bills: 0, qty: 0, net: 0 }))
     for (const o of orders) {
+      if (o.credit_note_id) continue // same exclusion rule as dailyRows — totals must reconcile across tabs
       const amounts = computeOrderAmounts(o, itemsByOrder[o.id] || [], vatReg)
       const h = new Date(o.closed_at).getHours()
       buckets[h].bills += 1; buckets[h].qty += amounts.totalQty; buckets[h].net += amounts.net
@@ -176,6 +177,7 @@ export default function SalesReport() {
   const customerRows = useMemo(() => {
     const grouped = {}
     for (const o of orders) {
+      if (o.credit_note_id) continue // same exclusion rule as dailyRows — totals must reconcile across tabs
       const amounts = computeOrderAmounts(o, itemsByOrder[o.id] || [], vatReg)
       const pan = (o.buyer_pan || '').trim()
       const name = (o.buyer_name || '').trim()
@@ -213,7 +215,10 @@ export default function SalesReport() {
     const [{ data: fyOrders }, { data: settings }] = await Promise.all([
       supabase.from('pos_orders')
         .select('id, buyer_name, buyer_pan, discount_amount')
-        .eq('client_id', clientId).eq('status', 'billed').eq('close_type', 'paid').eq('invoice_fy', selectedFy),
+        .eq('client_id', clientId).eq('status', 'billed').eq('close_type', 'paid').eq('invoice_fy', selectedFy)
+        // Credit-noted bills are excluded — a corrected/cancelled invoice must not push a party
+        // over the Annexure 13 one-lakh disclosure threshold.
+        .is('credit_note_id', null),
       supabase.from('settings').select('is_vat_registered').eq('client_id', clientId).maybeSingle(),
     ])
     const vr = settings?.is_vat_registered ?? true
@@ -247,7 +252,8 @@ export default function SalesReport() {
     setOneLakhLoading(false)
   }, [clientId, selectedFy])
 
-  useEffect(() => { loadOneLakh() }, [loadOneLakh])
+  // Lazy — the FY-wide fetch (every paid order + all its items) only runs once the tab is opened
+  useEffect(() => { if (tab === 'onelakh') loadOneLakh() }, [tab, loadOneLakh])
 
   if (!hasPosAccess('manager')) return <Navigate to="/pos" replace />
 

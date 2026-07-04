@@ -551,7 +551,9 @@ export default function PosOrders() {
         station,
         items: items.map(i => ({
           recipe_id: i.recipe_id, name: i.name, category: i.category,
-          qty: (i.sent_qty || 0) > 0 ? i.qty - i.sent_qty : i.qty,
+          // Clamped at 0: a reduced-then-resent item must not log a negative delta, which would
+          // cancel its earlier sends in the cumulative sum and un-flag it in KOT Reconciliation.
+          qty: (i.sent_qty || 0) > 0 ? Math.max(0, i.qty - i.sent_qty) : i.qty,
         })),
         sent_by: profile?.id || null,
       })
