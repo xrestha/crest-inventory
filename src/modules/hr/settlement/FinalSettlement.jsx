@@ -4,6 +4,7 @@ import { useAuth } from '../../../context/AuthContext'
 import Tip from '../../../components/Tip'
 import { bsToAd, daysInBsMonth, getBsToday } from '../../../utils/bsCalendar'
 import { computeBonusTds, fiscalYearOf } from '../payroll/tds'
+import { printWithTitle } from '../../../utils/printTitle'
 
 const fmt = n => Math.round(n || 0).toLocaleString('en-NP')
 
@@ -174,7 +175,7 @@ export default function FinalSettlement() {
     }
   }, [emp, lastDate, leaveDays, festPaid, noticeServed, noticeDays, advances])
 
-  function handlePrint() { window.print() }
+  function handlePrint() { printWithTitle(`Final Settlement - ${emp.full_name}`) }
 
   return (
     <div>

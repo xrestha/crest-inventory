@@ -1,4 +1,5 @@
 import { useAuth } from '../../../context/AuthContext'
+import { printWithTitle } from '../../../utils/printTitle'
 
 // ── Auth hook helper ──────────────────────────────────────────────────────────
 
@@ -97,7 +98,7 @@ export default function EmployeeJoiningForm({ onClose }) {
       {/* Action bar — hidden in print */}
       <div className="empform-chrome" style={{ display: 'flex', gap: 10, marginBottom: 16, alignItems: 'center' }}>
         <button
-          onClick={() => window.print()}
+          onClick={() => printWithTitle(`${clientName} - Employee Joining Form`)}
           style={{ background: '#c9a84c', color: '#0a0c10', border: 'none', borderRadius: 8, padding: '10px 28px', fontWeight: 700, fontSize: 14, cursor: 'pointer', letterSpacing: '0.03em' }}
         >
           Print / Save PDF

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabaseClient'
 import Tip from '../components/Tip'
+import { printWithTitle } from '../utils/printTitle'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 
@@ -150,7 +151,7 @@ export default function MonthlySummary() {
               </option>
             ))}
           </select>
-          <button className="btn btn-ghost" onClick={() => window.print()} style={{ fontSize: 13 }}>⎙ Print</button>
+          <button className="btn btn-ghost" onClick={() => printWithTitle(`Monthly Summary - ${periodLabel}`)} style={{ fontSize: 13 }}>⎙ Print</button>
         </div>
       </div>
 

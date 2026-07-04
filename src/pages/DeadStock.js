@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabaseClient'
 import * as XLSX from 'xlsx'
 import Tip from '../components/Tip'
+import { printWithTitle } from '../utils/printTitle'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 
@@ -165,7 +166,7 @@ export default function DeadStock() {
               <option key={p.id} value={p.id}>{BS_MONTHS[p.bs_month - 1]} {p.bs_year}</option>
             ))}
           </select>
-          <button className="btn btn-ghost" onClick={() => window.print()}>Print</button>
+          <button className="btn btn-ghost" onClick={() => printWithTitle(`Dead Stock - Slow Movers - ${periodLabel}`)}>Print</button>
           <button className="btn btn-ghost" onClick={exportExcel} disabled={!rows.length}>Export Excel</button>
         </div>
       </div>

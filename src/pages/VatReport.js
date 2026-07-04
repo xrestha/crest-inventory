@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabaseClient'
 import * as XLSX from 'xlsx'
 import Tip from '../components/Tip'
+import { printWithTitle } from '../utils/printTitle'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 const VAT_RATE = 0.13
@@ -208,7 +209,7 @@ export default function VatReport() {
           <select className="form-select" value={selectedPeriod?.id || ''} onChange={e => setSelected(periods.find(p => p.id === e.target.value))}>
             {periods.map(p => <option key={p.id} value={p.id}>{periodLabel(p)}</option>)}
           </select>
-          <button className="btn btn-ghost" onClick={() => window.print()}>Print</button>
+          <button className="btn btn-ghost" onClick={() => printWithTitle(`VAT Report - ${periodLabel(selectedPeriod)}`)}>Print</button>
           <button className="btn btn-ghost" onClick={exportExcel} disabled={!vatEntries.length}>Export Excel</button>
         </div>
       </div>

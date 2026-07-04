@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabaseClient'
 import * as XLSX from 'xlsx'
 import Tip from '../components/Tip'
+import { printWithTitle } from '../utils/printTitle'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 
@@ -230,7 +231,7 @@ export default function SupplierPriceTracker() {
           <p className="page-subtitle">Purchase price history by vendor</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }} className="no-print">
-          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => window.print()}>
+          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => printWithTitle(`Supplier Price Tracker - ${selectedVendorId === 'all' ? 'All Vendors' : (vendorMap[selectedVendorId]?.name || 'Vendor')}`)}>
             🖨 Print
           </button>
           <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={exportExcel}>

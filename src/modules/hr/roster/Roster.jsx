@@ -4,6 +4,7 @@ import { supabase } from '../../../supabaseClient'
 import { useAuth } from '../../../context/AuthContext'
 import { adToBs, bsToAd, daysInBsMonth, getBsToday, BS_MONTHS } from '../../../utils/bsCalendar'
 import Tip from '../../../components/Tip'
+import { printWithTitle } from '../../../utils/printTitle'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -739,7 +740,7 @@ export default function Roster() {
                 )
               })}
               <button className="btn btn-ghost" style={{ fontSize: 12, marginLeft: 4 }}
-                onClick={() => window.print()}>
+                onClick={() => printWithTitle(`${bizInfo.name ? bizInfo.name + ' - ' : ''}Staff Roster - ${periodLabel}`)}>
                 🖨 Print
               </button>
             </div>

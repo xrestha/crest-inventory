@@ -6,6 +6,7 @@ import * as XLSX from 'xlsx'
 import { BS_MONTHS, getBsToday } from '../../../utils/bsCalendar'
 import { fiscalYearOf } from '../payroll/tds'
 import { SSF_CAP } from '../payrollConstants'
+import { printWithTitle } from '../../../utils/printTitle'
 
 const fmt = n => Math.round(n || 0).toLocaleString('en-NP')
 const fmtDate = d => d ? new Date(d).toLocaleDateString('en-NP', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
@@ -251,7 +252,7 @@ export default function HrReports() {
                   </select>
                 </div>
                 {certSlips.length > 0 && (
-                  <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => window.print()}>🖨 Print Certificate</button>
+                  <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => printWithTitle(`TDS Certificate - ${empMap[certEmpId]?.full_name || ''} - FY ${certFy.label}`)}>🖨 Print Certificate</button>
                 )}
               </div>
               {(!certFy || !certEmpId) ? (

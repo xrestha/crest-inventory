@@ -8,6 +8,7 @@ import Modal from '../components/Modal'
 import SearchableSelect from '../components/SearchableSelect'
 import { NUTRIENTS, EMPTY_NUTRITION, calcRecipeNutrition, calcLiveNutrition, hasNutrition, buildNutritionPayload, defaultBasisUnit, convertQty } from '../utils/nutrition'
 import { getSuggestedPrice } from '../utils/recipeCost'
+import { printWithTitle } from '../utils/printTitle'
 import { suggestSeeds } from '../data/nutritionSeed'
 import { fetchUsdaNutrition } from '../utils/usdaNutrition'
 import * as XLSX from 'xlsx'
@@ -129,7 +130,7 @@ export default function Recipes() {
 
   useEffect(() => {
     if (!printRecipe) return
-    const t = setTimeout(() => { window.print(); setPrintRecipe(null) }, 80)
+    const t = setTimeout(() => { printWithTitle(`Recipe Cost Card - ${printRecipe.name}`); setPrintRecipe(null) }, 80)
     return () => clearTimeout(t)
   }, [printRecipe])
 
@@ -1576,7 +1577,7 @@ export default function Recipes() {
             </div>
             <div style={{ marginTop: 16, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button className="btn btn-ghost" onClick={() => setView('list')}>← Back</button>
-              <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => window.print()}>🖶 Print Cost Card</button>
+              <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => printWithTitle(`Recipe Cost Card - ${selectedRecipe.name}`)}>🖶 Print Cost Card</button>
               <button className="btn btn-ghost" onClick={() => openEdit(selectedRecipe)}>Edit Recipe</button>
             </div>
           </div>

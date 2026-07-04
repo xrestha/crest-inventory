@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabaseClient'
 import * as XLSX from 'xlsx'
 import Tip from '../components/Tip'
+import { printWithTitle } from '../utils/printTitle'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 const npr = n => Number(n || 0).toLocaleString('en-NP', { maximumFractionDigits: 0 })
@@ -170,7 +171,7 @@ export default function StockReport() {
           <p className="page-subtitle">Current inventory on hand & valuation — {periodLabel}</p>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <button className="btn btn-ghost" onClick={() => window.print()} style={{ fontSize: 12 }}>🖶 Print</button>
+          <button className="btn btn-ghost" onClick={() => printWithTitle(`Stock Report - ${periodLabel}`)} style={{ fontSize: 12 }}>🖶 Print</button>
           <button className="btn btn-ghost" onClick={exportExcel} style={{ fontSize: 12 }}>↓ Export Excel</button>
           <select className="form-select" value={selectedPeriod?.id || ''} onChange={e => handlePeriodChange(e.target.value)}>
             {periods.map(p => <option key={p.id} value={p.id}>{BS_MONTHS[p.bs_month - 1]} {p.bs_year} {p.status === 'open' ? '(open)' : '(closed)'}</option>)}

@@ -19,7 +19,7 @@ export function buildDailyHistory(orders, itemsByOrder, computeOrderAmounts) {
     const key = d.toDateString()
     const items = itemsByOrder[o.id] || []
     const amounts = computeOrderAmounts(o, items, true)
-    const row = byDay[key] = byDay[key] || { date: new Date(d.getFullYear(), d.getMonth(), d.getDate()), weekday: d.getDay(), covers: 0, revenue: 0, qtyByRecipe: {} }
+    const row = byDay[key] = byDay[key] || { date: new Date(d.getFullYear(), d.getMonth(), d.getDate()), weekday: d.getDay(), covers: 0, revenue: 0, qtyByRecipe: {}, basis: 'pos' }
     row.covers += o.covers || 1
     row.revenue += amounts.net
     for (const i of items) {
@@ -41,9 +41,11 @@ export function buildManualDailyHistory(salesEntries, periodsById) {
     if (!period) continue
     const ad = bsToAd(period.bs_year, period.bs_month, e.bs_day)
     const key = ad.toDateString()
-    const row = byDay[key] = byDay[key] || { date: ad, weekday: ad.getDay(), covers: 0, revenue: 0, qtyByRecipe: {} }
+    const row = byDay[key] = byDay[key] || { date: ad, weekday: ad.getDay(), covers: 0, revenue: 0, qtyByRecipe: {}, basis: 'manual' }
     row.qtyByRecipe[e.recipe_id] = (row.qtyByRecipe[e.recipe_id] || 0) + e.qty_sold
-    // manual entries carry no covers/revenue signal — left at 0, qty-only forecast for these days
+    // manual entries carry no covers/revenue signal at all — basis:'manual' lets
+    // forecastByWeekday exclude these rows from the covers/revenue average instead of
+    // silently averaging in a false zero
   }
   return Object.values(byDay)
 }
@@ -68,6 +70,12 @@ export function forecastByWeekday(dailyHistory, horizonDays, holidaysByKey = {})
     const holidayKey = `${bs.year}:${bs.month}:${bs.day}`
     const holiday = holidaysByKey[holidayKey] || null
 
+    // Qty averages over every sample (manual-basis rows carry real qty signal, that's their
+    // whole purpose). Covers/revenue average ONLY over pos-basis samples — a manual-basis row
+    // structurally has covers=revenue=0 (never tracked), so mixing it in would silently
+    // average toward a false zero instead of reflecting "no signal available".
+    const posSamples = samples.filter(s => s.basis === 'pos')
+
     const qtyByRecipe = {}
     for (const s of samples) {
       for (const [recipeId, qty] of Object.entries(s.qtyByRecipe)) {
@@ -77,9 +85,9 @@ export function forecastByWeekday(dailyHistory, horizonDays, holidaysByKey = {})
 
     results.push({
       date: target, bs, weekday,
-      sampleCount: n,
-      forecastCovers: n > 0 ? samples.reduce((s, r) => s + r.covers, 0) / n : null,
-      forecastRevenue: n > 0 ? samples.reduce((s, r) => s + r.revenue, 0) / n : null,
+      sampleCount: n, posSampleCount: posSamples.length,
+      forecastCovers: posSamples.length > 0 ? posSamples.reduce((s, r) => s + r.covers, 0) / posSamples.length : null,
+      forecastRevenue: posSamples.length > 0 ? posSamples.reduce((s, r) => s + r.revenue, 0) / posSamples.length : null,
       forecastQtyByRecipe: qtyByRecipe,
       holiday, // { name, holiday_type } if this date matches hr_holiday_calendar, else null — model does NOT auto-adjust for it
     })
@@ -136,20 +144,39 @@ export async function runForecast(clientId, horizonDays = 7) {
 
     const forecast = forecastByWeekday(history, horizonDays, holidaysByKey)
 
+    // When no pos-basis samples exist for a weekday, forecastRevenue is null even though we
+    // may still have a real qty forecast (from manual sales_entries) — estimate revenue from
+    // forecasted qty × menu price instead of showing a bare "0", and mark it clearly as such.
+    const allRecipeIds = [...new Set(forecast.flatMap(f => Object.keys(f.forecastQtyByRecipe)))]
+    let priceByRecipe = {}
+    if (allRecipeIds.length > 0) {
+      const { data: recs } = await supabase.from('recipes').select('id, selling_price').in('id', allRecipeIds)
+      priceByRecipe = Object.fromEntries((recs || []).map(r => [r.id, r.selling_price || 0]))
+    }
+
     const rows = []
     for (const f of forecast) {
+      const hasPosSignal = f.posSampleCount > 0
+      let revenue = f.forecastRevenue
+      let revenueEstimated = false
+      if (revenue == null && Object.keys(f.forecastQtyByRecipe).length > 0) {
+        revenue = Object.entries(f.forecastQtyByRecipe).reduce((s, [recipeId, qty]) => s + qty * (priceByRecipe[recipeId] || 0), 0)
+        revenueEstimated = true
+      }
       rows.push({
         client_id: clientId, recipe_id: null,
         bs_year: f.bs.year, bs_month: f.bs.month, bs_day: f.bs.day,
-        forecast_covers: f.forecastCovers, forecast_qty: null, forecast_revenue: f.forecastRevenue,
-        model_basis: 'pos', horizon_days: horizonDays,
+        forecast_covers: f.forecastCovers, forecast_qty: null, forecast_revenue: revenue,
+        revenue_estimated: revenueEstimated,
+        model_basis: hasPosSignal ? 'pos' : 'manual', horizon_days: horizonDays,
       })
       for (const [recipeId, qty] of Object.entries(f.forecastQtyByRecipe)) {
         rows.push({
           client_id: clientId, recipe_id: recipeId,
           bs_year: f.bs.year, bs_month: f.bs.month, bs_day: f.bs.day,
           forecast_covers: null, forecast_qty: qty, forecast_revenue: null,
-          model_basis: 'pos', horizon_days: horizonDays,
+          revenue_estimated: false,
+          model_basis: hasPosSignal ? 'pos' : 'manual', horizon_days: horizonDays,
         })
       }
     }

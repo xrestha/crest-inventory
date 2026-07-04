@@ -5,6 +5,7 @@ import { getBsToday } from '../utils/bsCalendar'
 import Tip from '../components/Tip'
 import Fab from '../components/Fab'
 import BsCalendarPicker from '../components/BsCalendarPicker'
+import { printWithTitle } from '../utils/printTitle'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 const PAYMENT_METHODS = ['Cash', 'Credit', 'FonePay']
@@ -62,7 +63,7 @@ export default function PurchaseOrders() {
 
   useEffect(() => {
     if (!printPo) return
-    const t = setTimeout(() => { window.print(); setPrintPo(null) }, 80)
+    const t = setTimeout(() => { printWithTitle(`Purchase Order - ${printPo.po_number}`); setPrintPo(null) }, 80)
     return () => clearTimeout(t)
   }, [printPo])
 

@@ -7,6 +7,7 @@ import { getBsToday } from '../utils/bsCalendar'
 import Tip from '../components/Tip'
 import Fab from '../components/Fab'
 import SearchableSelect from '../components/SearchableSelect'
+import { printWithTitle } from '../utils/printTitle'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 const DEPARTMENTS = [
@@ -468,7 +469,7 @@ export default function Requisitions() {
                   </>
                 )}
                 <button className="btn btn-ghost" onClick={() => exportExcel(selectedReq, selectedLines)}>⬇ Export</button>
-                <button className="btn btn-ghost" onClick={() => window.print()}>Print</button>
+                <button className="btn btn-ghost" onClick={() => printWithTitle(`Requisition - Day ${selectedReq.bs_day} - ${selectedReq.department} - ${periodLabel}`)}>Print</button>
               </div>
             </div>
           </div>

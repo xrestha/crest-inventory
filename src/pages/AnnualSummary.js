@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabaseClient'
 import Tip from '../components/Tip'
 import * as XLSX from 'xlsx'
+import { printWithTitle } from '../utils/printTitle'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 
@@ -178,7 +179,7 @@ export default function AnnualSummary() {
             {yearOptions.map(y => <option key={y.value} value={y.value}>{y.label}</option>)}
           </select>
           {report && <>
-            <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => window.print()}>⎙ Print</button>
+            <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => printWithTitle(`Annual Summary - ${selectedLabel}`)}>⎙ Print</button>
             <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={exportExcel}>↓ Excel</button>
           </>}
         </div>

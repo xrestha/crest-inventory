@@ -10,7 +10,11 @@ export default function Tip({ text, children, width = 220, style }) {
       const rect = ref.current.getBoundingClientRect()
       const x = rect.left + rect.width / 2
       const clampedX = Math.min(Math.max(x, width / 2 + 8), window.innerWidth - width / 2 - 8)
-      setPos({ x: clampedX, y: rect.top })
+      // Default is above the anchor — flip below when there isn't enough headroom (e.g. a
+      // tooltip on a page heading sitting right under the topbar), same edge-flip pattern
+      // ShiftPicker/SearchableSelect already use for their own dropdowns.
+      const below = rect.top < 120
+      setPos({ x: clampedX, y: below ? rect.bottom : rect.top, below })
     }
   }
 
@@ -25,9 +29,9 @@ export default function Tip({ text, children, width = 220, style }) {
       {pos && createPortal(
         <span style={{
           position: 'fixed',
-          top: pos.y - 6,
+          top: pos.below ? pos.y + 6 : pos.y - 6,
           left: pos.x,
-          transform: 'translate(-50%, -100%)',
+          transform: pos.below ? 'translate(-50%, 0)' : 'translate(-50%, -100%)',
           background: '#1e2330',
           border: '1px solid #2a2f3d',
           borderRadius: 6,

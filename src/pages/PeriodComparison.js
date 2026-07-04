@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabaseClient'
 import * as XLSX from 'xlsx'
 import Tip from '../components/Tip'
+import { printWithTitle } from '../utils/printTitle'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 
@@ -138,7 +139,7 @@ export default function PeriodComparison() {
             <option value={24}>Last 24 periods</option>
             <option value={9999}>All periods</option>
           </select>
-          <button className="btn btn-ghost" onClick={() => window.print()}>Print</button>
+          <button className="btn btn-ghost" onClick={() => printWithTitle('Period-over-Period Comparison')}>Print</button>
           <button className="btn btn-ghost" onClick={exportExcel} disabled={!shown.length}>Export Excel</button>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient'
 import Tip from '../components/Tip'
 import { BS_MONTHS, bsToAd } from '../utils/bsCalendar'
 import { runForecast } from '../utils/demandForecastData'
+import { printWithTitle } from '../utils/printTitle'
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const fmtNpr = n => n == null ? '—' : `NPR ${Math.round(n).toLocaleString()}`
@@ -13,11 +14,22 @@ export default function DemandForecast() {
   const [horizon, setHorizon] = useState(7)
   const [forecast, setForecast] = useState([])
   const [recipeNames, setRecipeNames] = useState({})
-  const [expandedIdx, setExpandedIdx] = useState(null)
+  const [expandedItemsIdx, setExpandedItemsIdx] = useState(null) // which row's item preview is showing the FULL list instead of the top-3
   const [loading, setLoading] = useState(true)
   const [recomputing, setRecomputing] = useState(false)
   const [msg, setMsg] = useState('')
   const [lastRun, setLastRun] = useState(null)
+  const [bizInfo, setBizInfo] = useState({ name: '', address: '' })
+
+  useEffect(() => {
+    if (!clientId) return
+    Promise.all([
+      supabase.from('clients').select('name').eq('id', clientId).single(),
+      supabase.from('settings').select('property_address').eq('client_id', clientId).maybeSingle(),
+    ]).then(([{ data: client }, { data: settings }]) => {
+      setBizInfo({ name: client?.name || '', address: settings?.property_address || '' })
+    })
+  }, [clientId])
 
   const loadStored = useCallback(async () => {
     if (!clientId) return
@@ -39,10 +51,10 @@ export default function DemandForecast() {
       const key = `${r.bs_year}:${r.bs_month}:${r.bs_day}`
       const day = byDay[key] = byDay[key] || {
         bs: { year: r.bs_year, month: r.bs_month, day: r.bs_day },
-        forecastCovers: null, forecastRevenue: null, forecastQtyByRecipe: {}, holiday: null,
+        forecastCovers: null, forecastRevenue: null, revenueEstimated: false, forecastQtyByRecipe: {}, holiday: null,
       }
       if (r.recipe_id) day.forecastQtyByRecipe[r.recipe_id] = r.forecast_qty
-      else { day.forecastCovers = r.forecast_covers; day.forecastRevenue = r.forecast_revenue }
+      else { day.forecastCovers = r.forecast_covers; day.forecastRevenue = r.forecast_revenue; day.revenueEstimated = r.revenue_estimated }
     }
     const list = Object.values(byDay).sort((a, b) => a.bs.year - b.bs.year || a.bs.month - b.bs.month || a.bs.day - b.bs.day)
     setForecast(list)
@@ -56,6 +68,12 @@ export default function DemandForecast() {
   }, [clientId, horizon])
 
   useEffect(() => { loadStored() }, [loadStored])
+
+  const horizonLabel = horizon === 7 ? 'Next 7 Days' : 'Next 30 Days'
+
+  function handlePrint() {
+    printWithTitle(`${bizInfo.name ? bizInfo.name + ' - ' : ''}Demand Forecast - ${horizonLabel}`)
+  }
 
   async function handleRecompute() {
     setRecomputing(true); setMsg('')
@@ -71,7 +89,21 @@ export default function DemandForecast() {
 
   return (
     <div style={{ padding: '24px 28px', maxWidth: 1100 }}>
-      <div style={{ marginBottom: 16 }}>
+      <style>{`
+        @media print {
+          @page { margin: 14mm 12mm; }
+        }
+      `}</style>
+
+      {/* Print-only letterhead — replaces the app-navigation header/subtitle on the printed sheet */}
+      <div className="print-only" style={{ marginBottom: 16 }}>
+        <div style={{ fontWeight: 700, fontSize: 16 }}>{bizInfo.name}</div>
+        {bizInfo.address && <div style={{ fontSize: 12 }}>{bizInfo.address}</div>}
+        <div style={{ fontWeight: 700, fontSize: 15, marginTop: 8 }}>Demand Forecast — {horizonLabel}</div>
+        <div style={{ fontSize: 11 }}>Generated: {new Date().toLocaleString()}</div>
+      </div>
+
+      <div className="no-print" style={{ marginBottom: 16 }}>
         <h2 style={{ margin: 0, color: 'var(--theme-text1)', fontSize: 20 }}>
           Demand Forecast <Tip text="Predicts covers, revenue, and per-dish quantity for upcoming days using a day-of-week moving average over your last ~12 weeks of POS sales (or manual Sales entries if POS history is thin). A simple, auditable model — not a trained AI — so you can see exactly why a number was predicted." width={320}>ⓘ</Tip>
         </h2>
@@ -80,7 +112,7 @@ export default function DemandForecast() {
         </p>
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'center', marginBottom: 20 }}>
+      <div className="no-print" style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'center', marginBottom: 20 }}>
         <div className="tab-bar">
           <button className={`tab-btn${horizon === 7 ? ' tab-btn--active' : ''}`} onClick={() => setHorizon(7)}>Next 7 Days</button>
           <button className={`tab-btn${horizon === 30 ? ' tab-btn--active' : ''}`} onClick={() => setHorizon(30)}>Next 30 Days</button>
@@ -90,6 +122,7 @@ export default function DemandForecast() {
             {recomputing ? 'Recomputing…' : '↻ Recompute Forecast'}
           </button>
         </Tip>
+        <button className="btn btn-ghost" onClick={handlePrint} disabled={forecast.length === 0}>🖨 Print</button>
         {lastRun && (
           <span style={{ fontSize: 11, color: 'var(--theme-text3)' }}>
             Last run: {new Date(lastRun.run_at).toLocaleString()}
@@ -98,7 +131,7 @@ export default function DemandForecast() {
         )}
       </div>
 
-      {msg && <p style={{ color: msg.startsWith('error:') ? 'var(--theme-red)' : 'var(--theme-green)', fontSize: 13, marginBottom: 12 }}>{msg.replace(/^(error|ok):/, '')}</p>}
+      {msg && <p className="no-print" style={{ color: msg.startsWith('error:') ? 'var(--theme-red)' : 'var(--theme-green)', fontSize: 13, marginBottom: 12 }}>{msg.replace(/^(error|ok):/, '')}</p>}
 
       {loading ? (
         <p style={{ color: 'var(--theme-text3)', fontSize: 13 }}>Loading…</p>
@@ -114,31 +147,55 @@ export default function DemandForecast() {
                 <th>Date (BS)</th><th>Day</th>
                 <th style={{ textAlign: 'right' }}>Forecast Covers</th>
                 <th style={{ textAlign: 'right' }}>Forecast Revenue</th>
-                <th></th><th></th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
               {forecast.map((f, idx) => {
                 const weekday = bsToAd(f.bs.year, f.bs.month, f.bs.day).getDay()
-                const expanded = expandedIdx === idx
-                const topItems = Object.entries(f.forecastQtyByRecipe)
-                  .sort((a, b) => b[1] - a[1]).slice(0, 5)
+                const allItems = Object.entries(f.forecastQtyByRecipe).sort((a, b) => b[1] - a[1])
+                const PREVIEW_COUNT = 3
+                const showingAll = expandedItemsIdx === idx
+                const visibleItems = showingAll ? allItems : allItems.slice(0, PREVIEW_COUNT)
+                const hiddenCount = allItems.length - visibleItems.length
                 return (
                   <Fragment key={idx}>
-                    <tr onClick={() => setExpandedIdx(expanded ? null : idx)} style={{ cursor: topItems.length > 0 ? 'pointer' : 'default' }}>
+                    <tr>
                       <td style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{f.bs.day} {BS_MONTHS[f.bs.month - 1]} {f.bs.year}</td>
                       <td>{WEEKDAYS[weekday]}</td>
-                      <td style={{ textAlign: 'right' }}>{f.forecastCovers != null ? Math.round(f.forecastCovers) : '—'}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 700 }}>{fmtNpr(f.forecastRevenue)}</td>
-                      <td>{f.holiday && <Tip text={`Historical model does not auto-adjust for this holiday — treat the forecast as a floor, not a ceiling, on a festival day.`}><span className="badge-amber" style={{ fontSize: 10 }}>{f.holiday.name}</span></Tip>}</td>
-                      <td style={{ textAlign: 'right', color: 'var(--theme-text3)', fontSize: 11 }}>{topItems.length > 0 ? (expanded ? '▲ hide items' : '▼ top items') : ''}</td>
+                      <td style={{ textAlign: 'right' }}>
+                        {f.forecastCovers != null ? Math.round(f.forecastCovers)
+                          : <Tip text="No POS bill history exists yet for this day of week — covers aren't tracked by manual Sales entries, so there's no signal to forecast from.">—</Tip>}
+                      </td>
+                      <td style={{ textAlign: 'right', fontWeight: 700 }}>
+                        {f.revenueEstimated
+                          ? <Tip text="Estimated from forecasted item quantities × menu price — this day of week has no direct POS revenue history yet, only manual Sales entries (which track quantity, not revenue).">≈ {fmtNpr(f.forecastRevenue)}</Tip>
+                          : fmtNpr(f.forecastRevenue)}
+                      </td>
+                      <td>{f.holiday && <Tip text="Historical model does not auto-adjust for this holiday — treat the forecast as a floor, not a ceiling, on a festival day."><span className="badge-amber" style={{ fontSize: 10 }}>{f.holiday.name}</span></Tip>}</td>
                     </tr>
-                    {expanded && topItems.length > 0 && (
+                    {allItems.length > 0 && (
                       <tr>
-                        <td colSpan={6} style={{ background: 'var(--theme-bg)', padding: '10px 16px' }}>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, fontSize: 12 }}>
-                            {topItems.map(([recipeId, qty]) => (
-                              <span key={recipeId}><strong style={{ color: 'var(--theme-text1)' }}>{recipeNames[recipeId] || recipeId}</strong>: {qty.toFixed(1)}</span>
+                        <td colSpan={5} style={{ padding: '2px 12px 10px', borderTop: 'none' }}>
+                          <div className="no-print" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, fontSize: 11, color: 'var(--theme-text3)' }}>
+                            {visibleItems.map(([recipeId, qty]) => (
+                              <span key={recipeId}>{recipeNames[recipeId] || recipeId}: <strong style={{ color: 'var(--theme-text2)' }}>{qty.toFixed(1)}</strong></span>
+                            ))}
+                            {hiddenCount > 0 && (
+                              <span style={{ cursor: 'pointer', color: 'var(--theme-accent)' }} onClick={() => setExpandedItemsIdx(idx)}>+{hiddenCount} more</span>
+                            )}
+                            {showingAll && allItems.length > PREVIEW_COUNT && (
+                              <span style={{ cursor: 'pointer', color: 'var(--theme-accent)' }} onClick={() => setExpandedItemsIdx(null)}>show less</span>
+                            )}
+                          </div>
+                          {/* Print always shows the complete item list regardless of on-screen
+                              expand state — a printed sheet is a static snapshot, not an
+                              interactive session. */}
+                          {/* Global .print-only forces display:block!important on print, so flex-gap
+                              won't apply here — spans get their own right-margin as a fallback. */}
+                          <div className="print-only" style={{ fontSize: 11 }}>
+                            {allItems.map(([recipeId, qty]) => (
+                              <span key={recipeId} style={{ marginRight: 14 }}>{recipeNames[recipeId] || recipeId}: <strong>{qty.toFixed(1)}</strong></span>
                             ))}
                           </div>
                         </td>

@@ -132,11 +132,34 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S243 — 2026-07-04 — Print filename fix applied to every print button, all 3 modules (IMS + HR + POS)
+
+The `document.title`-before-print fix built for Demand Forecast (S242) had the same root cause everywhere: 20 other print buttons across IMS, HR, and POS all called `window.print()` directly, so every one of them also defaulted to "Crest Inventory" in the browser's "Save as PDF" dialog. Extracted the fix into a shared `src/utils/printTitle.js` (`printWithTitle(title)`) — one canonical implementation instead of 21 copies — and pointed every print button at it (including refactoring `DemandForecast.js`'s own bespoke version to use the shared one).
+
+Titles use whatever context is already in scope per page — no new data fetching added anywhere:
+- **IMS reports** (VAT, Non-VAT, Wastage, Stock, Stock Count Sheet, Dead Stock, Recipe Margin, Monthly/Annual Summary, Menu Repricing, Period Comparison, Supplier Price Tracker): `"{Report Name} - {periodLabel or equivalent}"`.
+- **Document prints** (Recipe Cost Card, Purchase Order, Requisition): recipe name / PO number / department+day, since these are single-document prints, not period reports.
+- **HR** (Staff Roster, TDS Certificate, Final Settlement, Payslip, Employee Joining Form): employee name / business name / fiscal year as applicable — Roster's already includes `bizInfo.name` from its S240 letterhead work.
+
+**Build hiccup:** first two build attempts failed with `'printWithTitle' is defined but never used` on 4 files (`HrReports.jsx`, `FinalSettlement.jsx`, `PurchaseOrders.js`, `Stock.js`) despite the source clearly importing and calling it correctly — a stale build cache (`node_modules/.cache`, likely `eslint-webpack-plugin`'s cache not invalidating correctly on Windows for those specific files). `rm -rf node_modules/.cache` + rebuild resolved it; no actual code issue.
+
+**Files:** `src/utils/printTitle.js` (new), `src/pages/DemandForecast.js`, and 20 other files across `src/pages/` and `src/modules/hr/` — see this session's diff for the full list.
+
 ### S242 — 2026-07-04 — Demand Forecast (day-of-week moving average, 7/30-day covers/revenue/qty prediction)
 
 First of the 9 cross-module features. `src/utils/demandForecastData.js` (pure, no React) builds a per-calendar-day history from `pos_orders`/`pos_order_items` (excluding credit-noted bills, same rule as `SalesReport.jsx`'s `dailyRows`), falling back to `sales_entries` (`source='manual'`, excluding the `bs_day=0` bulk-entry sentinel from `Sales.js`) when POS history is thin, then averages the last up to 8 same-weekday historical days per target date — simple and auditable over a trained model, since the Holiday Calendar's movable holidays (Dashain/Tihar) can't be assumed pre-populated and would cap any model's accuracy there regardless. `runForecast(clientId, horizonDays)` orchestrates the fetch + model + persists to `demand_forecast_daily`, logging every run (including failures — deliberately not error-swallowing like `stock_movements`) to `demand_forecast_run_log`.
 
 New page `src/pages/DemandForecast.js` (`/demand-forecast`, Growth) — "Recompute Forecast" button (on-demand, matches the app's existing pull-only pattern, no cron), 7-day/30-day toggle, a day-by-day table of forecast covers/revenue with an expandable top-items breakdown, and a holiday badge (flagged, not auto-adjusted-for) when a forecast date matches `hr_holiday_calendar`.
+
+**Bug caught in first live test:** a client whose history is mostly manual Sales Entry (not POS billing) showed "0 covers / NPR 0" for every day even though item-level forecasts had real values. Root cause: manual `sales_entries` rows structurally carry no covers/revenue signal (`covers:0, revenue:0` by design), and averaging those in with real POS days silently pulled the average down to a false zero instead of "no signal." Fixed by tagging each historical day with its `basis` (`'pos'`/`'manual'`) and only averaging covers/revenue over `pos`-basis samples — `null` (rendered as "—") when none exist for that weekday, instead of a misleading `0`. When revenue is `null` but an item-level qty forecast still exists, it's now estimated as `Σ qty × recipe.selling_price` and surfaced as "≈ NPR X" with a Tip explaining it's derived from item quantities, not observed revenue (new `demand_forecast_daily.revenue_estimated` column, added to the not-yet-run migration below).
+
+**Layout fix (2nd live-test round):** the original per-day row required clicking each date individually (click-to-expand) just to see its top forecasted items — tedious across a 30-day view, same friction pattern flagged on the Roster board. Replaced with an always-visible compact item preview (top 3, inline, no click needed) directly beneath each day's numbers, with a "+N more"/"show less" toggle reserved only for seeing the full item list on a given day — the common case now needs zero clicks.
+
+**Print added for both horizons:** "🖨 Print" button (`window.print()`) next to Recompute. On-screen app-navigation header/controls are `no-print`, replaced on the printed sheet by a `print-only` letterhead (`clients.name`/`settings.property_address`, matching `SalesReport.jsx`/`Roster.jsx`'s established letterhead pattern) plus the horizon label and a generated timestamp. The per-day item list has two variants sharing one row — an interactive `no-print` div (top-3 + "+N more") for screen, and a `print-only` div always listing every forecasted item regardless of on-screen expand state, since a printed sheet is a static snapshot, not an interactive session.
+
+**Print filename fix:** the browser's "Save as PDF" dialog suggests `document.title` as the default filename, which this app never sets dynamically — every print (on any page, not just this one) defaulted to the static "Crest Inventory" from `public/index.html`. `handlePrint()` now sets `document.title` to `"{Business Name} - Demand Forecast - {horizon}"` immediately before printing, restoring it on the `afterprint` event rather than the line right after `window.print()` — in Chrome/Edge `print()` returns immediately since the dialog is non-blocking, so an immediate restore would revert the title before the dialog ever reads it. The same fix would apply to Roster's and Stock Count's print buttons if wanted later; not touched here since it wasn't asked.
+
+**Also fixed `src/components/Tip.js`** (shared tooltip component, used app-wide) — it clamped horizontal position near screen edges but always rendered *above* its anchor with no vertical edge-detection, so a tooltip on a heading near the top of the page (e.g. this page's own title tooltip) rendered partly off-screen. Now flips below the anchor when `rect.top < 120`, the same edge-flip pattern `ShiftPicker`/`SearchableSelect` already use for their own dropdowns.
 
 **DB migration required (NOT YET RUN):**
 ```sql
@@ -146,6 +169,7 @@ CREATE TABLE IF NOT EXISTS demand_forecast_daily (
   recipe_id uuid REFERENCES recipes(id) ON DELETE CASCADE, -- NULL = covers/revenue row for the day
   bs_year integer NOT NULL, bs_month integer NOT NULL, bs_day integer NOT NULL,
   forecast_covers numeric, forecast_qty numeric, forecast_revenue numeric,
+  revenue_estimated boolean DEFAULT false, -- true when forecast_revenue is derived from qty × menu price (no direct pos-basis revenue signal for this weekday), not averaged from real order totals
   model_basis text CHECK (model_basis IN ('pos','manual')),
   horizon_days integer CHECK (horizon_days IN (7,30)),
   generated_at timestamptz DEFAULT now()
@@ -169,7 +193,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.demand_forecast_run_log TO authen
 ALTER TABLE feature_flags ADD COLUMN IF NOT EXISTS demand_forecast boolean DEFAULT false;
 ```
 
-**Files:** `src/utils/demandForecastData.js` (new), `src/pages/DemandForecast.js` (new), `src/context/AuthContext.js`, `src/context/SettingsContext.js`, `src/App.js`, `src/components/Layout.js`, `src/pages/AdminClients.js`, `src/pages/Help.js`
+**Files:** `src/utils/demandForecastData.js` (new), `src/pages/DemandForecast.js` (new), `src/components/Tip.js`, `src/context/AuthContext.js`, `src/context/SettingsContext.js`, `src/App.js`, `src/components/Layout.js`, `src/pages/AdminClients.js`, `src/pages/Help.js`
 
 ### S241 — 2026-07-04 — Phase 0 foundation for the 9-feature cross-module build (Forecasting, Labor Scheduling, QR Menu/Loyalty, KDS, Digital Receipts + 4 Tier-3 reports)
 

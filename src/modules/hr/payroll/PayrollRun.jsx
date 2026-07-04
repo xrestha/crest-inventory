@@ -6,6 +6,7 @@ import * as XLSX from 'xlsx'
 import { BS_MONTHS } from '../../../utils/bsCalendar'
 import { computePayslip } from './payrollCompute'
 import { computeMonthlyTds, fiscalYearOf } from './tds'
+import { printWithTitle } from '../../../utils/printTitle'
 
 const fmt = n => Math.round(n || 0).toLocaleString('en-NP')
 
@@ -279,7 +280,7 @@ export default function PayrollRun() {
 
   function printPayslip(slip, emp) {
     setPrintSlip({ slip, emp })
-    setTimeout(() => { window.print(); setPrintSlip(null) }, 60)
+    setTimeout(() => { printWithTitle(`Payslip - ${emp.full_name} - ${periodLabel}`); setPrintSlip(null) }, 60)
   }
 
   function exportExcel() {
