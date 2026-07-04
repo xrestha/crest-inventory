@@ -16,10 +16,12 @@ const THRESHOLD = 100000
 const GOLD  = '#c9a84c'
 const MUTED = '#6b7280'
 const hourLabel = h => h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`
+const bsSlash = iso => { const bs = adToBs(new Date(iso)); return `${String(bs.day).padStart(2, '0')}/${String(bs.month).padStart(2, '0')}/${bs.year}` }
 
 const TABS = [
   { key: 'daily',    label: 'Daily' },
   { key: 'hourly',   label: 'Hourly' },
+  { key: 'voucher',  label: 'Bill Register' },
   { key: 'category', label: 'Category Wise' },
   { key: 'item',     label: 'Item Wise' },
   { key: 'customer', label: 'Customer Wise' },
@@ -33,12 +35,25 @@ export default function SalesReport() {
 
   const [tab, setTab] = useState('daily')
 
+  /* ── Letterhead info for Excel exports — fetched once per client, independent of date range ── */
+  const [bizInfo, setBizInfo] = useState({ name: '', vat: '', address: '' })
+  useEffect(() => {
+    if (!clientId) return
+    Promise.all([
+      supabase.from('clients').select('name').eq('id', clientId).single(),
+      supabase.from('settings').select('vat_number, property_address').eq('client_id', clientId).maybeSingle(),
+    ]).then(([{ data: client }, { data: settings }]) => {
+      setBizInfo({ name: client?.name || '', vat: settings?.vat_number || '', address: settings?.property_address || '' })
+    })
+  }, [clientId])
+
   /* ── Daily / Hourly / Category / Customer — one shared date-range fetch ── */
   const [fromIso, setFromIso] = useState(formatAd(new Date()))
   const [toIso,   setToIso]   = useState(formatAd(new Date()))
   const [orders, setOrders] = useState([])
   const [itemsByOrder, setItemsByOrder] = useState({})
   const [vatReg, setVatReg] = useState(true)
+  const [staffNames, setStaffNames] = useState({})
   const [rangeLoading, setRangeLoading] = useState(true)
 
   const loadRange = useCallback(async () => {
@@ -47,14 +62,16 @@ export default function SalesReport() {
     const fromTs = new Date(fromIso + 'T00:00:00').toISOString()
     const toTs   = new Date(toIso + 'T23:59:59.999').toISOString()
 
-    const [{ data: orderData }, { data: settings }] = await Promise.all([
+    const [{ data: orderData }, { data: settings }, { data: profs }] = await Promise.all([
       supabase.from('pos_orders')
-        .select('id, buyer_name, buyer_pan, buyer_phone, discount_amount, closed_at, credit_note_id')
+        .select('id, order_no, invoice_no, buyer_name, buyer_pan, buyer_phone, discount_amount, closed_at, credit_note_id, payment_method, bill_remarks, closed_by, table_name')
         .eq('client_id', clientId).eq('close_type', 'paid')
         .gte('closed_at', fromTs).lte('closed_at', toTs),
       supabase.from('settings').select('is_vat_registered').eq('client_id', clientId).maybeSingle(),
+      supabase.from('profiles').select('id, full_name').eq('client_id', clientId),
     ])
     setVatReg(settings?.is_vat_registered ?? true)
+    setStaffNames(Object.fromEntries((profs || []).map(p => [p.id, p.full_name])))
     const orderList = orderData || []
     setOrders(orderList)
 
@@ -101,6 +118,22 @@ export default function SalesReport() {
     }
     return buckets
   }, [orders, itemsByOrder, vatReg])
+
+  const voucherRows = useMemo(() => {
+    return orders.map(o => {
+      const amounts = computeOrderAmounts(o, itemsByOrder[o.id] || [], vatReg)
+      return {
+        id: o.id, orderNo: o.order_no, invoiceNo: o.invoice_no, closedAt: o.closed_at,
+        customer: o.buyer_name || 'CASH SALES', pan: o.buyer_pan || '',
+        payMethod: o.payment_method || '—',
+        orderMode: o.table_name && o.table_name !== 'Takeaway' ? `Dine-In: ${o.table_name}` : 'Takeaway',
+        remarks: o.bill_remarks || '', enteredBy: staffNames[o.closed_by] || '—',
+        credited: !!o.credit_note_id,
+        gross: amounts.grossAmt, discount: amounts.discount, taxable: amounts.taxableBase,
+        nonTaxable: amounts.nonTaxableBase, vat: amounts.vatAmt, net: amounts.net,
+      }
+    }).sort((a, b) => new Date(b.closedAt) - new Date(a.closedAt))
+  }, [orders, itemsByOrder, vatReg, staffNames])
 
   const categoryRows = useMemo(() => {
     const grouped = {}
@@ -220,6 +253,7 @@ export default function SalesReport() {
 
   const dailyTotals = dailyRows.reduce((s, r) => ({ bills: s.bills + r.bills, qty: s.qty + r.qty, gross: s.gross + r.gross, discount: s.discount + r.discount, taxable: s.taxable + r.taxable, nonTaxable: s.nonTaxable + r.nonTaxable, vat: s.vat + r.vat, net: s.net + r.net }), { bills: 0, qty: 0, gross: 0, discount: 0, taxable: 0, nonTaxable: 0, vat: 0, net: 0 })
   const hourlyTotals = hourlyRows.reduce((s, h) => ({ bills: s.bills + h.bills, qty: s.qty + h.qty, net: s.net + h.net }), { bills: 0, qty: 0, net: 0 })
+  const voucherTotals = voucherRows.reduce((s, v) => ({ gross: s.gross + v.gross, discount: s.discount + v.discount, taxable: s.taxable + v.taxable, nonTaxable: s.nonTaxable + v.nonTaxable, vat: s.vat + v.vat, net: s.net + v.net }), { gross: 0, discount: 0, taxable: 0, nonTaxable: 0, vat: 0, net: 0 })
   const categoryNetOf = c => c.gross - c.discount + c.vat
   const categoryTotals = categoryRows.reduce((s, c) => ({ qtySales: s.qtySales + c.qtySales, qtyReturn: s.qtyReturn + c.qtyReturn, gross: s.gross + c.gross, discount: s.discount + c.discount, taxable: s.taxable + c.taxable, nonTaxable: s.nonTaxable + c.nonTaxable, vat: s.vat + c.vat }), { qtySales: 0, qtyReturn: 0, gross: 0, discount: 0, taxable: 0, nonTaxable: 0, vat: 0 })
   const itemNetOf = i => i.gross - i.discount + i.vat
@@ -229,10 +263,28 @@ export default function SalesReport() {
 
   const hourlyChartData = hourlyRows.map(h => ({ name: hourLabel(h.hour), value: h.net }))
 
+  // Printable-statutory-document look (Company Name/VAT/Address letterhead + date-range line baked
+  // into the sheet itself), matching the format competitor ERP exports use — see [[pos_reports_gap_list]].
+  function withLetterhead(title, rangeLine, dataRows) {
+    const aoa = [
+      [title],
+      [`CompanyName : ${bizInfo.name}`],
+      [`${vatReg ? 'VATNO' : 'PAN No'} : ${bizInfo.vat}`],
+      [`ADDRESS : ${bizInfo.address}`],
+      [],
+      [rangeLine],
+      [],
+    ]
+    const ws = XLSX.utils.aoa_to_sheet(aoa)
+    XLSX.utils.sheet_add_json(ws, dataRows, { origin: -1 })
+    return ws
+  }
+  const dateRangeLine = `@As On Dated : ${fromIso} (B.S. ${bsSlash(fromIso)})  To : ${toIso} (B.S. ${bsSlash(toIso)})  @Division : ${bizInfo.name}`
+
   function exportExcel() {
     const wb = XLSX.utils.book_new()
     if (tab === 'daily') {
-      const ws = XLSX.utils.json_to_sheet(dailyRows.map(r => ({
+      const ws = withLetterhead('Sales Report - Daily', dateRangeLine, dailyRows.map(r => ({
         'Date (BS)': `${r.day} ${BS_MONTHS[r.month - 1]} ${r.year}`, 'Bills': r.bills, 'Qty': r.qty,
         'Gross (NPR)': Math.round(r.gross * 100) / 100, 'Discount (NPR)': Math.round(r.discount * 100) / 100,
         'Non-Taxable (NPR)': Math.round(r.nonTaxable * 100) / 100, 'Taxable (NPR)': Math.round(r.taxable * 100) / 100,
@@ -241,11 +293,25 @@ export default function SalesReport() {
       XLSX.utils.book_append_sheet(wb, ws, 'Daily Sales')
       XLSX.writeFile(wb, `daily-sales-${fromIso}-to-${toIso}.xlsx`)
     } else if (tab === 'hourly') {
-      const ws = XLSX.utils.json_to_sheet(hourlyRows.map(h => ({ 'Hour': hourLabel(h.hour), 'Bills': h.bills, 'Qty': h.qty, 'Net Sales (NPR)': Math.round(h.net * 100) / 100 })))
+      const ws = withLetterhead('Sales Report - Hourly', dateRangeLine, hourlyRows.map(h => ({ 'Hour': hourLabel(h.hour), 'Bills': h.bills, 'Qty': h.qty, 'Net Sales (NPR)': Math.round(h.net * 100) / 100 })))
       XLSX.utils.book_append_sheet(wb, ws, 'Hourly Sales')
       XLSX.writeFile(wb, `hourly-sales-${fromIso}-to-${toIso}.xlsx`)
+    } else if (tab === 'voucher') {
+      const ws = withLetterhead('Sales Book Report', dateRangeLine, voucherRows.map(v => {
+        const bs = adToBs(new Date(v.closedAt))
+        return {
+          'Date (BS)': `${bs.day} ${BS_MONTHS[bs.month - 1]} ${bs.year}`, 'Voucher#': v.orderNo, 'Invoice#': v.invoiceNo || '',
+          'Customer': v.customer, 'PAN': v.pan, 'Payment Mode': v.payMethod, 'Order Mode': v.orderMode,
+          'Gross (NPR)': Math.round(v.gross * 100) / 100, 'Discount (NPR)': Math.round(v.discount * 100) / 100,
+          'Non-Taxable (NPR)': Math.round(v.nonTaxable * 100) / 100, 'Taxable (NPR)': Math.round(v.taxable * 100) / 100,
+          'VAT (NPR)': Math.round(v.vat * 100) / 100, 'Net (NPR)': Math.round(v.net * 100) / 100,
+          'Remarks': v.remarks, 'Entered By': v.enteredBy, 'Credit Noted': v.credited ? 'Yes' : '',
+        }
+      }))
+      XLSX.utils.book_append_sheet(wb, ws, 'Bill Register')
+      XLSX.writeFile(wb, `bill-register-${fromIso}-to-${toIso}.xlsx`)
     } else if (tab === 'category') {
-      const ws = XLSX.utils.json_to_sheet(categoryRows.map(c => ({
+      const ws = withLetterhead('Sales Report - Category Wise', dateRangeLine, categoryRows.map(c => ({
         'Category': c.name, 'Qty Sales': c.qtySales, 'Qty Return': c.qtyReturn, 'Qty Net': c.qtySales - c.qtyReturn,
         'Gross (NPR)': Math.round(c.gross * 100) / 100, 'Discount (NPR)': Math.round(c.discount * 100) / 100,
         'Non-Taxable (NPR)': Math.round(c.nonTaxable * 100) / 100, 'Taxable (NPR)': Math.round(c.taxable * 100) / 100,
@@ -254,7 +320,7 @@ export default function SalesReport() {
       XLSX.utils.book_append_sheet(wb, ws, 'Category Sales')
       XLSX.writeFile(wb, `category-sales-${fromIso}-to-${toIso}.xlsx`)
     } else if (tab === 'item') {
-      const ws = XLSX.utils.json_to_sheet(itemRows.map(i => ({
+      const ws = withLetterhead('Sales Report - Item Wise', dateRangeLine, itemRows.map(i => ({
         'Item': i.name, 'Qty Sales': i.qtySales, 'Qty Return': i.qtyReturn, 'Qty Net': i.qtySales - i.qtyReturn,
         'Gross (NPR)': Math.round(i.gross * 100) / 100, 'Discount (NPR)': Math.round(i.discount * 100) / 100,
         'Non-Taxable (NPR)': Math.round(i.nonTaxable * 100) / 100, 'Taxable (NPR)': Math.round(i.taxable * 100) / 100,
@@ -263,7 +329,7 @@ export default function SalesReport() {
       XLSX.utils.book_append_sheet(wb, ws, 'Item Sales')
       XLSX.writeFile(wb, `item-sales-${fromIso}-to-${toIso}.xlsx`)
     } else if (tab === 'customer') {
-      const ws = XLSX.utils.json_to_sheet(customerRows.map(c => ({
+      const ws = withLetterhead('Sales Report - Customer Wise', dateRangeLine, customerRows.map(c => ({
         'Customer Name': c.name, 'Mobile': c.phone, 'PAN': c.pan || '', 'Bills': c.bills,
         'Gross (NPR)': Math.round(c.gross * 100) / 100, 'Discount (NPR)': Math.round(c.discount * 100) / 100,
         'Non-Taxable (NPR)': Math.round(c.nonTaxable * 100) / 100, 'Taxable (NPR)': Math.round(c.taxable * 100) / 100,
@@ -272,7 +338,8 @@ export default function SalesReport() {
       XLSX.utils.book_append_sheet(wb, ws, 'Customer Sales')
       XLSX.writeFile(wb, `customer-sales-${fromIso}-to-${toIso}.xlsx`)
     } else {
-      const ws = XLSX.utils.json_to_sheet(parties.map(p => ({
+      const oneLakhRangeLine = `@Fiscal Year : ${selectedFy}  @Division : ${bizInfo.name}`
+      const ws = withLetterhead('One Lakh Above Report (Annexure 13)', oneLakhRangeLine, parties.map(p => ({
         'Party Name': p.name, 'PAN': p.pan || '', 'Bill Count': p.bills,
         'Gross (NPR)': Math.round(p.gross * 100) / 100, 'Taxable (NPR)': Math.round(p.taxable * 100) / 100,
         'Non-Taxable (NPR)': Math.round(p.nonTaxable * 100) / 100, 'VAT (NPR)': Math.round(p.vat * 100) / 100,
@@ -287,6 +354,7 @@ export default function SalesReport() {
   const isEmpty =
     (tab === 'daily' && dailyRows.length === 0) ||
     (tab === 'hourly' && hourlyTotals.bills === 0) ||
+    (tab === 'voucher' && voucherRows.length === 0) ||
     (tab === 'category' && categoryRows.length === 0) ||
     (tab === 'item' && itemRows.length === 0) ||
     (tab === 'customer' && customerRows.length === 0) ||
@@ -296,10 +364,10 @@ export default function SalesReport() {
     <div style={{ padding: '24px 28px', maxWidth: 1150 }}>
       <div style={{ marginBottom: 16 }}>
         <h2 style={{ margin: 0, color: 'var(--theme-text1)', fontSize: 20 }}>
-          Sales Report <Tip text="Six views of the same POS sales data: Daily and Hourly show when revenue happens, Category, Item, and Customer show where it comes from, and 1L+ Report is the Nepal VAT Annexure 13 compliance check." width={300}>ⓘ</Tip>
+          Sales Report <Tip text="Seven views of the same POS sales data: Daily and Hourly show when revenue happens, Bill Register lists every individual voucher, Category, Item, and Customer show where it comes from, and 1L+ Report is the Nepal VAT Annexure 13 compliance check." width={300}>ⓘ</Tip>
         </h2>
         <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--theme-text3)' }}>
-          One report, six ways to slice it.
+          One report, seven ways to slice it.
         </p>
       </div>
 
@@ -421,6 +489,55 @@ export default function SalesReport() {
             </table>
           </div>
         </>
+      ) : tab === 'voucher' ? (
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Date (BS)</th><th>Voucher#</th><th>Invoice#</th><th>Customer</th><th>Payment Mode</th><th>Order Mode</th>
+                <th style={{ textAlign: 'right' }}>Gross</th><th style={{ textAlign: 'right' }}>Discount</th>
+                <th style={{ textAlign: 'right' }}>Non-Taxable</th><th style={{ textAlign: 'right' }}>Taxable</th>
+                <th style={{ textAlign: 'right' }}>VAT</th><th style={{ textAlign: 'right' }}>Net</th>
+                <th>Remarks</th><th>Entered By</th>
+              </tr>
+            </thead>
+            <tbody>
+              {voucherRows.map(v => {
+                const bs = adToBs(new Date(v.closedAt))
+                return (
+                  <tr key={v.id}>
+                    <td>{bs.day} {BS_MONTHS[bs.month - 1]} {bs.year}</td>
+                    <td style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>#{v.orderNo}</td>
+                    <td>{v.invoiceNo || '—'}</td>
+                    <td>{v.customer}{v.credited && <span className="badge-amber" style={{ fontSize: 10, marginLeft: 6 }}>Credit Noted</span>}</td>
+                    <td>{v.payMethod}</td>
+                    <td>{v.orderMode}</td>
+                    <td style={{ textAlign: 'right' }}>{fmtNpr(v.gross)}</td>
+                    <td style={{ textAlign: 'right' }}>{fmtNpr(v.discount)}</td>
+                    <td style={{ textAlign: 'right' }}>{fmtNpr(v.nonTaxable)}</td>
+                    <td style={{ textAlign: 'right' }}>{fmtNpr(v.taxable)}</td>
+                    <td style={{ textAlign: 'right' }}>{fmtNpr(v.vat)}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700 }}>{fmtNpr(v.net)}</td>
+                    <td>{v.remarks || '—'}</td>
+                    <td>{v.enteredBy}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+            <tfoot>
+              <tr style={{ fontWeight: 700 }}>
+                <td colSpan={6}>TOTAL</td>
+                <td style={{ textAlign: 'right' }}>{fmtNpr(voucherTotals.gross)}</td>
+                <td style={{ textAlign: 'right' }}>{fmtNpr(voucherTotals.discount)}</td>
+                <td style={{ textAlign: 'right' }}>{fmtNpr(voucherTotals.nonTaxable)}</td>
+                <td style={{ textAlign: 'right' }}>{fmtNpr(voucherTotals.taxable)}</td>
+                <td style={{ textAlign: 'right' }}>{fmtNpr(voucherTotals.vat)}</td>
+                <td style={{ textAlign: 'right' }}>{fmtNpr(voucherTotals.net)}</td>
+                <td></td><td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
       ) : tab === 'category' ? (
         <div className="table-wrap">
           <table className="data-table">

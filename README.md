@@ -132,6 +132,32 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S239 — 2026-07-04 — KOT Log: Bill Trail tab (complete bill ↔ KOT/BOT audit view)
+
+Reconciliation only surfaces exceptions (mismatches, voids) — Aashish wanted a complete view of every paid/voided bill and its full KOT/BOT history, not just the flagged ones, including bills that never sent anything to the kitchen at all. No schema change needed — `pos_kot_log.order_id` already links everything.
+
+**Shared discrepancy logic extracted** — `sumSentQtyByOrderItem(logs)` and `flagOrderDiscrepancies(orderById, sentByOrderItem, currentByOrderItem)` pulled out of `loadReconciliation` into top-of-file helpers in `KotLog.jsx`, so Reconciliation and the new Bill Trail tab can never disagree about what counts as a discrepancy. Reconciliation's behavior is unchanged.
+
+**Bill Trail — 3rd tab in `KotLog.jsx`** — one row per paid/voided bill (Order#, Table, Status, KOT Sends count, Discrepancy flag), click to expand (accordion pattern from `PosShifts.jsx`'s shift-history table) into the full chronological ticket trail: time, station, items×qty, sent by. A bill with zero KOT/BOT sends gets an amber "No KOT" badge (deliberately distinct from Reconciliation's red "Discrepancy" badge — zero sends is ambiguous, e.g. a legitimate self-serve bar tab, not definite evidence of tampering) — a bill can show both badges at once if applicable. Excel export stays plain (`json_to_sheet`, no letterhead) to match Register/Reconciliation's existing export style on this same page.
+
+**Files:** `src/modules/pos/reports/KotLog.jsx`, `src/pages/Help.js`
+
+### S238 — 2026-07-04 — Sales Report: printed letterhead on all Excel exports
+
+Closed the "beautification gap" noted in the S237 competitor comparison: their exports are styled as print-ready statutory documents (Company Name/VAT No./Address letterhead + date-range line baked into the sheet), ours were plain data tables.
+
+**New `withLetterhead(title, rangeLine, dataRows)` helper in `SalesReport.jsx`** — builds the header block with `XLSX.utils.aoa_to_sheet` (title row, `CompanyName :`, `VATNO :`/`PAN No :` depending on `vatReg`, `ADDRESS :`, blank, the date-range or fiscal-year line, blank), then appends the existing per-tab row data with `XLSX.utils.sheet_add_json(ws, dataRows, { origin: -1 })` — this appends directly after the letterhead rows and auto-generates the column-header row from the object keys, so none of the 7 tabs' existing column shapes needed to change. New `bizInfo` state (`clients.name`, `settings.vat_number`, `settings.property_address`) fetched once per `clientId`, independent of the date-range fetch that already re-runs per tab. Date-range tabs get `@As On Dated : {AD} (B.S. {DD/MM/YYYY}) To : {AD} (B.S. {DD/MM/YYYY}) @Division : {company}`; 1L+ Report (fiscal-year scoped, not date-range) gets `@Fiscal Year : {FY} @Division : {company}` instead.
+
+**Files:** `src/modules/pos/reports/SalesReport.jsx`
+
+### S237 — 2026-07-04 — Sales Report: Bill Register tab (voucher-wise ledger)
+
+Compared Crest's POS reports against a competitor ERP's "Sales Report Item Wise" and "Sales Book Report" screenshots. Item Wise was already functionally equivalent (Product Code/UoM gaps noted for later, no migration needed since `recipes.recipe_code`/`yield_uom` already exist). The real gap: no bill-by-bill register existed — Daily aggregates by day, nothing lists every individual voucher. Checked `pos_orders` and found every needed column already existed (`payment_method`, `bill_remarks`, `closed_by`, `order_no`, `invoice_no`), so this shipped as a no-migration 7th tab.
+
+**Bill Register — 7th tab in `SalesReport.jsx`** — one row per bill: Date (BS), Voucher# (`order_no`), Invoice# (`invoice_no`), Customer, Payment Mode, Order Mode (Dine-In: table / Takeaway, derived from `table_name`), Gross/Discount/Non-Taxable/Taxable/VAT/Net, Remarks (`bill_remarks`), Entered By (`closed_by` → `profiles.full_name`, fetched into a `staffNames` map alongside the shared range fetch, same pattern as `KotLog.jsx`). Bills later corrected by a Credit Note are still listed (unlike Daily, which excludes them entirely) and instead carry a "Credit Noted" badge next to the customer name, since a bill register's job is to show every voucher issued, not just net revenue.
+
+**Files:** `src/modules/pos/reports/SalesReport.jsx`, `src/pages/Help.js`
+
 ### S236 — 2026-07-04 — Item Wise Sales Report tab + KOT Log (Register + Reconciliation)
 
 Next three items off `POS_TODO.md`: a plain Item Wise sales ledger, a KOT Register, and a KOT vs Prebill vs Sales reconciliation (anti-fraud). Investigating the existing KOT/BOT send mechanism first: `pos_order_items.sent_to_kot` is a live boolean, overwritten in place on every save, no timestamp/sender/persisted quantity — the "+N" delta badge (`sent_qty`) lives only in React state, never in the DB. No historical KOT log existed, so building a real Register or Reconciliation required a new table.

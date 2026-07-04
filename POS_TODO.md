@@ -4,7 +4,7 @@ Living checklist compiled from: the competitor "IMS" ERP report-menu audit, the 
 
 **Status key:** 🔴 Missing · 🟡 Partial · 🔵 Deferred (decided to postpone) · ⚪ Open question (not engineering)
 
-Last updated: 2026-07-04 (S236)
+Last updated: 2026-07-04 (S239)
 
 ---
 
@@ -31,8 +31,12 @@ Last updated: 2026-07-04 (S236)
 - [x] ~~Item Wise Sales Report~~ — shipped S236, 2026-07-04. 6th tab in `/pos/sales-report`. New `computeItemAmounts()` helper in `posBillingMath.js`, same Sales/Return-on-credit-note pattern as Category Wise.
 - [x] ~~KOT Register Report~~ — shipped S236, 2026-07-04. `/pos/kot-log` (Register tab). Required a new `pos_kot_log` table — no historical send log existed before this (`sent_to_kot` was a live boolean, overwritten in place, no timestamp/sender).
 - [x] ~~KOT vs Prebill vs Sales reconciliation~~ — shipped S236, 2026-07-04. `/pos/kot-log` (Reconciliation tab). Flags items whose total sent-to-kitchen qty exceeds their current order qty, and any KOT/BOT send on an order that ends up Voided. Only shows flagged rows.
+- [x] ~~Bill Register / Voucher Wise Sales Report~~ — shipped S237, 2026-07-04 (added after comparing against a competitor's "Sales Book Report" screenshot, not originally on this list). 7th tab in `/pos/sales-report`. One row per bill — Voucher#, Invoice#, Customer, Payment Mode, Order Mode, amounts, Remarks, Entered By. No migration needed — every column already existed on `pos_orders`.
 - [ ] 🔴 Stock Ageing Report (FIFO/Expiry shows dates, not aging buckets)
 - [ ] ⚪ "Supplier Wise" / "Product Type Wise" sales reports (unclear fit vs Crest's data model — needs clarification before scoping)
+- [ ] 🟡 Item Wise tab: add Product Code + UoM columns (found via competitor screenshot comparison, 2026-07-04 — `recipes.recipe_code`/`yield_uom` already exist, just not pulled into the report query; no migration needed)
+- [x] ~~Printed letterhead baked into Excel exports~~ — shipped S238, 2026-07-04. All 7 `/pos/sales-report` tabs now export Company Name/VAT No./Address + `@As On Dated : ... To : ...` date-range line (or `@Fiscal Year :` for 1L+ Report) above the data, matching the statutory-report look of competitor exports.
+- [x] ~~KOT Log: Bill Trail tab~~ — shipped S239, 2026-07-04 (not originally on this list — requested after seeing Reconciliation only surfaces exceptions). 3rd tab in `/pos/kot-log`: every paid/voided bill, expandable to its full KOT/BOT send history, with an amber "No KOT" badge for bills that never sent anything to the kitchen. No migration needed.
 
 ## D. Known roadmap items
 
@@ -50,6 +54,9 @@ Full double-entry accounting / Chart of Accounts / Debtors-Creditors, multi-ware
 
 ## Shipped (for reference — moved here once complete)
 
+- [x] ~~KOT Log: Bill Trail tab~~ — shipped S239, 2026-07-04. `/pos/kot-log` 3rd tab. One row per paid/voided bill, expandable (accordion pattern from `PosShifts.jsx`) into its full KOT/BOT trail. Amber "No KOT" badge for zero-send bills, red "Discrepancy" badge shares logic with Reconciliation via extracted `sumSentQtyByOrderItem`/`flagOrderDiscrepancies` helpers.
+- [x] ~~Printed letterhead baked into Excel exports~~ — shipped S238, 2026-07-04. New `withLetterhead()` helper in `SalesReport.jsx` (uses `XLSX.utils.aoa_to_sheet` + `sheet_add_json` with `origin: -1` to prepend rows ahead of the existing per-tab data). Fetches `clients.name` + `settings.vat_number`/`property_address` once per client, independent of the date-range fetch.
+- [x] ~~Bill Register / Voucher Wise Sales Report~~ — shipped S237, 2026-07-04. 7th tab in `SalesReport.jsx`, `/pos/sales-report`. One row per bill (Voucher#, Invoice#, Customer, Payment Mode, Order Mode, amounts, Remarks, Entered By), with a "Credit Noted" badge for bills later corrected instead of excluding them (unlike Daily). No migration needed — reused existing `pos_orders` columns.
 - [x] ~~Item Wise Sales Report + KOT Log (Register + Reconciliation)~~ — shipped S236, 2026-07-04. New `pos_kot_log` table (append-only send-event log with delta-aware item/qty snapshots) backing `/pos/kot-log`; Item Wise added as `SalesReport.jsx`'s 6th tab.
 - [x] ~~Sales Report — Daily / Hourly / Category Wise / Customer Wise / 1L+ (Annexure 13), one tabbed page~~ — shipped S235, 2026-07-04. `src/modules/pos/reports/SalesReport.jsx`, `/pos/sales-report`. Originally built as 4 separate pages same session, then consolidated into one shared-fetch tabbed page after Aashish pointed out it should mirror the competitor's single "Sales Report" menu structure. Daily/Hourly/Category/Customer share one BS date-range fetch (`useMemo`'d per-tab aggregation); 1L+ Report keeps its own Fiscal Year selector since Annexure 13 is a whole-year compliance check, not an arbitrary range.
 - [x] ~~Purchase-side One Lakh Above / Annexure 13~~ — shipped S235, 2026-07-04. `src/pages/PurchaseOneLakhAboveReport.js`, `/purchase-one-lakh-report`. Reuses `buildVendorSummary` (now exported from `VatReport.js`).

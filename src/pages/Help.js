@@ -794,10 +794,10 @@ export default function Help() {
                 },
                 {
                   icon: '▤', name: 'Sales Report', path: '/pos/sales-report',
-                  desc: 'Six views of the same POS sales data, one page: Daily (day-by-day totals), Hourly (revenue by time of day), Category Wise and Item Wise (what drives revenue), Customer Wise (who\'s buying and how much), and 1L+ Report (Nepal VAT Annexure 13 — parties whose cumulative transactions exceed NPR 1,00,000 in a fiscal year). Requires Manager role or above.',
+                  desc: 'Seven views of the same POS sales data, one page: Daily (day-by-day totals), Hourly (revenue by time of day), Bill Register (every individual voucher — payment mode, remarks, who closed it), Category Wise and Item Wise (what drives revenue), Customer Wise (who\'s buying and how much), and 1L+ Report (Nepal VAT Annexure 13 — parties whose cumulative transactions exceed NPR 1,00,000 in a fiscal year). Requires Manager role or above.',
                   tips: [
-                    'Daily/Hourly/Category/Item/Customer share one BS date-range filter; 1L+ Report uses its own Fiscal Year selector instead, since Annexure 13 is a whole-year compliance check, not an arbitrary range',
-                    'Daily excludes bills that later got a Credit Note entirely — the revenue correction posts on the day the Credit Note is issued, not retroactively into the original bill\'s day',
+                    'Daily/Hourly/Bill Register/Category/Item/Customer share one BS date-range filter; 1L+ Report uses its own Fiscal Year selector instead, since Annexure 13 is a whole-year compliance check, not an arbitrary range',
+                    'Daily excludes bills that later got a Credit Note entirely — the revenue correction posts on the day the Credit Note is issued, not retroactively into the original bill\'s day. Bill Register instead lists every voucher and flags the ones later credited with a badge',
                     'Category Wise and Item Wise both treat a credited bill\'s full quantity as "Return" (Crest has no partial/line-level returns) — a bill\'s discount is allocated proportionally so totals reconcile',
                     'Customer Wise groups walk-ins with no buyer details under CASH SALES',
                     '⚠ Missing PAN on the 1L+ tab means a party crossed NPR 1,00,000 without ever having their PAN recorded — worth asking for it on their next visit',
@@ -806,11 +806,12 @@ export default function Help() {
                 },
                 {
                   icon: '🧾', name: 'KOT Log', path: '/pos/kot-log',
-                  desc: 'Register is a queryable log of every kitchen/bar ticket ever sent. Reconciliation compares what was actually sent to the kitchen against what\'s currently on each order — the anti-fraud check that catches food cooked and served but quietly reduced, removed, or never billed. Requires Manager role or above.',
+                  desc: 'Register is a queryable log of every kitchen/bar ticket ever sent. Reconciliation compares what was actually sent to the kitchen against what\'s currently on each order — the anti-fraud check that catches food cooked and served but quietly reduced, removed, or never billed. Bill Trail shows every paid/voided bill with its complete KOT/BOT history in one expandable view, including bills that never sent anything to the kitchen at all. Requires Manager role or above.',
                   tips: [
                     'Reconciliation only shows flagged rows — a quiet report is a healthy one, same philosophy as Sales Exceptions',
                     'A row flags when an item\'s total sent-to-kitchen quantity is more than what\'s currently on the order (cooked, then reduced or removed before billing)',
                     'Any KOT/BOT send on an order that ends up Voided is always flagged, regardless of quantity — the kitchen made food but zero revenue was ever recorded for it',
+                    'Bill Trail is the complete picture — click a bill to expand its full ticket history. An amber "No KOT" badge means that bill never sent anything to the kitchen (could be a legitimate self-serve tab, or worth a second look); a red "Discrepancy" badge means the same issue Reconciliation flags',
                     'The Register only goes back as far as this feature was added — sends from before that date were never logged',
                   ],
                 },
