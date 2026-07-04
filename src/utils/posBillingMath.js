@@ -23,3 +23,46 @@ export function computeOrderAmounts(order, items, vatReg) {
 
   return { grossAmt, discount, taxableBase, nonTaxableBase, vatAmt, net, roundOff, totalQty }
 }
+
+// Same discRatio proportional-discount-allocation rule as computeOrderAmounts, applied per
+// category instead of collapsed to one order-level total — so category subtotals always
+// reconcile exactly to what computeOrderAmounts reports for the same order.
+export function computeCategoryAmounts(order, items, vatReg) {
+  const subEx = items.reduce((s, i) => s + i.qty * i.unit_price, 0)
+  const discRatio = subEx > 0 ? (order.discount_amount || 0) / subEx : 0
+  const byCat = {}
+  for (const i of items) {
+    const cat = i.category || 'Uncategorized'
+    const line = i.qty * i.unit_price
+    const vatLine = vatReg ? line * (i.vat_rate ?? 0) : 0
+    const b = byCat[cat] = byCat[cat] || { gross: 0, discount: 0, taxable: 0, nonTaxable: 0, vat: 0, qty: 0 }
+    b.gross += line
+    b.discount += line * discRatio
+    b.vat += vatLine * (1 - discRatio)
+    if (vatReg && (i.vat_rate ?? 0) > 0) b.taxable += line * (1 - discRatio)
+    else b.nonTaxable += line * (1 - discRatio)
+    b.qty += i.qty
+  }
+  return byCat
+}
+
+// Same discRatio proportional-discount-allocation rule again, keyed by recipe_id instead of
+// category — a plain item-wise sales ledger, subtotals reconcile exactly to the order total.
+export function computeItemAmounts(order, items, vatReg) {
+  const subEx = items.reduce((s, i) => s + i.qty * i.unit_price, 0)
+  const discRatio = subEx > 0 ? (order.discount_amount || 0) / subEx : 0
+  const byItem = {}
+  for (const i of items) {
+    const key = i.recipe_id || i.name
+    const line = i.qty * i.unit_price
+    const vatLine = vatReg ? line * (i.vat_rate ?? 0) : 0
+    const b = byItem[key] = byItem[key] || { name: i.name, gross: 0, discount: 0, taxable: 0, nonTaxable: 0, vat: 0, qty: 0 }
+    b.gross += line
+    b.discount += line * discRatio
+    b.vat += vatLine * (1 - discRatio)
+    if (vatReg && (i.vat_rate ?? 0) > 0) b.taxable += line * (1 - discRatio)
+    else b.nonTaxable += line * (1 - discRatio)
+    b.qty += i.qty
+  }
+  return byItem
+}

@@ -89,6 +89,11 @@ const IMS_TIERS = [
         tips: ['Only purchases marked as VAT-inclusive are counted in the VAT total', 'Match this against your supplier VAT invoices before filing']
       },
       {
+        icon: '⚑', name: 'Purchase One Lakh Above Report',
+        guide: 'Nepal VAT return Annexure 13 (अनुसूची १३): any single vendor whose cumulative purchases exceed NPR 1,00,000 in a fiscal year must be disclosed by name + PAN. Aggregates purchases by vendor across a full BS fiscal year and flags who crosses the threshold — the purchase-side counterpart to the POS One Lakh Above Report.',
+        tips: ['⚠ Missing PAN means a vendor crossed NPR 1,00,000 without a PAN/VAT No. on file', 'Only VAT-inclusive purchase entries are counted, netted against vendor returns', 'Spans every period in the selected BS fiscal year, not just one month']
+      },
+      {
         icon: '⊘', name: 'Non-VAT Report',
         guide: 'Lists all purchases from non-VAT registered vendors. Useful for accounting and for separating VAT vs non-VAT purchase records.',
         tips: ['Non-VAT purchases are those not marked as VAT-inclusive in the Purchases entry']
@@ -788,13 +793,25 @@ export default function Help() {
                   ],
                 },
                 {
-                  icon: '⚑', name: 'One Lakh Above Report', path: '/pos/one-lakh-report',
-                  desc: 'Nepal VAT return Annexure 13 (अनुसूची १३): any single party whose cumulative transactions exceed NPR 1,00,000 in a fiscal year must be disclosed by name + PAN. This report groups POS sales by buyer PAN (or name if no PAN) across a full BS fiscal year and flags who crosses the threshold. Requires Manager role or above.',
+                  icon: '▤', name: 'Sales Report', path: '/pos/sales-report',
+                  desc: 'Six views of the same POS sales data, one page: Daily (day-by-day totals), Hourly (revenue by time of day), Category Wise and Item Wise (what drives revenue), Customer Wise (who\'s buying and how much), and 1L+ Report (Nepal VAT Annexure 13 — parties whose cumulative transactions exceed NPR 1,00,000 in a fiscal year). Requires Manager role or above.',
                   tips: [
-                    '⚠ Missing PAN means a party crossed NPR 1,00,000 without ever having their PAN recorded on a bill — worth asking for it on their next visit',
-                    'Annexure 13 badge means the party is over the threshold and already has a PAN on file — ready to disclose as-is',
-                    'Only Pay-closed bills count — Complimentary and Void are excluded, since Annexure 13 concerns actual paying-party transactions',
-                    'Rows with no buyer name at all are grouped as "CASH SALES / WALK-IN"',
+                    'Daily/Hourly/Category/Item/Customer share one BS date-range filter; 1L+ Report uses its own Fiscal Year selector instead, since Annexure 13 is a whole-year compliance check, not an arbitrary range',
+                    'Daily excludes bills that later got a Credit Note entirely — the revenue correction posts on the day the Credit Note is issued, not retroactively into the original bill\'s day',
+                    'Category Wise and Item Wise both treat a credited bill\'s full quantity as "Return" (Crest has no partial/line-level returns) — a bill\'s discount is allocated proportionally so totals reconcile',
+                    'Customer Wise groups walk-ins with no buyer details under CASH SALES',
+                    '⚠ Missing PAN on the 1L+ tab means a party crossed NPR 1,00,000 without ever having their PAN recorded — worth asking for it on their next visit',
+                    '⬇ Excel exports whichever tab is currently open',
+                  ],
+                },
+                {
+                  icon: '🧾', name: 'KOT Log', path: '/pos/kot-log',
+                  desc: 'Register is a queryable log of every kitchen/bar ticket ever sent. Reconciliation compares what was actually sent to the kitchen against what\'s currently on each order — the anti-fraud check that catches food cooked and served but quietly reduced, removed, or never billed. Requires Manager role or above.',
+                  tips: [
+                    'Reconciliation only shows flagged rows — a quiet report is a healthy one, same philosophy as Sales Exceptions',
+                    'A row flags when an item\'s total sent-to-kitchen quantity is more than what\'s currently on the order (cooked, then reduced or removed before billing)',
+                    'Any KOT/BOT send on an order that ends up Voided is always flagged, regardless of quantity — the kitchen made food but zero revenue was ever recorded for it',
+                    'The Register only goes back as far as this feature was added — sends from before that date were never logged',
                   ],
                 },
                 {

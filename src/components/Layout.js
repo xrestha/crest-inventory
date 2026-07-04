@@ -41,6 +41,7 @@ const REPORTS = [
   { to: '/shrinkage',            label: 'Shrinkage Report',     icon: '⚠', featureKey: 'shrinkage_report',     cat: 'stock', minPlan: 'pro' },
   // Money & tax
   { to: '/vat-report',           label: 'VAT Report',           icon: '₨', featureKey: 'vat_report',           cat: 'money' },
+  { to: '/purchase-one-lakh-report', label: 'Purchase 1L+ Report', icon: '⚑', featureKey: 'vat_report',       cat: 'money' },
   { to: '/non-vat-report',      label: 'Non-VAT Report',       icon: '₨', featureKey: 'non_vat_report',       cat: 'money' },
   { to: '/payments',             label: 'Payment Summary',      icon: '⊕', featureKey: 'payment_summary',      cat: 'money', minPlan: 'starter' },
   { to: '/payables',             label: 'Outstanding Payables', icon: '₨', featureKey: 'outstanding_payables', cat: 'money', minPlan: 'growth' },
@@ -80,7 +81,8 @@ const POS_GROUPS = [
   { key: 'pos-reports', label: 'Reports', items: [
     { to: '/pos/exceptions', label: 'Exceptions', icon: '⚠', minPosRole: 'manager' },
     { to: '/pos/credit-notes', label: 'Credit Notes', icon: '↩', minPosRole: 'manager' },
-    { to: '/pos/one-lakh-report', label: '1L+ Report', icon: '⚑', minPosRole: 'manager' },
+    { to: '/pos/sales-report', label: 'Sales Report', icon: '▤', minPosRole: 'manager' },
+    { to: '/pos/kot-log', label: 'KOT Log', icon: '🧾', minPosRole: 'manager' },
   ]},
   { key: 'pos-admin', label: 'Admin', items: [
     { to: '/pos/staff', label: 'POS Staff', icon: '👥', minPosRole: 'manager' },

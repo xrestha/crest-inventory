@@ -484,6 +484,8 @@ export default function PosOrders() {
       setOrderItems(prev => prev.map(i => ({ ...i, sent_to_kot: true, sent_qty: i.qty })))
       if (kotItems.length > 0) printTicket('KOT', kotItems, oNo)
       if (botItems.length > 0) printTicket('BOT', botItems, oNo)
+      logKotSend('KOT', kotItems, oid, oNo)
+      logKotSend('BOT', botItems, oid, oNo)
       setMsg('ok:Order sent!')
     } else {
       setMsg('ok:Saved.')
@@ -532,6 +534,30 @@ export default function PosOrders() {
     setSaving(false)
     setMsg(`ok:${station} sent!`)
     printTicket(station, unsentItems, oNo)
+    logKotSend(station, unsentItems, oid, oNo)
+  }
+
+  // Best-effort, non-blocking (matches writeSalesEntries' own error-swallow pattern) — logs
+  // exactly what was printed on the ticket (delta-aware qty) so the KOT Register/Reconciliation
+  // reports reflect the real kitchen/bar send history, not just the current live order state.
+  async function logKotSend(station, items, oid, oNo) {
+    if (items.length === 0) return
+    try {
+      await supabase.from('pos_kot_log').insert({
+        client_id: clientId,
+        order_id: oid,
+        order_no: oNo,
+        table_name: activeTable?.name || 'Takeaway',
+        station,
+        items: items.map(i => ({
+          recipe_id: i.recipe_id, name: i.name, category: i.category,
+          qty: (i.sent_qty || 0) > 0 ? i.qty - i.sent_qty : i.qty,
+        })),
+        sent_by: profile?.id || null,
+      })
+    } catch (err) {
+      console.error('pos_kot_log insert failed:', err)
+    }
   }
 
   function printTicket(station, items, ticketNo) {

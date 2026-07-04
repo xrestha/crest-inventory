@@ -5,7 +5,7 @@ import { useAuth } from '../../../context/AuthContext'
 import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
 import BsCalendarPicker from '../../../components/BsCalendarPicker'
-import { getBsToday, bsToAd, adToBs, formatAd, BS_MONTHS } from '../../../utils/bsCalendar'
+import { adToBs, formatAd, BS_MONTHS } from '../../../utils/bsCalendar'
 import { printCreditNote } from './creditNoteHtml'
 import IssueCreditNoteModal from './IssueCreditNoteModal'
 
@@ -14,9 +14,8 @@ const fmtNpr = n => `NPR ${Math.round(n).toLocaleString()}`
 export default function CreditNotes() {
   const { clientId, hasPosAccess } = useAuth()
 
-  const today = getBsToday()
   const [tab, setTab] = useState('issue') // 'issue' | 'book'
-  const [fromIso, setFromIso] = useState(formatAd(bsToAd(today.year, today.month, 1)))
+  const [fromIso, setFromIso] = useState(formatAd(new Date()))
   const [toIso,   setToIso]   = useState(formatAd(new Date()))
   const [invoiceSearch, setInvoiceSearch] = useState('')
 

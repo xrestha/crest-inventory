@@ -11,7 +11,7 @@ function fmtNPR(n) {
   return `NPR ${Number(n).toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-function buildVendorSummary(vatEntries, returns, billGroups) {
+export function buildVendorSummary(vatEntries, returns, billGroups) {
   const map = {}
   vatEntries.forEach(e => {
     const key  = e.vendor_id || '__unknown__'

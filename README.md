@@ -132,6 +132,51 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S236 — 2026-07-04 — Item Wise Sales Report tab + KOT Log (Register + Reconciliation)
+
+Next three items off `POS_TODO.md`: a plain Item Wise sales ledger, a KOT Register, and a KOT vs Prebill vs Sales reconciliation (anti-fraud). Investigating the existing KOT/BOT send mechanism first: `pos_order_items.sent_to_kot` is a live boolean, overwritten in place on every save, no timestamp/sender/persisted quantity — the "+N" delta badge (`sent_qty`) lives only in React state, never in the DB. No historical KOT log existed, so building a real Register or Reconciliation required a new table.
+
+**DB migration required:**
+```sql
+CREATE TABLE IF NOT EXISTS pos_kot_log (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id uuid NOT NULL REFERENCES clients(id),
+  order_id uuid NOT NULL REFERENCES pos_orders(id) ON DELETE CASCADE,
+  order_no integer,
+  table_name text,
+  station text NOT NULL CHECK (station IN ('KOT','BOT')),
+  items jsonb NOT NULL,
+  sent_by uuid REFERENCES profiles(id) ON DELETE SET NULL,
+  sent_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE pos_kot_log ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "client_own" ON pos_kot_log
+  USING ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin' OR client_id = (SELECT client_id FROM profiles WHERE id = auth.uid()))
+  WITH CHECK ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin' OR client_id = (SELECT client_id FROM profiles WHERE id = auth.uid()));
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.pos_kot_log TO authenticated;
+NOTIFY pgrst, 'reload schema';
+```
+
+**`pos_kot_log` writes (`PosOrders.jsx`)** — new `logKotSend(station, items, oid, oNo)` helper, called best-effort/non-blocking (same error-swallow pattern as `writeSalesEntries`) from both `saveOrder()`'s first-send auto-send and `sendTicket()`'s manual re-send. `items` jsonb captures exactly what was printed — `qty` is delta-aware (full quantity on first send, delta-only on a re-send, same logic `printTicket` itself already uses), so summing every log row's `items[].qty` per `(order_id, recipe_id)` gives the true cumulative quantity ever sent to the kitchen for that item.
+
+**KOT Log page (`src/modules/pos/reports/KotLog.jsx`, new, `/pos/kot-log`)** — shared BS date-range filter, two tabs:
+- **Register** — raw queryable log: Date/Time, Table, Order#, Station badge, Items×Qty, Sent By.
+- **Reconciliation** — the anti-fraud check. For every closed (`billed`/`voided`) order in range: sums total sent-to-kitchen qty per item from `pos_kot_log`, compares against the item's *current* qty on the order. Flags a row if (a) sent qty exceeds current qty (cooked, then reduced/removed before billing) or (b) the order ended up **Voided** at all (kitchen made food, zero revenue ever recorded) — regardless of quantity match in that case. Only flagged rows shown ("a quiet report is a healthy one," same philosophy as Sales Exceptions).
+
+**Item Wise Sales Report — 6th tab in `SalesReport.jsx`** — new `computeItemAmounts(order, items, vatReg)` in `posBillingMath.js`, structurally identical to `computeCategoryAmounts` but keyed by `recipe_id` instead of category. Same Sales/Return-on-credit-note pattern as Category Wise. Shared `loadRange()` item select extended to include `recipe_id, name`.
+
+**Files:** `src/modules/pos/reports/SalesReport.jsx`, `src/modules/pos/reports/KotLog.jsx` (new), `src/utils/posBillingMath.js`, `src/modules/pos/orders/PosOrders.jsx`, `src/App.js`, `src/components/Layout.js`, `src/pages/Help.js`
+
+### S235 — 2026-07-04 — POS Sales Report: Category/Customer/Hourly/Daily tabs + Purchase-side One Lakh Above (Annexure 13)
+
+Continued the POS reporting backlog: built Category Wise, Customer Wise, and Hourly Sales Reports as three separate pages first, then — after Aashish pointed out this should mirror the competitor's single "Sales Report" menu structure — consolidated all three (plus a new Daily Sales view he asked for, plus the existing sales-side One Lakh Above Report) into **one tabbed page**, `src/modules/pos/reports/SalesReport.jsx` at `/pos/sales-report`, replacing the standalone files. Also shipped the purchase-side (vendor) One Lakh Above Report at `/purchase-one-lakh-report`, completing both halves of the Annexure 13 requirement.
+
+**Consolidated Sales Report (`SalesReport.jsx`):** Daily/Hourly/Category Wise/Customer Wise share one BS date-range fetch (`useMemo`'d per-tab aggregation, so switching tabs doesn't re-query); 1L+ Report keeps its own Fiscal Year selector since Annexure 13 is a whole-year compliance check, not an arbitrary range. Daily groups by BS calendar day and **excludes Credit-Noted bills entirely** (the revenue correction posts on the day the Credit Note is issued, not retroactively into the original day). Both From/To date defaults changed to today's system date (not "1st of the month") — applied to `SalesReport.jsx`, `PosExceptionReport.jsx`, and `CreditNotes.jsx` for consistency across every POS date-range report.
+
+**Purchase One Lakh Above Report (`src/pages/PurchaseOneLakhAboveReport.js`, new, `/purchase-one-lakh-report`)** — vendor-wise purchases across a full BS fiscal year, flagging vendors over NPR 1,00,000. Exported `buildVendorSummary` from `VatReport.js` (was previously private) and reused it across a fiscal year's worth of `periodIds` instead of duplicating the vendor-grouping logic. Gated on the existing `vat_report` feature flag — no new flag/migration.
+
+**Files:** `src/modules/pos/reports/SalesReport.jsx`, `src/pages/PurchaseOneLakhAboveReport.js`, `src/pages/VatReport.js`, `src/modules/pos/reports/PosExceptionReport.jsx`, `src/modules/pos/creditnotes/CreditNotes.jsx`, `src/App.js`, `src/components/Layout.js`, `src/pages/Help.js`
+
 ### S234 — 2026-07-03 — POS IRD Compliance: Credit Note workflow (Rule 20) + One Lakh Above Report (Annexure 13)
 
 Researched Nepal IRD's actual legal requirements for POS billing in-depth (VAT Rules 2053, Electronic Billing Procedure 2074, Computerized Invoicing Procedure 2072) to separate genuine compliance gaps from competitor-feature noise, then built the two items that turned out to be real legal requirements rather than nice-to-haves. Everything else (item/customer/category-wise sales reports, KOT-vs-Prebill reconciliation, full accounting-ledger parity) stays deferred — business-analytics convenience, not IRD-mandated.
