@@ -84,6 +84,11 @@ const IMS_TIERS = [
         tips: ['Set par levels based on supplier lead time × daily usage rate', 'Review the reorder report weekly, not just at month end', 'Book Stock only reflects POS-recorded sales/comps — if you also log sales manually, Current Stock is the more complete number']
       },
       {
+        icon: '↗', name: 'Demand Forecast',
+        guide: 'Predicts covers, revenue, and per-dish quantity for the next 7 or 30 days using a day-of-week moving average over your last ~12 weeks of POS sales (falls back to manual Sales entries if POS history is thin). Click "Recompute Forecast" to generate or refresh it — it does not run automatically. Click a day\'s row to see its top forecasted items. A holiday badge means the target date matches your Holiday Calendar, but the model does not automatically boost or dampen for it — treat the number as a floor, not a ceiling, on festival days.',
+        tips: ['Recompute weekly for the freshest prediction — it only reflects sales up to the last time you ran it', 'A thin or brand-new POS history produces a less confident forecast — give it a few weeks of data', 'Add movable holidays (Dashain, Tihar) to the Holiday Calendar so they at least get flagged on the report']
+      },
+      {
         icon: '⊛', name: 'VAT Report',
         guide: 'Summarises input VAT on purchases. Toggle the VAT-inclusive flag per purchase entry in the Purchases page. Shows total VAT paid per period for use in your IRD VAT return.',
         tips: ['Only purchases marked as VAT-inclusive are counted in the VAT total', 'Match this against your supplier VAT invoices before filing']
@@ -375,6 +380,7 @@ const GROWTH_EXTRAS = [
   'Purchase Orders',
   'Staff Meals Tracking',
   'Nutrition Facts & Allergen Labels',
+  'Demand Forecast (7/30-Day Covers & Revenue Prediction)',
 ]
 const PRO_EXTRAS = [
   'Period Comparison (6 / 12 / 24 / All Periods)',

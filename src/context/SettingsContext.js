@@ -36,6 +36,7 @@ const DEFAULT_FLAGS = {
   menu_pricing: false,
   menu_repricing: false,
   stock_report: false,
+  demand_forecast: false,
 }
 
 export function SettingsProvider({ children }) {

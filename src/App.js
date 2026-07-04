@@ -38,6 +38,7 @@ import TheoreticalVariance from './pages/TheoreticalVariance'
 import Requisitions from './pages/Requisitions'
 import WastageReport from './pages/WastageReport'
 import StockReport from './pages/StockReport'
+import DemandForecast from './pages/DemandForecast'
 import DeadStock from './pages/DeadStock'
 import RecipeMargin from './pages/RecipeMargin'
 import MenuRepricing from './pages/MenuRepricing'
@@ -136,6 +137,8 @@ export default function App() {
                 element={<ModuleGate module="ims"><PremiumGate featureKey="outstanding_payables" minPlan="growth"><OutstandingPayables /></PremiumGate></ModuleGate>} />
               <Route path="/budget"
                 element={<ModuleGate module="ims"><PremiumGate featureKey="budget_vs_actual" minPlan="growth"><BudgetVsActual /></PremiumGate></ModuleGate>} />
+              <Route path="/demand-forecast"
+                element={<ModuleGate module="ims"><PremiumGate featureKey="demand_forecast" minPlan="growth"><DemandForecast /></PremiumGate></ModuleGate>} />
               <Route path="/requisitions"
                 element={<ModuleGate module="ims"><PremiumGate featureKey="requisitions" minPlan="growth"><Requisitions /></PremiumGate></ModuleGate>} />
               <Route path="/dead-stock"

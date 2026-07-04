@@ -132,6 +132,45 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S242 — 2026-07-04 — Demand Forecast (day-of-week moving average, 7/30-day covers/revenue/qty prediction)
+
+First of the 9 cross-module features. `src/utils/demandForecastData.js` (pure, no React) builds a per-calendar-day history from `pos_orders`/`pos_order_items` (excluding credit-noted bills, same rule as `SalesReport.jsx`'s `dailyRows`), falling back to `sales_entries` (`source='manual'`, excluding the `bs_day=0` bulk-entry sentinel from `Sales.js`) when POS history is thin, then averages the last up to 8 same-weekday historical days per target date — simple and auditable over a trained model, since the Holiday Calendar's movable holidays (Dashain/Tihar) can't be assumed pre-populated and would cap any model's accuracy there regardless. `runForecast(clientId, horizonDays)` orchestrates the fetch + model + persists to `demand_forecast_daily`, logging every run (including failures — deliberately not error-swallowing like `stock_movements`) to `demand_forecast_run_log`.
+
+New page `src/pages/DemandForecast.js` (`/demand-forecast`, Growth) — "Recompute Forecast" button (on-demand, matches the app's existing pull-only pattern, no cron), 7-day/30-day toggle, a day-by-day table of forecast covers/revenue with an expandable top-items breakdown, and a holiday badge (flagged, not auto-adjusted-for) when a forecast date matches `hr_holiday_calendar`.
+
+**DB migration required (NOT YET RUN):**
+```sql
+CREATE TABLE IF NOT EXISTS demand_forecast_daily (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id uuid NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  recipe_id uuid REFERENCES recipes(id) ON DELETE CASCADE, -- NULL = covers/revenue row for the day
+  bs_year integer NOT NULL, bs_month integer NOT NULL, bs_day integer NOT NULL,
+  forecast_covers numeric, forecast_qty numeric, forecast_revenue numeric,
+  model_basis text CHECK (model_basis IN ('pos','manual')),
+  horizon_days integer CHECK (horizon_days IN (7,30)),
+  generated_at timestamptz DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS demand_forecast_run_log (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id uuid NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  run_at timestamptz DEFAULT now(), method text, rows_written integer, error text
+);
+ALTER TABLE demand_forecast_daily  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE demand_forecast_run_log ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "client_own" ON demand_forecast_daily FOR ALL TO authenticated
+  USING (client_id = (SELECT client_id FROM profiles WHERE id = auth.uid()) OR (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin')
+  WITH CHECK (client_id = (SELECT client_id FROM profiles WHERE id = auth.uid()) OR (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin');
+CREATE POLICY "client_own" ON demand_forecast_run_log FOR ALL TO authenticated
+  USING (client_id = (SELECT client_id FROM profiles WHERE id = auth.uid()) OR (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin')
+  WITH CHECK (client_id = (SELECT client_id FROM profiles WHERE id = auth.uid()) OR (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin');
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.demand_forecast_daily   TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.demand_forecast_run_log TO authenticated;
+
+ALTER TABLE feature_flags ADD COLUMN IF NOT EXISTS demand_forecast boolean DEFAULT false;
+```
+
+**Files:** `src/utils/demandForecastData.js` (new), `src/pages/DemandForecast.js` (new), `src/context/AuthContext.js`, `src/context/SettingsContext.js`, `src/App.js`, `src/components/Layout.js`, `src/pages/AdminClients.js`, `src/pages/Help.js`
+
 ### S241 — 2026-07-04 — Phase 0 foundation for the 9-feature cross-module build (Forecasting, Labor Scheduling, QR Menu/Loyalty, KDS, Digital Receipts + 4 Tier-3 reports)
 
 Kicked off the founder-approved cross-module roadmap (see the plan doc for full feature-by-feature design). Phase 0 is small, additive infra that several downstream features depend on — none of it touches the fragile `PosOrders.jsx` billing hot path.

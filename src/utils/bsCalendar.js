@@ -114,3 +114,17 @@ export function formatAd(date) {
   const d = String(date.getDate()).padStart(2, '0')
   return `${y}-${m}-${d}`
 }
+
+/** Add (or subtract, with a negative n) n days to a BS date. Returns { year, month, day }. */
+export function bsAddDays(bsYear, bsMonth, bsDay, n) {
+  const ad = bsToAd(bsYear, bsMonth, bsDay)
+  ad.setDate(ad.getDate() + n)
+  return adToBs(ad)
+}
+
+/** Number of days from BS date 1 to BS date 2 (positive if date 2 is later). */
+export function bsDiffDays(y1, m1, d1, y2, m2, d2) {
+  const ad1 = bsToAd(y1, m1, d1)
+  const ad2 = bsToAd(y2, m2, d2)
+  return Math.round((startOfDay(ad2) - startOfDay(ad1)) / 86400000)
+}
