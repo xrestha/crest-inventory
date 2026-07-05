@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabaseClient'
+import { useScopedDb } from '../shared/hooks/useScopedDb'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip,
@@ -17,6 +18,7 @@ const CHART_COLORS = ['#c9a84c', '#34d399', '#60a5fa', '#f87171', '#a78bfa', '#f
 export default function Dashboard() {
   const { profile, clientId, isAdmin, clientModules, hasFeature, loading: authLoading, adminViewClientId, adminViewClientName, switchAdminClient } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
+  const { scopedFrom, scopedInsert, scopedUpdate } = useScopedDb()
   const showAdminDash = isAdmin && !adminViewClientId
   const navigate = useNavigate()
   const location = useLocation()
@@ -57,9 +59,8 @@ export default function Dashboard() {
   async function loadStats() {
     setLoading(true)
 
-    const { data: period } = await supabase
-      .from('monthly_periods').select('*')
-      .eq('client_id', effectiveClientId).eq('status', 'open')
+    const { data: period } = await scopedFrom('monthly_periods')
+      .eq('status', 'open')
       .order('bs_year', { ascending: false }).order('bs_month', { ascending: false })
       .limit(1).single()
 
@@ -81,18 +82,18 @@ export default function Dashboard() {
       { data: overheadsData },
       { data: wastagesData }
     ] = await Promise.all([
-      supabase.from('items').select('*', { count: 'exact', head: true }).eq('client_id', effectiveClientId).eq('is_active', true).eq('is_sub_recipe', false),
-      supabase.from('vendors').select('*', { count: 'exact', head: true }).eq('client_id', effectiveClientId).eq('is_active', true),
-      supabase.from('recipes').select('*', { count: 'exact', head: true }).eq('client_id', effectiveClientId).eq('is_active', true).neq('category', 'Sub-Recipe'),
-      supabase.from('recipes').select('*', { count: 'exact', head: true }).eq('client_id', effectiveClientId).eq('is_active', true).eq('category', 'Sub-Recipe'),
+      scopedFrom('items', '*', { count: 'exact', head: true }).eq('is_active', true).eq('is_sub_recipe', false),
+      scopedFrom('vendors', '*', { count: 'exact', head: true }).eq('is_active', true),
+      scopedFrom('recipes', '*', { count: 'exact', head: true }).eq('is_active', true).neq('category', 'Sub-Recipe'),
+      scopedFrom('recipes', '*', { count: 'exact', head: true }).eq('is_active', true).eq('category', 'Sub-Recipe'),
       period ? supabase.from('purchase_entries').select('item_id, qty, rate, bs_day').eq('period_id', period.id) : { data: [] },
       period ? supabase.from('vendor_returns').select('item_id, qty, rate, bs_day').eq('period_id', period.id) : { data: [] },
       period ? supabase.from('sales_entries').select('recipe_id, qty_sold, bs_day').eq('period_id', period.id) : { data: [] },
-      supabase.from('recipes').select('id, name, selling_price, category, is_active, target_fc_pct').eq('client_id', effectiveClientId),
+      scopedFrom('recipes', 'id, name, selling_price, category, is_active, target_fc_pct'),
       period ? supabase.from('opening_stock').select('item_id, qty').eq('period_id', period.id) : { data: [] },
       period ? supabase.from('closing_stock').select('item_id, physical_qty').eq('period_id', period.id) : { data: [] },
-      supabase.from('items').select('id, name, uom, per_uom_rate, yield_pct, categories(name)').eq('client_id', effectiveClientId).eq('is_active', true).eq('is_sub_recipe', false),
-      supabase.from('par_levels').select('item_id, par_qty').eq('client_id', effectiveClientId),
+      scopedFrom('items', 'id, name, uom, per_uom_rate, yield_pct, categories(name)').eq('is_active', true).eq('is_sub_recipe', false),
+      scopedFrom('par_levels', 'item_id, par_qty'),
       period ? supabase.from('overheads').select('amount').eq('period_id', period.id) : { data: [] },
       period ? supabase.from('wastages').select('item_id, qty').eq('period_id', period.id) : { data: [] }
     ])
@@ -309,10 +310,7 @@ export default function Dashboard() {
   }
 
   async function loadHrStats() {
-    const { data: employees } = await supabase
-      .from('hr_employees')
-      .select('status, basic_salary')
-      .eq('client_id', effectiveClientId)
+    const { data: employees } = await scopedFrom('hr_employees', 'status, basic_salary')
     const total     = employees?.length || 0
     const active    = employees?.filter(e => e.status === 'active').length || 0
     const probation = employees?.filter(e => e.status === 'probation').length || 0
@@ -326,9 +324,8 @@ export default function Dashboard() {
     if (!activePeriod || !effectiveClientId) return
     const nextMonth = activePeriod.bs_month === 12 ? 1 : activePeriod.bs_month + 1
     const nextYear  = activePeriod.bs_month === 12 ? activePeriod.bs_year + 1 : activePeriod.bs_year
-    await supabase.from('monthly_periods').update({ status: 'closed' }).eq('id', activePeriod.id)
-    await supabase.from('monthly_periods').insert({
-      client_id: effectiveClientId,
+    await scopedUpdate('monthly_periods', { status: 'closed' }).eq('id', activePeriod.id)
+    await scopedInsert('monthly_periods', {
       bs_year: nextYear,
       bs_month: nextMonth,
       status: 'open'
@@ -337,10 +334,7 @@ export default function Dashboard() {
   }
 
   async function loadFcTrend(currentPeriod, currentFcPct) {
-    const { data: closedPeriods } = await supabase
-      .from('monthly_periods')
-      .select('id, bs_year, bs_month')
-      .eq('client_id', effectiveClientId)
+    const { data: closedPeriods } = await scopedFrom('monthly_periods', 'id, bs_year, bs_month')
       .eq('status', 'closed')
       .order('bs_year', { ascending: false })
       .order('bs_month', { ascending: false })
@@ -353,7 +347,7 @@ export default function Dashboard() {
       periodIds.length ? supabase.from('purchase_entries').select('period_id, qty, rate').in('period_id', periodIds) : { data: [] },
       periodIds.length ? supabase.from('vendor_returns').select('period_id, qty, rate').in('period_id', periodIds)   : { data: [] },
       periodIds.length ? supabase.from('sales_entries').select('period_id, recipe_id, qty_sold').in('period_id', periodIds) : { data: [] },
-      supabase.from('recipes').select('id, selling_price').eq('client_id', effectiveClientId),
+      scopedFrom('recipes', 'id, selling_price'),
     ])
 
     const priceMap = {}

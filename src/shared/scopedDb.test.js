@@ -49,6 +49,11 @@ describe('scopedFrom', () => {
     scopedFrom('items', null)
     expect(chain.eq).toHaveBeenCalledWith('client_id', NO_CLIENT_SENTINEL)
   })
+
+  test('forwards { count, head } options to .select() for cheap row counts', () => {
+    scopedFrom('items', 'client-1', '*', { count: 'exact', head: true })
+    expect(chain.select).toHaveBeenCalledWith('*', { count: 'exact', head: true })
+  })
 })
 
 describe('scopedInsert', () => {

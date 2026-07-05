@@ -48,10 +48,12 @@ function missingClientIdError(table) {
 }
 
 // Read: pre-filters to the current client. Chain further .eq()/.order()/etc. exactly as with
-// supabase.from() — this only owns the client_id filter, not the rest of the query.
-export function scopedFrom(table, clientId, columns = '*') {
+// supabase.from() — this only owns the client_id filter, not the rest of the query. Pass
+// options (e.g. { count: 'exact', head: true }) exactly as the third arg to .select() would take.
+export function scopedFrom(table, clientId, columns = '*', options) {
   assertKnownTable(table)
-  return supabase.from(table).select(columns).eq('client_id', clientId || NO_CLIENT_SENTINEL)
+  const q = options !== undefined ? supabase.from(table).select(columns, options) : supabase.from(table).select(columns)
+  return q.eq('client_id', clientId || NO_CLIENT_SENTINEL)
 }
 
 // Insert: stamps client_id automatically and refuses to write without one, replacing the

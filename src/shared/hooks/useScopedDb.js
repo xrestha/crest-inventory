@@ -11,7 +11,7 @@ export function useScopedDb() {
   const { clientId } = useAuth()
   return useMemo(() => ({
     clientId,
-    scopedFrom:   (table, columns) => scopedFrom(table, clientId, columns),
+    scopedFrom:   (table, columns, options) => scopedFrom(table, clientId, columns, options),
     scopedInsert: (table, row, options) => scopedInsert(table, clientId, row, options),
     scopedUpsert: (table, rows, options) => scopedUpsert(table, clientId, rows, options),
     scopedUpdate: (table, patch) => scopedUpdate(table, clientId, patch),
