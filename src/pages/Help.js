@@ -164,6 +164,11 @@ const IMS_TIERS = [
         tips: ['Use "By Margin" view to find items that sell well but contribute less profit', 'Bottom 10 by volume with high FC% = candidates for menu removal']
       },
       {
+        icon: '⋈', name: 'Combo Builder',
+        guide: 'Shows which menu items are actually ordered together most often, from real POS bills over a 30/90/180-day window, and suggests a discounted combo price. Pick an anchor item, and the table ranks its most frequent pairings with a "Bills Together" count, combined price, and suggested combo price (combined price × your Combo Discount %). Insight-only — "Create as Menu Item" links to Menu Pricing so you create the priced bundle yourself; nothing is created automatically.',
+        tips: ['A menu item with very few bills yet won\'t show pairings — needs more sales history first', 'Combo Discount % is saved per client — adjust it and every suggested price updates immediately', 'Try a longer window (180d) for a lower-volume item, shorter (30d) to catch a recent trend']
+      },
+      {
         icon: '☑', name: 'Purchase Orders',
         guide: 'Create and manage purchase orders to send to vendors before stock arrives. POs can be drafted, approved, and marked as received. Maintains a proper procurement trail ahead of Purchases entries.',
         tips: ['Raise a PO before the vendor delivers to keep procurement organised', 'Match the received PO against the actual invoice when entering Purchases']
@@ -252,7 +257,7 @@ const HR_FEATURES = [
   },
   {
     icon: '📋', name: 'Roster',
-    guide: 'Plan weekly or monthly staff shifts. Two view modes: Monthly (pick a BS month; the board splits into two halves — days 1–16 and 17–end — so nothing overflows) and Weekly (7-day grid centred on the selected week). Click a cell to assign a shift, or click-and-drag across a rectangle of cells (multiple days, multiple staff, or both) to assign the same shift to all of them in one action — useful for a multi-day Leave block or a whole week of the same shift. The Shifts tab lets you customise shift names, times, colours, and hours. Print the schedule with a Company Name/Address letterhead for department heads.',
+    guide: 'Plan weekly or monthly staff shifts. Two view modes: Monthly (pick a BS month; the board splits into two halves — days 1–16 and 17–end — so nothing overflows) and Weekly (7-day grid centred on the selected week). Click a cell to assign a shift, or click-and-drag across a rectangle of cells (multiple days, multiple staff, or both) to assign the same shift to all of them in one action — useful for a multi-day Leave block or a whole week of the same shift. The Shifts tab lets you customise shift names, times, colours, and hours. Print the schedule with a Company Name/Address letterhead for department heads. In Weekly view, if Demand Forecast has been run, the board also shows a Forecast Revenue and Planned Labor Cost row under each day (Planned Labor Cost = scheduled hours × each employee\'s resolved pay rate — a live estimate, not a payroll run), plus a banner calling out the week\'s busiest forecasted day with a recommended headcount and whether you\'re currently short-staffed against it.',
     tips: [
       'Plan the roster before the month starts — it helps forecast labour cost and avoids scheduling conflicts',
       'Roster is for planning only — Attendance is the official record that feeds payroll',
@@ -260,6 +265,9 @@ const HR_FEATURES = [
       'Each employee can only have one shift per day — assigning a new one replaces whatever was there before',
       'The Shifts tab lets you rename, recolour, and adjust the hours of any shift to match your venue\'s terminology',
       '🖨 Print shows the Company Name/Address, the period, and the shift legend above the board — no Excel export, print/Save-as-PDF only',
+      'Forecast Revenue/Planned Labor Cost rows only appear in Weekly view and only for days that already have a Demand Forecast — run/refresh that on the Demand Forecast page first',
+      'Recommended headcount = forecasted covers ÷ Covers/Staff target (editable in the banner, saved per client, default 20) — a starting estimate, not a hard rule',
+      'The Labor Cost % under the NPR figure turns amber above 35% of that day\'s forecasted revenue',
     ]
   },
   {

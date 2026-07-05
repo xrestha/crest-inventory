@@ -132,6 +132,25 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S246 — 2026-07-05 — Cross-module roadmap Features 2 + 7: Demand-Based Labor Scheduling + Combo Builder
+
+Two of the 9 cross-module features from the S241 roadmap plan, picked as the "quick wins" (lowest build complexity, no new architecture pattern, both build directly on infrastructure already shipped this week).
+
+**Feature 2 — Demand-Based Labor Scheduling (Roster).** V1 scope per the plan: forecast-vs-scheduled-cost only, no `hr_employee_id`/Attendance sync (confirmed neither exists anywhere in the codebase). `empHrs()`/`dayHrs()` extracted out of `Roster.jsx` into a new pure `src/modules/hr/roster/laborForecast.js` (`calcHours`, `rKey`, `computeEmpHours`, `computeDayHours` — identical logic, just relocated) plus two new functions: `computePlannedLaborCost` (scheduled hours × each employee's resolved hourly-equivalent rate) and `computeRecommendedHeadcount` (`Math.ceil(forecastCovers / coversPerStaffTarget)`). Rate resolution reuses `payrollCompute.js`'s existing `hourlyRateOf` (now exported) — the same function OT pricing already uses — not the whole payroll engine, which is a whole-period run-once computation, not a live per-shift number.
+
+`Roster.jsx`'s employee fetch now also selects `pay_basis, basic_salary`. A new `loadForecast()` reads `demand_forecast_daily` (`recipe_id IS NULL` rows = day-level covers/revenue) for the visible date range, mirroring `loadRoster()`'s existing "week can span two BS months" grouping. In **Weekly view only** (Monthly's 30+ narrow columns had no room for this without cramming), the board gained two more footer rows — Forecast Revenue and Planned Labor Cost (with cost as % of that day's forecast revenue, amber above 35%) — plus a banner above the board calling out the week's busiest forecasted day, its recommended headcount, how many staff are actually scheduled that day, and an editable Covers/Staff target (`settings.covers_per_staff_target`, default 20, saved on blur). No feature-flag gating added — this is additive to the Roster page every HR client already has, not a new premium tier.
+
+**Feature 7 — Combo Builder.** New `src/pages/ComboBuilder.js`, `/combo-builder`, Growth plan (`combo_builder` flag) — the first non-order-flow caller of the existing `get_cooccurrence(p_client_id, p_recipe_id, p_days)` RPC (previously only called from `PosOrders.jsx`'s live upsell suggestion chips). Pick an anchor menu item (`SearchableSelect`) and a window (30/90/180 days); the table ranks its most frequent real-bill pairings with a bills-together count/frequency bar, combined price, and a suggested combo price = combined price × (1 − Combo Discount %). Combo Discount % (`settings.combo_discount_pct`, default 10) is editable inline and saved per client. Insight-only, per plan — "Create as Menu Item →" links out to `/menu-pricing`; nothing is auto-created.
+
+**DB migration required (NOT YET RUN):**
+```sql
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS covers_per_staff_target numeric DEFAULT 20;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS combo_discount_pct numeric DEFAULT 10;
+ALTER TABLE feature_flags ADD COLUMN IF NOT EXISTS combo_builder boolean DEFAULT false;
+```
+
+**Files:** `src/modules/hr/roster/laborForecast.js` (new), `src/modules/hr/roster/Roster.jsx`, `src/modules/hr/payroll/payrollCompute.js`, `src/pages/ComboBuilder.js` (new), `src/context/AuthContext.js`, `src/context/SettingsContext.js`, `src/pages/AdminClients.js`, `src/App.js`, `src/components/Layout.js`, `src/pages/Help.js`
+
 ### S245 — 2026-07-05 — Sales Report Payment Summary tab + POS Order Taking offline mode
 
 **Payment Summary tab.** Closed the last gap in the "POS reporting suite" backlog item — write-off totals (`/pos/exceptions`) and VAT-return export (Sales Report's existing tabs) were already covered; a payment-method breakdown for POS sales was not. Added an 8th tab to `/pos/sales-report` (`SalesReport.jsx`) grouping the same date-range order data by `payment_method` (Cash/Card/eSewa/Khalti/FonePay/Credit) with the standard Bills/Gross/Discount/Non-Taxable/Taxable/VAT/Net columns, % of Net Total, and the same letterhead Excel export as the other tabs. No new query — `payment_method` was already selected in the existing range fetch. Credit-noted bills excluded, same reconciliation rule as the Daily/Customer tabs.

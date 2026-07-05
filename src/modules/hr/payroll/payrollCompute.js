@@ -26,8 +26,9 @@ export function tallyAttendance(attendanceRows) {
   return t
 }
 
-// Hourly rate for a given employee and period — used for OT entry pricing.
-function hourlyRateOf(basis, basic, monthDays) {
+// Hourly rate for a given employee and period — used for OT entry pricing, and reused (not the
+// whole payroll engine) by the Roster board's live labor-cost overlay (laborForecast.js).
+export function hourlyRateOf(basis, basic, monthDays) {
   if (basis === 'hourly') return basic
   if (basis === 'daily')  return basic / STANDARD_HOURS_PER_DAY
   return monthDays > 0 ? basic / (monthDays * STANDARD_HOURS_PER_DAY) : 0

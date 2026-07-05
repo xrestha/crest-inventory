@@ -49,6 +49,7 @@ const REPORTS = [
   // Menu & vendors
   { to: '/best-sellers',         label: 'Best & Worst Sellers', icon: '▲', featureKey: 'best_sellers',   cat: 'menu', minPlan: 'growth' },
   { to: '/recipe-margin',        label: 'Recipe Margin',        icon: '◈', featureKey: 'recipe_margin',  cat: 'menu', minPlan: 'growth' },
+  { to: '/combo-builder',        label: 'Combo Builder',        icon: '⋈', featureKey: 'combo_builder',  cat: 'menu', minPlan: 'growth' },
   { to: '/menu-repricing',       label: 'Menu Repricing',       icon: '↗', featureKey: 'menu_repricing', cat: 'menu', minPlan: 'growth' },
   { to: '/supplier-prices',      label: 'Price Tracker',        icon: '₨', featureKey: 'price_tracker',  cat: 'menu', minPlan: 'pro' },
   { to: '/vendors-report',       label: 'Vendor Report',        icon: '⊙', featureKey: 'vendor_report',  cat: 'menu', minPlan: 'pro' },

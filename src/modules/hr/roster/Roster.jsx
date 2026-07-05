@@ -5,6 +5,10 @@ import { useAuth } from '../../../context/AuthContext'
 import { adToBs, bsToAd, daysInBsMonth, getBsToday, BS_MONTHS } from '../../../utils/bsCalendar'
 import Tip from '../../../components/Tip'
 import { printWithTitle } from '../../../utils/printTitle'
+import {
+  calcHours, rKey, computeEmpHours, computeDayHours,
+  computePlannedLaborCost, computeRecommendedHeadcount,
+} from './laborForecast'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -21,14 +25,7 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function calcHours(start, end) {
-  if (!start || !end) return null
-  const [sh, sm] = start.split(':').map(Number)
-  const [eh, em] = end.split(':').map(Number)
-  let mins = (eh * 60 + em) - (sh * 60 + sm)
-  if (mins < 0) mins += 24 * 60  // overnight shift
-  return parseFloat((mins / 60).toFixed(1))
-}
+const fmtNpr = n => `NPR ${Math.round(n).toLocaleString()}`
 
 function fmtTime(t) {
   if (!t) return ''
@@ -51,10 +48,6 @@ function weekDays(start) {
     d.setDate(d.getDate() + i)
     return d
   })
-}
-
-function rKey(year, month, day, empId) {
-  return `${year}:${month}:${day}:${empId}`
 }
 
 const stickyCol = {
@@ -395,17 +388,65 @@ export default function Roster() {
   const [roster,     setRoster]     = useState({})
   const [loading,    setLoading]    = useState(true)
 
-  // Letterhead info for the print header — fetched once per client
+  // Letterhead info for the print header + labor-scheduling target — fetched once per client
   const [bizInfo, setBizInfo] = useState({ name: '', address: '' })
+  const [coversPerStaffTarget, setCoversPerStaffTarget] = useState(20)
   useEffect(() => {
     if (!clientId) return
     Promise.all([
       supabase.from('clients').select('name').eq('id', clientId).single(),
-      supabase.from('settings').select('property_address').eq('client_id', clientId).maybeSingle(),
+      supabase.from('settings').select('property_address, covers_per_staff_target').eq('client_id', clientId).maybeSingle(),
     ]).then(([{ data: client }, { data: settings }]) => {
       setBizInfo({ name: client?.name || '', address: settings?.property_address || '' })
+      setCoversPerStaffTarget(settings?.covers_per_staff_target ?? 20)
     })
   }, [clientId])
+
+  async function saveCoversPerStaffTarget(raw) {
+    const n = Math.max(1, parseInt(raw) || 20)
+    setCoversPerStaffTarget(n)
+    if (!clientId) return
+    await supabase.from('settings').update({ covers_per_staff_target: n }).eq('client_id', clientId)
+  }
+
+  // Demand-forecast overlay: day-level covers/revenue forecast (recipe_id IS NULL rows in
+  // demand_forecast_daily, from src/utils/demandForecastData.js's runForecast). Best-effort — a
+  // client who's never run Demand Forecast just sees an empty overlay, not an error.
+  const [forecastByDay, setForecastByDay] = useState({}) // { 'y:m:d': { covers, revenue, generated_at } }
+  const loadForecast = useCallback(async () => {
+    if (!clientId) return
+    let all = []
+    if (viewMode === 'weekly') {
+      const months = new Map()
+      weekDays(weekStart).forEach(d => {
+        const bs = adToBs(d)
+        const k = `${bs.year}:${bs.month}`
+        if (!months.has(k)) months.set(k, bs)
+      })
+      for (const bs of months.values()) {
+        const { data } = await supabase.from('demand_forecast_daily')
+          .select('bs_year, bs_month, bs_day, forecast_covers, forecast_revenue, generated_at')
+          .eq('client_id', clientId).is('recipe_id', null).eq('bs_year', bs.year).eq('bs_month', bs.month)
+        all.push(...(data || []))
+      }
+    } else {
+      const { data } = await supabase.from('demand_forecast_daily')
+        .select('bs_year, bs_month, bs_day, forecast_covers, forecast_revenue, generated_at')
+        .eq('client_id', clientId).is('recipe_id', null).eq('bs_year', bsYear).eq('bs_month', bsMonth)
+      all = data || []
+    }
+    const map = {}
+    for (const r of all) {
+      const key = `${r.bs_year}:${r.bs_month}:${r.bs_day}`
+      // A day can have both a 7-day and 30-day forecast row — prefer whichever was generated most recently.
+      if (!map[key] || new Date(r.generated_at) > new Date(map[key].generated_at)) {
+        map[key] = { covers: r.forecast_covers, revenue: r.forecast_revenue, generated_at: r.generated_at }
+      }
+    }
+    setForecastByDay(map)
+  }, [clientId, viewMode, weekStart, bsYear, bsMonth])
+
+  useEffect(() => { loadForecast() }, [loadForecast])
 
   // Drag-to-select: mousedown starts a selection anchor, mouseenter while dragging extends
   // it, global mouseup finalizes and opens the shift picker for every cell in the rectangle —
@@ -441,7 +482,7 @@ export default function Roster() {
       const [{ data: st }, { data: emps }] = await Promise.all([
         supabase.from('hr_shift_types').select('*').eq('client_id', clientId).order('sort_order'),
         supabase.from('hr_employees')
-          .select('id, full_name, employee_code, department, status')
+          .select('id, full_name, employee_code, department, status, pay_basis, basic_salary')
           .eq('client_id', clientId)
           .in('status', ['active', 'probation'])
           .order('full_name'),
@@ -589,19 +630,15 @@ export default function Roster() {
   const filteredEmps = deptFilter === 'All' ? employees : employees.filter(e => e.department === deptFilter)
 
   function empHrs(empId) {
-    return columns.reduce((sum, col) => {
-      const e = roster[rKey(col.bsYear, col.bsMonth, col.bsDay, empId)]
-      const s = e ? shiftMap[e.shift_type_id] : null
-      return sum + (s ? (s.hours ?? calcHours(s.start_time, s.end_time) ?? 0) : 0)
-    }, 0)
+    return computeEmpHours(columns, roster, shiftMap, empId)
   }
 
   function dayHrs(col) {
-    return filteredEmps.reduce((sum, emp) => {
-      const e = roster[rKey(col.bsYear, col.bsMonth, col.bsDay, emp.id)]
-      const s = e ? shiftMap[e.shift_type_id] : null
-      return sum + (s ? (s.hours ?? calcHours(s.start_time, s.end_time) ?? 0) : 0)
-    }, 0)
+    return computeDayHours(col, filteredEmps, roster, shiftMap)
+  }
+
+  function dayLaborCost(col) {
+    return computePlannedLaborCost(col, filteredEmps, roster, shiftMap, daysInBsMonth(col.bsYear, col.bsMonth))
   }
 
   // Weekly label spanning potentially 2 BS months
@@ -618,6 +655,21 @@ export default function Roster() {
   const periodLabel = viewMode === 'weekly'
     ? weekLabel
     : `${BS_MONTHS[bsMonth - 1]} ${bsYear}`
+
+  // Busiest forecasted day this week (weekly view only — see summary banner below the controls).
+  // Recommended headcount vs. who's actually scheduled that day, so a gap is visible before the
+  // week starts, not discovered mid-shift.
+  const busiestDay = viewMode === 'weekly' ? (() => {
+    let best = null
+    for (const col of columns) {
+      const f = forecastByDay[`${col.bsYear}:${col.bsMonth}:${col.bsDay}`]
+      if (f?.covers != null && (!best || f.covers > best.covers)) best = { col, covers: f.covers }
+    }
+    if (!best) return null
+    const scheduledCount = filteredEmps.filter(emp => roster[rKey(best.col.bsYear, best.col.bsMonth, best.col.bsDay, emp.id)]).length
+    const recommended = computeRecommendedHeadcount(best.covers, coversPerStaffTarget)
+    return { ...best, scheduledCount, recommended }
+  })() : null
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -749,6 +801,39 @@ export default function Roster() {
           <p className="no-print" style={{ fontSize: 11, color: 'var(--theme-text3)', margin: '0 0 10px' }}>
             Tip: click and drag across cells to assign the same shift to multiple days at once.
           </p>
+
+          {busiestDay && (
+            <div className="no-print card" style={{
+              padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center',
+              gap: 10, flexWrap: 'wrap', fontSize: 12.5,
+              borderColor: busiestDay.scheduledCount < busiestDay.recommended ? 'rgba(245,158,11,0.4)' : 'var(--theme-border)',
+            }}>
+              <span style={{ fontWeight: 700, color: 'var(--theme-text1)' }}>
+                📈 Busiest forecasted day: {WEEKDAYS[bsToAd(busiestDay.col.bsYear, busiestDay.col.bsMonth, busiestDay.col.bsDay).getDay()]} {busiestDay.col.sublabel}
+              </span>
+              <span style={{ color: 'var(--theme-text2)' }}>~{Math.round(busiestDay.covers)} covers forecasted</span>
+              <span style={{ color: 'var(--theme-text2)' }}>
+                <Tip text={`Ceil(forecasted covers ÷ Covers/Staff target). Edit the target below.`}>
+                  Recommended {busiestDay.recommended} staff
+                </Tip>
+              </span>
+              <span style={{
+                fontWeight: 600,
+                color: busiestDay.scheduledCount < busiestDay.recommended ? 'var(--theme-amber)' : 'var(--theme-green)',
+              }}>
+                Scheduled: {busiestDay.scheduledCount}
+                {busiestDay.scheduledCount < busiestDay.recommended ? ' ⚠ short-staffed vs. forecast' : ' ✓'}
+              </span>
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Tip text="Target covers each staff member can comfortably serve — used to compute the recommended headcount above. Saved per client.">
+                  <span style={{ fontSize: 11, color: 'var(--theme-text3)' }}>Covers/Staff target</span>
+                </Tip>
+                <input type="number" min="1" step="1" defaultValue={coversPerStaffTarget}
+                  onBlur={e => saveCoversPerStaffTarget(e.target.value)}
+                  className="form-select" style={{ width: 56, padding: '3px 6px', fontSize: 12 }} />
+              </div>
+            </div>
+          )}
 
           {/* Board */}
           {loading ? (
@@ -922,6 +1007,47 @@ export default function Roster() {
                             })}
                             {isLast && <td />}
                           </tr>
+
+                          {viewMode === 'weekly' && (
+                            <>
+                              <tr style={{ background: 'var(--theme-bg)' }}>
+                                <td className={STICKY_CLS} style={{ ...stickyCol, background: 'var(--theme-bg)', padding: '6px 14px',
+                                  fontSize: 11, color: 'var(--theme-text3)', fontWeight: 600,
+                                  borderRight: '2px solid var(--theme-border)' }}>
+                                  <Tip text="Forecasted revenue for this day, from Demand Forecast — run/update it on the Demand Forecast page." width={220}>Forecast Revenue</Tip>
+                                </td>
+                                {cols.map((col, i) => {
+                                  const rev = forecastByDay[`${col.bsYear}:${col.bsMonth}:${col.bsDay}`]?.revenue
+                                  return (
+                                    <td key={i} style={{ textAlign: 'center', padding: '6px 2px', fontSize: 10.5, color: rev != null ? 'var(--theme-text2)' : 'var(--theme-border)' }}>
+                                      {rev != null ? fmtNpr(rev) : '—'}
+                                    </td>
+                                  )
+                                })}
+                                {isLast && <td />}
+                              </tr>
+                              <tr style={{ background: 'var(--theme-bg)' }}>
+                                <td className={STICKY_CLS} style={{ ...stickyCol, background: 'var(--theme-bg)', padding: '6px 14px 10px',
+                                  fontSize: 11, color: 'var(--theme-text3)', fontWeight: 600,
+                                  borderRight: '2px solid var(--theme-border)' }}>
+                                  <Tip text="Scheduled staff hours that day × each employee's resolved hourly rate (monthly/daily/hourly pay basis) — a live estimate, not the payroll engine." width={260}>Planned Labor Cost</Tip>
+                                </td>
+                                {cols.map((col, i) => {
+                                  const cost = dayLaborCost(col)
+                                  const rev  = forecastByDay[`${col.bsYear}:${col.bsMonth}:${col.bsDay}`]?.revenue
+                                  const pct  = rev > 0 ? (cost / rev) * 100 : null
+                                  return (
+                                    <td key={i} style={{ textAlign: 'center', padding: '6px 2px 10px', fontSize: 10.5,
+                                      color: cost > 0 ? (pct != null && pct > 35 ? 'var(--theme-amber)' : 'var(--theme-text2)') : 'var(--theme-border)' }}>
+                                      {cost > 0 ? fmtNpr(cost) : '—'}
+                                      {pct != null && <div style={{ fontSize: 9 }}>{pct.toFixed(0)}%</div>}
+                                    </td>
+                                  )
+                                })}
+                                {isLast && <td />}
+                              </tr>
+                            </>
+                          )}
                         </tfoot>
                       </table>
                     </div>

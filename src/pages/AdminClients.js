@@ -45,6 +45,7 @@ const DEFAULT_FLAGS = {
   menu_pricing: null,
   menu_repricing: null,
   demand_forecast: null,
+  combo_builder: null,
 }
 
 const FEATURE_GROUPS = [
@@ -83,6 +84,7 @@ const FEATURE_GROUPS = [
     { key: 'nutrition_facts',      label: 'Nutrition Facts' },
     { key: 'menu_repricing',       label: 'Menu Repricing' },
     { key: 'demand_forecast',      label: 'Demand Forecast' },
+    { key: 'combo_builder',        label: 'Combo Builder' },
   ]},
   { tier: 'pro',     label: 'Pro Plan',         color: 'var(--theme-accent)', features: [
     { key: 'menu_engineering',     label: 'Menu Engineering' },
