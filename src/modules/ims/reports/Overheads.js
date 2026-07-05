@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
 
@@ -57,6 +58,7 @@ function seedBucket(key) {
 export default function Overheads() {
   const { profile, clientId, isAdmin } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
+  const { scopedFrom, scopedInsert, scopedDelete } = useScopedDb()
 
   const [periods, setPeriods]       = useState([])
   const [periodId, setPeriodId]     = useState('')
@@ -71,10 +73,7 @@ export default function Overheads() {
   useEffect(() => { if (periodId) loadAll() }, [periodId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadPeriods() {
-    const { data } = await supabase
-      .from('monthly_periods')
-      .select('id, bs_year, bs_month, status')
-      .eq('client_id', effectiveClientId)
+    const { data } = await scopedFrom('monthly_periods', 'id, bs_year, bs_month, status')
       .order('bs_year', { ascending: false })
       .order('bs_month', { ascending: false })
     const withLabel = (data || []).map(p => ({ ...p, label: `${BS_MONTHS[p.bs_month - 1]} ${p.bs_year}` }))
@@ -90,9 +89,7 @@ export default function Overheads() {
   }
 
   async function loadOverheads() {
-    const { data } = await supabase
-      .from('overheads')
-      .select('*')
+    const { data } = await scopedFrom('overheads')
       .eq('period_id', periodId)
       .order('created_at')
 
@@ -119,9 +116,9 @@ export default function Overheads() {
       { data: recipes }
     ] = await Promise.all([
       supabase.from('purchase_entries').select('qty, rate').eq('period_id', periodId),
-      supabase.from('vendor_returns').select('qty, rate').eq('period_id', periodId),
+      scopedFrom('vendor_returns', 'qty, rate').eq('period_id', periodId),
       supabase.from('sales_entries').select('recipe_id, qty_sold').eq('period_id', periodId),
-      supabase.from('recipes').select('id, selling_price').eq('client_id', effectiveClientId)
+      scopedFrom('recipes', 'id, selling_price')
     ])
 
     const gross  = (purchases || []).reduce((s, p) => s + parseFloat(p.qty || 0) * parseFloat(p.rate || 0), 0)
@@ -156,13 +153,12 @@ export default function Overheads() {
   async function save() {
     if (!effectiveClientId) { alert('No client selected. Pick a client in the top-left switcher before saving.'); return }
     setSaving(true)
-    await supabase.from('overheads').delete().eq('period_id', periodId)
+    await scopedDelete('overheads').eq('period_id', periodId)
     const inserts = []
     Object.entries(rows).forEach(([bucket, bucketRows]) => {
       bucketRows
         .filter(r => r.category?.trim() && parseFloat(r.amount) > 0)
         .forEach(r => inserts.push({
-          client_id:   effectiveClientId,
           period_id:   periodId,
           bucket,
           category:    r.category.trim(),
@@ -170,7 +166,7 @@ export default function Overheads() {
           amount:      parseFloat(r.amount) || 0,
         }))
     })
-    if (inserts.length > 0) await supabase.from('overheads').insert(inserts)
+    if (inserts.length > 0) await scopedInsert('overheads', inserts)
     setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)

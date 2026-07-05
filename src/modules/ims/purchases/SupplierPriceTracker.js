@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import * as XLSX from 'xlsx'
 import Tip from '../../../components/Tip'
@@ -10,6 +11,7 @@ const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kart
 export default function SupplierPriceTracker() {
   const { clientId, profile, loading: authLoading } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
+  const { scopedFrom, scopedUpdate } = useScopedDb()
 
   const [vendors, setVendors]           = useState([])
   const [items, setItems]               = useState([])
@@ -31,9 +33,9 @@ export default function SupplierPriceTracker() {
   async function init() {
     setLoading(true)
     const [{ data: v }, { data: i }, { data: p }, { data: pu }] = await Promise.all([
-      supabase.from('vendors').select('id, name').eq('client_id', effectiveClientId).eq('is_active', true).order('name'),
-      supabase.from('items').select('id, name, item_code, uom, rate, per_uom_rate, purchase_qty, categories(name)').eq('client_id', effectiveClientId).eq('is_active', true).eq('is_sub_recipe', false).order('name'),
-      supabase.from('monthly_periods').select('*').eq('client_id', effectiveClientId).order('bs_year').order('bs_month'),
+      scopedFrom('vendors', 'id, name').eq('is_active', true).order('name'),
+      scopedFrom('items', 'id, name, item_code, uom, rate, per_uom_rate, purchase_qty, categories(name)').eq('is_active', true).eq('is_sub_recipe', false).order('name'),
+      scopedFrom('monthly_periods').order('bs_year').order('bs_month'),
       supabase.from('purchase_entries').select('id, item_id, vendor_id, period_id, rate, qty, bs_day, items(purchase_qty), monthly_periods!inner(client_id)')
         .eq('monthly_periods.client_id', effectiveClientId)
     ])
@@ -127,7 +129,7 @@ export default function SupplierPriceTracker() {
     setSavingPrice(p => ({ ...p, [item.id]: true }))
     const purchaseQty = parseFloat(item.purchase_qty) || 1
     const newPackRate = newPerUomRate * purchaseQty
-    const { error } = await supabase.from('items').update({ rate: newPackRate }).eq('id', item.id)
+    const { error } = await scopedUpdate('items', { rate: newPackRate }).eq('id', item.id)
     if (!error) {
       setItems(prev => prev.map(i => i.id === item.id ? { ...i, rate: newPackRate, per_uom_rate: newPerUomRate } : i))
       if (affected.length > 0) setAffectedRecipes({ itemName: item.name, recipes: affected, newRate: newPerUomRate, uom: item.uom })

@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
 import ChartCard from '../../../components/ChartCard'
@@ -73,6 +74,7 @@ function median(arr) {
 export default function MenuEngineering() {
   const { profile, clientId: authClientId, loading: authLoading } = useAuth()
   const clientId = authClientId || profile?.client_id
+  const { scopedFrom, scopedUpdate } = useScopedDb()
 
   const [periods, setPeriods]     = useState([])
   const [periodId, setPeriodId]   = useState('')
@@ -88,10 +90,7 @@ export default function MenuEngineering() {
   const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 
   async function loadPeriods() {
-    const { data } = await supabase
-      .from('monthly_periods')
-      .select('id, bs_year, bs_month, status')
-      .eq('client_id', clientId)
+    const { data } = await scopedFrom('monthly_periods', 'id, bs_year, bs_month, status')
       .order('bs_year', { ascending: false })
       .order('bs_month', { ascending: false })
     const withLabel = (data || []).map(p => ({
@@ -107,17 +106,18 @@ export default function MenuEngineering() {
     setLoading(true)
 
     // Load recipes (menu items only — exclude sub-recipes)
-    const { data: recipes } = await supabase
-      .from('recipes')
-      .select('id, name, category, selling_price')
-      .eq('client_id', clientId)
+    const { data: recipes } = await scopedFrom('recipes', 'id, name, category, selling_price')
       .neq('is_active', false)
       .neq('category', 'Sub-Recipe')
 
-    // Load recipe_ingredients for cost calculation
-    const { data: ingredients } = await supabase
-      .from('recipe_ingredients')
-      .select('recipe_id, qty_per_portion, item_id, sub_recipe_id, items(per_uom_rate)')
+    // Load recipe_ingredients for cost calculation — scoped to this client's recipe IDs
+    // (recipe_ingredients has no client_id column of its own, see CLAUDE.md)
+    const { data: ingredients } = (recipes || []).length > 0
+      ? await supabase
+          .from('recipe_ingredients')
+          .select('recipe_id, qty_per_portion, item_id, sub_recipe_id, items(per_uom_rate)')
+          .in('recipe_id', recipes.map(r => r.id))
+      : { data: [] }
 
     // Load sales for this period
     const { data: sales } = await supabase
@@ -168,7 +168,7 @@ export default function MenuEngineering() {
     setLoading(false)
     // Background: write me_class to DB — read by POS suggestion engine on next menu load
     final.forEach(r => {
-      supabase.from('recipes').update({ me_class: r.quadrant.toLowerCase() }).eq('id', r.id)
+      scopedUpdate('recipes', { me_class: r.quadrant.toLowerCase() }).eq('id', r.id)
     })
   }
 

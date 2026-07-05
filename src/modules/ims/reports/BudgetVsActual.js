@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
 
@@ -8,6 +9,7 @@ const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kart
 export default function BudgetVsActual() {
   const { clientId, profile, loading: authLoading } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
+  const { scopedFrom } = useScopedDb()
   const [periods, setPeriods] = useState([])
   const [selectedPeriod, setSelectedPeriod] = useState(null)
   const [categories, setCategories] = useState([])
@@ -21,9 +23,9 @@ export default function BudgetVsActual() {
   async function init() {
     setLoading(true)
     const [{ data: p }, { data: cats }] = await Promise.all([
-      supabase.from('monthly_periods').select('*').eq('client_id', effectiveClientId)
+      scopedFrom('monthly_periods')
         .order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
-      supabase.from('categories').select('*').eq('client_id', effectiveClientId).order('sort_order'),
+      scopedFrom('categories').order('sort_order'),
     ])
     setPeriods(p || [])
     setCategories(cats || [])
@@ -35,7 +37,7 @@ export default function BudgetVsActual() {
   async function loadData(periodId, cats) {
     const catList = cats || categories
     const [{ data: items }, { data: purchases }, { data: returns }, { data: budgetRows }] = await Promise.all([
-      supabase.from('items').select('id, category_id').eq('client_id', effectiveClientId).eq('is_active', true),
+      scopedFrom('items', 'id, category_id').eq('is_active', true),
       supabase.from('purchase_entries').select('item_id, qty, rate').eq('period_id', periodId),
       supabase.from('vendor_returns').select('item_id, qty, rate').eq('period_id', periodId),
       supabase.from('budgets').select('*').eq('period_id', periodId).eq('client_id', effectiveClientId),

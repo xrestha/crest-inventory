@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
-import { supabase } from '../../../supabaseClient'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
 import * as XLSX from 'xlsx'
 import { BS_MONTHS, daysInBsMonth, bsToAd, getBsToday } from '../../../utils/bsCalendar'
@@ -27,6 +27,7 @@ function weekdayOf(period, day) {
 
 export default function AttendanceSheet() {
   const { clientId } = useAuth()
+  const { scopedFrom, scopedUpsert } = useScopedDb()
   const [periods,   setPeriods]   = useState([])
   const [period,    setPeriod]    = useState(null)
   const [employees, setEmployees] = useState([])
@@ -37,24 +38,12 @@ export default function AttendanceSheet() {
   const [saving,    setSaving]    = useState(false)
   const [savedMsg,  setSavedMsg]  = useState('')
 
-  useEffect(() => {
-    if (!clientId) return
-    async function load() {
-      setLoading(true)
-      const [{ data: p }, { data: emps }] = await Promise.all([
-        supabase.from('monthly_periods').select('*').eq('client_id', clientId)
-          .order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
-        supabase.from('hr_employees').select('id, full_name, employee_code, pay_basis, status, department')
-          .eq('client_id', clientId).in('status', ['active', 'probation']).order('full_name'),
-      ])
-      setPeriods(p || [])
-      setEmployees(emps || [])
-      const open = (p || []).find(x => x.status === 'open') || (p || [])[0]
-      if (open) { applyPeriod(open); await loadAttendance(open.id) }
-      setLoading(false)
-    }
-    load()
-  }, [clientId])
+  const loadAttendance = useCallback(async (periodId) => {
+    const { data } = await scopedFrom('hr_attendance').eq('period_id', periodId)
+    const map = {}
+    ;(data || []).forEach(r => { map[`${r.employee_id}:${r.bs_day}`] = r })
+    setRecords(map)
+  }, [scopedFrom])
 
   function applyPeriod(p) {
     setPeriod(p)
@@ -63,12 +52,24 @@ export default function AttendanceSheet() {
     setSelectedDay(p.bs_year === today.year && p.bs_month === today.month ? today.day : 1)
   }
 
-  async function loadAttendance(periodId) {
-    const { data } = await supabase.from('hr_attendance').select('*').eq('period_id', periodId)
-    const map = {}
-    ;(data || []).forEach(r => { map[`${r.employee_id}:${r.bs_day}`] = r })
-    setRecords(map)
-  }
+  useEffect(() => {
+    if (!clientId) return
+    async function load() {
+      setLoading(true)
+      const [{ data: p }, { data: emps }] = await Promise.all([
+        scopedFrom('monthly_periods')
+          .order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
+        scopedFrom('hr_employees', 'id, full_name, employee_code, pay_basis, status, department')
+          .in('status', ['active', 'probation']).order('full_name'),
+      ])
+      setPeriods(p || [])
+      setEmployees(emps || [])
+      const open = (p || []).find(x => x.status === 'open') || (p || [])[0]
+      if (open) { applyPeriod(open); await loadAttendance(open.id) }
+      setLoading(false)
+    }
+    load()
+  }, [clientId, scopedFrom, loadAttendance])
 
   async function handlePeriodChange(id) {
     const p = periods.find(x => x.id === id)
@@ -113,7 +114,6 @@ export default function AttendanceSheet() {
     const rows = employees.map(emp => {
       const rec = cellFor(emp.id, selectedDay)
       return {
-        client_id:    clientId,
         employee_id:  emp.id,
         period_id:    period.id,
         bs_day:       selectedDay,
@@ -123,8 +123,7 @@ export default function AttendanceSheet() {
         note:         rec?.note || null,
       }
     })
-    const { error } = await supabase.from('hr_attendance')
-      .upsert(rows, { onConflict: 'employee_id,period_id,bs_day' })
+    const { error } = await scopedUpsert('hr_attendance', rows, { onConflict: 'employee_id,period_id,bs_day' })
     if (error) { setSavedMsg('error:' + error.message); setSaving(false); return }
     await loadAttendance(period.id)
     setSavedMsg('ok:Saved Day ' + selectedDay)

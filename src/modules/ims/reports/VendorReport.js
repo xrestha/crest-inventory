@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import * as XLSX from 'xlsx'
 import Tip from '../../../components/Tip'
@@ -9,6 +10,7 @@ const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kart
 export default function VendorReport() {
   const { clientId, profile, loading: authLoading } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
+  const { scopedFrom } = useScopedDb()
   const [periods, setPeriods] = useState([])
   const [selectedPeriod, setSelectedPeriod] = useState(null)
   const [purchases, setPurchases] = useState([])
@@ -24,8 +26,8 @@ export default function VendorReport() {
   async function init() {
     setLoading(true)
     const [{ data: p }, { data: v }] = await Promise.all([
-      supabase.from('monthly_periods').select('*').eq('client_id', effectiveClientId).order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
-      supabase.from('vendors').select('*').eq('client_id', effectiveClientId).eq('is_active', true).order('name')
+      scopedFrom('monthly_periods').order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
+      scopedFrom('vendors').eq('is_active', true).order('name')
     ])
     setPeriods(p || [])
     setVendors(v || [])
@@ -45,7 +47,7 @@ export default function VendorReport() {
   async function loadData(periodId) {
     const [{ data: p }, { data: r }] = await Promise.all([
       supabase.from('purchase_entries').select('*, items(name, categories(name)), vendors(name), payment_method').eq('period_id', periodId).order('bs_day'),
-      supabase.from('vendor_returns').select('*, items(name), vendors(name), payment_method').eq('period_id', periodId).order('bs_day')
+      scopedFrom('vendor_returns', '*, items(name), vendors(name), payment_method').eq('period_id', periodId).order('bs_day')
     ])
     setPurchases(p || [])
     setReturns(r || [])

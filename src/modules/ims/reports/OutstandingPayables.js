@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useState } from 'react'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import { bsToAd } from '../../../utils/bsCalendar'
 import Tip from '../../../components/Tip'
@@ -26,6 +27,7 @@ function aging(days) {
 export default function OutstandingPayables() {
   const { clientId, profile, loading: authLoading } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
+  const { scopedFrom, scopedInsert } = useScopedDb()
 
   const [entries, setEntries]           = useState([])
   const [paymentsMap, setPaymentsMap]   = useState({})
@@ -72,9 +74,7 @@ export default function OutstandingPayables() {
 
     let pmtMap = {}
     if (ids.length > 0) {
-      const { data: pmts } = await supabase
-        .from('payable_payments')
-        .select('*')
+      const { data: pmts } = await scopedFrom('payable_payments')
         .in('purchase_entry_id', ids)
         .order('paid_at', { ascending: true })
       ;(pmts || []).forEach(p => {
@@ -123,13 +123,13 @@ export default function OutstandingPayables() {
       if (left <= EPS) break
       if (e.remaining <= EPS) continue
       const alloc = Math.min(e.remaining, left)
-      rows.push({ purchase_entry_id: e.id, client_id: effectiveClientId, amount: alloc, paid_at: date, note })
+      rows.push({ purchase_entry_id: e.id, amount: alloc, paid_at: date, note })
       left -= alloc
       if (e.paidTotal + alloc >= e.value - EPS) settleIds.push(e.id)
     }
     if (rows.length === 0) { setSavingPayment(false); return }
 
-    const { error: insErr } = await supabase.from('payable_payments').insert(rows)
+    const { error: insErr } = await scopedInsert('payable_payments', rows)
     if (insErr) { setPayError(insErr.message || 'Failed to save payment.'); setSavingPayment(false); return }
     if (settleIds.length > 0) {
       await supabase.from('purchase_entries').update({ paid_at: date }).in('id', settleIds)

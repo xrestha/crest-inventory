@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../../../supabaseClient'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
 import * as XLSX from 'xlsx'
 import { SSF_CAP, SSF_EMPLOYEE_PCT, SSF_EMPLOYER_PCT, PAY_BASES } from '../payrollConstants'
@@ -26,6 +26,7 @@ function calcAmount(comp, basic) {
 export default function PaySetup() {
   const { clientId, profile } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
+  const { scopedFrom } = useScopedDb()
   const [employees, setEmployees]   = useState([])
   const [components, setComponents] = useState([])
   const [loading, setLoading]       = useState(true)
@@ -36,13 +37,13 @@ export default function PaySetup() {
     if (!effectiveClientId) return
     setLoading(true)
     const [{ data: emps }, { data: comps }] = await Promise.all([
-      supabase.from('hr_employees').select('*').eq('client_id', effectiveClientId).order('full_name'),
-      supabase.from('hr_salary_components').select('*').eq('client_id', effectiveClientId),
+      scopedFrom('hr_employees').order('full_name'),
+      scopedFrom('hr_salary_components'),
     ])
     setEmployees(emps || [])
     setComponents(comps || [])
     setLoading(false)
-  }, [effectiveClientId])
+  }, [effectiveClientId, scopedFrom])
 
   useEffect(() => { load() }, [load])
 

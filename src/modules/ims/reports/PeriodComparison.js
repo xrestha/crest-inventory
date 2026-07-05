@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import * as XLSX from 'xlsx'
 import Tip from '../../../components/Tip'
@@ -17,6 +18,7 @@ function fcColor(pct) {
 export default function PeriodComparison() {
   const { clientId, profile } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
+  const { scopedFrom } = useScopedDb()
   const [periods, setPeriods] = useState([])
   const [stats, setStats]     = useState({})
   const [limit, setLimit]     = useState(12)
@@ -24,11 +26,10 @@ export default function PeriodComparison() {
 
   useEffect(() => {
     if (!effectiveClientId) return
-    supabase.from('monthly_periods')
-      .select('*').eq('client_id', effectiveClientId)
+    scopedFrom('monthly_periods')
       .order('bs_year', { ascending: false }).order('bs_month', { ascending: false })
       .then(({ data }) => setPeriods(data || []))
-  }, [effectiveClientId])
+  }, [effectiveClientId, scopedFrom])
 
   useEffect(() => {
     if (periods.length > 0) fetchData()
@@ -49,7 +50,7 @@ export default function PeriodComparison() {
       { data: sales },
     ] = await Promise.all([
       supabase.from('purchase_entries').select('period_id, qty, rate').in('period_id', ids),
-      supabase.from('vendor_returns').select('period_id, qty, rate').in('period_id', ids),
+      scopedFrom('vendor_returns', 'period_id, qty, rate').in('period_id', ids),
       supabase.from('wastages').select('period_id, qty, items(per_uom_rate)').in('period_id', ids),
       supabase.from('opening_stock').select('period_id, qty, items(per_uom_rate)').in('period_id', ids),
       supabase.from('closing_stock').select('period_id, physical_qty, items(per_uom_rate)').in('period_id', ids),

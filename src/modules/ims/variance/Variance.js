@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
 
@@ -17,6 +18,7 @@ function dispPurch(baseQty, item) {
 export default function Variance() {
   const { clientId, profile, loading: authLoading } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
+  const { scopedFrom } = useScopedDb()
   const [periods, setPeriods] = useState([])
   const [selectedPeriod, setSelectedPeriod] = useState(null)
   const [report, setReport] = useState([])
@@ -31,8 +33,8 @@ export default function Variance() {
   async function init() {
     setLoading(true)
     const [{ data: p }, { data: c }] = await Promise.all([
-      supabase.from('monthly_periods').select('*').eq('client_id', effectiveClientId).order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
-      supabase.from('categories').select('*').eq('client_id', effectiveClientId).order('sort_order')
+      scopedFrom('monthly_periods').order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
+      scopedFrom('categories').order('sort_order')
     ])
     setPeriods(p || [])
     setCategories(c || [])
@@ -61,15 +63,15 @@ export default function Variance() {
       { data: sales },
       { data: clientRecipes }
     ] = await Promise.all([
-      supabase.from('items').select('*, categories(name)').eq('client_id', effectiveClientId).eq('is_active', true).eq('is_sub_recipe', false),
+      scopedFrom('items', '*, categories(name)').eq('is_active', true).eq('is_sub_recipe', false),
       supabase.from('opening_stock').select('*').eq('period_id', periodId),
       supabase.from('closing_stock').select('*').eq('period_id', periodId),
       supabase.from('purchase_entries').select('item_id, qty').eq('period_id', periodId),
-      supabase.from('vendor_returns').select('item_id, qty').eq('period_id', periodId),
+      scopedFrom('vendor_returns', 'item_id, qty').eq('period_id', periodId),
       supabase.from('wastages').select('item_id, qty').eq('period_id', periodId),
       supabase.from('staff_meals').select('item_id, qty').eq('period_id', periodId),
       supabase.from('sales_entries').select('recipe_id, qty_sold').eq('period_id', periodId),
-      supabase.from('recipes').select('id').eq('client_id', effectiveClientId)
+      scopedFrom('recipes', 'id')
     ])
 
     const recipeIds = (clientRecipes || []).map(r => r.id)

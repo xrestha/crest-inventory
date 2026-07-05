@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import * as XLSX from 'xlsx'
 import Tip from '../../../components/Tip'
@@ -48,6 +49,7 @@ export function buildVendorSummary(vatEntries, returns, billGroups) {
 export default function VatReport() {
   const { clientId, profile } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
+  const { scopedFrom } = useScopedDb()
   const [periods, setPeriods]         = useState([])
   const [selectedPeriod, setSelected] = useState(null)
   const [entries, setEntries]         = useState([])
@@ -57,14 +59,13 @@ export default function VatReport() {
 
   useEffect(() => {
     if (!effectiveClientId) return
-    supabase.from('monthly_periods')
-      .select('*').eq('client_id', effectiveClientId)
+    scopedFrom('monthly_periods')
       .order('bs_year', { ascending: false }).order('bs_month', { ascending: false })
       .then(({ data }) => {
         setPeriods(data || [])
         if (data && data.length > 0) setSelected(data[0])
       })
-  }, [effectiveClientId])
+  }, [effectiveClientId, scopedFrom])
 
   useEffect(() => {
     if (selectedPeriod) fetchData(selectedPeriod.id)
@@ -79,9 +80,7 @@ export default function VatReport() {
         .eq('period_id', periodId)
         .order('bs_day')
         .order('created_at'),
-      supabase
-        .from('vendor_returns')
-        .select('*, items(name, uom, categories(name)), vendors(name, pan_vat_no), purchase_entries(vat_inclusive)')
+      scopedFrom('vendor_returns', '*, items(name, uom, categories(name)), vendors(name, pan_vat_no), purchase_entries(vat_inclusive)')
         .eq('period_id', periodId)
         .order('bs_day'),
     ])

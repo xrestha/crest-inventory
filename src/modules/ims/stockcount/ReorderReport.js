@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import * as XLSX from 'xlsx'
 import Tip from '../../../components/Tip'
@@ -10,6 +11,7 @@ const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kart
 export default function ReorderReport() {
   const { clientId, profile, isAdmin, loading: authLoading } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
+  const { scopedFrom, scopedInsert, scopedUpdate, scopedDelete } = useScopedDb()
 
   const [periods, setPeriods] = useState([])
   const [selectedPeriod, setSelectedPeriod] = useState(null)
@@ -28,8 +30,8 @@ export default function ReorderReport() {
   async function init() {
     setLoading(true)
     const [{ data: p }, { data: c }] = await Promise.all([
-      supabase.from('monthly_periods').select('*').eq('client_id', effectiveClientId).order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
-      supabase.from('categories').select('*').eq('client_id', effectiveClientId).order('sort_order')
+      scopedFrom('monthly_periods').order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
+      scopedFrom('categories').order('sort_order')
     ])
     setPeriods(p || [])
     setCategories(c || [])
@@ -58,15 +60,15 @@ export default function ReorderReport() {
       { data: pars },
       { data: movements }
     ] = await Promise.all([
-      supabase.from('items').select('*, categories(name)').eq('client_id', effectiveClientId).eq('is_active', true).eq('is_sub_recipe', false).order('name'),
+      scopedFrom('items', '*, categories(name)').eq('is_active', true).eq('is_sub_recipe', false).order('name'),
       supabase.from('opening_stock').select('item_id, qty').eq('period_id', periodId),
       supabase.from('closing_stock').select('item_id, physical_qty').eq('period_id', periodId),
       supabase.from('purchase_entries').select('item_id, qty').eq('period_id', periodId),
-      supabase.from('vendor_returns').select('item_id, qty').eq('period_id', periodId),
+      scopedFrom('vendor_returns', 'item_id, qty').eq('period_id', periodId),
       supabase.from('wastages').select('item_id, qty').eq('period_id', periodId),
       supabase.from('sales_entries').select('recipe_id, qty_sold').eq('period_id', periodId),
-      supabase.from('par_levels').select('*').eq('client_id', effectiveClientId),
-      supabase.from('stock_movements').select('item_id, qty').eq('period_id', periodId)
+      scopedFrom('par_levels'),
+      scopedFrom('stock_movements', 'item_id, qty').eq('period_id', periodId)
     ])
 
     const parMap = {}
@@ -139,9 +141,9 @@ export default function ReorderReport() {
     setSavingPar(p => ({ ...p, [itemId]: true }))
     const existing = parLevels[itemId]
     if (existing) {
-      await supabase.from('par_levels').update({ par_qty: val, updated_at: new Date().toISOString() }).eq('id', existing.id)
+      await scopedUpdate('par_levels', { par_qty: val, updated_at: new Date().toISOString() }).eq('id', existing.id)
     } else {
-      await supabase.from('par_levels').insert({ client_id: effectiveClientId, item_id: itemId, par_qty: val })
+      await scopedInsert('par_levels', { item_id: itemId, par_qty: val })
     }
     setParLevels(p => ({ ...p, [itemId]: { ...(p[itemId] || {}), par_qty: val } }))
     setRows(r => r.map(row => {
@@ -194,7 +196,7 @@ export default function ReorderReport() {
 
   async function resetAllPar() {
     if (!window.confirm('Reset ALL par levels to 0? This cannot be undone.')) return
-    await supabase.from('par_levels').delete().eq('client_id', effectiveClientId)
+    await scopedDelete('par_levels')
     setParLevels({})
     setRows(r => r.map(row => ({ ...row, par: 0, shortfall: 0, needsReorder: false, shortfallValue: 0 })))
   }
@@ -202,7 +204,7 @@ export default function ReorderReport() {
   async function clearBookStock() {
     if (!selectedPeriod) return
     if (!window.confirm(`Delete all stock_movements ledger rows for ${BS_MONTHS[selectedPeriod.bs_month - 1]} ${selectedPeriod.bs_year}? Book Stock resets to "—" for every item in this period. Physical counts and Current Stock are unaffected. Cannot be undone.`)) return
-    await supabase.from('stock_movements').delete().eq('client_id', effectiveClientId).eq('period_id', selectedPeriod.id)
+    await scopedDelete('stock_movements').eq('period_id', selectedPeriod.id)
     setRows(r => r.map(row => ({ ...row, bookStock: null, hasMovements: false })))
   }
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import { getBsToday, daysInBsMonth } from '../../../utils/bsCalendar'
 import Tip from '../../../components/Tip'
@@ -10,6 +11,7 @@ const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kart
 export default function Sales() {
   const { clientId, profile, loading: authLoading, isAdmin } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
+  const { scopedFrom } = useScopedDb()
   const [periods, setPeriods]       = useState([])
   const [selectedPeriod, setSelectedPeriod] = useState(null)
   const [recipes, setRecipes]       = useState([])
@@ -52,8 +54,8 @@ export default function Sales() {
   async function init() {
     setLoading(true)
     const [{ data: p }, { data: r }] = await Promise.all([
-      supabase.from('monthly_periods').select('*').eq('client_id', effectiveClientId).order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
-      supabase.from('recipes').select('*').eq('client_id', effectiveClientId).eq('is_active', true).neq('category', 'Sub-Recipe').order('name')
+      scopedFrom('monthly_periods').order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
+      scopedFrom('recipes').eq('is_active', true).neq('category', 'Sub-Recipe').order('name')
     ])
     setPeriods(p || [])
     setRecipes(r || [])

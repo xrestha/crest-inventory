@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
 import QRCode from 'qrcode'
@@ -61,6 +62,7 @@ const billInput = {
 
 export default function PosOrders() {
   const { clientId, profile, hasPosAccess, isAdmin, isOwner } = useAuth()
+  const { scopedFrom, scopedInsert, scopedUpsert, scopedUpdate, scopedDelete } = useScopedDb()
 
   /* ── view ── */
   const [view, setView] = useState('floor')
@@ -277,11 +279,10 @@ export default function PosOrders() {
 
     loadOpenShift()
     const [{ data: tbls }, { data: orders }] = await Promise.all([
-      supabase.from('pos_tables').select('*').eq('client_id', clientId)
+      scopedFrom('pos_tables')
         .order('sort_order').order('name'),
-      supabase.from('pos_orders')
-        .select('id, table_id, covers, pos_order_items(qty, unit_price, vat_rate, sent_to_kot)')
-        .eq('client_id', clientId).eq('status', 'open'),
+      scopedFrom('pos_orders', 'id, table_id, covers, pos_order_items(qty, unit_price, vat_rate, sent_to_kot)')
+        .eq('status', 'open'),
     ])
     setTables(tbls || [])
     cachePosTables(clientId, tbls || [])
@@ -317,28 +318,28 @@ export default function PosOrders() {
       try {
         const oid = q.order_id
         if (q.created_offline) {
-          const { error } = await supabase.from('pos_orders').insert({
-            id: oid, client_id: clientId, table_id: q.table_id, table_name: q.table_name,
+          const { error } = await scopedInsert('pos_orders', {
+            id: oid, table_id: q.table_id, table_name: q.table_name,
             status: 'open', covers: q.covers, opened_by: q.opened_by,
           })
           if (error) throw error
-          if (q.table_id) await supabase.from('pos_tables').update({ status: 'occupied' }).eq('id', q.table_id)
+          if (q.table_id) await scopedUpdate('pos_tables', { status: 'occupied' }).eq('id', q.table_id)
         } else {
           // Safety check: don't blindly overwrite an order another device already closed while
           // this one was offline — a queued item replace on a billed/voided order would be wrong.
-          const { data: current } = await supabase.from('pos_orders').select('status').eq('id', oid).single()
+          const { data: current } = await scopedFrom('pos_orders', 'status').eq('id', oid).single()
           if (current && current.status !== 'open') {
             setConflictOrders(prev => prev.some(c => c.order_id === oid) ? prev : [...prev, q])
             continue // stays queued — surfaced for manual review, not auto-discarded
           }
-          await supabase.from('pos_orders').update({ covers: q.covers }).eq('id', oid)
+          await scopedUpdate('pos_orders', { covers: q.covers }).eq('id', oid)
         }
 
-        await supabase.from('pos_order_items').delete().eq('order_id', oid)
-        await supabase.from('pos_order_items').insert(q.items.map(i => ({ order_id: oid, client_id: clientId, ...i })))
+        await scopedDelete('pos_order_items').eq('order_id', oid)
+        await scopedInsert('pos_order_items', q.items.map(i => ({ order_id: oid, ...i })))
 
         for (const send of q.kot_sends || []) {
-          try { await supabase.from('pos_kot_log').insert({ ...send, order_id: oid }) } catch (_) { /* best-effort, matches online logKotSend */ }
+          try { await scopedInsert('pos_kot_log', { ...send, order_id: oid }) } catch (_) { /* best-effort, matches online logKotSend */ }
         }
 
         await dequeuePosOrder(oid)
@@ -346,7 +347,7 @@ export default function PosOrders() {
 
         // If the order currently open on screen just got synced, backfill its real order number.
         if (orderId === oid) {
-          const { data: synced } = await supabase.from('pos_orders').select('order_no').eq('id', oid).single()
+          const { data: synced } = await scopedFrom('pos_orders', 'order_no').eq('id', oid).single()
           if (synced) setOrderNo(synced.order_no)
         }
       } catch (err) {
@@ -369,8 +370,8 @@ export default function PosOrders() {
   // shift opens/closes elsewhere; a brief staleness window is fine since shift linkage is
   // informational only, never a gate on billing.
   async function loadOpenShift() {
-    const { data } = await supabase.from('pos_shifts').select('id')
-      .eq('client_id', clientId).eq('status', 'open').maybeSingle()
+    const { data } = await scopedFrom('pos_shifts', 'id')
+      .eq('status', 'open').maybeSingle()
     setOpenShiftId(data?.id || null)
   }
 
@@ -388,18 +389,12 @@ export default function PosOrders() {
     }
 
     const [{ data }, { data: suggData }] = await Promise.all([
-      supabase
-        .from('recipes')
-        .select('id, name, category, selling_price, vat_rate, me_class')
-        .eq('client_id', clientId)
+      scopedFrom('recipes', 'id, name, category, selling_price, vat_rate, me_class')
         .eq('is_active', true)
         .eq('pos_enabled', true)
         .neq('category', 'Sub-Recipe')
         .order('name'),
-      supabase
-        .from('recipe_suggestions')
-        .select('recipe_id, suggest_recipe_id')
-        .eq('client_id', clientId),
+      scopedFrom('recipe_suggestions', 'recipe_id, suggest_recipe_id'),
     ])
     setMenu(data || [])
     let suggMap = {}
@@ -455,10 +450,7 @@ export default function PosOrders() {
       return
     }
 
-    const { data: existing } = await supabase
-      .from('pos_orders')
-      .select('id, order_no, covers, pos_order_items(id, recipe_id, name, category, qty, unit_price, vat_rate, sent_to_kot, notes)')
-      .eq('client_id', clientId)
+    const { data: existing } = await scopedFrom('pos_orders', 'id, order_no, covers, pos_order_items(id, recipe_id, name, category, qty, unit_price, vat_rate, sent_to_kot, notes)')
       .eq('status', 'open')
       .eq('table_id', table.id)
       .maybeSingle()
@@ -649,34 +641,30 @@ export default function PosOrders() {
     }
 
     if (isNewOrder) {
-      const { data: newOrder, error } = await supabase
-        .from('pos_orders')
-        .insert({
-          client_id:  clientId,
-          table_id:   activeTable?.id   || null,
-          table_name: activeTable?.name || 'Takeaway',
-          status:     'open',
-          covers,
-          opened_by:  profile?.id || null,
-        })
-        .select('id, order_no').single()
+      const { data: newOrder, error } = await scopedInsert('pos_orders', {
+        table_id:   activeTable?.id   || null,
+        table_name: activeTable?.name || 'Takeaway',
+        status:     'open',
+        covers,
+        opened_by:  profile?.id || null,
+      }, { single: true })
       if (error || !newOrder) return null
       oid = newOrder.id
       oNo = newOrder.order_no || null
       setOrderId(oid)
       setOrderNo(oNo)
       if (activeTable?.id) {
-        await supabase.from('pos_tables').update({ status: 'occupied' }).eq('id', activeTable.id)
+        await scopedUpdate('pos_tables', { status: 'occupied' }).eq('id', activeTable.id)
         setTables(prev => prev.map(t => t.id === activeTable.id ? { ...t, status: 'occupied' } : t))
       }
     } else {
-      await supabase.from('pos_orders').update({ covers }).eq('id', oid)
+      await scopedUpdate('pos_orders', { covers }).eq('id', oid)
     }
 
     // Delete + re-insert preserving sent_to_kot and category from local state
-    await supabase.from('pos_order_items').delete().eq('order_id', oid)
-    const { error: iErr } = await supabase.from('pos_order_items').insert(
-      itemsPayload.map(i => ({ order_id: oid, client_id: clientId, ...i }))
+    await scopedDelete('pos_order_items').eq('order_id', oid)
+    const { error: iErr } = await scopedInsert('pos_order_items',
+      itemsPayload.map(i => ({ order_id: oid, ...i }))
     )
     if (iErr) return null
     if (activeTable?.id) cachePosOrderForTable(activeTable.id, { orderId: oid, orderNo: oNo, covers, items: orderItems })
@@ -700,7 +688,7 @@ export default function PosOrders() {
       const botItems = orderItems.filter(i =>  botCategories.has(i.category || 'Other'))
       const sentItems = orderItems.map(i => ({ ...i, sent_to_kot: true, sent_qty: i.qty }))
       if (navigator.onLine) {
-        await supabase.from('pos_order_items').update({ sent_to_kot: true }).eq('order_id', oid)
+        await scopedUpdate('pos_order_items', { sent_to_kot: true }).eq('order_id', oid)
       } else {
         await enqueuePosOrder(oid, { items: sentItems.map(toItemPayload) })
       }
@@ -748,8 +736,7 @@ export default function PosOrders() {
 
     if (recipeIds.length > 0) {
       if (navigator.onLine) {
-        await supabase.from('pos_order_items')
-          .update({ sent_to_kot: true })
+        await scopedUpdate('pos_order_items', { sent_to_kot: true })
           .eq('order_id', oid)
           .in('recipe_id', recipeIds)
       } else {
@@ -771,7 +758,6 @@ export default function PosOrders() {
   async function logKotSend(station, items, oid, oNo) {
     if (items.length === 0) return
     const payload = {
-      client_id: clientId,
       order_id: oid,
       order_no: oNo,
       table_name: activeTable?.name || 'Takeaway',
@@ -791,7 +777,7 @@ export default function PosOrders() {
       return
     }
     try {
-      await supabase.from('pos_kot_log').insert(payload)
+      await scopedInsert('pos_kot_log', payload)
     } catch (err) {
       console.error('pos_kot_log insert failed:', err)
     }
@@ -864,7 +850,7 @@ export default function PosOrders() {
     setBillingOpen(true)
     const recipeIds = orderItems.map(i => i.recipe_id).filter(Boolean)
     if (recipeIds.length > 0) {
-      const { data } = await supabase.from('recipes').select('id, hsc_code').in('id', recipeIds)
+      const { data } = await scopedFrom('recipes', 'id, hsc_code').in('id', recipeIds)
       setHscMap(Object.fromEntries((data || []).map(r => [r.id, r.hsc_code])))
     }
   }
@@ -897,8 +883,7 @@ export default function PosOrders() {
   }
 
   async function writeSalesEntries(closeType) {
-    const { data: periods } = await supabase
-      .from('monthly_periods').select('*').eq('client_id', clientId)
+    const { data: periods } = await scopedFrom('monthly_periods')
       .order('bs_year', { ascending: false }).order('bs_month', { ascending: false })
     const open = (periods || []).find(p => p.status === 'open')
     if (!open) return
@@ -922,11 +907,11 @@ export default function PosOrders() {
           })
         })
         const movementRows = Object.entries(agg).map(([item_id, qty]) => ({
-          client_id: clientId, item_id, period_id: open.id, bs_day: today.day, qty: -qty,
+          item_id, period_id: open.id, bs_day: today.day, qty: -qty,
           source: closeType === 'writeoff' ? 'pos_comp' : 'pos_sale', ref_id: orderId,
         }))
         if (movementRows.length > 0) {
-          const { error: moveErr } = await supabase.from('stock_movements').insert(movementRows)
+          const { error: moveErr } = await scopedInsert('stock_movements', movementRows)
           if (moveErr) console.error('stock_movements write failed:', moveErr)
         }
       }
@@ -980,14 +965,13 @@ export default function PosOrders() {
       shift_id: openShiftId,
     }
 
-    const { data: updated, error } = await supabase
-      .from('pos_orders').update(payload).eq('id', orderId)
+    const { data: updated, error } = await scopedUpdate('pos_orders', payload).eq('id', orderId)
       .select('*').single()
     if (error) { setCloseMsg('error:' + error.message); setClosing(false); return }
 
     if (isSplit) {
-      await supabase.from('pos_order_payments').insert(tenders.map(t => ({
-        order_id: orderId, client_id: clientId,
+      await scopedInsert('pos_order_payments', tenders.map(t => ({
+        order_id: orderId,
         payment_method: t.method, amount: t.amount, tendered_amount: t.tenderedAmount,
         recorded_by: profile?.id || null,
       })))
@@ -998,14 +982,14 @@ export default function PosOrders() {
     // Auto-build the customer book: any bill with buyer Name + Phone (required for discounts and
     // Credit sales) adds/updates a pos_customers row keyed by phone. Non-fatal — never blocks billing.
     if (buyerName.trim() && buyerPhone.trim()) {
-      const custRow = { client_id: clientId, name: buyerName.trim(), phone: buyerPhone.trim(), updated_at: new Date().toISOString() }
+      const custRow = { name: buyerName.trim(), phone: buyerPhone.trim(), updated_at: new Date().toISOString() }
       if (buyerAddress.trim()) custRow.address = buyerAddress.trim()
       if (buyerPan.trim())     custRow.pan     = buyerPan.trim()
-      await supabase.from('pos_customers').upsert(custRow, { onConflict: 'client_id,phone' })
+      await scopedUpsert('pos_customers', custRow, { onConflict: 'client_id,phone' })
     }
 
     if (activeTable?.id) {
-      await supabase.from('pos_tables').update({ status: 'available' }).eq('id', activeTable.id)
+      await scopedUpdate('pos_tables', { status: 'available' }).eq('id', activeTable.id)
     }
 
     if (closeType === 'paid') await printBill(updated, orderItems)
@@ -1182,12 +1166,11 @@ export default function PosOrders() {
 
   async function printBill(order, items) {
     const newCount = (order.print_count || 0) + 1
-    await supabase.from('pos_orders').update({ print_count: newCount }).eq('id', order.id)
+    await scopedUpdate('pos_orders', { print_count: newCount }).eq('id', order.id)
     const qrUrl = QR_PAY_METHODS.includes(order.payment_method) ? await makeBillQr(order.paid_amount) : ''
     let payments
     if (order.payment_method === 'Split') {
-      const { data } = await supabase.from('pos_order_payments')
-        .select('payment_method, amount').eq('order_id', order.id).order('recorded_at')
+      const { data } = await scopedFrom('pos_order_payments', 'payment_method, amount').eq('order_id', order.id).order('recorded_at')
       payments = (data || []).map(p => ({ method: p.payment_method, amount: p.amount }))
     }
     printHtml(buildBillHtml(order, items, COPY_LABEL(newCount), qrUrl, payments))
@@ -1266,7 +1249,7 @@ export default function PosOrders() {
 
   async function printCompSlip(order, items) {
     const newCount = (order.print_count || 0) + 1
-    await supabase.from('pos_orders').update({ print_count: newCount }).eq('id', order.id)
+    await scopedUpdate('pos_orders', { print_count: newCount }).eq('id', order.id)
     const recipeIds = items.map(i => i.recipe_id).filter(Boolean)
     const costMap = await computeRecipeCosts(supabase, recipeIds)
     printHtml(buildCompSlipHtml(order, items, costMap, COPY_LABEL(newCount)))
@@ -1275,10 +1258,7 @@ export default function PosOrders() {
   async function loadRecentBills() {
     setRecentBillsLoad(true)
     const today = getBsToday()
-    const { data } = await supabase
-      .from('pos_orders')
-      .select('id, table_name, invoice_no, invoice_fy, close_type, paid_amount, closed_at, order_no, credit_note_id, buyer_name, buyer_address, buyer_pan, buyer_phone, discount_amount')
-      .eq('client_id', clientId)
+    const { data } = await scopedFrom('pos_orders', 'id, table_name, invoice_no, invoice_fy, close_type, paid_amount, closed_at, order_no, credit_note_id, buyer_name, buyer_address, buyer_pan, buyer_phone, discount_amount')
       .in('status', ['billed', 'voided'])
       .order('closed_at', { ascending: false })
       .limit(30)
@@ -1291,8 +1271,8 @@ export default function PosOrders() {
   }
 
   async function reprintBill(orderRow) {
-    const { data: order } = await supabase.from('pos_orders').select('*').eq('id', orderRow.id).single()
-    const { data: items } = await supabase.from('pos_order_items').select('*').eq('order_id', orderRow.id)
+    const { data: order } = await scopedFrom('pos_orders').eq('id', orderRow.id).single()
+    const { data: items } = await scopedFrom('pos_order_items').eq('order_id', orderRow.id)
     if (!order) return
     if (order.close_type === 'writeoff') {
       await printCompSlip(order, items || [])
@@ -1306,13 +1286,13 @@ export default function PosOrders() {
     if (!isAdmin || !clientId) return
     if (!window.confirm('Clear ALL occupied tables? This permanently deletes every open order and its items for this client. Use only for testing.')) return
     setFloorLoad(true)
-    const { data: openOrders } = await supabase.from('pos_orders').select('id').eq('client_id', clientId).eq('status', 'open')
+    const { data: openOrders } = await scopedFrom('pos_orders', 'id').eq('status', 'open')
     const ids = (openOrders || []).map(o => o.id)
     if (ids.length > 0) {
-      await supabase.from('pos_order_items').delete().in('order_id', ids)
-      await supabase.from('pos_orders').delete().in('id', ids)
+      await scopedDelete('pos_order_items').in('order_id', ids)
+      await scopedDelete('pos_orders').in('id', ids)
     }
-    await supabase.from('pos_tables').update({ status: 'available' }).eq('client_id', clientId).eq('status', 'occupied')
+    await scopedUpdate('pos_tables', { status: 'available' }).eq('status', 'occupied')
     await loadFloor()
   }
 

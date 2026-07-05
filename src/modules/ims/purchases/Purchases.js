@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import { bsToAd, formatAd, daysInBsMonth } from '../../../utils/bsCalendar'
 import BsCalendarPicker from '../../../components/BsCalendarPicker'
@@ -19,6 +20,7 @@ const newLine = () => ({ _key: Date.now() + Math.random(), item_id: '', qty: '',
 export default function Purchases() {
   const { clientId, profile, loading: authLoading, isAdmin } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
+  const { scopedFrom, scopedInsert, scopedUpdate, scopedDelete } = useScopedDb()
 
   // Shared
   const [periods, setPeriods]               = useState([])
@@ -56,9 +58,9 @@ export default function Purchases() {
   async function init() {
     setLoading(true)
     const [{ data: p }, { data: i }, { data: v }] = await Promise.all([
-      supabase.from('monthly_periods').select('*').eq('client_id', effectiveClientId).order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
-      supabase.from('items').select('*, categories(name)').eq('client_id', effectiveClientId).eq('is_active', true).eq('is_sub_recipe', false).order('name'),
-      supabase.from('vendors').select('*').eq('client_id', effectiveClientId).eq('is_active', true).order('name')
+      scopedFrom('monthly_periods').order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
+      scopedFrom('items', '*, categories(name)').eq('is_active', true).eq('is_sub_recipe', false).order('name'),
+      scopedFrom('vendors').eq('is_active', true).order('name')
     ])
     setPeriods(p || [])
     setItems(i || [])
@@ -82,9 +84,7 @@ export default function Purchases() {
   }
 
   async function loadReturns(periodId) {
-    const { data } = await supabase
-      .from('vendor_returns')
-      .select('*, items(name, uom, purchase_unit, conversion_factor), vendors(name), purchase_entries(bs_day, qty, rate)')
+    const { data } = await scopedFrom('vendor_returns', '*, items(name, uom, purchase_unit, conversion_factor), vendors(name), purchase_entries(bs_day, qty, rate)')
       .eq('period_id', periodId)
       .order('created_at')
     setReturns(data || [])
@@ -329,7 +329,6 @@ export default function Purchases() {
     setReturnError('')
 
     const payload = {
-      client_id:          effectiveClientId,
       period_id:          selectedPeriod.id,
       purchase_entry_id:  linked.id,
       item_id:            linked.item_id,
@@ -342,10 +341,10 @@ export default function Purchases() {
     }
 
     if (editingReturnId) {
-      const { error } = await supabase.from('vendor_returns').update(payload).eq('id', editingReturnId)
+      const { error } = await scopedUpdate('vendor_returns', payload).eq('id', editingReturnId)
       if (error) { setReturnError(error.message); setReturnSaving(false); return }
     } else {
-      const { error } = await supabase.from('vendor_returns').insert(payload)
+      const { error } = await scopedInsert('vendor_returns', payload)
       if (error) { setReturnError(error.message); setReturnSaving(false); return }
     }
 
@@ -357,7 +356,7 @@ export default function Purchases() {
 
   async function deleteReturn(id) {
     if (!window.confirm('Delete this return entry?')) return
-    await supabase.from('vendor_returns').delete().eq('id', id)
+    await scopedDelete('vendor_returns').eq('id', id)
     loadReturns(selectedPeriod.id)
   }
 
@@ -371,7 +370,7 @@ export default function Purchases() {
   async function deleteAllReturns() {
     if (!selectedPeriod || returns.length === 0) return
     if (!window.confirm(`Delete ALL ${returns.length} return entries for ${periodLabel}? This cannot be undone.`)) return
-    await supabase.from('vendor_returns').delete().eq('period_id', selectedPeriod.id)
+    await scopedDelete('vendor_returns').eq('period_id', selectedPeriod.id)
     loadReturns(selectedPeriod.id)
   }
 

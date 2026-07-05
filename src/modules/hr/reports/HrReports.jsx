@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../../supabaseClient'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
 import * as XLSX from 'xlsx'
 import { BS_MONTHS, getBsToday } from '../../../utils/bsCalendar'
@@ -25,6 +26,7 @@ function retireInfo(dateStr) {
 
 export default function HrReports() {
   const { clientId } = useAuth()
+  const { scopedFrom } = useScopedDb()
   const [periods,   setPeriods]   = useState([])
   const [period,    setPeriod]    = useState(null)
   const [run,       setRun]       = useState(null)
@@ -47,13 +49,12 @@ export default function HrReports() {
     if (!clientId) return
     async function init() {
       setLoading(true)
-      const { data: p } = await supabase.from('monthly_periods').select('*').eq('client_id', clientId)
+      const { data: p } = await scopedFrom('monthly_periods')
         .order('bs_year', { ascending: false }).order('bs_month', { ascending: false })
       setPeriods(p || [])
       // Employee master loads independently of any payroll run (powers the Roster tab).
-      const { data: emps } = await supabase.from('hr_employees')
-        .select('id, full_name, employee_code, department, designation, employment_type, supervisor_id, retirement_date, join_date, pay_basis, bank_name, bank_account_no, bank_branch, ssf_no, ssf_enrolled, pan_no, life_insurance_premium, health_insurance_premium, status')
-        .eq('client_id', clientId).order('full_name')
+      const { data: emps } = await scopedFrom('hr_employees', 'id, full_name, employee_code, department, designation, employment_type, supervisor_id, retirement_date, join_date, pay_basis, bank_name, bank_account_no, bank_branch, ssf_no, ssf_enrolled, pan_no, life_insurance_premium, health_insurance_premium, status')
+        .order('full_name')
       setEmployees(emps || [])
       const open = (p || []).find(x => x.status === 'open') || (p || [])[0]
       if (open) { setPeriod(open); await loadAll(open.id, open) }
@@ -73,9 +74,7 @@ export default function HrReports() {
   useEffect(() => {
     if (tab !== 'cert' || !certFy || !certEmpId) { setCertSlips([]); return }
     setCertLoading(true)
-    supabase.from('hr_payslips')
-      .select('*, hr_payroll_runs!inner(status, monthly_periods!inner(bs_year, bs_month))')
-      .eq('client_id', clientId)
+    scopedFrom('hr_payslips', '*, hr_payroll_runs!inner(status, monthly_periods!inner(bs_year, bs_month))')
       .eq('employee_id', certEmpId)
       .eq('hr_payroll_runs.status', 'finalized')
       .then(({ data }) => {
@@ -97,10 +96,10 @@ export default function HrReports() {
   }, [tab, certFy, certEmpId, clientId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadAll(periodId, p) {
-    const { data: runRow } = await supabase.from('hr_payroll_runs').select('*').eq('client_id', clientId).eq('period_id', periodId).maybeSingle()
+    const { data: runRow } = await scopedFrom('hr_payroll_runs').eq('period_id', periodId).maybeSingle()
     setRun(runRow || null)
     if (runRow) {
-      const { data: slips } = await supabase.from('hr_payslips').select('*').eq('run_id', runRow.id)
+      const { data: slips } = await scopedFrom('hr_payslips').eq('run_id', runRow.id)
       setPayslips(slips || [])
     } else {
       setPayslips([])
@@ -112,9 +111,8 @@ export default function HrReports() {
   async function loadYtd(p) {
     if (!p) { setYtdTds({}); return }
     const cur = fiscalYearOf(p.bs_year, p.bs_month)
-    const { data } = await supabase.from('hr_payslips')
-      .select('employee_id, tds, hr_payroll_runs!inner(status, monthly_periods!inner(bs_year, bs_month))')
-      .eq('client_id', clientId).eq('hr_payroll_runs.status', 'finalized')
+    const { data } = await scopedFrom('hr_payslips', 'employee_id, tds, hr_payroll_runs!inner(status, monthly_periods!inner(bs_year, bs_month))')
+      .eq('hr_payroll_runs.status', 'finalized')
     const map = {}
     ;(data || []).forEach(r => {
       if (r.hr_payroll_runs?.status !== 'finalized') return

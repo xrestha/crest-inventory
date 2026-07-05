@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
 import * as XLSX from 'xlsx'
@@ -16,6 +17,7 @@ function getFiscalYear(bs_year, bs_month) {
 export default function AnnualSummary() {
   const { clientId, profile, loading: authLoading } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
+  const { scopedFrom } = useScopedDb()
 
   const [allPeriods, setAllPeriods]     = useState([])
   const [fiscalMode, setFiscalMode]     = useState(false)
@@ -30,9 +32,7 @@ export default function AnnualSummary() {
 
   async function init() {
     setLoading(true)
-    const { data: p } = await supabase
-      .from('monthly_periods').select('*')
-      .eq('client_id', effectiveClientId)
+    const { data: p } = await scopedFrom('monthly_periods')
       .order('bs_year', { ascending: false }).order('bs_month', { ascending: false })
     setAllPeriods(p || [])
     setLoading(false)
@@ -73,14 +73,14 @@ export default function AnnualSummary() {
       { data: purchases }, { data: returns }, { data: wastages },
       { data: sales }, { data: recipes }
     ] = await Promise.all([
-      supabase.from('items').select('id, per_uom_rate').eq('client_id', effectiveClientId).eq('is_active', true).eq('is_sub_recipe', false),
+      scopedFrom('items', 'id, per_uom_rate').eq('is_active', true).eq('is_sub_recipe', false),
       supabase.from('opening_stock').select('period_id, item_id, qty').in('period_id', periodIds),
       supabase.from('closing_stock').select('period_id, item_id, physical_qty').in('period_id', periodIds),
       supabase.from('purchase_entries').select('period_id, item_id, qty, rate').in('period_id', periodIds),
-      supabase.from('vendor_returns').select('period_id, item_id, qty, rate').in('period_id', periodIds),
+      scopedFrom('vendor_returns', 'period_id, item_id, qty, rate').in('period_id', periodIds),
       supabase.from('wastages').select('period_id, item_id, qty').in('period_id', periodIds),
       supabase.from('sales_entries').select('period_id, recipe_id, qty_sold').in('period_id', periodIds),
-      supabase.from('recipes').select('id, selling_price').eq('client_id', effectiveClientId),
+      scopedFrom('recipes', 'id, selling_price'),
     ])
 
     const rateMap = {}

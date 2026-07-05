@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { scopedFrom, scopedInsert, scopedDelete } from '../shared/scopedDb'
 import { bsToAd, adToBs } from './bsCalendar'
 import { computeOrderAmounts } from './posBillingMath'
 
@@ -104,19 +105,17 @@ export async function runForecast(clientId, horizonDays = 7) {
 
   try {
     const [{ data: orders }, { data: periods }, { data: holidays }] = await Promise.all([
-      supabase.from('pos_orders')
-        .select('id, covers, closed_at, credit_note_id')
-        .eq('client_id', clientId).eq('status', 'billed').eq('close_type', 'paid')
+      scopedFrom('pos_orders', clientId, 'id, covers, closed_at, credit_note_id')
+        .eq('status', 'billed').eq('close_type', 'paid')
         .gte('closed_at', lookbackStart.toISOString()),
-      supabase.from('monthly_periods').select('id, bs_year, bs_month').eq('client_id', clientId),
-      supabase.from('hr_holiday_calendar').select('bs_year, bs_month, bs_day, name, holiday_type').eq('client_id', clientId),
+      scopedFrom('monthly_periods', clientId, 'id, bs_year, bs_month'),
+      scopedFrom('hr_holiday_calendar', clientId, 'bs_year, bs_month, bs_day, name, holiday_type'),
     ])
     const orderList = orders || []
 
     let itemsByOrder = {}
     if (orderList.length > 0) {
-      const { data: items } = await supabase.from('pos_order_items')
-        .select('order_id, recipe_id, qty, unit_price, vat_rate')
+      const { data: items } = await scopedFrom('pos_order_items', clientId, 'order_id, recipe_id, qty, unit_price, vat_rate')
         .in('order_id', orderList.map(o => o.id))
       itemsByOrder = (items || []).reduce((acc, i) => {
         ;(acc[i.order_id] = acc[i.order_id] || []).push(i)
@@ -150,7 +149,7 @@ export async function runForecast(clientId, horizonDays = 7) {
     const allRecipeIds = [...new Set(forecast.flatMap(f => Object.keys(f.forecastQtyByRecipe)))]
     let priceByRecipe = {}
     if (allRecipeIds.length > 0) {
-      const { data: recs } = await supabase.from('recipes').select('id, selling_price').in('id', allRecipeIds)
+      const { data: recs } = await scopedFrom('recipes', clientId, 'id, selling_price').in('id', allRecipeIds)
       priceByRecipe = Object.fromEntries((recs || []).map(r => [r.id, r.selling_price || 0]))
     }
 
@@ -164,7 +163,7 @@ export async function runForecast(clientId, horizonDays = 7) {
         revenueEstimated = true
       }
       rows.push({
-        client_id: clientId, recipe_id: null,
+        recipe_id: null,
         bs_year: f.bs.year, bs_month: f.bs.month, bs_day: f.bs.day,
         forecast_covers: f.forecastCovers, forecast_qty: null, forecast_revenue: revenue,
         revenue_estimated: revenueEstimated,
@@ -172,7 +171,7 @@ export async function runForecast(clientId, horizonDays = 7) {
       })
       for (const [recipeId, qty] of Object.entries(f.forecastQtyByRecipe)) {
         rows.push({
-          client_id: clientId, recipe_id: recipeId,
+          recipe_id: recipeId,
           bs_year: f.bs.year, bs_month: f.bs.month, bs_day: f.bs.day,
           forecast_covers: null, forecast_qty: qty, forecast_revenue: null,
           revenue_estimated: false,
@@ -185,19 +184,19 @@ export async function runForecast(clientId, horizonDays = 7) {
     // has no natural upsert key (recipe-level rows share a date), so without this, every recompute
     // click stacks duplicate day-rows and loadStored's read-back non-deterministically picks
     // between old and new values instead of always showing the latest run.
-    await supabase.from('demand_forecast_daily').delete().eq('client_id', clientId).eq('horizon_days', horizonDays)
+    await scopedDelete('demand_forecast_daily', clientId).eq('horizon_days', horizonDays)
     if (rows.length > 0) {
-      await supabase.from('demand_forecast_daily').insert(rows)
+      await scopedInsert('demand_forecast_daily', clientId, rows)
     }
-    await supabase.from('demand_forecast_run_log').insert({
-      client_id: clientId, run_at: runStartedAt, method: 'weekday_moving_average',
+    await scopedInsert('demand_forecast_run_log', clientId, {
+      run_at: runStartedAt, method: 'weekday_moving_average',
       rows_written: rows.length, error: null,
     })
 
     return { forecast, rowsWritten: rows.length }
   } catch (err) {
-    await supabase.from('demand_forecast_run_log').insert({
-      client_id: clientId, run_at: runStartedAt, method: 'weekday_moving_average',
+    await scopedInsert('demand_forecast_run_log', clientId, {
+      run_at: runStartedAt, method: 'weekday_moving_average',
       rows_written: 0, error: err.message || String(err),
     })
     throw err

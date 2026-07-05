@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../../context/AuthContext'
 import { useSettings } from '../../../context/SettingsContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import * as XLSX from 'xlsx'
 import Tip from '../../../components/Tip'
@@ -11,6 +12,7 @@ export default function FifoReport() {
   const { clientId, profile, loading: authLoading } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
   const { settings } = useSettings()
+  const { scopedFrom } = useScopedDb()
   const [periods, setPeriods] = useState([])
   const [selectedPeriod, setSelectedPeriod] = useState(null)
   const [rows, setRows] = useState([])
@@ -26,8 +28,8 @@ export default function FifoReport() {
   async function init() {
     setLoading(true)
     const [{ data: p }, { data: c }] = await Promise.all([
-      supabase.from('monthly_periods').select('*').eq('client_id', effectiveClientId).order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
-      supabase.from('categories').select('*').eq('client_id', effectiveClientId)
+      scopedFrom('monthly_periods').order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
+      scopedFrom('categories')
     ])
     setPeriods(p || [])
     setCategories(c || [])
@@ -52,8 +54,7 @@ export default function FifoReport() {
         .eq('period_id', periodId)
         .not('expiry_date', 'is', null)
         .order('expiry_date'),
-      supabase.from('vendor_returns')
-        .select('purchase_entry_id, qty')
+      scopedFrom('vendor_returns', 'purchase_entry_id, qty')
         .eq('period_id', periodId)
     ])
 

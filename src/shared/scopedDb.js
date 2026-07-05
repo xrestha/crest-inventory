@@ -5,15 +5,28 @@
 // more dangerous sibling, since an admin's RLS policy allows every client's rows and only this
 // filter narrows an admin "viewing as" session down to one client.
 //
-// CLIENT_SCOPED_TABLES mirrors the tables that carry a DB-level `client_id NOT NULL` constraint
-// (see supabase/rls-audit.sql). Keep the two in sync: a table added here should also get that
-// migration, and a table given the migration should be added here.
+// CLIENT_SCOPED_TABLES mirrors every table that carries a DB-level `client_id NOT NULL`
+// constraint — confirmed against supabase/migrations/20260705074838_baseline_schema.sql, not
+// just the original IMS-only S134/S211 audit (which missed every hr_* and pos_* table; those
+// carry the constraint too, just declared in their original DDL instead of a later migration).
+// Keep this in sync with the schema: a table added here should also get that constraint, and a
+// table given the constraint should be added here.
 import { supabase } from '../supabaseClient'
 
 export const CLIENT_SCOPED_TABLES = [
+  // IMS
   'recipes', 'items', 'vendors', 'categories', 'monthly_periods', 'requisitions',
   'overheads', 'purchase_orders', 'vendor_returns', 'feature_flags',
   'par_levels', 'payable_payments', 'recipe_suggestions',
+  'demand_forecast_daily', 'demand_forecast_run_log', 'stock_movements',
+  // HR
+  'hr_employees', 'hr_attendance', 'hr_advances', 'hr_advance_repayments',
+  'hr_leave_requests', 'hr_leave_types', 'hr_holiday_calendar', 'hr_festival_allowances',
+  'hr_overtime_entries', 'hr_payroll_runs', 'hr_payslips', 'hr_roster',
+  'hr_salary_components', 'hr_shift_types',
+  // POS
+  'pos_orders', 'pos_order_items', 'pos_order_payments', 'pos_tables', 'pos_customers',
+  'pos_credit_notes', 'pos_kot_log', 'pos_shifts',
 ]
 
 // A UUID column can never equal this, so any scoped query built without a real
@@ -43,21 +56,28 @@ export function scopedFrom(table, clientId, columns = '*') {
 
 // Insert: stamps client_id automatically and refuses to write without one, replacing the
 // hand-written `if (!clientId) { setError(...); return }` guard at each call site.
-export async function scopedInsert(table, clientId, row) {
+// Pass { single: true } for the `.insert(...).select().single()` shape (returning one row
+// as an object instead of a one-element array).
+export async function scopedInsert(table, clientId, row, { single = false } = {}) {
   assertKnownTable(table)
   if (!clientId) return { data: null, error: missingClientIdError(table) }
   const stamped = Array.isArray(row)
     ? row.map(r => ({ ...r, client_id: clientId }))
     : { ...row, client_id: clientId }
-  return supabase.from(table).insert(stamped).select()
+  const q = supabase.from(table).insert(stamped).select()
+  return single ? q.single() : q
 }
 
-// Upsert: same client_id guard as scopedInsert, for bulk-seed patterns (e.g. default categories).
+// Upsert: same client_id guard as scopedInsert, for bulk-seed patterns (e.g. default categories)
+// and single-row upserts (e.g. the POS customer book, keyed by client_id+phone). Always selects
+// the upserted rows back (matching scopedInsert), since some callers need the row (e.g. its id).
 export async function scopedUpsert(table, clientId, rows, options) {
   assertKnownTable(table)
   if (!clientId) return { data: null, error: missingClientIdError(table) }
-  const stamped = rows.map(r => ({ ...r, client_id: clientId }))
-  return supabase.from(table).upsert(stamped, options)
+  const stamped = Array.isArray(rows)
+    ? rows.map(r => ({ ...r, client_id: clientId }))
+    : { ...rows, client_id: clientId }
+  return supabase.from(table).upsert(stamped, options).select()
 }
 
 // Update: scopes the WHERE to the current client, so an update can never reach another

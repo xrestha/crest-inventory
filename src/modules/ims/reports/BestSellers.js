@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import Tip from '../../../components/Tip'
@@ -15,6 +16,7 @@ const MUTED  = '#6b7280'
 export default function BestSellers() {
   const { clientId, profile } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
+  const { scopedFrom } = useScopedDb()
   const [periods, setPeriods]         = useState([])
   const [selectedPeriod, setSelected] = useState(null)
   const [rows, setRows]               = useState([])
@@ -23,14 +25,13 @@ export default function BestSellers() {
 
   useEffect(() => {
     if (!effectiveClientId) return
-    supabase.from('monthly_periods')
-      .select('*').eq('client_id', effectiveClientId)
+    scopedFrom('monthly_periods')
       .order('bs_year', { ascending: false }).order('bs_month', { ascending: false })
       .then(({ data }) => {
         setPeriods(data || [])
         if (data && data.length > 0) setSelected(data[0])
       })
-  }, [effectiveClientId])
+  }, [effectiveClientId, scopedFrom])
 
   useEffect(() => {
     if (selectedPeriod) fetchData(selectedPeriod.id)
@@ -40,7 +41,7 @@ export default function BestSellers() {
     setLoading(true)
     const [{ data: entries }, { data: recipes }] = await Promise.all([
       supabase.from('sales_entries').select('recipe_id, qty_sold').eq('period_id', periodId),
-      supabase.from('recipes').select('id, name, category, selling_price').eq('client_id', effectiveClientId).neq('category', 'Sub-Recipe'),
+      scopedFrom('recipes', 'id, name, category, selling_price').neq('category', 'Sub-Recipe'),
     ])
 
     const recipeIds = (recipes || []).map(r => r.id)

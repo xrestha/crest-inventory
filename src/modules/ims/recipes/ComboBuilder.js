@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
 import SearchableSelect from '../../../components/SearchableSelect'
@@ -9,6 +10,7 @@ const WINDOW_OPTIONS = [30, 90, 180]
 
 export default function ComboBuilder() {
   const { clientId } = useAuth()
+  const { scopedFrom } = useScopedDb()
 
   const [menu, setMenu] = useState([])
   const [menuLoading, setMenuLoading] = useState(true)
@@ -21,8 +23,8 @@ export default function ComboBuilder() {
   useEffect(() => {
     if (!clientId) return
     Promise.all([
-      supabase.from('recipes').select('id, name, category, selling_price')
-        .eq('client_id', clientId).eq('is_active', true).eq('pos_enabled', true)
+      scopedFrom('recipes', 'id, name, category, selling_price')
+        .eq('is_active', true).eq('pos_enabled', true)
         .neq('category', 'Sub-Recipe').order('name'),
       supabase.from('settings').select('combo_discount_pct').eq('client_id', clientId).maybeSingle(),
     ]).then(([{ data: recs }, { data: settings }]) => {

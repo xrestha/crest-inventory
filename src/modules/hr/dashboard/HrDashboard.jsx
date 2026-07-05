@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../../../supabaseClient'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
 import { BS_MONTHS } from '../../../utils/bsCalendar'
 
@@ -36,6 +36,7 @@ function KCard({ label, value, sub, color = 'var(--theme-text1)', tip, onClick, 
 
 export default function HrDashboard() {
   const { clientId } = useAuth()
+  const { scopedFrom } = useScopedDb()
   const navigate     = useNavigate()
   const [loading, setLoading] = useState(true)
 
@@ -64,27 +65,19 @@ export default function HrDashboard() {
       { data: advs },
       { data: reps },
     ] = await Promise.all([
-      supabase.from('hr_employees')
-        .select('id, full_name, status, retirement_date, basic_salary')
-        .eq('client_id', clientId),
-      supabase.from('hr_leave_types')
-        .select('id, name').eq('client_id', clientId),
-      supabase.from('hr_leave_requests')
-        .select('id, employee_id, leave_type_id, status, start_date, end_date, created_at')
-        .eq('client_id', clientId).eq('status', 'pending')
+      scopedFrom('hr_employees', 'id, full_name, status, retirement_date, basic_salary'),
+      scopedFrom('hr_leave_types', 'id, name'),
+      scopedFrom('hr_leave_requests', 'id, employee_id, leave_type_id, status, start_date, end_date, created_at')
+        .eq('status', 'pending')
         .order('created_at', { ascending: false }).limit(8),
-      supabase.from('hr_overtime_entries')
-        .select('id, employee_id, bs_year, bs_month, bs_day, ot_hours, ot_type, created_at')
-        .eq('client_id', clientId).eq('status', 'pending')
+      scopedFrom('hr_overtime_entries', 'id, employee_id, bs_year, bs_month, bs_day, ot_hours, ot_type, created_at')
+        .eq('status', 'pending')
         .order('created_at', { ascending: false }).limit(8),
-      supabase.from('hr_payroll_runs')
-        .select('id, monthly_periods(bs_year, bs_month)')
-        .eq('client_id', clientId).eq('status', 'finalized')
+      scopedFrom('hr_payroll_runs', 'id, monthly_periods(bs_year, bs_month)')
+        .eq('status', 'finalized')
         .order('created_at', { ascending: false }).limit(1),
-      supabase.from('hr_advances')
-        .select('id, amount').eq('client_id', clientId).eq('status', 'active'),
-      supabase.from('hr_advance_repayments')
-        .select('advance_id, amount').eq('client_id', clientId),
+      scopedFrom('hr_advances', 'id, amount').eq('status', 'active'),
+      scopedFrom('hr_advance_repayments', 'advance_id, amount'),
     ])
 
     // ── Employee stats ─────────────────────────────────────────────────────────
@@ -125,9 +118,7 @@ export default function HrDashboard() {
     // ── Last finalized payroll ─────────────────────────────────────────────────
     const lastRun = runs?.[0]
     if (lastRun) {
-      const { data: slips } = await supabase
-        .from('hr_payslips')
-        .select('net_pay, ssf_employee, ssf_employer')
+      const { data: slips } = await scopedFrom('hr_payslips', 'net_pay, ssf_employee, ssf_employer')
         .eq('run_id', lastRun.id)
       const mp = lastRun.monthly_periods
       setPayInfo({

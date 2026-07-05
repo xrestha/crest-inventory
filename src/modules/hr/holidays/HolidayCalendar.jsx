@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../../../supabaseClient'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
 import { BS_MONTHS, getBsToday, daysInBsMonth } from '../../../utils/bsCalendar'
 import { fiscalYearOf } from '../payroll/tds'
@@ -47,6 +47,7 @@ const inp = {
 
 export default function HolidayCalendar() {
   const { clientId } = useAuth()
+  const { scopedFrom, scopedInsert, scopedUpdate, scopedDelete } = useScopedDb()
   const [holidays, setHolidays] = useState([])
   const [loading,  setLoading]  = useState(true)
   const [fyYear,   setFyYear]   = useState(() => {
@@ -60,14 +61,11 @@ export default function HolidayCalendar() {
   const load = useCallback(async () => {
     if (!clientId) return
     setLoading(true)
-    const { data } = await supabase
-      .from('hr_holiday_calendar')
-      .select('*')
-      .eq('client_id', clientId)
+    const { data } = await scopedFrom('hr_holiday_calendar')
       .order('bs_year').order('bs_month').order('bs_day')
     setHolidays(data || [])
     setLoading(false)
-  }, [clientId])
+  }, [clientId, scopedFrom])
 
   useEffect(() => { load() }, [load])
 
@@ -95,17 +93,17 @@ export default function HolidayCalendar() {
       setMsg(`error:Day must be 1–${maxDay} for ${BS_MONTHS[bs_month - 1]}`); return
     }
     setBusy(true); setMsg('')
-    const payload = { client_id: clientId, bs_year, bs_month, bs_day, name: form.name.trim(), holiday_type: form.holiday_type }
+    const payload = { bs_year, bs_month, bs_day, name: form.name.trim(), holiday_type: form.holiday_type }
     const { error } = form.editing
-      ? await supabase.from('hr_holiday_calendar').update(payload).eq('id', form.editing.id)
-      : await supabase.from('hr_holiday_calendar').insert(payload)
+      ? await scopedUpdate('hr_holiday_calendar', payload).eq('id', form.editing.id)
+      : await scopedInsert('hr_holiday_calendar', payload)
     if (error) { setMsg('error:' + error.message); setBusy(false); return }
     await load(); closeForm(); setMsg('ok:Saved'); setBusy(false)
   }
 
   async function del(id) {
     if (!window.confirm('Delete this holiday?')) return
-    await supabase.from('hr_holiday_calendar').delete().eq('id', id)
+    await scopedDelete('hr_holiday_calendar').eq('id', id)
     await load()
   }
 
@@ -115,7 +113,6 @@ export default function HolidayCalendar() {
     const toInsert = FIXED_HOLIDAYS
       .filter(h => !existingNames.has(h.name))
       .map(h => ({
-        client_id: clientId,
         bs_year: fyYear + h.yearOffset,
         bs_month: h.bs_month,
         bs_day: h.bs_day,
@@ -124,7 +121,7 @@ export default function HolidayCalendar() {
       }))
     if (toInsert.length === 0) { setMsg('ok:All fixed holidays already added'); return }
     setBusy(true)
-    const { error } = await supabase.from('hr_holiday_calendar').insert(toInsert)
+    const { error } = await scopedInsert('hr_holiday_calendar', toInsert)
     if (error) { setMsg('error:' + error.message); setBusy(false); return }
     await load(); setMsg(`ok:Added ${toInsert.length} fixed holiday${toInsert.length > 1 ? 's' : ''}`); setBusy(false)
   }

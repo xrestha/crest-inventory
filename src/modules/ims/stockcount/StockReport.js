@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import * as XLSX from 'xlsx'
 import Tip from '../../../components/Tip'
@@ -11,6 +12,7 @@ const npr = n => Number(n || 0).toLocaleString('en-NP', { maximumFractionDigits:
 export default function StockReport() {
   const { clientId, profile, loading: authLoading } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
+  const { scopedFrom } = useScopedDb()
 
   const [periods, setPeriods] = useState([])
   const [selectedPeriod, setSelectedPeriod] = useState(null)
@@ -26,8 +28,8 @@ export default function StockReport() {
   async function init() {
     setLoading(true)
     const [{ data: p }, { data: c }] = await Promise.all([
-      supabase.from('monthly_periods').select('*').eq('client_id', effectiveClientId).order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
-      supabase.from('categories').select('*').eq('client_id', effectiveClientId).order('sort_order')
+      scopedFrom('monthly_periods').order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
+      scopedFrom('categories').order('sort_order')
     ])
     setPeriods(p || [])
     setCategories(c || [])
@@ -50,16 +52,16 @@ export default function StockReport() {
       { data: returns }, { data: wastages }, { data: staffMeals }, { data: clientRecipes },
       { data: sales }, { data: pars }, { data: reqLines }
     ] = await Promise.all([
-      supabase.from('items').select('*, categories(name)').eq('client_id', effectiveClientId).eq('is_active', true).eq('is_sub_recipe', false).order('name'),
+      scopedFrom('items', '*, categories(name)').eq('is_active', true).eq('is_sub_recipe', false).order('name'),
       supabase.from('opening_stock').select('item_id, qty').eq('period_id', periodId),
       supabase.from('closing_stock').select('item_id, physical_qty').eq('period_id', periodId),
       supabase.from('purchase_entries').select('item_id, qty').eq('period_id', periodId),
-      supabase.from('vendor_returns').select('item_id, qty').eq('period_id', periodId),
+      scopedFrom('vendor_returns', 'item_id, qty').eq('period_id', periodId),
       supabase.from('wastages').select('item_id, qty').eq('period_id', periodId),
       supabase.from('staff_meals').select('item_id, qty').eq('period_id', periodId),
-      supabase.from('recipes').select('id').eq('client_id', effectiveClientId),
+      scopedFrom('recipes', 'id'),
       supabase.from('sales_entries').select('recipe_id, qty_sold').eq('period_id', periodId),
-      supabase.from('par_levels').select('item_id, par_qty').eq('client_id', effectiveClientId),
+      scopedFrom('par_levels', 'item_id, par_qty'),
       supabase.from('requisition_lines').select('item_id, qty_issued, requisitions!inner(period_id, status)').eq('requisitions.period_id', periodId).eq('requisitions.status', 'issued'),
     ])
 

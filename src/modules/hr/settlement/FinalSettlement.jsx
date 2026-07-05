@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
-import { supabase } from '../../../supabaseClient'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
 import { bsToAd, daysInBsMonth, getBsToday } from '../../../utils/bsCalendar'
 import { computeBonusTds, fiscalYearOf } from '../payroll/tds'
@@ -61,6 +61,7 @@ const today = getBsToday()
 
 export default function FinalSettlement() {
   const { clientId } = useAuth()
+  const { scopedFrom } = useScopedDb()
 
   const [employees,  setEmployees]  = useState([])
   const [empId,      setEmpId]      = useState('')
@@ -74,25 +75,21 @@ export default function FinalSettlement() {
   // Load employee list
   useEffect(() => {
     if (!clientId) return
-    supabase.from('hr_employees')
-      .select('id, full_name, employee_code, join_date, basic_salary, pay_basis, ssf_enrolled, marital_status, life_insurance_premium, health_insurance_premium, department')
-      .eq('client_id', clientId)
+    scopedFrom('hr_employees', 'id, full_name, employee_code, join_date, basic_salary, pay_basis, ssf_enrolled, marital_status, life_insurance_premium, health_insurance_premium, department')
       .in('status', ['active', 'probation'])
       .order('full_name')
       .then(({ data }) => setEmployees(data || []))
-  }, [clientId])
+  }, [clientId, scopedFrom])
 
   // Load outstanding advances when employee changes. There is no stored balance column —
   // outstanding is always derived as amount − SUM(repayments), same as PayrollRun's advance map.
   useEffect(() => {
     if (!clientId || !empId) { setAdvances([]); return }
     Promise.all([
-      supabase.from('hr_advances')
-        .select('id, amount, purpose, issued_date, status')
-        .eq('client_id', clientId).eq('employee_id', empId).eq('status', 'active'),
-      supabase.from('hr_advance_repayments')
-        .select('advance_id, amount')
-        .eq('client_id', clientId).eq('employee_id', empId),
+      scopedFrom('hr_advances', 'id, amount, purpose, issued_date, status')
+        .eq('employee_id', empId).eq('status', 'active'),
+      scopedFrom('hr_advance_repayments', 'advance_id, amount')
+        .eq('employee_id', empId),
     ]).then(([{ data: advs }, { data: reps }]) => {
       const repaid = {}
       ;(reps || []).forEach(r => { repaid[r.advance_id] = (repaid[r.advance_id] || 0) + (parseFloat(r.amount) || 0) })
@@ -101,7 +98,7 @@ export default function FinalSettlement() {
         .filter(a => a.outstanding > 0)
       setAdvances(enriched)
     })
-  }, [clientId, empId])
+  }, [clientId, empId, scopedFrom])
 
   const emp = employees.find(e => e.id === empId)
 

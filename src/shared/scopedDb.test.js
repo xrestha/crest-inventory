@@ -2,7 +2,7 @@ jest.mock('../supabaseClient', () => ({
   supabase: {
     from: jest.fn(),
     __chain: {
-      select: jest.fn(), eq: jest.fn(), order: jest.fn(),
+      select: jest.fn(), eq: jest.fn(), order: jest.fn(), single: jest.fn(),
       insert: jest.fn(), update: jest.fn(), delete: jest.fn(), upsert: jest.fn(),
     },
   },
@@ -72,14 +72,35 @@ describe('scopedInsert', () => {
     expect(result.data).toBeNull()
     expect(result.error.message).toMatch(/No client selected/)
   })
+
+  test('{ single: true } chains .single() for the insert-and-return-one-row shape', async () => {
+    await scopedInsert('categories', 'client-1', { name: 'Sub-Recipes' }, { single: true })
+    expect(chain.select).toHaveBeenCalled()
+    expect(chain.single).toHaveBeenCalled()
+  })
+
+  test('{ single: true } is skipped (never touches supabase) without a clientId', async () => {
+    const result = await scopedInsert('categories', null, { name: 'Sub-Recipes' }, { single: true })
+    expect(supabase.from).not.toHaveBeenCalled()
+    expect(result.error.message).toMatch(/No client selected/)
+  })
 })
 
 describe('scopedUpsert', () => {
-  test('stamps client_id and forwards upsert options', async () => {
+  test('stamps client_id, forwards upsert options, and selects the row back', async () => {
     await scopedUpsert('categories', 'client-1', [{ name: 'Dairy' }], { onConflict: 'client_id,name' })
     expect(chain.upsert).toHaveBeenCalledWith(
       [{ name: 'Dairy', client_id: 'client-1' }],
       { onConflict: 'client_id,name' }
+    )
+    expect(chain.select).toHaveBeenCalled()
+  })
+
+  test('also accepts a single row (not wrapped in an array), e.g. the POS customer book', async () => {
+    await scopedUpsert('pos_customers', 'client-1', { name: 'Ram', phone: '98...' }, { onConflict: 'client_id,phone' })
+    expect(chain.upsert).toHaveBeenCalledWith(
+      { name: 'Ram', phone: '98...', client_id: 'client-1' },
+      { onConflict: 'client_id,phone' }
     )
   })
 

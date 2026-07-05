@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
 import { getBsFiscalYear } from '../../../utils/bsCalendar'
@@ -12,6 +13,7 @@ const THRESHOLD = 100000
 export default function PurchaseOneLakhAboveReport() {
   const { clientId, profile } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
+  const { scopedFrom } = useScopedDb()
 
   const [periods, setPeriods] = useState([])
   const [fyOptions, setFyOptions] = useState([])
@@ -21,7 +23,7 @@ export default function PurchaseOneLakhAboveReport() {
 
   useEffect(() => {
     if (!effectiveClientId) return
-    supabase.from('monthly_periods').select('*').eq('client_id', effectiveClientId)
+    scopedFrom('monthly_periods')
       .then(({ data }) => {
         const list = data || []
         setPeriods(list)
@@ -30,7 +32,7 @@ export default function PurchaseOneLakhAboveReport() {
         setFyOptions(fys)
         if (fys.length > 0) setSelectedFy(fys[0])
       })
-  }, [effectiveClientId])
+  }, [effectiveClientId, scopedFrom])
 
   const load = useCallback(async () => {
     if (!effectiveClientId || !selectedFy || periods.length === 0) return
@@ -44,8 +46,7 @@ export default function PurchaseOneLakhAboveReport() {
     const [{ data: entData }, { data: retData }] = await Promise.all([
       supabase.from('purchase_entries')
         .select('*, vendors(name, pan_vat_no)').in('period_id', periodIds),
-      supabase.from('vendor_returns')
-        .select('*, vendors(name, pan_vat_no), purchase_entries(vat_inclusive)').in('period_id', periodIds),
+      scopedFrom('vendor_returns', '*, vendors(name, pan_vat_no), purchase_entries(vat_inclusive)').in('period_id', periodIds),
     ])
     const entries = entData || []
     const vatEntries = entries.filter(e => e.vat_inclusive)
@@ -60,7 +61,7 @@ export default function PurchaseOneLakhAboveReport() {
 
     setVendors(buildVendorSummary(vatEntries, vatReturns, billGroups))
     setLoading(false)
-  }, [effectiveClientId, selectedFy, periods])
+  }, [effectiveClientId, selectedFy, periods, scopedFrom])
 
   useEffect(() => { load() }, [load])
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../../../supabaseClient'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
 import {
   SSF_CAP, SSF_EMPLOYEE_PCT, SSF_EMPLOYER_PCT,
@@ -37,6 +37,7 @@ const fmt = n => Math.round(n || 0).toLocaleString('en-NP')
 // Dearness Allowance is surfaced as its own dedicated field but stored as a salary component.
 // Updates hr_employees columns + syncs hr_salary_components (delete-all + re-insert).
 export default function PayForm({ employee, onSave, onClose }) {
+  const { scopedFrom, scopedInsert, scopedUpdate, scopedDelete } = useScopedDb()
   const [tab, setTab]     = useState('salary')
   const [form, setForm]   = useState({
     pay_basis:       employee.pay_basis || 'monthly',
@@ -55,14 +56,14 @@ export default function PayForm({ employee, onSave, onClose }) {
   const [error, setError]           = useState('')
 
   useEffect(() => {
-    supabase.from('hr_salary_components').select('*').eq('employee_id', employee.id).order('created_at')
+    scopedFrom('hr_salary_components').eq('employee_id', employee.id).order('created_at')
       .then(({ data }) => {
         if (!data) return
         const da = data.find(c => c.name === 'Dearness Allowance' && c.type === 'earning')
         setDearness(da ? String(da.value) : '')
         setComponents(data.filter(c => !(c.name === 'Dearness Allowance' && c.type === 'earning')))
       })
-  }, [employee.id])
+  }, [employee.id, scopedFrom])
 
   function set(field, value) { setForm(f => ({ ...f, [field]: value })) }
 
@@ -82,7 +83,7 @@ export default function PayForm({ employee, onSave, onClose }) {
     setError('')
     setSaving(true)
 
-    const { error: err } = await supabase.from('hr_employees').update({
+    const { error: err } = await scopedUpdate('hr_employees', {
       pay_basis:       form.pay_basis,
       basic_salary:    parseFloat(form.basic_salary) || 0,
       bank_name:       form.bank_name || null,
@@ -96,15 +97,14 @@ export default function PayForm({ employee, onSave, onClose }) {
     if (err) { setError(err.message); setSaving(false); return }
 
     // Build component rows — dearness first (if set), then the rest.
-    await supabase.from('hr_salary_components').delete().eq('employee_id', employee.id)
+    await scopedDelete('hr_salary_components').eq('employee_id', employee.id)
     const dearnessVal = parseFloat(dearness) || 0
     const rows = [
       ...(dearnessVal > 0 ? [{
-        client_id: employee.client_id, employee_id: employee.id,
+        employee_id: employee.id,
         name: 'Dearness Allowance', type: 'earning', calc_type: 'fixed', value: dearnessVal,
       }] : []),
       ...components.filter(c => c.name.trim()).map(c => ({
-        client_id:   employee.client_id,
         employee_id: employee.id,
         name:        c.name.trim(),
         type:        c.type,
@@ -113,7 +113,7 @@ export default function PayForm({ employee, onSave, onClose }) {
       })),
     ]
     if (rows.length > 0) {
-      const { error: compErr } = await supabase.from('hr_salary_components').insert(rows)
+      const { error: compErr } = await scopedInsert('hr_salary_components', rows)
       if (compErr) { setError(compErr.message); setSaving(false); return }
     }
 

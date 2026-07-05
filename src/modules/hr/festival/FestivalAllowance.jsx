@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../../../supabaseClient'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
 import * as XLSX from 'xlsx'
 import { bsToAd, getBsToday } from '../../../utils/bsCalendar'
@@ -53,6 +53,7 @@ function calcFestivalTds({ emp, amount, ytd, fyStart }) {
 
 export default function FestivalAllowance() {
   const { clientId, isAdmin } = useAuth()
+  const { scopedFrom, scopedUpsert, scopedUpdate } = useScopedDb()
   const today = getBsToday()
   const [bsYear,    setBsYear]    = useState(today.year)
   const [festival,  setFestival]  = useState('Dashain')
@@ -77,14 +78,11 @@ export default function FestivalAllowance() {
   async function load() {
     setLoading(true); setMsg('')
     const [{ data: emps }, { data: fa }, { data: psData }] = await Promise.all([
-      supabase.from('hr_employees')
-        .select('id, full_name, employee_code, department, pay_basis, basic_salary, join_date, bank_name, bank_account_no, status, marital_status, ssf_enrolled, life_insurance_premium, health_insurance_premium')
-        .eq('client_id', clientId).in('status', ['active', 'probation']).order('full_name'),
-      supabase.from('hr_festival_allowances').select('*')
-        .eq('client_id', clientId).eq('bs_year', bsYear).eq('festival_name', festival),
-      supabase.from('hr_payslips')
-        .select('employee_id, gross, ssf_employee, hr_payroll_runs!inner(status, monthly_periods!inner(bs_year, bs_month))')
-        .eq('client_id', clientId)
+      scopedFrom('hr_employees', 'id, full_name, employee_code, department, pay_basis, basic_salary, join_date, bank_name, bank_account_no, status, marital_status, ssf_enrolled, life_insurance_premium, health_insurance_premium')
+        .in('status', ['active', 'probation']).order('full_name'),
+      scopedFrom('hr_festival_allowances')
+        .eq('bs_year', bsYear).eq('festival_name', festival),
+      scopedFrom('hr_payslips', 'employee_id, gross, ssf_employee, hr_payroll_runs!inner(status, monthly_periods!inner(bs_year, bs_month))')
         .eq('hr_payroll_runs.status', 'finalized'),
     ])
     setEmployees(emps || [])
@@ -116,7 +114,7 @@ export default function FestivalAllowance() {
       const amount = basis === 'monthly' ? Math.round(basic * mw / 12) : 0
       const tds    = calcFestivalTds({ emp, amount, ytd: ytdMap[emp.id], fyStart })
       return {
-        client_id: clientId, employee_id: emp.id, bs_year: bsYear, festival_name: festival,
+        employee_id: emp.id, bs_year: bsYear, festival_name: festival,
         pay_basis: basis, basic, months_worked: mw, amount, tds, status: 'draft',
       }
     })
@@ -126,8 +124,7 @@ export default function FestivalAllowance() {
     if (!clientId) { setMsg('error:No client selected'); return }
     if (employees.length === 0) return
     setBusy(true); setMsg('')
-    const { error } = await supabase.from('hr_festival_allowances')
-      .upsert(buildRows(), { onConflict: 'client_id,employee_id,bs_year,festival_name' })
+    const { error } = await scopedUpsert('hr_festival_allowances', buildRows(), { onConflict: 'client_id,employee_id,bs_year,festival_name' })
     if (error) { setMsg('error:' + error.message); setBusy(false); return }
     await load(); setMsg('ok:Generated'); setBusy(false)
   }
@@ -137,8 +134,7 @@ export default function FestivalAllowance() {
     if (finalized) return
     if (!window.confirm('Recompute all festival amounts from current salaries? Manual edits will be reset.')) return
     setBusy(true); setMsg('')
-    const { error } = await supabase.from('hr_festival_allowances')
-      .upsert(buildRows(), { onConflict: 'client_id,employee_id,bs_year,festival_name' })
+    const { error } = await scopedUpsert('hr_festival_allowances', buildRows(), { onConflict: 'client_id,employee_id,bs_year,festival_name' })
     if (error) { setMsg('error:' + error.message); setBusy(false); return }
     await load(); setMsg('ok:Recomputed'); setBusy(false)
   }
@@ -149,28 +145,28 @@ export default function FestivalAllowance() {
     const emp    = empMap[row.employee_id] || {}
     const tds    = calcFestivalTds({ emp, amount, ytd: ytdMap[row.employee_id], fyStart })
     setRows(rs => rs.map(r => r.id === row.id ? { ...r, amount, tds } : r))
-    await supabase.from('hr_festival_allowances').update({ amount, tds }).eq('id', row.id)
+    await scopedUpdate('hr_festival_allowances', { amount, tds }).eq('id', row.id)
   }
 
   async function updateTds(row, value) {
     if (finalized) return
     const tds = parseFloat(value) || 0
     setRows(rs => rs.map(r => r.id === row.id ? { ...r, tds } : r))
-    await supabase.from('hr_festival_allowances').update({ tds }).eq('id', row.id)
+    await scopedUpdate('hr_festival_allowances', { tds }).eq('id', row.id)
   }
 
   async function updateNote(row, value) {
     if (finalized) return
     setRows(rs => rs.map(r => r.id === row.id ? { ...r, note: value } : r))
-    await supabase.from('hr_festival_allowances').update({ note: value || null }).eq('id', row.id)
+    await scopedUpdate('hr_festival_allowances', { note: value || null }).eq('id', row.id)
   }
 
   async function setStatus(status) {
     const verb = status === 'finalized' ? 'Finalize' : 'Reopen'
     if (!window.confirm(`${verb} this festival allowance?`)) return
     setBusy(true)
-    await supabase.from('hr_festival_allowances').update({ status })
-      .eq('client_id', clientId).eq('bs_year', bsYear).eq('festival_name', festival)
+    await scopedUpdate('hr_festival_allowances', { status })
+      .eq('bs_year', bsYear).eq('festival_name', festival)
     await load(); setMsg(`ok:${verb}d`); setBusy(false)
   }
 

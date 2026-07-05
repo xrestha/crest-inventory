@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import * as XLSX from 'xlsx'
 import Tip from '../../../components/Tip'
@@ -13,6 +14,7 @@ const SLOW_THRESHOLD = 0.2
 export default function DeadStock() {
   const { clientId, profile } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
+  const { scopedFrom } = useScopedDb()
   const [periods, setPeriods]           = useState([])
   const [selectedPeriod, setSelected]   = useState(null)
   const [rows, setRows]                 = useState([])
@@ -22,14 +24,13 @@ export default function DeadStock() {
 
   useEffect(() => {
     if (!effectiveClientId) return
-    supabase.from('monthly_periods')
-      .select('*').eq('client_id', effectiveClientId)
+    scopedFrom('monthly_periods')
       .order('bs_year', { ascending: false }).order('bs_month', { ascending: false })
       .then(({ data }) => {
         setPeriods(data || [])
         if (data?.length) setSelected(data[0])
       })
-  }, [effectiveClientId])
+  }, [effectiveClientId, scopedFrom])
 
   useEffect(() => {
     if (selectedPeriod) fetchData(selectedPeriod.id)
@@ -45,10 +46,10 @@ export default function DeadStock() {
       { data: wastes },
       { data: closings },
     ] = await Promise.all([
-      supabase.from('items').select('id, name, uom, per_uom_rate, categories(name)').eq('client_id', effectiveClientId).eq('is_active', true).eq('is_sub_recipe', false),
+      scopedFrom('items', 'id, name, uom, per_uom_rate, categories(name)').eq('is_active', true).eq('is_sub_recipe', false),
       supabase.from('opening_stock').select('item_id, qty').eq('period_id', periodId),
       supabase.from('purchase_entries').select('item_id, qty').eq('period_id', periodId),
-      supabase.from('vendor_returns').select('item_id, qty').eq('period_id', periodId),
+      scopedFrom('vendor_returns', 'item_id, qty').eq('period_id', periodId),
       supabase.from('wastages').select('item_id, qty').eq('period_id', periodId),
       supabase.from('closing_stock').select('item_id, physical_qty').eq('period_id', periodId),
     ])

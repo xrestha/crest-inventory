@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import * as XLSX from 'xlsx'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import BsCalendarPicker from '../../../components/BsCalendarPicker'
 import { getBsToday } from '../../../utils/bsCalendar'
@@ -34,6 +35,7 @@ const DEPARTMENTS = [
 export default function Requisitions() {
   const { clientId, profile, loading: authLoading } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
+  const { scopedFrom, scopedInsert, scopedUpdate, scopedDelete } = useScopedDb()
 
   const [periods, setPeriods] = useState([])
   const [selectedPeriod, setSelectedPeriod] = useState(null)
@@ -67,8 +69,8 @@ export default function Requisitions() {
   async function init() {
     setLoading(true)
     const [{ data: p }, { data: i }] = await Promise.all([
-      supabase.from('monthly_periods').select('*').eq('client_id', effectiveClientId).order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
-      supabase.from('items').select('id, name, uom, per_uom_rate, categories(name)').eq('client_id', effectiveClientId).eq('is_active', true).eq('is_sub_recipe', false).order('name')
+      scopedFrom('monthly_periods').order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
+      scopedFrom('items', 'id, name, uom, per_uom_rate, categories(name)').eq('is_active', true).eq('is_sub_recipe', false).order('name')
     ])
     setPeriods(p || [])
     setItems(i || [])
@@ -81,9 +83,7 @@ export default function Requisitions() {
   }
 
   async function loadReqs(periodId) {
-    const { data } = await supabase
-      .from('requisitions')
-      .select('*, requisition_lines(id, item_id, qty_requested, qty_issued, items(name, uom, per_uom_rate, categories(name)))')
+    const { data } = await scopedFrom('requisitions', '*, requisition_lines(id, item_id, qty_requested, qty_issued, items(name, uom, per_uom_rate, categories(name)))')
       .eq('period_id', periodId)
       .order('bs_day', { ascending: false })
       .order('created_at', { ascending: false })
@@ -147,18 +147,13 @@ export default function Requisitions() {
     setSaving(true)
     setError('')
 
-    const { data: header, error: hErr } = await supabase
-      .from('requisitions')
-      .insert({
-        client_id: effectiveClientId,
-        period_id: selectedPeriod.id,
-        bs_day: parseInt(formDay),
-        department: formDept || 'Kitchen',
-        notes: formNotes || null,
-        status: statusOverride || 'draft'
-      })
-      .select()
-      .single()
+    const { data: header, error: hErr } = await scopedInsert('requisitions', {
+      period_id: selectedPeriod.id,
+      bs_day: parseInt(formDay),
+      department: formDept || 'Kitchen',
+      notes: formNotes || null,
+      status: statusOverride || 'draft'
+    }, { single: true })
 
     if (hErr || !header) { setError(hErr?.message || 'Failed to save.'); setSaving(false); return }
 
@@ -181,7 +176,7 @@ export default function Requisitions() {
 
   async function deleteReq(reqId) {
     if (!window.confirm('Delete this draft requisition?')) return
-    await supabase.from('requisitions').delete().eq('id', reqId)
+    await scopedDelete('requisitions').eq('id', reqId)
     await loadReqs(selectedPeriod.id)
     if (selectedReq?.id === reqId) backToList()
   }
@@ -196,7 +191,7 @@ export default function Requisitions() {
 
   async function confirmIssue() {
     setSaving(true)
-    const { error: hErr } = await supabase.from('requisitions').update({ status: 'issued' }).eq('id', selectedReq.id)
+    const { error: hErr } = await scopedUpdate('requisitions', { status: 'issued' }).eq('id', selectedReq.id)
     if (hErr) { setSaving(false); return }
     for (const line of issueLines) {
       await supabase.from('requisition_lines').update({ qty_issued: parseFloat(line.qty_issued || 0) }).eq('id', line.id)

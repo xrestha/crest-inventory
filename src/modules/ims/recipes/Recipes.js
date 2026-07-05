@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useAuth } from '../../../context/AuthContext'
 import { useSettings } from '../../../context/SettingsContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
 import Fab from '../../../components/Fab'
@@ -30,6 +31,7 @@ export default function Recipes() {
   const { clientId, hasFeature } = useAuth()
   const showNutrition = hasFeature('nutrition_facts')
   const { settings, recipeCategories } = useSettings()
+  const { scopedFrom, scopedInsert, scopedUpdate, scopedDelete } = useScopedDb()
   const [recipes, setRecipes] = useState([])
   const [overheadData, setOverheadData] = useState(null) // { totalOverheads, totalCovers, openPeriodId } | null
   const [items, setItems] = useState([])
@@ -69,8 +71,8 @@ export default function Recipes() {
     if (!clientId) return
     setLoading(true)
     const [{ data: r }, { data: i }] = await Promise.all([
-      supabase.from('recipes').select('*').eq('client_id', clientId).order('name'),
-      supabase.from('items').select('*').eq('client_id', clientId).eq('is_active', true).eq('is_sub_recipe', false).order('name')
+      scopedFrom('recipes').order('name'),
+      scopedFrom('items').eq('is_active', true).eq('is_sub_recipe', false).order('name')
     ])
 
     // Fetch ingredients separately — scoped to this client's recipe IDs
@@ -99,17 +101,14 @@ export default function Recipes() {
     setItems(i || [])
 
     // Fetch overhead + sales data for open period to power overhead panel
-    const { data: periods } = await supabase
-      .from('monthly_periods')
-      .select('id')
-      .eq('client_id', clientId)
+    const { data: periods } = await scopedFrom('monthly_periods', 'id')
       .eq('status', 'open')
       .limit(1)
     const openPeriodId = periods?.[0]?.id || null
 
     if (openPeriodId) {
       const [{ data: ohRows }, { data: salesRows }] = await Promise.all([
-        supabase.from('overheads').select('amount').eq('client_id', clientId).eq('period_id', openPeriodId).eq('bucket', 'overhead'),
+        scopedFrom('overheads', 'amount').eq('period_id', openPeriodId).eq('bucket', 'overhead'),
         supabase.from('sales_entries').select('qty_sold').eq('period_id', openPeriodId)
       ])
       const totalOverheads = (ohRows || []).reduce((s, o) => s + parseFloat(o.amount || 0), 0)
@@ -124,7 +123,7 @@ export default function Recipes() {
     }
 
     setLoading(false)
-  }, [clientId])
+  }, [clientId, scopedFrom])
 
   useEffect(() => { if (clientId) init() }, [clientId, init])
 
@@ -239,8 +238,7 @@ export default function Recipes() {
     if (!selectedRecipe?.id) return
     setFcPctSaving(true)
     const newVal = parseFloat(recipeForm.target_fc_pct) || 30
-    const { error } = await supabase.from('recipes')
-      .update({ target_fc_pct: newVal })
+    const { error } = await scopedUpdate('recipes', { target_fc_pct: newVal })
       .eq('id', selectedRecipe.id)
     if (!error) {
       const strVal = String(newVal)
@@ -504,7 +502,6 @@ export default function Recipes() {
 
     const isSubRecipe = recipeForm.category === 'Sub-Recipe'
     const payload = {
-      client_id: clientId,
       name: recipeForm.name.trim(),
       category: recipeForm.category,
       selling_price: !isSubRecipe && recipeForm.selling_price ? parseFloat(recipeForm.selling_price) : null,
@@ -517,13 +514,13 @@ export default function Recipes() {
 
     let recipeId
     if (selectedRecipe) {
-      const { error } = await supabase.from('recipes').update(payload).eq('id', selectedRecipe.id)
+      const { error } = await scopedUpdate('recipes', payload).eq('id', selectedRecipe.id)
       if (error) { setError(error.message); setSaving(false); return }
       recipeId = selectedRecipe.id
       await supabase.from('recipe_ingredients').delete().eq('recipe_id', recipeId)
     } else {
       if (isSubRecipe) payload.recipe_code = getNextSubRecipeCode()
-      const { data, error } = await supabase.from('recipes').insert(payload).select().single()
+      const { data, error } = await scopedInsert('recipes', payload, { single: true })
       if (error) { setError(error.message); setSaving(false); return }
       recipeId = data.id
     }
@@ -543,19 +540,16 @@ export default function Recipes() {
       const uom = recipeForm.yield_uom || 'portion'
       // Ensure "Sub-Recipes" category exists
       let srCategoryId = null
-      const { data: existingCat } = await supabase
-        .from('categories').select('id').eq('client_id', clientId).eq('name', 'Sub-Recipes').maybeSingle()
+      const { data: existingCat } = await scopedFrom('categories', 'id').eq('name', 'Sub-Recipes').maybeSingle()
       if (existingCat) {
         srCategoryId = existingCat.id
       } else {
-        const { data: newCat, error: catErr } = await supabase
-          .from('categories').insert({ client_id: clientId, name: 'Sub-Recipes', sort_order: 999 }).select().single()
+        const { data: newCat, error: catErr } = await scopedInsert('categories', { name: 'Sub-Recipes', sort_order: 999 }, { single: true })
         if (catErr) { setError('SR sync — category create failed: ' + catErr.message); setSaving(false); return }
         srCategoryId = newCat?.id || null
       }
 
       const itemPayload = {
-        client_id: clientId,
         name: recipeForm.name.trim().toUpperCase(),
         uom,
         category_id: srCategoryId,
@@ -568,16 +562,16 @@ export default function Recipes() {
       const existingLinkedId = selectedRecipe?.linked_item_id
       let linkedItemId = existingLinkedId
       if (existingLinkedId) {
-        const { error: updateErr } = await supabase.from('items').update(itemPayload).eq('id', existingLinkedId)
+        const { error: updateErr } = await scopedUpdate('items', itemPayload).eq('id', existingLinkedId)
         if (updateErr) { setError('SR sync — item update failed: ' + updateErr.message); setSaving(false); return }
       } else {
         itemPayload.item_code = payload.recipe_code || selectedRecipe?.recipe_code || null
-        const { data: newItem, error: insertErr } = await supabase.from('items').insert(itemPayload).select().single()
+        const { data: newItem, error: insertErr } = await scopedInsert('items', itemPayload, { single: true })
         if (insertErr) { setError('SR sync — item insert failed: ' + insertErr.message); setSaving(false); return }
         linkedItemId = newItem?.id
       }
       if (linkedItemId) {
-        await supabase.from('recipes').update({ linked_item_id: linkedItemId }).eq('id', recipeId)
+        await scopedUpdate('recipes', { linked_item_id: linkedItemId }).eq('id', recipeId)
       }
     }
 
@@ -590,9 +584,9 @@ export default function Recipes() {
     if (!window.confirm(`Delete "${recipe.name}"?`)) return
     await supabase.from('recipe_ingredients').delete().eq('recipe_id', recipe.id)
     if (recipe.linked_item_id) {
-      await supabase.from('items').update({ is_active: false }).eq('id', recipe.linked_item_id)
+      await scopedUpdate('items', { is_active: false }).eq('id', recipe.linked_item_id)
     }
-    await supabase.from('recipes').delete().eq('id', recipe.id)
+    await scopedDelete('recipes').eq('id', recipe.id)
     init()
   }
 
@@ -729,8 +723,7 @@ export default function Recipes() {
     let created = 0
     try {
       for (const r of toCreate) {
-        const { data: rec, error: recErr } = await supabase.from('recipes').insert({
-          client_id: clientId,
+        const { data: rec, error: recErr } = await scopedInsert('recipes', {
           name: r.name,
           category: r.category || 'Food',
           selling_price: r.selling_price != null && !isNaN(r.selling_price) ? r.selling_price : null,
@@ -739,7 +732,7 @@ export default function Recipes() {
           yield_uom: 'portion',
           target_fc_pct: 30,
           is_active: true,
-        }).select().single()
+        }, { single: true })
         if (recErr) { setImportError(`Failed on "${r.name}": ${recErr.message}`); break }
         const ingPayload = r.matchedLines.map(l => ({
           recipe_id: rec.id,

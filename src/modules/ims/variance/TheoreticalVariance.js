@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import * as XLSX from 'xlsx'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
 
@@ -9,6 +10,7 @@ const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kart
 export default function TheoreticalVariance() {
   const { clientId, profile, loading: authLoading } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
+  const { scopedFrom } = useScopedDb()
 
   const [periods,         setPeriods]         = useState([])
   const [selectedPeriod,  setSelectedPeriod]  = useState(null)
@@ -27,10 +29,10 @@ export default function TheoreticalVariance() {
   async function init() {
     setLoading(true)
     const [{ data: p }, { data: i }, { data: c }, { data: r }] = await Promise.all([
-      supabase.from('monthly_periods').select('*').eq('client_id', effectiveClientId).order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
-      supabase.from('items').select('*, categories(name)').eq('client_id', effectiveClientId).eq('is_active', true).eq('is_sub_recipe', false),
-      supabase.from('categories').select('*').eq('client_id', effectiveClientId).order('sort_order'),
-      supabase.from('recipes').select('id, name, yield_qty').eq('client_id', effectiveClientId),
+      scopedFrom('monthly_periods').order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
+      scopedFrom('items', '*, categories(name)').eq('is_active', true).eq('is_sub_recipe', false),
+      scopedFrom('categories').order('sort_order'),
+      scopedFrom('recipes', 'id, name, yield_qty'),
     ])
 
     const tvRecipeIds = (r || []).map(x => x.id)
@@ -99,7 +101,7 @@ export default function TheoreticalVariance() {
       supabase.from('opening_stock').select('item_id, qty').eq('period_id', periodId),
       supabase.from('closing_stock').select('item_id, physical_qty').eq('period_id', periodId),
       supabase.from('purchase_entries').select('item_id, qty').eq('period_id', periodId),
-      supabase.from('vendor_returns').select('item_id, qty').eq('period_id', periodId),
+      scopedFrom('vendor_returns', 'item_id, qty').eq('period_id', periodId),
       supabase.from('wastages').select('item_id, qty').eq('period_id', periodId),
     ])
 

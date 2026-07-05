@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../../../supabaseClient'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
 import BsCalendarPicker from '../../../components/BsCalendarPicker'
 import * as XLSX from 'xlsx'
@@ -24,6 +24,7 @@ function bsLabel(iso) {
 
 export default function LeaveManagement() {
   const { clientId, isAdmin } = useAuth()
+  const { scopedFrom, scopedInsert, scopedUpsert, scopedUpdate } = useScopedDb()
   const today = adToBs(new Date())
   const [bsYear,    setBsYear]    = useState(today.year)
   const [tab,       setTab]       = useState('requests')
@@ -52,20 +53,17 @@ export default function LeaveManagement() {
   async function load() {
     setLoading(true); setMsg('')
     // Seed default leave types on first visit.
-    let { data: lt } = await supabase.from('hr_leave_types').select('*')
-      .eq('client_id', clientId).order('sort_order')
+    let { data: lt } = await scopedFrom('hr_leave_types').order('sort_order')
     if (!lt || lt.length === 0) {
-      await supabase.from('hr_leave_types').insert(
-        DEFAULT_LEAVE_TYPES.map(t => ({ ...t, client_id: clientId }))
-      )
-      const r = await supabase.from('hr_leave_types').select('*').eq('client_id', clientId).order('sort_order')
+      await scopedInsert('hr_leave_types', DEFAULT_LEAVE_TYPES)
+      const r = await scopedFrom('hr_leave_types').order('sort_order')
       lt = r.data || []
     }
     const [{ data: emps }, { data: pr }, { data: reqs }] = await Promise.all([
-      supabase.from('hr_employees').select('id, full_name, employee_code, department, status')
-        .eq('client_id', clientId).in('status', ['active', 'probation']).order('full_name'),
-      supabase.from('monthly_periods').select('id, bs_year, bs_month, status').eq('client_id', clientId),
-      supabase.from('hr_leave_requests').select('*').eq('client_id', clientId).order('start_date', { ascending: false }),
+      scopedFrom('hr_employees', 'id, full_name, employee_code, department, status')
+        .in('status', ['active', 'probation']).order('full_name'),
+      scopedFrom('monthly_periods', 'id, bs_year, bs_month, status'),
+      scopedFrom('hr_leave_requests').order('start_date', { ascending: false }),
     ])
     setTypes(lt); setEmployees(emps || []); setPeriods(pr || []); setRequests(reqs || [])
     setLoading(false)
@@ -78,8 +76,8 @@ export default function LeaveManagement() {
     if (!fEmp || !fType || !fStart || !fEnd) { setMsg('error:Fill employee, type and dates'); return }
     if (previewDays.length === 0) { setMsg('error:No working days in that range (end before start, or all Saturdays)'); return }
     setBusy(true); setMsg('')
-    const { error } = await supabase.from('hr_leave_requests').insert({
-      client_id: clientId, employee_id: fEmp, leave_type_id: fType,
+    const { error } = await scopedInsert('hr_leave_requests', {
+      employee_id: fEmp, leave_type_id: fType,
       start_date: fStart.slice(0, 10), end_date: fEnd.slice(0, 10),
       days: previewDays.length, reason: fReason || null, status: 'pending',
     })
@@ -100,12 +98,12 @@ export default function LeaveManagement() {
       const p = periodMap[`${d.bsYear}:${d.bsMonth}`]
       if (!p) { missing.push(`${d.bsDay} ${BS_MONTHS[d.bsMonth - 1]} ${d.bsYear}`); return }
       rows.push({
-        client_id: clientId, employee_id: req.employee_id, period_id: p.id,
+        employee_id: req.employee_id, period_id: p.id,
         bs_day: d.bsDay, status,
       })
     })
     if (rows.length) {
-      await supabase.from('hr_attendance').upsert(rows, { onConflict: 'employee_id,period_id,bs_day' })
+      await scopedUpsert('hr_attendance', rows, { onConflict: 'employee_id,period_id,bs_day' })
     }
     return missing
   }
@@ -116,7 +114,7 @@ export default function LeaveManagement() {
     if (!type) { setMsg('error:Leave type missing'); return }
     setBusy(true); setMsg('')
     const missing = await syncAttendance(req, type.paid ? 'paid_leave' : 'unpaid_leave')
-    await supabase.from('hr_leave_requests').update({ status: 'approved', decided_at: new Date().toISOString() }).eq('id', req.id)
+    await scopedUpdate('hr_leave_requests', { status: 'approved', decided_at: new Date().toISOString() }).eq('id', req.id)
     await load()
     setMsg(missing.length
       ? `error:Approved, but no period exists for: ${missing.join(', ')}. Create the period(s), then re-approve to mark those days.`
@@ -131,7 +129,7 @@ export default function LeaveManagement() {
     setBusy(true); setMsg('')
     // Only an already-approved request has attendance rows to undo.
     if (req.status === 'approved') await syncAttendance(req, 'present')
-    await supabase.from('hr_leave_requests').update({ status: newStatus, decided_at: new Date().toISOString() }).eq('id', req.id)
+    await scopedUpdate('hr_leave_requests', { status: newStatus, decided_at: new Date().toISOString() }).eq('id', req.id)
     await load(); setMsg(`ok:${verb}ed`); setBusy(false)
   }
 
@@ -162,13 +160,13 @@ export default function LeaveManagement() {
   // ── Leave types editing ───────────────────────────────────────────────────
   async function updateType(id, patch) {
     setTypes(ts => ts.map(t => t.id === id ? { ...t, ...patch } : t))
-    await supabase.from('hr_leave_types').update(patch).eq('id', id)
+    await scopedUpdate('hr_leave_types', patch).eq('id', id)
   }
   async function addType() {
     if (!clientId) { setMsg('error:No client selected'); return }
     setBusy(true)
-    const { error } = await supabase.from('hr_leave_types').insert({
-      client_id: clientId, name: 'New Leave Type', code: `custom_${Date.now().toString(36)}`,
+    const { error } = await scopedInsert('hr_leave_types', {
+      name: 'New Leave Type', code: `custom_${Date.now().toString(36)}`,
       paid: true, annual_quota: 0, carry_forward: false, sort_order: (types.length + 1) * 10,
     })
     if (error) setMsg('error:' + error.message)

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../../../supabaseClient'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
 import SearchableSelect from '../../../components/SearchableSelect'
 import BsCalendarPicker from '../../../components/BsCalendarPicker'
@@ -27,6 +27,7 @@ const EMPTY_REPAY = { repaid_date: '', amount: '', notes: '' }
 
 export default function Advances() {
   const { clientId } = useAuth()
+  const { scopedFrom, scopedInsert, scopedUpdate, scopedDelete } = useScopedDb()
   const [employees,  setEmployees]  = useState([])
   const [advances,   setAdvances]   = useState([])
   const [repayments, setRepayments] = useState([])
@@ -46,18 +47,15 @@ export default function Advances() {
     if (!clientId) return
     setLoading(true)
     const [{ data: emps }, { data: advs }, { data: reps }] = await Promise.all([
-      supabase.from('hr_employees').select('id, full_name, employee_code, status')
-        .eq('client_id', clientId).order('full_name'),
-      supabase.from('hr_advances').select('*')
-        .eq('client_id', clientId).order('issued_date', { ascending: false }),
-      supabase.from('hr_advance_repayments').select('*')
-        .eq('client_id', clientId).order('repaid_date'),
+      scopedFrom('hr_employees', 'id, full_name, employee_code, status').order('full_name'),
+      scopedFrom('hr_advances').order('issued_date', { ascending: false }),
+      scopedFrom('hr_advance_repayments').order('repaid_date'),
     ])
     setEmployees(emps || [])
     setAdvances(advs || [])
     setRepayments(reps || [])
     setLoading(false)
-  }, [clientId])
+  }, [clientId, scopedFrom])
 
   useEffect(() => { load() }, [load])
 
@@ -96,8 +94,7 @@ export default function Advances() {
     if (!addForm.issued_date) { setError('Set the issued date.'); return }
     if (!addForm.amount || parseFloat(addForm.amount) <= 0) { setError('Enter a valid amount.'); return }
     setError(''); setSaving(true)
-    const { error: err } = await supabase.from('hr_advances').insert({
-      client_id:          clientId,
+    const { error: err } = await scopedInsert('hr_advances', {
       employee_id:        addForm.employee_id,
       type:               addForm.type,
       issued_date:        addForm.issued_date,
@@ -118,8 +115,7 @@ export default function Advances() {
     const adv = advances.find(a => a.id === selected)
     if (!adv) return
     setError(''); setSaving(true)
-    const { error: err } = await supabase.from('hr_advance_repayments').insert({
-      client_id:   clientId,
+    const { error: err } = await scopedInsert('hr_advance_repayments', {
       advance_id:  selected,
       employee_id: adv.employee_id,
       repaid_date: repayForm.repaid_date,
@@ -132,7 +128,7 @@ export default function Advances() {
   }
 
   async function handleSettle(advId) {
-    await supabase.from('hr_advances').update({ status: 'settled' }).eq('id', advId)
+    await scopedUpdate('hr_advances', { status: 'settled' }).eq('id', advId)
     setSettleTarget(null)
     if (selected === advId) setSelected(null)
     load()
@@ -141,7 +137,7 @@ export default function Advances() {
   async function handleDelete(advId) {
     const hasReps = (repayMap[advId]?.rows || []).length > 0
     if (hasReps) return // button shouldn't show if repayments exist
-    await supabase.from('hr_advances').delete().eq('id', advId)
+    await scopedDelete('hr_advances').eq('id', advId)
     if (selected === advId) setSelected(null)
     load()
   }

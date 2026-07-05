@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
 import { printWithTitle } from '../../../utils/printTitle'
@@ -9,6 +10,7 @@ const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kart
 export default function MonthlySummary() {
   const { clientId, profile, loading: authLoading } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
+  const { scopedFrom } = useScopedDb()
   const [periods, setPeriods] = useState([])
   const [selectedPeriod, setSelectedPeriod] = useState(null)
   const [report, setReport] = useState(null)
@@ -18,9 +20,7 @@ export default function MonthlySummary() {
 
   async function init() {
     setLoading(true)
-    const { data: p } = await supabase
-      .from('monthly_periods').select('*')
-      .eq('client_id', effectiveClientId)
+    const { data: p } = await scopedFrom('monthly_periods')
       .order('bs_year', { ascending: false })
       .order('bs_month', { ascending: false })
     setPeriods(p || [])
@@ -50,16 +50,16 @@ export default function MonthlySummary() {
       { data: salesData },
       { data: recipes }
     ] = await Promise.all([
-      supabase.from('categories').select('*').eq('client_id', effectiveClientId).order('sort_order'),
-      supabase.from('items').select('*, categories(id, name)').eq('client_id', effectiveClientId).eq('is_active', true).eq('is_sub_recipe', false),
+      scopedFrom('categories').order('sort_order'),
+      scopedFrom('items', '*, categories(id, name)').eq('is_active', true).eq('is_sub_recipe', false),
       supabase.from('opening_stock').select('*').eq('period_id', periodId),
       supabase.from('closing_stock').select('*').eq('period_id', periodId),
       supabase.from('purchase_entries').select('item_id, qty, rate').eq('period_id', periodId),
-      supabase.from('vendor_returns').select('item_id, qty, rate').eq('period_id', periodId),
+      scopedFrom('vendor_returns', 'item_id, qty, rate').eq('period_id', periodId),
       supabase.from('wastages').select('item_id, qty').eq('period_id', periodId),
       supabase.from('staff_meals').select('item_id, qty').eq('period_id', periodId),
       supabase.from('sales_entries').select('recipe_id, qty_sold').eq('period_id', periodId),
-      supabase.from('recipes').select('id, selling_price').eq('client_id', effectiveClientId)
+      scopedFrom('recipes', 'id, selling_price')
     ])
 
     const openMap = {}; (opening || []).forEach(r => { openMap[r.item_id] = parseFloat(r.qty) || 0 })

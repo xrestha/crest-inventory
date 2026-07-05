@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
 import * as XLSX from 'xlsx'
@@ -11,6 +12,7 @@ const METHOD_COLORS = { Cash: 'var(--theme-green)', Credit: 'var(--theme-red)', 
 export default function PaymentReport() {
   const { clientId, profile, loading: authLoading } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
+  const { scopedFrom } = useScopedDb()
   const [periods, setPeriods] = useState([])
   const [selectedPeriod, setSelectedPeriod] = useState(null)
   const [purchases, setPurchases] = useState([])
@@ -22,7 +24,7 @@ export default function PaymentReport() {
 
   async function init() {
     setLoading(true)
-    const { data: p } = await supabase.from('monthly_periods').select('*').eq('client_id', effectiveClientId).order('bs_year', { ascending: false }).order('bs_month', { ascending: false })
+    const { data: p } = await scopedFrom('monthly_periods').order('bs_year', { ascending: false }).order('bs_month', { ascending: false })
     setPeriods(p || [])
     const open = (p || []).find(x => x.status === 'open')
     if (open) { setSelectedPeriod(open); await loadData(open.id) }
@@ -40,7 +42,7 @@ export default function PaymentReport() {
   async function loadData(periodId) {
     const [{ data: p }, { data: r }] = await Promise.all([
       supabase.from('purchase_entries').select('*, items(name, categories(name)), vendors(name)').eq('period_id', periodId).order('bs_day'),
-      supabase.from('vendor_returns').select('*, items(name), vendors(name)').eq('period_id', periodId).order('bs_day')
+      scopedFrom('vendor_returns', '*, items(name), vendors(name)').eq('period_id', periodId).order('bs_day')
     ])
     setPurchases(p || [])
     setReturns(r || [])

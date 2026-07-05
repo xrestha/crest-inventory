@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../../../supabaseClient'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
 import Fab from '../../../components/Fab'
 import { BS_MONTHS, getBsToday, daysInBsMonth } from '../../../utils/bsCalendar'
@@ -33,6 +33,7 @@ const BLANK = {
 
 export default function Overtime() {
   const { clientId } = useAuth()
+  const { scopedFrom, scopedInsert, scopedUpdate, scopedDelete } = useScopedDb()
 
   const [periods,   setPeriods]   = useState([])
   const [period,    setPeriod]    = useState(null)
@@ -53,12 +54,11 @@ export default function Overtime() {
       setLoading(true)
       const today = getBsToday()
       const [{ data: p }, { data: emps }, { data: hols }] = await Promise.all([
-        supabase.from('monthly_periods').select('*').eq('client_id', clientId)
+        scopedFrom('monthly_periods')
           .order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
-        supabase.from('hr_employees').select('id, full_name, employee_code, pay_basis, basic_salary, status')
-          .eq('client_id', clientId).in('status', ['active', 'probation']).order('full_name'),
-        supabase.from('hr_holiday_calendar').select('bs_year, bs_month, bs_day, name, holiday_type')
-          .eq('client_id', clientId),
+        scopedFrom('hr_employees', 'id, full_name, employee_code, pay_basis, basic_salary, status')
+          .in('status', ['active', 'probation']).order('full_name'),
+        scopedFrom('hr_holiday_calendar', 'bs_year, bs_month, bs_day, name, holiday_type'),
       ])
       setPeriods(p || [])
       setEmployees(emps || [])
@@ -79,15 +79,12 @@ export default function Overtime() {
   }, [clientId]) // eslint-disable-line
 
   const loadEntries = useCallback(async (bsYear, bsMonth) => {
-    const { data } = await supabase
-      .from('hr_overtime_entries')
-      .select('*')
-      .eq('client_id', clientId)
+    const { data } = await scopedFrom('hr_overtime_entries')
       .eq('bs_year', bsYear)
       .eq('bs_month', bsMonth)
       .order('bs_day').order('created_at')
     setEntries(data || [])
-  }, [clientId])
+  }, [scopedFrom])
 
   async function handlePeriodChange(id) {
     const p = periods.find(x => x.id === id); if (!p) return
@@ -145,21 +142,21 @@ export default function Overtime() {
       status: 'pending',
     }
     const { error } = form.editing
-      ? await supabase.from('hr_overtime_entries').update({ ...payload, status: form.editing.status }).eq('id', form.editing.id)
-      : await supabase.from('hr_overtime_entries').insert(payload)
+      ? await scopedUpdate('hr_overtime_entries', { ...payload, status: form.editing.status }).eq('id', form.editing.id)
+      : await scopedInsert('hr_overtime_entries', payload)
     if (error) { setMsg('error:' + error.message); setBusy(false); return }
     await loadEntries(form.bs_year, form.bs_month)
     closeDrawer(); setMsg('ok:Saved'); setBusy(false)
   }
 
   async function setStatus(id, status) {
-    await supabase.from('hr_overtime_entries').update({ status }).eq('id', id)
+    await scopedUpdate('hr_overtime_entries', { status }).eq('id', id)
     await loadEntries(period?.bs_year, period?.bs_month)
   }
 
   async function del(id) {
     if (!window.confirm('Delete this OT entry?')) return
-    await supabase.from('hr_overtime_entries').delete().eq('id', id)
+    await scopedDelete('hr_overtime_entries').eq('id', id)
     await loadEntries(period?.bs_year, period?.bs_month)
   }
 

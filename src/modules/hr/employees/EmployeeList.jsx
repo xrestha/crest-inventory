@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../../context/AuthContext'
-import { supabase } from '../../../supabaseClient'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
 import Fab from '../../../components/Fab'
 import EmployeeForm from './EmployeeForm'
@@ -41,6 +41,7 @@ function fmtDate(dateStr) {
 export default function EmployeeList() {
   const { clientId, profile } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
+  const { scopedFrom } = useScopedDb()
 
   const [employees, setEmployees] = useState([])
   const [loading, setLoading]     = useState(true)
@@ -58,11 +59,7 @@ export default function EmployeeList() {
 
   async function fetchEmployees() {
     setLoading(true)
-    const { data } = await supabase
-      .from('hr_employees')
-      .select('*')
-      .eq('client_id', effectiveClientId)
-      .order('full_name')
+    const { data } = await scopedFrom('hr_employees').order('full_name')
     setEmployees(data || [])
     setLoading(false)
   }

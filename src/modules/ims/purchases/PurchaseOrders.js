@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import { getBsToday } from '../../../utils/bsCalendar'
 import Tip from '../../../components/Tip'
@@ -31,6 +32,7 @@ function StatusBadge({ status }) {
 export default function PurchaseOrders() {
   const { clientId, profile, isAdmin, loading: authLoading } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
+  const { scopedFrom, scopedInsert, scopedUpdate, scopedDelete } = useScopedDb()
 
   const [periods,        setPeriods]        = useState([])
   const [selectedPeriod, setSelectedPeriod] = useState(null)
@@ -70,9 +72,9 @@ export default function PurchaseOrders() {
   async function init() {
     setLoading(true)
     const [{ data: p }, { data: v }, { data: i }] = await Promise.all([
-      supabase.from('monthly_periods').select('*').eq('client_id', effectiveClientId).order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
-      supabase.from('vendors').select('*').eq('client_id', effectiveClientId).eq('is_active', true).order('name'),
-      supabase.from('items').select('*, categories(name)').eq('client_id', effectiveClientId).eq('is_active', true).eq('is_sub_recipe', false).order('name'),
+      scopedFrom('monthly_periods').order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
+      scopedFrom('vendors').eq('is_active', true).order('name'),
+      scopedFrom('items', '*, categories(name)').eq('is_active', true).eq('is_sub_recipe', false).order('name'),
     ])
     setPeriods(p || [])
     setVendors(v || [])
@@ -86,10 +88,7 @@ export default function PurchaseOrders() {
   }
 
   async function loadPos(periodId) {
-    const { data } = await supabase
-      .from('purchase_orders')
-      .select('*, vendors(name), purchase_order_items(*, items(name, uom))')
-      .eq('client_id', effectiveClientId)
+    const { data } = await scopedFrom('purchase_orders', '*, vendors(name), purchase_order_items(*, items(name, uom))')
       .eq('period_id', periodId)
       .order('created_at', { ascending: false })
     setPos(data || [])
@@ -103,10 +102,7 @@ export default function PurchaseOrders() {
   }
 
   async function getNextPoNumber() {
-    const { data } = await supabase
-      .from('purchase_orders')
-      .select('po_number')
-      .eq('client_id', effectiveClientId)
+    const { data } = await scopedFrom('purchase_orders', 'po_number')
       .order('created_at', { ascending: false })
     let maxNum = 0
     ;(data || []).forEach(po => {
@@ -170,7 +166,6 @@ export default function PurchaseOrders() {
     setFormError('')
 
     const poPayload = {
-      client_id: effectiveClientId,
       vendor_id: poForm.vendor_id,
       period_id: poForm.period_id,
       notes: poForm.notes.trim() || null,
@@ -179,16 +174,13 @@ export default function PurchaseOrders() {
 
     let poId
     if (editingPo) {
-      const { error } = await supabase.from('purchase_orders').update(poPayload).eq('id', editingPo.id)
+      const { error } = await scopedUpdate('purchase_orders', poPayload).eq('id', editingPo.id)
       if (error) { setFormError(error.message); setSaving(false); return }
       poId = editingPo.id
       await supabase.from('purchase_order_items').delete().eq('po_id', poId)
     } else {
       const poNumber = await getNextPoNumber()
-      const { data, error } = await supabase
-        .from('purchase_orders')
-        .insert({ ...poPayload, po_number: poNumber, status: 'draft' })
-        .select().single()
+      const { data, error } = await scopedInsert('purchase_orders', { ...poPayload, po_number: poNumber, status: 'draft' }, { single: true })
       if (error) { setFormError(error.message); setSaving(false); return }
       poId = data.id
     }
@@ -210,13 +202,13 @@ export default function PurchaseOrders() {
   }
 
   async function markSent(po) {
-    await supabase.from('purchase_orders').update({ status: 'sent' }).eq('id', po.id)
+    await scopedUpdate('purchase_orders', { status: 'sent' }).eq('id', po.id)
     await loadPos(selectedPeriod.id)
   }
 
   async function cancelPo(po) {
     if (!window.confirm(`Cancel PO ${po.po_number}? This cannot be undone.`)) return
-    await supabase.from('purchase_orders').update({ status: 'cancelled' }).eq('id', po.id)
+    await scopedUpdate('purchase_orders', { status: 'cancelled' }).eq('id', po.id)
     await loadPos(selectedPeriod.id)
   }
 
@@ -227,7 +219,7 @@ export default function PurchaseOrders() {
       : `Delete draft PO ${po.po_number}? This cannot be undone.`
     if (!window.confirm(msg)) return
     await supabase.from('purchase_order_items').delete().eq('po_id', po.id)
-    await supabase.from('purchase_orders').delete().eq('id', po.id)
+    await scopedDelete('purchase_orders').eq('id', po.id)
     await loadPos(selectedPeriod.id)
   }
 
@@ -295,7 +287,7 @@ export default function PurchaseOrders() {
     const anyDone = updatedLines.some(l => l.totalReceived > 0)
     const newStatus = allDone ? 'received' : anyDone ? 'partial' : receivingPo.status
 
-    await supabase.from('purchase_orders').update({ status: newStatus }).eq('id', receivingPo.id)
+    await scopedUpdate('purchase_orders', { status: newStatus }).eq('id', receivingPo.id)
 
     setReceiveSaving(false)
     await loadPos(selectedPeriod.id)

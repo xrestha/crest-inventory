@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import * as XLSX from 'xlsx'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
 import SearchableSelect from '../../../components/SearchableSelect'
@@ -25,6 +26,7 @@ function dispPurch(baseQty, item) {
 export default function Stock() {
   const { clientId, profile, loading: authLoading, isAdmin, hasFeature } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
+  const { scopedFrom } = useScopedDb()
   const [periods, setPeriods] = useState([])
   const [selectedPeriod, setSelectedPeriod] = useState(null)
   const [items, setItems] = useState([])
@@ -115,9 +117,9 @@ export default function Stock() {
     }
 
     const [{ data: p }, { data: i }, { data: c }] = await Promise.all([
-      supabase.from('monthly_periods').select('*').eq('client_id', effectiveClientId).order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
-      supabase.from('items').select('*, categories(name)').eq('client_id', effectiveClientId).eq('is_active', true).order('name'),
-      supabase.from('categories').select('*').eq('client_id', effectiveClientId).order('sort_order')
+      scopedFrom('monthly_periods').order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
+      scopedFrom('items', '*, categories(name)').eq('is_active', true).order('name'),
+      scopedFrom('categories').order('sort_order')
     ])
     setPeriods(p || [])
     setItems(i || [])
@@ -142,7 +144,7 @@ export default function Stock() {
       supabase.from('wastages').select('id, item_id, qty, bs_day, reason, items(name, uom, per_uom_rate)').eq('period_id', periodId),
       supabase.from('staff_meals').select('item_id, qty').eq('period_id', periodId),
       supabase.from('purchase_entries').select('item_id, qty').eq('period_id', periodId),
-      supabase.from('vendor_returns').select('item_id, qty').eq('period_id', periodId)
+      scopedFrom('vendor_returns', 'item_id, qty').eq('period_id', periodId)
     ])
 
     const data = {}

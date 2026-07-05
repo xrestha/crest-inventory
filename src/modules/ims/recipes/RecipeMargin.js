@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import * as XLSX from 'xlsx'
 import Tip from '../../../components/Tip'
@@ -16,6 +17,7 @@ function fcColor(pct) {
 export default function RecipeMargin() {
   const { clientId, profile } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
+  const { scopedFrom } = useScopedDb()
   const [periods, setPeriods]         = useState([])
   const [selectedPeriod, setSelected] = useState(null)
   const [rows, setRows]               = useState([])
@@ -26,14 +28,13 @@ export default function RecipeMargin() {
 
   useEffect(() => {
     if (!effectiveClientId) return
-    supabase.from('monthly_periods')
-      .select('*').eq('client_id', effectiveClientId)
+    scopedFrom('monthly_periods')
       .order('bs_year', { ascending: false }).order('bs_month', { ascending: false })
       .then(({ data }) => {
         setPeriods(data || [])
         if (data?.length) setSelected(data[0])
       })
-  }, [effectiveClientId])
+  }, [effectiveClientId, scopedFrom])
 
   useEffect(() => {
     if (selectedPeriod) fetchData(selectedPeriod.id)
@@ -43,9 +44,7 @@ export default function RecipeMargin() {
     setLoading(true)
     const [{ data: salesData }, { data: recipes }] = await Promise.all([
       supabase.from('sales_entries').select('recipe_id, qty_sold').eq('period_id', periodId),
-      supabase.from('recipes')
-        .select('id, name, category, selling_price')
-        .eq('client_id', effectiveClientId)
+      scopedFrom('recipes', 'id, name, category, selling_price')
         .neq('category', 'Sub-Recipe')
         .eq('is_active', true),
     ])

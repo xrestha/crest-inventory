@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../../../supabaseClient'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
 import * as XLSX from 'xlsx'
 import { BS_MONTHS } from '../../../utils/bsCalendar'
@@ -17,6 +17,7 @@ const inp = {
 
 export default function PayrollRun() {
   const { clientId, isAdmin } = useAuth()
+  const { scopedFrom, scopedInsert, scopedUpdate, scopedDelete } = useScopedDb()
   const [periods,    setPeriods]    = useState([])
   const [period,     setPeriod]     = useState(null)
   const [run,        setRun]        = useState(null)
@@ -39,7 +40,7 @@ export default function PayrollRun() {
     if (!clientId) return
     async function init() {
       setLoading(true)
-      const { data: p } = await supabase.from('monthly_periods').select('*').eq('client_id', clientId)
+      const { data: p } = await scopedFrom('monthly_periods')
         .order('bs_year', { ascending: false }).order('bs_month', { ascending: false })
       setPeriods(p || [])
       const open = (p || []).find(x => x.status === 'open') || (p || [])[0]
@@ -54,15 +55,15 @@ export default function PayrollRun() {
       { data: runRow }, { data: emps }, { data: comps }, { data: att }, { data: ot },
       { data: advs },   { data: reps },
     ] = await Promise.all([
-      supabase.from('hr_payroll_runs').select('*').eq('client_id', clientId).eq('period_id', periodId).maybeSingle(),
-      supabase.from('hr_employees').select('id, full_name, employee_code, pay_basis, basic_salary, ssf_no, ssf_enrolled, life_insurance_premium, health_insurance_premium, marital_status, department, status')
-        .eq('client_id', clientId).in('status', ['active', 'probation']).order('full_name'),
-      supabase.from('hr_salary_components').select('*').eq('client_id', clientId),
-      supabase.from('hr_attendance').select('*').eq('period_id', periodId),
-      supabase.from('hr_overtime_entries').select('employee_id, ot_hours, ot_type')
-        .eq('client_id', clientId).eq('bs_year', bsYear).eq('bs_month', bsMonth).eq('status', 'approved'),
-      supabase.from('hr_advances').select('*').eq('client_id', clientId).order('issued_date'),
-      supabase.from('hr_advance_repayments').select('*').eq('client_id', clientId),
+      scopedFrom('hr_payroll_runs').eq('period_id', periodId).maybeSingle(),
+      scopedFrom('hr_employees', 'id, full_name, employee_code, pay_basis, basic_salary, ssf_no, ssf_enrolled, life_insurance_premium, health_insurance_premium, marital_status, department, status')
+        .in('status', ['active', 'probation']).order('full_name'),
+      scopedFrom('hr_salary_components'),
+      scopedFrom('hr_attendance').eq('period_id', periodId),
+      scopedFrom('hr_overtime_entries', 'employee_id, ot_hours, ot_type')
+        .eq('bs_year', bsYear).eq('bs_month', bsMonth).eq('status', 'approved'),
+      scopedFrom('hr_advances').order('issued_date'),
+      scopedFrom('hr_advance_repayments'),
     ])
     setEmployees(emps || [])
     setComponents(comps || [])
@@ -72,7 +73,7 @@ export default function PayrollRun() {
     setRepayments(reps || [])
     setRun(runRow || null)
     if (runRow) {
-      const { data: slips } = await supabase.from('hr_payslips').select('*').eq('run_id', runRow.id)
+      const { data: slips } = await scopedFrom('hr_payslips').eq('run_id', runRow.id)
       setPayslips(slips || [])
     } else {
       setPayslips([])
@@ -89,9 +90,7 @@ export default function PayrollRun() {
   // finalized payslips in the same fiscal year (months before the current one).
   async function fetchYtdMap() {
     const cur = fiscalYearOf(period.bs_year, period.bs_month)
-    const { data } = await supabase.from('hr_payslips')
-      .select('employee_id, gross, ssf_employee, tds, hr_payroll_runs!inner(status, monthly_periods!inner(bs_year, bs_month))')
-      .eq('client_id', clientId)
+    const { data } = await scopedFrom('hr_payslips', 'employee_id, gross, ssf_employee, tds, hr_payroll_runs!inner(status, monthly_periods!inner(bs_year, bs_month))')
       .eq('hr_payroll_runs.status', 'finalized')
     const map = {}
     ;(data || []).forEach(r => {
@@ -153,7 +152,7 @@ export default function PayrollRun() {
         annualHealthInsurance: parseFloat(emp.health_insurance_premium) || 0,
       })
       const net = slip.net_pay - tds
-      return { run_id: runId, client_id: clientId, employee_id: emp.id, ...slip, tds, net_pay: net }
+      return { run_id: runId, employee_id: emp.id, ...slip, tds, net_pay: net }
     })
   }
 
@@ -161,10 +160,9 @@ export default function PayrollRun() {
     if (!period || employees.length === 0) return
     setBusy(true); setMsg('')
     const ytdMap = await fetchYtdMap()
-    const { data: runRow, error: rErr } = await supabase.from('hr_payroll_runs')
-      .insert({ client_id: clientId, period_id: period.id, status: 'draft' }).select().single()
+    const { data: runRow, error: rErr } = await scopedInsert('hr_payroll_runs', { period_id: period.id, status: 'draft' }, { single: true })
     if (rErr) { setMsg('error:' + rErr.message); setBusy(false); return }
-    const { error: pErr } = await supabase.from('hr_payslips').insert(buildRows(runRow.id, ytdMap))
+    const { error: pErr } = await scopedInsert('hr_payslips', buildRows(runRow.id, ytdMap))
     if (pErr) { setMsg('error:' + pErr.message); setBusy(false); return }
     await loadAll(period.id, period.bs_year, period.bs_month)
     setMsg('ok:Payroll generated'); setBusy(false)
@@ -175,8 +173,8 @@ export default function PayrollRun() {
     if (!window.confirm('Recompute all payslips from current salary, attendance & tax? Manual TDS overrides will be reset.')) return
     setBusy(true); setMsg('')
     const ytdMap = await fetchYtdMap()
-    await supabase.from('hr_payslips').delete().eq('run_id', run.id)
-    const { error } = await supabase.from('hr_payslips').insert(buildRows(run.id, ytdMap))
+    await scopedDelete('hr_payslips').eq('run_id', run.id)
+    const { error } = await scopedInsert('hr_payslips', buildRows(run.id, ytdMap))
     if (error) { setMsg('error:' + error.message); setBusy(false); return }
     await loadAll(period.id, period.bs_year, period.bs_month)
     setMsg('ok:Recomputed'); setBusy(false)
@@ -187,7 +185,7 @@ export default function PayrollRun() {
     const tds = parseFloat(value) || 0
     const net = slip.gross + slip.ot_amount - slip.absence_deduction - slip.ssf_employee - slip.other_deductions - (slip.advance_deduction || 0) - tds
     setPayslips(ps => ps.map(s => s.id === slip.id ? { ...s, tds, net_pay: net } : s))
-    await supabase.from('hr_payslips').update({ tds, net_pay: net }).eq('id', slip.id)
+    await scopedUpdate('hr_payslips', { tds, net_pay: net }).eq('id', slip.id)
   }
 
   async function finalize() {
@@ -221,7 +219,6 @@ export default function PayrollRun() {
         const installment = parseFloat(adv.installment_amount) || outstanding
         const thisPayment = Math.min(Math.min(installment, outstanding), remaining)
         repayRows.push({
-          client_id: clientId,
           advance_id: adv.id,
           employee_id: slip.employee_id,
           repaid_date: today,
@@ -234,14 +231,14 @@ export default function PayrollRun() {
       }
     }
 
-    await supabase.from('hr_payroll_runs').update({ status: 'finalized', finalized_at: new Date().toISOString() }).eq('id', run.id)
+    await scopedUpdate('hr_payroll_runs', { status: 'finalized', finalized_at: new Date().toISOString() }).eq('id', run.id)
     // Idempotent: delete prior auto-repayments for this run, then re-insert
-    await supabase.from('hr_advance_repayments').delete().eq('payroll_run_id', run.id)
+    await scopedDelete('hr_advance_repayments').eq('payroll_run_id', run.id)
     if (repayRows.length > 0) {
-      await supabase.from('hr_advance_repayments').insert(repayRows)
+      await scopedInsert('hr_advance_repayments', repayRows)
     }
     if (settleIds.length > 0) {
-      await supabase.from('hr_advances').update({ status: 'settled' }).in('id', settleIds)
+      await scopedUpdate('hr_advances', { status: 'settled' }).in('id', settleIds)
     }
 
     await loadAll(period.id, period.bs_year, period.bs_month)
@@ -256,11 +253,10 @@ export default function PayrollRun() {
     setBusy(true)
 
     // Reverse auto-repayments created by this run
-    await supabase.from('hr_advance_repayments').delete().eq('payroll_run_id', run.id)
+    await scopedDelete('hr_advance_repayments').eq('payroll_run_id', run.id)
 
     // Reactivate any advances that were auto-settled by this run but now have outstanding balance
-    const { data: updatedReps } = await supabase.from('hr_advance_repayments')
-      .select('advance_id, amount').eq('client_id', clientId)
+    const { data: updatedReps } = await scopedFrom('hr_advance_repayments', 'advance_id, amount')
     const updatedRepaidMap = {}
     ;(updatedReps || []).forEach(r => {
       updatedRepaidMap[r.advance_id] = (updatedRepaidMap[r.advance_id] || 0) + (parseFloat(r.amount) || 0)
@@ -270,10 +266,10 @@ export default function PayrollRun() {
       .filter(a => Math.max(0, parseFloat(a.amount) - (updatedRepaidMap[a.id] || 0)) > 0.01)
       .map(a => a.id)
     if (reactivateIds.length > 0) {
-      await supabase.from('hr_advances').update({ status: 'active' }).in('id', reactivateIds)
+      await scopedUpdate('hr_advances', { status: 'active' }).in('id', reactivateIds)
     }
 
-    await supabase.from('hr_payroll_runs').update({ status: 'draft', finalized_at: null }).eq('id', run.id)
+    await scopedUpdate('hr_payroll_runs', { status: 'draft', finalized_at: null }).eq('id', run.id)
     await loadAll(period.id, period.bs_year, period.bs_month)
     setMsg('ok:Reopened'); setBusy(false)
   }

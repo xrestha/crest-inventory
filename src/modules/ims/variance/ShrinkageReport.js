@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
 
@@ -14,6 +15,7 @@ function shrinkageStatus(count, covered) {
 export default function ShrinkageReport() {
   const { clientId, profile, loading: authLoading } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
+  const { scopedFrom } = useScopedDb()
 
   const [periods, setPeriods]         = useState([])
   const [periodCount, setPeriodCount] = useState(6)
@@ -30,10 +32,10 @@ export default function ShrinkageReport() {
 
   async function init() {
     const [{ data: p }, { data: c }] = await Promise.all([
-      supabase.from('monthly_periods').select('*')
-        .eq('client_id', effectiveClientId).eq('status', 'closed')
+      scopedFrom('monthly_periods')
+        .eq('status', 'closed')
         .order('bs_year', { ascending: false }).order('bs_month', { ascending: false }),
-      supabase.from('categories').select('*').eq('client_id', effectiveClientId).order('sort_order'),
+      scopedFrom('categories').order('sort_order'),
     ])
     setCategories(c || [])
     setPeriods(p || [])
@@ -56,14 +58,14 @@ export default function ShrinkageReport() {
       { data: sales },
       { data: clientRecipes },
     ] = await Promise.all([
-      supabase.from('items').select('*, categories(name)').eq('client_id', effectiveClientId).eq('is_active', true).eq('is_sub_recipe', false),
+      scopedFrom('items', '*, categories(name)').eq('is_active', true).eq('is_sub_recipe', false),
       supabase.from('opening_stock').select('period_id, item_id, qty').in('period_id', periodIds),
       supabase.from('closing_stock').select('period_id, item_id, physical_qty').in('period_id', periodIds),
       supabase.from('purchase_entries').select('period_id, item_id, qty').in('period_id', periodIds),
-      supabase.from('vendor_returns').select('period_id, item_id, qty').in('period_id', periodIds),
+      scopedFrom('vendor_returns', 'period_id, item_id, qty').in('period_id', periodIds),
       supabase.from('wastages').select('period_id, item_id, qty').in('period_id', periodIds),
       supabase.from('sales_entries').select('period_id, recipe_id, qty_sold').in('period_id', periodIds),
-      supabase.from('recipes').select('id').eq('client_id', effectiveClientId),
+      scopedFrom('recipes', 'id'),
     ])
 
     const shrinkRecipeIds = (clientRecipes || []).map(r => r.id)

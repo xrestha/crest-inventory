@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../../../supabaseClient'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
 import * as XLSX from 'xlsx'
 import { SSF_CAP } from '../payrollConstants'
@@ -51,6 +51,7 @@ function calcGratuity(emp) {
 
 export default function GratuityTracker() {
   const { clientId } = useAuth()
+  const { scopedFrom } = useScopedDb()
   const [employees, setEmployees] = useState([])
   const [loading,   setLoading]   = useState(true)
   const [filter,    setFilter]    = useState('all')   // all | vested | vesting
@@ -63,10 +64,7 @@ export default function GratuityTracker() {
 
   async function load() {
     setLoading(true)
-    const { data } = await supabase
-      .from('hr_employees')
-      .select('id, full_name, employee_code, department, designation, join_date, basic_salary, pay_basis, ssf_enrolled, status')
-      .eq('client_id', clientId)
+    const { data } = await scopedFrom('hr_employees', 'id, full_name, employee_code, department, designation, join_date, basic_salary, pay_basis, ssf_enrolled, status')
       .in('status', ['active', 'probation'])
       .order('full_name')
     setEmployees(data || [])

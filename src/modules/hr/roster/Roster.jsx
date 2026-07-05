@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '../../../supabaseClient'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { adToBs, bsToAd, daysInBsMonth, getBsToday, BS_MONTHS } from '../../../utils/bsCalendar'
 import Tip from '../../../components/Tip'
 import { printWithTitle } from '../../../utils/printTitle'
@@ -249,6 +250,7 @@ function SuggestPopover({ candidates, shiftTypes, anchorRef, onAssign, onClose }
 // ── Shift Settings tab ────────────────────────────────────────────────────────
 
 function ShiftSettingsPanel({ clientId, shiftTypes, setShiftTypes }) {
+  const { scopedInsert, scopedUpdate, scopedDelete } = useScopedDb()
   const [editing, setEditing] = useState(null)
   const [adding,  setAdding]  = useState(false)
   const [form,    setForm]    = useState({ name: '', color: '#6B7280', start_time: '', end_time: '', hours: '' })
@@ -262,7 +264,7 @@ function ShiftSettingsPanel({ clientId, shiftTypes, setShiftTypes }) {
   async function saveEdit() {
     if (!editing?.name?.trim()) return
     setSaving(true)
-    const { data } = await supabase.from('hr_shift_types').update({
+    const { data } = await scopedUpdate('hr_shift_types', {
       name:       editing.name.trim(),
       color:      editing.color,
       start_time: editing.start_time || null,
@@ -277,15 +279,14 @@ function ShiftSettingsPanel({ clientId, shiftTypes, setShiftTypes }) {
   async function saveNew() {
     if (!form.name.trim() || !clientId) return
     setSaving(true)
-    const { data } = await supabase.from('hr_shift_types').insert({
-      client_id:  clientId,
+    const { data } = await scopedInsert('hr_shift_types', {
       name:       form.name.trim(),
       color:      form.color,
       start_time: form.start_time || null,
       end_time:   form.end_time   || null,
       hours:      resolveHours(form.start_time, form.end_time, form.hours),
       sort_order: shiftTypes.length + 1,
-    }).select().single()
+    }, { single: true })
     if (data) {
       setShiftTypes(prev => [...prev, data])
       setForm({ name: '', color: '#6B7280', start_time: '', end_time: '', hours: '' })
@@ -295,14 +296,13 @@ function ShiftSettingsPanel({ clientId, shiftTypes, setShiftTypes }) {
   }
 
   async function toggleActive(s) {
-    const { data } = await supabase.from('hr_shift_types')
-      .update({ active: !s.active }).eq('id', s.id).select().single()
+    const { data } = await scopedUpdate('hr_shift_types', { active: !s.active }).eq('id', s.id).select().single()
     if (data) setShiftTypes(prev => prev.map(x => x.id === data.id ? data : x))
   }
 
   async function deleteShift(id) {
     if (!window.confirm('Delete this shift type? Roster entries that use it will appear blank.')) return
-    await supabase.from('hr_shift_types').delete().eq('id', id)
+    await scopedDelete('hr_shift_types').eq('id', id)
     setShiftTypes(prev => prev.filter(s => s.id !== id))
   }
 
@@ -473,6 +473,7 @@ function ShiftSettingsPanel({ clientId, shiftTypes, setShiftTypes }) {
 
 export default function Roster() {
   const { clientId } = useAuth()
+  const { scopedFrom, scopedInsert, scopedUpsert, scopedDelete } = useScopedDb()
   const today = getBsToday()
 
   const [tab,        setTab]        = useState('board')
@@ -523,15 +524,13 @@ export default function Roster() {
         if (!months.has(k)) months.set(k, bs)
       })
       for (const bs of months.values()) {
-        const { data } = await supabase.from('demand_forecast_daily')
-          .select('bs_year, bs_month, bs_day, forecast_covers, forecast_revenue, generated_at')
-          .eq('client_id', clientId).is('recipe_id', null).eq('bs_year', bs.year).eq('bs_month', bs.month)
+        const { data } = await scopedFrom('demand_forecast_daily', 'bs_year, bs_month, bs_day, forecast_covers, forecast_revenue, generated_at')
+          .is('recipe_id', null).eq('bs_year', bs.year).eq('bs_month', bs.month)
         all.push(...(data || []))
       }
     } else {
-      const { data } = await supabase.from('demand_forecast_daily')
-        .select('bs_year, bs_month, bs_day, forecast_covers, forecast_revenue, generated_at')
-        .eq('client_id', clientId).is('recipe_id', null).eq('bs_year', bsYear).eq('bs_month', bsMonth)
+      const { data } = await scopedFrom('demand_forecast_daily', 'bs_year, bs_month, bs_day, forecast_covers, forecast_revenue, generated_at')
+        .is('recipe_id', null).eq('bs_year', bsYear).eq('bs_month', bsMonth)
       all = data || []
     }
     const map = {}
@@ -543,7 +542,7 @@ export default function Roster() {
       }
     }
     setForecastByDay(map)
-  }, [clientId, viewMode, weekStart, bsYear, bsMonth])
+  }, [clientId, viewMode, weekStart, bsYear, bsMonth, scopedFrom])
 
   useEffect(() => { loadForecast() }, [loadForecast])
 
@@ -588,10 +587,8 @@ export default function Roster() {
     if (!clientId) return
     async function init() {
       const [{ data: st }, { data: emps }] = await Promise.all([
-        supabase.from('hr_shift_types').select('*').eq('client_id', clientId).order('sort_order'),
-        supabase.from('hr_employees')
-          .select('id, full_name, employee_code, department, status, pay_basis, basic_salary')
-          .eq('client_id', clientId)
+        scopedFrom('hr_shift_types').order('sort_order'),
+        scopedFrom('hr_employees', 'id, full_name, employee_code, department, status, pay_basis, basic_salary')
           .in('status', ['active', 'probation'])
           .order('full_name'),
       ])
@@ -610,20 +607,19 @@ export default function Roster() {
         }
       }
       if (toDelete.length > 0) {
-        await supabase.from('hr_shift_types').delete().in('id', toDelete)
+        await scopedDelete('hr_shift_types').in('id', toDelete)
         shifts = Object.values(byName).sort((a, b) => (a.sort_order ?? 99) - (b.sort_order ?? 99))
       }
 
       if (shifts.length === 0) {
-        const { data: seeded } = await supabase.from('hr_shift_types')
-          .insert(DEFAULT_SHIFTS.map(s => ({ ...s, client_id: clientId }))).select()
+        const { data: seeded } = await scopedInsert('hr_shift_types', DEFAULT_SHIFTS)
         shifts = seeded || []
       }
       setShiftTypes(shifts)
       setEmployees(emps || [])
     }
     init()
-  }, [clientId])
+  }, [clientId, scopedFrom, scopedDelete, scopedInsert])
 
   // ── Load roster entries for the visible date range ─────────────────────────
   const loadRoster = useCallback(async () => {
@@ -640,13 +636,13 @@ export default function Roster() {
         if (!months.has(k)) months.set(k, bs)
       })
       for (const bs of months.values()) {
-        const { data } = await supabase.from('hr_roster').select('*')
-          .eq('client_id', clientId).eq('bs_year', bs.year).eq('bs_month', bs.month)
+        const { data } = await scopedFrom('hr_roster')
+          .eq('bs_year', bs.year).eq('bs_month', bs.month)
         all.push(...(data || []))
       }
     } else {
-      const { data } = await supabase.from('hr_roster').select('*')
-        .eq('client_id', clientId).eq('bs_year', bsYear).eq('bs_month', bsMonth)
+      const { data } = await scopedFrom('hr_roster')
+        .eq('bs_year', bsYear).eq('bs_month', bsMonth)
       all = data || []
     }
 
@@ -654,7 +650,7 @@ export default function Roster() {
     all.forEach(r => { map[rKey(r.bs_year, r.bs_month, r.bs_day, r.employee_id)] = r })
     setRoster(map)
     setLoading(false)
-  }, [clientId, viewMode, weekStart, bsYear, bsMonth])
+  }, [clientId, viewMode, weekStart, bsYear, bsMonth, scopedFrom])
 
   useEffect(() => { loadRoster() }, [loadRoster])
 
@@ -684,16 +680,14 @@ export default function Roster() {
 
     if (shiftTypeId === null) {
       const ids = existingRows.map(r => r.id).filter(Boolean)
-      if (ids.length > 0) await supabase.from('hr_roster').delete().in('id', ids)
+      if (ids.length > 0) await scopedDelete('hr_roster').in('id', ids)
     } else {
       const rows = cells.map(c => ({
-        client_id: clientId, employee_id: c.empId,
+        employee_id: c.empId,
         shift_type_id: shiftTypeId,
         bs_year: c.year, bs_month: c.month, bs_day: c.day,
       }))
-      const { data } = await supabase.from('hr_roster')
-        .upsert(rows, { onConflict: 'client_id,employee_id,bs_year,bs_month,bs_day' })
-        .select()
+      const { data } = await scopedUpsert('hr_roster', rows, { onConflict: 'client_id,employee_id,bs_year,bs_month,bs_day' })
       if (data) {
         setRoster(prev => {
           const next = { ...prev }

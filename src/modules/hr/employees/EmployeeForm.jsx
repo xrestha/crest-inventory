@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../../../supabaseClient'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
 import BsCalendarPicker from '../../../components/BsCalendarPicker'
 
@@ -78,6 +78,7 @@ const row = { display: 'flex', gap: 12 }
 const col = { flex: 1, display: 'flex', flexDirection: 'column' }
 
 export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
+  const { scopedFrom, scopedInsert, scopedUpdate, scopedDelete } = useScopedDb()
   const isEdit = !!employee
   const [tab, setTab]         = useState('personal')
   const [form, setForm]       = useState(isEdit ? { ...EMPTY, ...employee } : { ...EMPTY })
@@ -88,14 +89,11 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
   // Active employees available as reporting supervisors (exclude self to prevent self-reporting).
   useEffect(() => {
     if (!clientId) return
-    supabase
-      .from('hr_employees')
-      .select('id, full_name, designation')
-      .eq('client_id', clientId)
+    scopedFrom('hr_employees', 'id, full_name, designation')
       .eq('status', 'active')
       .order('full_name')
       .then(({ data }) => setSupervisors((data || []).filter(e => e.id !== employee?.id)))
-  }, [clientId, employee?.id])
+  }, [clientId, employee?.id, scopedFrom])
 
   function set(field, value) { setForm(f => ({ ...f, [field]: value })) }
 
@@ -116,7 +114,6 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
     const samePerm = !!form.same_as_permanent
     const payload = {
       ...form,
-      client_id:      clientId,
       full_name:      form.full_name.trim(),
       basic_salary:   parseFloat(form.basic_salary) || 0,
       gender:         form.gender         || null,
@@ -138,10 +135,10 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
     }
 
     if (isEdit) {
-      const { error: err } = await supabase.from('hr_employees').update(payload).eq('id', employee.id)
+      const { error: err } = await scopedUpdate('hr_employees', payload).eq('id', employee.id)
       if (err) { setError(err.message); setSaving(false); return }
     } else {
-      const { error: err } = await supabase.from('hr_employees').insert(payload)
+      const { error: err } = await scopedInsert('hr_employees', payload)
       if (err) { setError(err.message); setSaving(false); return }
     }
 
@@ -151,14 +148,14 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
 
   async function handleDeactivate() {
     if (!window.confirm(`Mark ${employee.full_name} as inactive?`)) return
-    await supabase.from('hr_employees').update({ status: 'inactive' }).eq('id', employee.id)
+    await scopedUpdate('hr_employees', { status: 'inactive' }).eq('id', employee.id)
     onSave()
   }
 
   async function handleDelete() {
     if (!window.confirm(`Delete ${employee.full_name}? This cannot be undone.`)) return
     if (!window.confirm(`Are you sure? All data for ${employee.full_name} will be permanently deleted.`)) return
-    const { error: err } = await supabase.from('hr_employees').delete().eq('id', employee.id)
+    const { error: err } = await scopedDelete('hr_employees').eq('id', employee.id)
     if (err) { setError(err.message); return }
     onSave()
   }

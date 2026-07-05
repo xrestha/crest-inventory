@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
 
@@ -18,6 +19,7 @@ const EMPTY_FORM = { name: '', category: '', price: '', vatRate: 0.13, costPrice
 export default function MenuPricing() {
   const { clientId, profile, clientModules } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
+  const { scopedFrom, scopedInsert, scopedUpdate, scopedDelete } = useScopedDb()
   const [recipes, setRecipes]   = useState([])
   const [loading, setLoading]   = useState(true)
   const [catTab, setCatTab]     = useState('All')
@@ -44,15 +46,11 @@ export default function MenuPricing() {
     setLoading(true)
 
     const [{ data: recipeData }, { data: subRecipeData }] = await Promise.all([
-      supabase.from('recipes')
-        .select('id, name, category, selling_price, vat_rate, pos_enabled, cost_price')
-        .eq('client_id', effectiveClientId)
+      scopedFrom('recipes', 'id, name, category, selling_price, vat_rate, pos_enabled, cost_price')
         .eq('is_active', true)
         .neq('category', 'Sub-Recipe')
         .order('name'),
-      supabase.from('recipes')
-        .select('id, yield_qty')
-        .eq('client_id', effectiveClientId)
+      scopedFrom('recipes', 'id, yield_qty')
         .eq('category', 'Sub-Recipe'),
     ])
 
@@ -120,10 +118,7 @@ export default function MenuPricing() {
     setRecipes(processed)
 
     // Load manual pairings (recipe_suggestions)
-    const { data: suggData } = await supabase
-      .from('recipe_suggestions')
-      .select('recipe_id, suggest_recipe_id')
-      .eq('client_id', effectiveClientId)
+    const { data: suggData } = await scopedFrom('recipe_suggestions', 'recipe_id, suggest_recipe_id')
     const sMap = {}
     ;(suggData || []).forEach(s => {
       if (!sMap[s.recipe_id]) sMap[s.recipe_id] = []
@@ -132,7 +127,7 @@ export default function MenuPricing() {
     setSuggMap(sMap)
 
     setLoading(false)
-  }, [effectiveClientId])
+  }, [effectiveClientId, scopedFrom])
 
   useEffect(() => { load() }, [load])
 
@@ -147,9 +142,7 @@ export default function MenuPricing() {
   async function togglePos(recipe) {
     const newVal = !recipe.pos_enabled
     setToggling(t => ({ ...t, [recipe.id]: true }))
-    const { error } = await supabase
-      .from('recipes')
-      .update({ pos_enabled: newVal })
+    const { error } = await scopedUpdate('recipes', { pos_enabled: newVal })
       .eq('id', recipe.id)
     if (!error) {
       setRecipes(rs => rs.map(r => r.id === recipe.id ? { ...r, pos_enabled: newVal } : r))
@@ -162,9 +155,7 @@ export default function MenuPricing() {
     if (!raw || raw <= 0) { setErrors(e => ({ ...e, [recipe.id]: 'Enter a valid price' })); return }
     const newExVat = raw / (1 + recipe.vat)
     setSaving(s => ({ ...s, [recipe.id]: true }))
-    const { error } = await supabase
-      .from('recipes')
-      .update({ selling_price: parseFloat(newExVat.toFixed(4)) })
+    const { error } = await scopedUpdate('recipes', { selling_price: parseFloat(newExVat.toFixed(4)) })
       .eq('id', recipe.id)
     if (error) {
       setErrors(e => ({ ...e, [recipe.id]: 'Save failed' }))
@@ -195,9 +186,8 @@ export default function MenuPricing() {
       cost_price:    costPriceNum > 0 ? costPriceNum : null,
     }
     const { error } = editingId
-      ? await supabase.from('recipes').update(payload).eq('id', editingId)
-      : await supabase.from('recipes').insert({
-          client_id:   effectiveClientId,
+      ? await scopedUpdate('recipes', payload).eq('id', editingId)
+      : await scopedInsert('recipes', {
           is_active:   true,
           pos_enabled: true,
           ...payload,
@@ -451,13 +441,11 @@ export default function MenuPricing() {
     if (!suggestModal || !effectiveClientId) return
     setPairingSaving(true)
     const recipeId = suggestModal.id
-    await supabase.from('recipe_suggestions').delete()
-      .eq('recipe_id', recipeId).eq('client_id', effectiveClientId)
+    await scopedDelete('recipe_suggestions').eq('recipe_id', recipeId)
     const newIds = [...pairingDraft]
     if (newIds.length > 0) {
-      await supabase.from('recipe_suggestions').insert(
+      await scopedInsert('recipe_suggestions',
         newIds.map((suggestRecipeId, i) => ({
-          client_id:         effectiveClientId,
           recipe_id:         recipeId,
           suggest_recipe_id: suggestRecipeId,
           sort_order:        i,

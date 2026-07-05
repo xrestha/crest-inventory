@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, Fragment } from 'react'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
 import { BS_MONTHS, bsToAd } from '../../../utils/bsCalendar'
@@ -11,6 +12,7 @@ const fmtNpr = n => n == null ? '—' : `NPR ${Math.round(n).toLocaleString()}`
 
 export default function DemandForecast() {
   const { clientId } = useAuth()
+  const { scopedFrom } = useScopedDb()
   const [horizon, setHorizon] = useState(7)
   const [forecast, setForecast] = useState([])
   const [recipeNames, setRecipeNames] = useState({})
@@ -35,11 +37,11 @@ export default function DemandForecast() {
     if (!clientId) return
     setLoading(true)
     const [{ data: rows }, { data: runs }] = await Promise.all([
-      supabase.from('demand_forecast_daily')
-        .select('*').eq('client_id', clientId).eq('horizon_days', horizon)
+      scopedFrom('demand_forecast_daily')
+        .eq('horizon_days', horizon)
         .order('bs_year').order('bs_month').order('bs_day'),
-      supabase.from('demand_forecast_run_log')
-        .select('*').eq('client_id', clientId).order('run_at', { ascending: false }).limit(1),
+      scopedFrom('demand_forecast_run_log')
+        .order('run_at', { ascending: false }).limit(1),
     ])
     setLastRun(runs?.[0] || null)
 
@@ -61,11 +63,11 @@ export default function DemandForecast() {
 
     const recipeIds = [...new Set(list.flatMap(d => Object.keys(d.forecastQtyByRecipe)))]
     if (recipeIds.length > 0) {
-      const { data: recs } = await supabase.from('recipes').select('id, name').in('id', recipeIds)
+      const { data: recs } = await scopedFrom('recipes', 'id, name').in('id', recipeIds)
       setRecipeNames(Object.fromEntries((recs || []).map(r => [r.id, r.name])))
     }
     setLoading(false)
-  }, [clientId, horizon])
+  }, [clientId, horizon, scopedFrom])
 
   useEffect(() => { loadStored() }, [loadStored])
 
