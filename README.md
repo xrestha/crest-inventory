@@ -132,6 +132,18 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S248 — 2026-07-05 — Roster: "Rec: N" header hint + Suggest-who-to-schedule popover
+
+Follow-up to S247/S246 — Aashish asked for Labor Forecast to actually help *while* building the roster, not just report on it afterward on a separate tab. Two additive, screen-only (`no-print`) pieces on the Board itself:
+
+**"Rec: N" header hint** — a day column whose header already computes a recommendation (via `laborForecastRows`, now also indexed into `forecastRowByKey` for O(1) lookup by day) shows a small "Rec: N" under the date, amber when the day is currently short-staffed. Reuses the exact same numbers as the Labor Forecast tab — no separate computation path to drift out of sync.
+
+**Suggest popover (✨, only on short-staffed days)** — new `SuggestPopover` component (visual twin of the existing `ShiftPicker`, two internal steps instead of a second floating element): step 1 ranks candidates via `candidatesFor(col)` — everyone in `filteredEmps` (i.e. whatever the Board's Department filter currently shows — this is how "same department" is satisfied without inventing a department concept on shifts/days, which don't have one) not already scheduled that day, sorted by fewest hours scheduled this period (`empHrs`, already existed); step 2 is the normal shift-type list. Picking a shift calls the existing `assignShiftBulk([{ year, month, day, empId }], shiftId)` for that single cell — no new assignment code path, same one drag-select already uses.
+
+No schema change, no new dependencies.
+
+**Files:** `src/modules/hr/roster/Roster.jsx`, `src/pages/Help.js`
+
 ### S247 — 2026-07-05 — Roster: Labor Forecast moved to its own tab (was leaking into the printed schedule)
 
 Live-testing S246 surfaced a real problem: the Forecast Revenue/Planned Labor Cost footer rows on the Roster Board were not marked `no-print`, so they showed up on the printed staff schedule — management-only cost/revenue data has no business being on the physical sheet handed to staff. The busiest-day banner was already `no-print` and never had this problem.

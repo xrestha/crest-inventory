@@ -269,6 +269,8 @@ const HR_FEATURES = [
       'A day shows "—" for forecast columns until Demand Forecast has been run/refreshed for that date on the Demand Forecast page',
       'Recommended Staff = forecasted covers ÷ Covers/Staff target (editable on the Labor Forecast tab, saved per client, default 20) — a starting estimate, not a hard rule',
       'Cost % turns amber above 35% of that day\'s forecasted revenue',
+      'On the Board itself, a short-staffed day\'s column header shows a small "Rec: N" hint (amber if you\'re currently under it) — hidden from print, screen-only, so you see the target while you\'re actually assigning shifts',
+      '✨ next to a short-staffed "Rec: N" opens Suggest — a ranked pick of who to schedule (fewest hours scheduled this period first, among whoever the Department filter currently shows) — pick a name, then pick their shift, same as assigning normally',
     ]
   },
   {
