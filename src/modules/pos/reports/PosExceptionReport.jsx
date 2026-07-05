@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom'
 import * as XLSX from 'xlsx'
 import { useAuth } from '../../../context/AuthContext'
 import { supabase } from '../../../supabaseClient'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
 import BsCalendarPicker from '../../../components/BsCalendarPicker'
 import { adToBs, formatAd, BS_MONTHS } from '../../../utils/bsCalendar'
@@ -24,6 +25,7 @@ function invoiceLabel(order, vatReg, prefix) {
 
 export default function PosExceptionReport() {
   const { clientId, hasPosAccess } = useAuth()
+  const { scopedFrom } = useScopedDb()
 
   const [fromIso, setFromIso] = useState(formatAd(new Date()))
   const [toIso,   setToIso]   = useState(formatAd(new Date()))
@@ -42,9 +44,7 @@ export default function PosExceptionReport() {
     const toTs   = new Date(toIso + 'T23:59:59.999').toISOString()
 
     const [{ data: orders }, { data: profs }, { data: settings }] = await Promise.all([
-      supabase.from('pos_orders')
-        .select('id, order_no, invoice_no, invoice_fy, close_type, close_reason, discount_amount, discount_reason, paid_amount, table_name, closed_at, closed_by')
-        .eq('client_id', clientId)
+      scopedFrom('pos_orders', 'id, order_no, invoice_no, invoice_fy, close_type, close_reason, discount_amount, discount_reason, paid_amount, table_name, closed_at, closed_by')
         .gte('closed_at', fromTs).lte('closed_at', toTs)
         .or('close_type.in.(void,writeoff),discount_amount.gt.0')
         .order('closed_at', { ascending: false }),
@@ -64,8 +64,7 @@ export default function PosExceptionReport() {
     let itemsByOrder = {}
     let costMap = {}
     if (needItems.length > 0) {
-      const { data: items } = await supabase.from('pos_order_items')
-        .select('order_id, qty, unit_price, vat_rate, recipe_id')
+      const { data: items } = await scopedFrom('pos_order_items', 'order_id, qty, unit_price, vat_rate, recipe_id')
         .in('order_id', needItems.map(o => o.id))
       itemsByOrder = (items || []).reduce((acc, i) => {
         ;(acc[i.order_id] = acc[i.order_id] || []).push(i)
@@ -89,7 +88,7 @@ export default function PosExceptionReport() {
       }
     }))
     setLoading(false)
-  }, [clientId, fromIso, toIso])
+  }, [clientId, fromIso, toIso, scopedFrom])
 
   useEffect(() => { if (clientId) load() }, [clientId, load])
 

@@ -7,6 +7,7 @@
 
 import { adToBs, BS_MONTHS } from '../../../utils/bsCalendar'
 import { numberToWordsNpr } from '../../../utils/numberToWords'
+import { scopedUpdate } from '../../../shared/scopedDb'
 
 export const COPY_LABEL = n => n <= 1 ? 'ORIGINAL-COPY' : n === 2 ? 'SECOND-COPY' : n === 3 ? 'THIRD-COPY' : `REPRINT #${n}`
 
@@ -95,11 +96,10 @@ export function printCreditNoteHtml(html, onPopupBlocked) {
   return true
 }
 
-// `supabase` passed in rather than imported, so this stays reusable from any page without
-// depending on where the client is instantiated. Shared by first-print (issuance) and reprint
-// (Credit Note Book) so print_count/copy-label behaves identically to buildBillHtml/printBill.
-export async function printCreditNote(supabase, creditNote, items, settings, outletName, hscMap) {
+// Shared by first-print (issuance) and reprint (Credit Note Book) so print_count/copy-label
+// behaves identically to buildBillHtml/printBill.
+export async function printCreditNote(clientId, creditNote, items, settings, outletName, hscMap) {
   const newCount = (creditNote.print_count || 0) + 1
-  await supabase.from('pos_credit_notes').update({ print_count: newCount }).eq('id', creditNote.id)
+  await scopedUpdate('pos_credit_notes', clientId, { print_count: newCount }).eq('id', creditNote.id)
   printCreditNoteHtml(buildCreditNoteHtml(creditNote, items, settings, outletName, hscMap, COPY_LABEL(newCount)))
 }

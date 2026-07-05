@@ -2,6 +2,8 @@ import { useState, useEffect, Fragment } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { supabase } from '../../../supabaseClient'
+import { scopedFrom as scopedFromRaw } from '../../../shared/scopedDb'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
 import { computeRecipeCosts } from '../../../utils/recipeCost'
 import { adToBs, BS_MONTHS } from '../../../utils/bsCalendar'
@@ -137,9 +139,8 @@ function buildShiftSlipHtml({ mode, outletName, propertyAddress, label, openedBy
 // Shared X/Z-report totals from a shift's closed orders — used for the live Current Shift view
 // and for expanding a past shift in History. Void/Comp valuation mirrors PosExceptionReport.jsx.
 async function loadShiftReport(clientId, shiftId) {
-  const { data: orders } = await supabase.from('pos_orders')
-    .select('id, close_type, payment_method, paid_amount, discount_amount, closed_at')
-    .eq('client_id', clientId).eq('shift_id', shiftId)
+  const { data: orders } = await scopedFromRaw('pos_orders', clientId, 'id, close_type, payment_method, paid_amount, discount_amount, closed_at')
+    .eq('shift_id', shiftId)
   const list = orders || []
 
   // Split-payment orders (multiple tenders against one bill) don't carry a single payment_method
@@ -149,16 +150,15 @@ async function loadShiftReport(clientId, shiftId) {
   const splitOrderIds = list.filter(o => o.close_type === 'paid' && o.payment_method === 'Split').map(o => o.id)
   let paymentsByOrder = {}
   if (splitOrderIds.length > 0) {
-    const { data: payments } = await supabase.from('pos_order_payments')
-      .select('order_id, payment_method, amount').in('order_id', splitOrderIds)
+    const { data: payments } = await scopedFromRaw('pos_order_payments', clientId, 'order_id, payment_method, amount')
+      .in('order_id', splitOrderIds)
     paymentsByOrder = (payments || []).reduce((acc, p) => { (acc[p.order_id] = acc[p.order_id] || []).push(p); return acc }, {})
   }
 
   const needItems = list.filter(o => o.close_type === 'void' || o.close_type === 'writeoff')
   let itemsByOrder = {}, costMap = {}
   if (needItems.length > 0) {
-    const { data: items } = await supabase.from('pos_order_items')
-      .select('order_id, qty, unit_price, vat_rate, recipe_id')
+    const { data: items } = await scopedFromRaw('pos_order_items', clientId, 'order_id, qty, unit_price, vat_rate, recipe_id')
       .in('order_id', needItems.map(o => o.id))
     itemsByOrder = (items || []).reduce((acc, i) => { (acc[i.order_id] = acc[i.order_id] || []).push(i); return acc }, {})
     const compRecipeIds = [...new Set((items || [])
@@ -257,6 +257,7 @@ function ReportBody({ report, opening, closing, variance }) {
 
 export default function PosShifts() {
   const { clientId, profile, hasPosAccess } = useAuth()
+  const { scopedFrom, scopedInsert, scopedUpdate } = useScopedDb()
 
   const [mainTab, setMainTab] = useState('current') // 'current' | 'history'
 
@@ -307,8 +308,7 @@ export default function PosShifts() {
   if (!hasPosAccess('supervisor')) return <Navigate to="/pos" replace />
 
   async function loadOpenShift() {
-    const { data } = await supabase.from('pos_shifts').select('*')
-      .eq('client_id', clientId).eq('status', 'open').maybeSingle()
+    const { data } = await scopedFrom('pos_shifts').eq('status', 'open').maybeSingle()
     setOpenShift(data || null)
     if (data) {
       setReportLoading(true)
@@ -322,8 +322,7 @@ export default function PosShifts() {
 
   async function loadHistory() {
     setHistoryLoading(true)
-    const { data } = await supabase.from('pos_shifts').select('*')
-      .eq('client_id', clientId).eq('status', 'closed')
+    const { data } = await scopedFrom('pos_shifts').eq('status', 'closed')
       .order('closed_at', { ascending: false })
     setHistory(data || [])
     setHistoryLoading(false)
@@ -354,8 +353,8 @@ export default function PosShifts() {
     setSaving(true); setMsg('')
     const opening_cash = sumDenoms(denomCounts)
     const openedAt = new Date()
-    const { error } = await supabase.from('pos_shifts').insert({
-      client_id: clientId, status: 'open', label: label.trim() || null,
+    const { error } = await scopedInsert('pos_shifts', {
+      status: 'open', label: label.trim() || null,
       opened_by: profile?.id || null, opening_cash,
       opening_denominations: Object.fromEntries(DENOMINATIONS.map(d => [d, parseInt(denomCounts[d]) || 0])),
     })
@@ -378,7 +377,7 @@ export default function PosShifts() {
     setSaving(true); setMsg('')
     const closing_cash = sumDenoms(denomCounts)
     const closedAt = new Date()
-    const { error } = await supabase.from('pos_shifts').update({
+    const { error } = await scopedUpdate('pos_shifts', {
       status: 'closed', closed_at: closedAt.toISOString(), closed_by: profile?.id || null,
       closing_cash,
       closing_denominations: Object.fromEntries(DENOMINATIONS.map(d => [d, parseInt(denomCounts[d]) || 0])),

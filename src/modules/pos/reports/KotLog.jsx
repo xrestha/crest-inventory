@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom'
 import * as XLSX from 'xlsx'
 import { useAuth } from '../../../context/AuthContext'
 import { supabase } from '../../../supabaseClient'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
 import BsCalendarPicker from '../../../components/BsCalendarPicker'
 import { formatAd, adToBs, BS_MONTHS } from '../../../utils/bsCalendar'
@@ -43,6 +44,7 @@ function flagOrderDiscrepancies(orderById, sentByOrderItem, currentByOrderItem) 
 
 export default function KotLog() {
   const { clientId, hasPosAccess } = useAuth()
+  const { scopedFrom } = useScopedDb()
 
   const [tab, setTab] = useState('register') // 'register' | 'reconciliation' | 'trail'
   const [fromIso, setFromIso] = useState(formatAd(new Date()))
@@ -60,15 +62,15 @@ export default function KotLog() {
     const toTs   = new Date(toIso + 'T23:59:59.999').toISOString()
 
     const [{ data: logs }, { data: profs }] = await Promise.all([
-      supabase.from('pos_kot_log').select('*')
-        .eq('client_id', clientId).gte('sent_at', fromTs).lte('sent_at', toTs)
+      scopedFrom('pos_kot_log')
+        .gte('sent_at', fromTs).lte('sent_at', toTs)
         .order('sent_at', { ascending: false }),
       supabase.from('profiles').select('id, full_name').eq('client_id', clientId),
     ])
     setStaffNames(Object.fromEntries((profs || []).map(p => [p.id, p.full_name])))
     setLogRows(logs || [])
     setRegisterLoading(false)
-  }, [clientId, fromIso, toIso])
+  }, [clientId, fromIso, toIso, scopedFrom])
 
   useEffect(() => { if (tab === 'register') loadRegister() }, [tab, loadRegister])
 
@@ -82,9 +84,8 @@ export default function KotLog() {
     const fromTs = new Date(fromIso + 'T00:00:00').toISOString()
     const toTs   = new Date(toIso + 'T23:59:59.999').toISOString()
 
-    const { data: orders } = await supabase.from('pos_orders')
-      .select('id, status, close_type, table_name, order_no, closed_at')
-      .eq('client_id', clientId).in('status', ['billed', 'voided'])
+    const { data: orders } = await scopedFrom('pos_orders', 'id, status, close_type, table_name, order_no, closed_at')
+      .in('status', ['billed', 'voided'])
       .gte('closed_at', fromTs).lte('closed_at', toTs)
     const orderList = orders || []
     if (orderList.length === 0) { setDiscrepancies([]); setReconLoading(false); return }
@@ -92,8 +93,8 @@ export default function KotLog() {
     const orderById = Object.fromEntries(orderList.map(o => [o.id, o]))
 
     const [{ data: logs }, { data: currentItems }] = await Promise.all([
-      supabase.from('pos_kot_log').select('order_id, items').in('order_id', orderIds),
-      supabase.from('pos_order_items').select('order_id, recipe_id, name, qty').in('order_id', orderIds),
+      scopedFrom('pos_kot_log', 'order_id, items').in('order_id', orderIds),
+      scopedFrom('pos_order_items', 'order_id, recipe_id, name, qty').in('order_id', orderIds),
     ])
 
     const sentByOrderItem = sumSentQtyByOrderItem(logs)
@@ -104,7 +105,7 @@ export default function KotLog() {
     const rows = flagOrderDiscrepancies(orderById, sentByOrderItem, currentByOrderItem)
     setDiscrepancies(rows.sort((a, b) => new Date(b.order.closed_at) - new Date(a.order.closed_at)))
     setReconLoading(false)
-  }, [clientId, fromIso, toIso])
+  }, [clientId, fromIso, toIso, scopedFrom])
 
   useEffect(() => { if (tab === 'reconciliation') loadReconciliation() }, [tab, loadReconciliation])
 
@@ -119,9 +120,8 @@ export default function KotLog() {
     const fromTs = new Date(fromIso + 'T00:00:00').toISOString()
     const toTs   = new Date(toIso + 'T23:59:59.999').toISOString()
 
-    const { data: orders } = await supabase.from('pos_orders')
-      .select('id, order_no, invoice_no, status, table_name, closed_at, buyer_name')
-      .eq('client_id', clientId).in('status', ['billed', 'voided'])
+    const { data: orders } = await scopedFrom('pos_orders', 'id, order_no, invoice_no, status, table_name, closed_at, buyer_name')
+      .in('status', ['billed', 'voided'])
       .gte('closed_at', fromTs).lte('closed_at', toTs)
     const orderList = orders || []
     if (orderList.length === 0) { setBillTrailRows([]); setBillTrailLoading(false); return }
@@ -129,9 +129,9 @@ export default function KotLog() {
     const orderById = Object.fromEntries(orderList.map(o => [o.id, o]))
 
     const [{ data: logs }, { data: currentItems }, { data: profs }] = await Promise.all([
-      supabase.from('pos_kot_log').select('id, order_id, station, items, sent_at, sent_by')
+      scopedFrom('pos_kot_log', 'id, order_id, station, items, sent_at, sent_by')
         .in('order_id', orderIds).order('sent_at', { ascending: true }),
-      supabase.from('pos_order_items').select('order_id, recipe_id, name, qty').in('order_id', orderIds),
+      scopedFrom('pos_order_items', 'order_id, recipe_id, name, qty').in('order_id', orderIds),
       supabase.from('profiles').select('id, full_name').eq('client_id', clientId),
     ])
     setStaffNames(Object.fromEntries((profs || []).map(p => [p.id, p.full_name])))
@@ -155,7 +155,7 @@ export default function KotLog() {
       .sort((a, b) => new Date(b.order.closed_at) - new Date(a.order.closed_at))
     setBillTrailRows(rows)
     setBillTrailLoading(false)
-  }, [clientId, fromIso, toIso])
+  }, [clientId, fromIso, toIso, scopedFrom])
 
   useEffect(() => { if (tab === 'trail') loadBillTrail() }, [tab, loadBillTrail])
 

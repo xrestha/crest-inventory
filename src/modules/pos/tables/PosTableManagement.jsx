@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { supabase } from '../../../supabaseClient'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Fab from '../../../components/Fab'
 import Modal from '../../../components/Modal'
 import Tip from '../../../components/Tip'
@@ -17,6 +18,7 @@ const DEFAULT_DISCOUNT_REASONS = ['Loyalty customer', 'Promo / coupon code', 'Ma
 
 export default function PosTableManagement() {
   const { clientId, hasPosAccess } = useAuth()
+  const { scopedFrom, scopedInsert, scopedUpdate, scopedDelete } = useScopedDb()
 
   const [mainTab, setMainTab] = useState('tables') // 'tables' | 'routing' | 'notes' | 'hsc' | 'discounts'
 
@@ -73,8 +75,7 @@ export default function PosTableManagement() {
 
   async function load() {
     setLoading(true)
-    const { data } = await supabase
-      .from('pos_tables').select('*').eq('client_id', clientId)
+    const { data } = await scopedFrom('pos_tables')
       .order('sort_order').order('name')
     const rows = data || []
     setTables(rows)
@@ -110,13 +111,12 @@ export default function PosTableManagement() {
     if (!clientId) return
     setQsSaving(true); setQsMsg('')
     const rows = Array.from({ length: count }, (_, i) => ({
-      client_id:  clientId,
       name:       `${qs.prefix.trim()} ${start + i}`,
       section:    qs.section.trim() || null,
       capacity:   parseInt(qs.capacity, 10) || 4,
       sort_order: start + i,
     }))
-    const { error } = await supabase.from('pos_tables').insert(rows)
+    const { error } = await scopedInsert('pos_tables', rows)
     if (error) { setQsMsg('error:' + error.message); setQsSaving(false); return }
     await load()
     setQsMsg(`ok:Created ${count} table${count !== 1 ? 's' : ''}.`)
@@ -143,34 +143,33 @@ export default function PosTableManagement() {
     if (!clientId) return
     setSaving(true); setMsg('')
     const payload = {
-      client_id:  clientId,
       name:       form.name.trim(),
       section:    form.section.trim() || null,
       capacity:   parseInt(form.capacity, 10) || 4,
       ...(target ? { sort_order: parseInt(form.sort_order, 10) || 0 } : {}),
     }
     const { error } = target
-      ? await supabase.from('pos_tables').update(payload).eq('id', target.id)
-      : await supabase.from('pos_tables').insert(payload)
+      ? await scopedUpdate('pos_tables', payload).eq('id', target.id)
+      : await scopedInsert('pos_tables', payload)
     if (error) { setMsg('error:' + error.message); setSaving(false); return }
     await load(); closeModal(); setSaving(false)
   }
 
   async function handleDelete() {
     if (!target || !window.confirm(`Delete "${target.name}"? This cannot be undone.`)) return
-    await supabase.from('pos_tables').delete().eq('id', target.id)
+    await scopedDelete('pos_tables').eq('id', target.id)
     await load(); closeModal()
   }
 
   async function cycleStatus(t, e) {
     e.stopPropagation()
     const next = STATUS_CYCLE[(STATUS_CYCLE.indexOf(t.status) + 1) % STATUS_CYCLE.length]
-    await supabase.from('pos_tables').update({ status: next }).eq('id', t.id)
+    await scopedUpdate('pos_tables', { status: next }).eq('id', t.id)
     setTables(prev => prev.map(r => r.id === t.id ? { ...r, status: next } : r))
   }
 
   async function handleStatusChange(val) {
-    await supabase.from('pos_tables').update({ status: val }).eq('id', target.id)
+    await scopedUpdate('pos_tables', { status: val }).eq('id', target.id)
     setTables(prev => prev.map(r => r.id === target.id ? { ...r, status: val } : r))
     setTarget(t => ({ ...t, status: val }))
   }
@@ -180,7 +179,7 @@ export default function PosTableManagement() {
   async function loadRouting() {
     setRoutingLoading(true)
     const [{ data: recipeData }, { data: settingsData }] = await Promise.all([
-      supabase.from('recipes').select('category').eq('client_id', clientId).eq('pos_enabled', true).neq('category', 'Sub-Recipe'),
+      scopedFrom('recipes', 'category').eq('pos_enabled', true).neq('category', 'Sub-Recipe'),
       supabase.from('settings').select('pos_bot_categories').eq('client_id', clientId).maybeSingle(),
     ])
     const cats = Array.from(new Set((recipeData || []).map(r => r.category).filter(Boolean))).sort()
@@ -267,9 +266,8 @@ export default function PosTableManagement() {
 
   async function loadHscItems() {
     setHscLoading(true)
-    const { data } = await supabase
-      .from('recipes').select('id, name, category, hsc_code')
-      .eq('client_id', clientId).eq('is_active', true).eq('pos_enabled', true)
+    const { data } = await scopedFrom('recipes', 'id, name, category, hsc_code')
+      .eq('is_active', true).eq('pos_enabled', true)
       .neq('category', 'Sub-Recipe').order('name')
     setHscItems(data || [])
     setHscLoading(false)
@@ -285,7 +283,7 @@ export default function PosTableManagement() {
     const trimmed = value.trim()
     if (trimmed === (recipe.hsc_code || '')) return
     setHscSaving(s => ({ ...s, [recipe.id]: true }))
-    await supabase.from('recipes').update({ hsc_code: trimmed || null }).eq('id', recipe.id)
+    await scopedUpdate('recipes', { hsc_code: trimmed || null }).eq('id', recipe.id)
     setHscItems(items => items.map(r => r.id === recipe.id ? { ...r, hsc_code: trimmed || null } : r))
     setHscSaving(s => ({ ...s, [recipe.id]: false }))
   }

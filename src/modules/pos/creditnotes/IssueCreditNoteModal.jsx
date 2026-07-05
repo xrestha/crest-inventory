@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../../context/AuthContext'
 import { supabase } from '../../../supabaseClient'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
 import { getBsToday, adToBs, BS_MONTHS } from '../../../utils/bsCalendar'
 import { computeOrderAmounts } from '../../../utils/posBillingMath'
@@ -20,6 +21,7 @@ function invoiceLabel(order, vatReg, prefix) {
 // identically from either page.
 export default function IssueCreditNoteModal({ order, onClose, onIssued }) {
   const { clientId, profile, hasPosAccess } = useAuth()
+  const { scopedFrom, scopedInsert, scopedUpdate } = useScopedDb()
 
   const [items, setItems] = useState([])
   const [settings, setSettings] = useState({ is_vat_registered: true, invoice_prefix: '', vat_number: '', property_address: '', property_phone: '' })
@@ -38,7 +40,7 @@ export default function IssueCreditNoteModal({ order, onClose, onIssued }) {
   useEffect(() => {
     if (!clientId) return
     Promise.all([
-      supabase.from('pos_order_items').select('recipe_id, name, qty, unit_price, vat_rate').eq('order_id', order.id),
+      scopedFrom('pos_order_items', 'recipe_id, name, qty, unit_price, vat_rate').eq('order_id', order.id),
       supabase.from('settings').select('is_vat_registered, invoice_prefix, vat_number, property_address, property_phone').eq('client_id', clientId).maybeSingle(),
       supabase.from('clients').select('name').eq('id', clientId).single(),
     ]).then(([{ data: its }, { data: st }, { data: cl }]) => {
@@ -53,13 +55,13 @@ export default function IssueCreditNoteModal({ order, onClose, onIssued }) {
       setOutletName(cl?.name || '')
       const recipeIds = [...new Set((its || []).map(i => i.recipe_id).filter(Boolean))]
       if (recipeIds.length > 0) {
-        supabase.from('recipes').select('id, hsc_code').in('id', recipeIds).then(({ data }) => {
+        scopedFrom('recipes', 'id, hsc_code').in('id', recipeIds).then(({ data }) => {
           setHscMap(Object.fromEntries((data || []).map(r => [r.id, r.hsc_code])))
         })
       }
       setLoading(false)
     })
-  }, [clientId, order.id])
+  }, [clientId, order.id, scopedFrom])
 
   if (!hasPosAccess('manager')) {
     return (
@@ -84,7 +86,6 @@ export default function IssueCreditNoteModal({ order, onClose, onIssued }) {
     const original_invoice_label = invoiceLabel(order, vatReg, settings.invoice_prefix)
 
     const payload = {
-      client_id: clientId,
       order_id: order.id,
       invoice_fy: order.invoice_fy,
       original_invoice_no: order.invoice_no,
@@ -104,10 +105,10 @@ export default function IssueCreditNoteModal({ order, onClose, onIssued }) {
       issued_by: profile?.id || null,
     }
 
-    const { data: created, error } = await supabase.from('pos_credit_notes').insert(payload).select('*').single()
+    const { data: created, error } = await scopedInsert('pos_credit_notes', payload, { single: true })
     if (error) { setMsg('error:' + error.message); setSubmitting(false); return }
 
-    await supabase.from('pos_orders').update({ credit_note_id: created.id }).eq('id', order.id)
+    await scopedUpdate('pos_orders', { credit_note_id: created.id }).eq('id', order.id)
 
     // Best-effort revenue correction — mirrors writeSalesEntries' own bail/error-swallow pattern in
     // PosOrders.jsx: post negative sales_entries into TODAY's open period (the period the
@@ -115,8 +116,7 @@ export default function IssueCreditNoteModal({ order, onClose, onIssued }) {
     // deliberately NOT reversed — the food was already served; this corrects billing/tax, not stock.
     try {
       const today = getBsToday()
-      const { data: periods } = await supabase
-        .from('monthly_periods').select('*').eq('client_id', clientId)
+      const { data: periods } = await scopedFrom('monthly_periods')
         .order('bs_year', { ascending: false }).order('bs_month', { ascending: false })
       const open = (periods || []).find(p => p.status === 'open')
       if (open && today.year === open.bs_year && today.month === open.bs_month) {
@@ -129,7 +129,7 @@ export default function IssueCreditNoteModal({ order, onClose, onIssued }) {
       console.error('credit note sales_entries reversal failed:', err)
     }
 
-    await printCreditNote(supabase, created, items, settings, outletName, hscMap)
+    await printCreditNote(clientId, created, items, settings, outletName, hscMap)
 
     setSubmitting(false)
     onIssued?.(created)

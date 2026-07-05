@@ -4,6 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 import * as XLSX from 'xlsx'
 import { useAuth } from '../../../context/AuthContext'
 import { supabase } from '../../../supabaseClient'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
 import BsCalendarPicker from '../../../components/BsCalendarPicker'
 import ChartCard from '../../../components/ChartCard'
@@ -32,6 +33,7 @@ const PAY_METHOD_ORDER = ['Cash', 'Card', 'eSewa', 'Khalti', 'FonePay', 'Credit'
 
 export default function SalesReport() {
   const { clientId, hasPosAccess } = useAuth()
+  const { scopedFrom } = useScopedDb()
   const today = getBsToday()
   const currentFy = getBsFiscalYear(today.year, today.month)
 
@@ -65,9 +67,8 @@ export default function SalesReport() {
     const toTs   = new Date(toIso + 'T23:59:59.999').toISOString()
 
     const [{ data: orderData }, { data: settings }, { data: profs }] = await Promise.all([
-      supabase.from('pos_orders')
-        .select('id, order_no, invoice_no, buyer_name, buyer_pan, buyer_phone, discount_amount, closed_at, credit_note_id, payment_method, bill_remarks, closed_by, table_name')
-        .eq('client_id', clientId).eq('close_type', 'paid')
+      scopedFrom('pos_orders', 'id, order_no, invoice_no, buyer_name, buyer_pan, buyer_phone, discount_amount, closed_at, credit_note_id, payment_method, bill_remarks, closed_by, table_name')
+        .eq('close_type', 'paid')
         .gte('closed_at', fromTs).lte('closed_at', toTs),
       supabase.from('settings').select('is_vat_registered').eq('client_id', clientId).maybeSingle(),
       supabase.from('profiles').select('id, full_name').eq('client_id', clientId),
@@ -79,8 +80,7 @@ export default function SalesReport() {
 
     let byOrder = {}
     if (orderList.length > 0) {
-      const { data: items } = await supabase.from('pos_order_items')
-        .select('order_id, recipe_id, name, category, qty, unit_price, vat_rate').in('order_id', orderList.map(o => o.id))
+      const { data: items } = await scopedFrom('pos_order_items', 'order_id, recipe_id, name, category, qty, unit_price, vat_rate').in('order_id', orderList.map(o => o.id))
       byOrder = (items || []).reduce((acc, i) => {
         ;(acc[i.order_id] = acc[i.order_id] || []).push(i)
         return acc
@@ -88,7 +88,7 @@ export default function SalesReport() {
     }
     setItemsByOrder(byOrder)
     setRangeLoading(false)
-  }, [clientId, fromIso, toIso])
+  }, [clientId, fromIso, toIso, scopedFrom])
 
   useEffect(() => { loadRange() }, [loadRange])
 
@@ -216,7 +216,7 @@ export default function SalesReport() {
 
   useEffect(() => {
     if (!clientId) return
-    supabase.from('pos_orders').select('invoice_fy').eq('client_id', clientId).not('invoice_fy', 'is', null)
+    scopedFrom('pos_orders', 'invoice_fy').not('invoice_fy', 'is', null)
       .then(({ data }) => {
         const fys = [...new Set((data || []).map(r => r.invoice_fy))].sort((a, b) => parseInt(b, 10) - parseInt(a, 10))
         if (fys.length > 0) {
@@ -231,9 +231,8 @@ export default function SalesReport() {
     if (!clientId) return
     setOneLakhLoading(true)
     const [{ data: fyOrders }, { data: settings }] = await Promise.all([
-      supabase.from('pos_orders')
-        .select('id, buyer_name, buyer_pan, discount_amount')
-        .eq('client_id', clientId).eq('status', 'billed').eq('close_type', 'paid').eq('invoice_fy', selectedFy)
+      scopedFrom('pos_orders', 'id, buyer_name, buyer_pan, discount_amount')
+        .eq('status', 'billed').eq('close_type', 'paid').eq('invoice_fy', selectedFy)
         // Credit-noted bills are excluded — a corrected/cancelled invoice must not push a party
         // over the Annexure 13 one-lakh disclosure threshold.
         .is('credit_note_id', null),
@@ -244,8 +243,7 @@ export default function SalesReport() {
 
     let byOrder = {}
     if (list.length > 0) {
-      const { data: items } = await supabase.from('pos_order_items')
-        .select('order_id, qty, unit_price, vat_rate').in('order_id', list.map(o => o.id))
+      const { data: items } = await scopedFrom('pos_order_items', 'order_id, qty, unit_price, vat_rate').in('order_id', list.map(o => o.id))
       byOrder = (items || []).reduce((acc, i) => {
         ;(acc[i.order_id] = acc[i.order_id] || []).push(i)
         return acc
@@ -268,7 +266,7 @@ export default function SalesReport() {
     }
     setParties(Object.entries(grouped).map(([key, v]) => ({ key, ...v })).sort((a, b) => b.net - a.net))
     setOneLakhLoading(false)
-  }, [clientId, selectedFy])
+  }, [clientId, selectedFy, scopedFrom])
 
   // Lazy — the FY-wide fetch (every paid order + all its items) only runs once the tab is opened
   useEffect(() => { if (tab === 'onelakh') loadOneLakh() }, [tab, loadOneLakh])

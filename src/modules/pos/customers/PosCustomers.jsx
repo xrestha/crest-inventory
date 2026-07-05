@@ -2,6 +2,7 @@ import { Fragment, useState, useEffect } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { supabase } from '../../../supabaseClient'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
 
 const SETTLE_METHODS = ['Cash', 'Card', 'eSewa', 'Khalti', 'FonePay']
@@ -20,6 +21,7 @@ function daysAgo(iso) {
 
 export default function PosCustomers() {
   const { clientId, profile, hasPosAccess } = useAuth()
+  const { scopedFrom, scopedUpdate } = useScopedDb()
 
   const [mainTab, setMainTab] = useState('customers') // 'customers' | 'credit'
 
@@ -56,19 +58,15 @@ export default function PosCustomers() {
 
   async function loadCustomers() {
     setCustLoading(true)
-    const { data } = await supabase
-      .from('pos_customers').select('*')
-      .eq('client_id', clientId).order('name')
+    const { data } = await scopedFrom('pos_customers').order('name')
     setCustomers(data || [])
     setCustLoading(false)
   }
 
   async function loadCredit() {
     setCreditLoading(true)
-    const { data } = await supabase
-      .from('pos_orders')
-      .select('id, order_no, invoice_no, invoice_fy, close_type, paid_amount, buyer_name, buyer_phone, closed_at, credit_settled_at, credit_settled_method')
-      .eq('client_id', clientId).eq('payment_method', 'Credit').eq('status', 'billed')
+    const { data } = await scopedFrom('pos_orders', 'id, order_no, invoice_no, invoice_fy, close_type, paid_amount, buyer_name, buyer_phone, closed_at, credit_settled_at, credit_settled_method')
+      .eq('payment_method', 'Credit').eq('status', 'billed')
       .order('closed_at', { ascending: false })
     setCreditBills(data || [])
     setCreditLoading(false)
@@ -85,17 +83,15 @@ export default function PosCustomers() {
     setExpandedId(cust.id)
     if (historyMap[cust.id]) return
     setHistoryMap(m => ({ ...m, [cust.id]: 'loading' }))
-    const { data } = await supabase
-      .from('pos_orders')
-      .select('id, order_no, invoice_no, invoice_fy, close_type, payment_method, paid_amount, closed_at, credit_settled_at')
-      .eq('client_id', clientId).eq('status', 'billed').eq('buyer_phone', cust.phone)
+    const { data } = await scopedFrom('pos_orders', 'id, order_no, invoice_no, invoice_fy, close_type, payment_method, paid_amount, closed_at, credit_settled_at')
+      .eq('status', 'billed').eq('buyer_phone', cust.phone)
       .order('closed_at', { ascending: false }).limit(50)
     setHistoryMap(m => ({ ...m, [cust.id]: data || [] }))
   }
 
   async function settleBill(order, method) {
     setSettleBusy(true); setSettleMsg('')
-    const { error } = await supabase.from('pos_orders').update({
+    const { error } = await scopedUpdate('pos_orders', {
       credit_settled_at:     new Date().toISOString(),
       credit_settled_by:     profile?.id || null,
       credit_settled_method: method,

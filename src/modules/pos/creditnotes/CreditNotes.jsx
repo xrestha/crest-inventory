@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom'
 import * as XLSX from 'xlsx'
 import { useAuth } from '../../../context/AuthContext'
 import { supabase } from '../../../supabaseClient'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
 import BsCalendarPicker from '../../../components/BsCalendarPicker'
 import { adToBs, formatAd, BS_MONTHS } from '../../../utils/bsCalendar'
@@ -13,6 +14,7 @@ const fmtNpr = n => `NPR ${Math.round(n).toLocaleString()}`
 
 export default function CreditNotes() {
   const { clientId, hasPosAccess } = useAuth()
+  const { scopedFrom } = useScopedDb()
 
   const [tab, setTab] = useState('issue') // 'issue' | 'book'
   const [fromIso, setFromIso] = useState(formatAd(new Date()))
@@ -34,9 +36,8 @@ export default function CreditNotes() {
     setCandLoading(true)
     const fromTs = new Date(fromIso + 'T00:00:00').toISOString()
     const toTs   = new Date(toIso + 'T23:59:59.999').toISOString()
-    const { data } = await supabase.from('pos_orders')
-      .select('id, table_name, order_no, invoice_no, invoice_fy, close_type, paid_amount, closed_at, buyer_name, buyer_address, buyer_pan, buyer_phone, discount_amount, credit_note_id')
-      .eq('client_id', clientId).eq('status', 'billed').eq('close_type', 'paid')
+    const { data } = await scopedFrom('pos_orders', 'id, table_name, order_no, invoice_no, invoice_fy, close_type, paid_amount, closed_at, buyer_name, buyer_address, buyer_pan, buyer_phone, discount_amount, credit_note_id')
+      .eq('status', 'billed').eq('close_type', 'paid')
       .is('credit_note_id', null)
       .gte('closed_at', fromTs).lte('closed_at', toTs)
       .order('closed_at', { ascending: false })
@@ -45,7 +46,7 @@ export default function CreditNotes() {
     if (invoiceSearch.trim() && !isNaN(n)) list = list.filter(o => o.invoice_no === n)
     setCandidates(list)
     setCandLoading(false)
-  }, [clientId, fromIso, toIso, invoiceSearch])
+  }, [clientId, fromIso, toIso, invoiceSearch, scopedFrom])
 
   const loadNotes = useCallback(async () => {
     if (!clientId) return
@@ -53,7 +54,7 @@ export default function CreditNotes() {
     const fromTs = new Date(fromIso + 'T00:00:00').toISOString()
     const toTs   = new Date(toIso + 'T23:59:59.999').toISOString()
     const [{ data: cn }, { data: profs }, { data: settings }, { data: cl }] = await Promise.all([
-      supabase.from('pos_credit_notes').select('*').eq('client_id', clientId)
+      scopedFrom('pos_credit_notes')
         .gte('created_at', fromTs).lte('created_at', toTs).order('created_at', { ascending: false }),
       supabase.from('profiles').select('id, full_name').eq('client_id', clientId),
       supabase.from('settings').select('is_vat_registered, invoice_prefix, vat_number, property_address, property_phone').eq('client_id', clientId).maybeSingle(),
@@ -70,7 +71,7 @@ export default function CreditNotes() {
     setOutletName(cl?.name || '')
     setNotes(cn || [])
     setNotesLoading(false)
-  }, [clientId, fromIso, toIso])
+  }, [clientId, fromIso, toIso, scopedFrom])
 
   useEffect(() => { if (tab === 'issue') loadCandidates() }, [tab, loadCandidates])
   useEffect(() => { if (tab === 'book') loadNotes() }, [tab, loadNotes])
@@ -78,15 +79,14 @@ export default function CreditNotes() {
   if (!hasPosAccess('manager')) return <Navigate to="/pos" replace />
 
   async function reprintNote(note) {
-    const { data: items } = await supabase.from('pos_order_items')
-      .select('recipe_id, name, qty, unit_price, vat_rate').eq('order_id', note.order_id)
+    const { data: items } = await scopedFrom('pos_order_items', 'recipe_id, name, qty, unit_price, vat_rate').eq('order_id', note.order_id)
     const recipeIds = [...new Set((items || []).map(i => i.recipe_id).filter(Boolean))]
     let hscMap = {}
     if (recipeIds.length > 0) {
-      const { data } = await supabase.from('recipes').select('id, hsc_code').in('id', recipeIds)
+      const { data } = await scopedFrom('recipes', 'id, hsc_code').in('id', recipeIds)
       hscMap = Object.fromEntries((data || []).map(r => [r.id, r.hsc_code]))
     }
-    await printCreditNote(supabase, note, items || [], billingSettings, outletName, hscMap)
+    await printCreditNote(clientId, note, items || [], billingSettings, outletName, hscMap)
     setNotes(prev => prev.map(n => n.id === note.id ? { ...n, print_count: (n.print_count || 0) + 1 } : n))
   }
 
