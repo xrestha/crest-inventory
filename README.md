@@ -132,6 +132,26 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S251 — 2026-07-05 — scopedDb rollout finished: POS + core/admin pages; architecture punch list closed
+
+Closed out the last item from the S249 architecture report: migrated the remaining POS module (9 files) and the 5 core/admin pages (`AdminClients`, `AuditLog`, `Dashboard`, `Periods`, `Settings`).
+
+**POS (8 of 9 files changed; `PosStaff.jsx` only touches `settings`/an RPC, already correct).** Along the way, found `pos_order_items` and `pos_order_payments` actually carry `client_id NOT NULL` and were already in `CLIENT_SCOPED_TABLES` (confirmed by `PosOrders.jsx`, already on `scopedDb` from earlier POS work) — several reads across `CreditNotes.jsx`, `IssueCreditNoteModal.jsx`, `KotLog.jsx`, `PosExceptionReport.jsx`, and `SalesReport.jsx` had been left on raw `supabase.from()` under the wrong assumption they were `order_id`-only scoped like `recipe_ingredients`; corrected all of them for consistency with the allowlist. Also fixed `creditNoteHtml.js`'s `printCreditNote()`, which took a raw `supabase` client as a parameter and updated `pos_credit_notes` by id alone with no `client_id` filter at all — now takes `clientId` and goes through `scopedUpdate`.
+
+**Core/admin pages split into two real patterns**, not just "migrated" vs "not":
+- `Dashboard.js`, `Periods.js`, `Settings.js` — single-client views, migrated straight onto the `useScopedDb()` hook.
+- `Periods.js`'s admin "all clients" view and `Dashboard.js`'s `loadAdminStats()` are genuinely cross-tenant (every client's periods/profiles in one unscoped read to build an overview table) — those reads correctly stay on raw `supabase.from()`, but the per-client *actions* inside them (close/end/create a period for one specific `cid`) now go through the raw (non-hook) `scopedInsert`/`scopedUpdate` functions bound to that `cid` instead of hand-stamping `client_id`.
+- `AdminClients.js` has no `clientId` of its own at all — it's pure admin tooling looping over an explicit client list — so every action uses the raw scoped functions with `client.id` passed in per call (items unit-conversion cleanup, `feature_flags` wipe on delete, opening-period seed on create).
+- `AuditLog.js` needed no changes — `audit_logs.client_id` is nullable and the page's own "All Clients" filter is fundamentally incompatible with auto-scoping to the session's client, so it correctly stays as-is (same reasoning as `settings`/`budgets`).
+
+**`scopedDb.js` extended:** `scopedFrom()` now accepts a 4th `options` param so the `.select(col, { count: 'exact', head: true })` shape (used for Dashboard's cheap row counts) can go through it too — previously it only forwarded the column list.
+
+Also deleted `CREST_SUITE_PROJECT_CONTEXT_HR.md` (S250) — see prior entry.
+
+**Punch list from the S249 architecture report is now closed**: every client-scoped table read/write across IMS, HR, POS, and core/admin goes through `scopedDb`. Remaining from that report: the six 1,200+ line "god components" are still unsplit, and broader component/UI test coverage is still zero — neither is in progress.
+
+**Files:** `src/shared/scopedDb.js`, `src/shared/scopedDb.test.js`, `src/shared/hooks/useScopedDb.js`, 9 files under `src/modules/pos/`, `src/pages/{AdminClients,AuditLog,Dashboard,Periods,Settings}.js`, `CLAUDE.md`
+
 ### S250 — 2026-07-05 — scopedDb rollout completed across IMS + HR; stale planning doc removed
 
 Follow-up to S249, which had only migrated `Items.js`/`Vendors.js` as the proof-of-concept and left ~68 files. Continued the same mechanical pattern (hand-written `.eq('client_id', ...)` → `scopedFrom`/`scopedUpdate`/`scopedDelete`, hand-stamped `client_id: X` on inserts/upserts → `scopedInsert`/`scopedUpsert`) across every remaining IMS file (34: purchases, recipes, sales, stockcount, variance, and all 13 flat reports) and every HR file (14: advances, attendance, employees, festival, gratuity, holidays, leave, overtime, pay, payroll reports, roster, settlement), verifying `CI=true npm run build` after each batch.

@@ -80,7 +80,7 @@ await scopedDelete('vendors').eq('id', vendorId)
 
 Admin switches clients via the sidebar dropdown → `switchAdminClient(id, name)` → all pages re-fetch via `useEffect([clientId, ...])`.
 
-As of 2026-07-05, IMS and HR are fully migrated to `scopedDb`; POS and the core/admin pages (`AdminClients`, `AuditLog`, `Dashboard`, `Periods`, `Settings`) still use the old hand-written `.eq('client_id', ...)` / manual guard pattern — migrate a file to `scopedDb` when you touch it for other reasons, rather than leaving new code on the old pattern.
+As of 2026-07-05, every IMS, HR, and POS page, plus `Dashboard.js`, `Periods.js`, and `Settings.js`, is migrated to `scopedDb`. Two pages are correctly exempt, not pending: `AuditLog.js` (a cross-client admin viewer — `audit_logs.client_id` is nullable and its own "All Clients" filter is incompatible with auto-scoping to one client) and `AdminClients.js` (has no `clientId` of its own — it loops over an explicit client list and acts on whichever `client.id` a row targets, so it calls the raw `scopedFrom`/`scopedInsert`/`scopedUpdate`/`scopedDelete` functions from `scopedDb.js` directly with that `client.id`, instead of the `useScopedDb()` hook). `Periods.js`'s admin "all clients" view and `Dashboard.js`'s `loadAdminStats()` use the same raw-function-with-explicit-id pattern for their per-client actions, while their genuinely cross-tenant reads (no single client to scope to) stay on plain `supabase.from()`.
 
 ### Modules
 
