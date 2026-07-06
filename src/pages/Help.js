@@ -359,6 +359,27 @@ const GLOSSARY = [
   { term: 'Par Level',        def: 'Minimum stock quantity before reordering. Used in the Reorder Report to flag items running low.' },
   { term: 'Book Stock',       def: 'Live stock count fed by Crest POS — decremented automatically on every POS sale/comp close, shown in the Reorder Report. Only reflects POS activity; physical stock count remains the source of truth.' },
   { term: 'SSF',              def: 'Social Security Fund (सामाजिक सुरक्षा कोष). Nepal mandatory contribution: 11% employee + 20% employer of basic salary.' },
+  // — Crest HR —
+  { term: 'TDS',              def: 'Tax Deducted at Source. Nepal\'s monthly income tax withholding on salary, computed via year-to-date cumulative projection against the current fiscal year\'s tax slabs.' },
+  { term: 'Gratuity',         def: 'A lump-sum retirement/severance benefit under Nepal\'s Labour Act, accrued per year of service and paid at final settlement — separate from SSF.' },
+  { term: 'CTC',              def: 'Cost to Company. Gross salary + Employer SSF contribution (20% of basic) — the employer\'s true monthly outlay, not the employee\'s take-home pay.' },
+  { term: 'Dearness Allowance', def: 'महँगी भत्ता — a statutory monthly allowance separate from basic salary. Minimum NPR 7,380/month (FY 2082/83). SSF is not computed on it.' },
+  { term: 'Shift Type',       def: 'A named work-shift template (e.g. Morning, Evening, Split) with a colour and start/end time, defined in Roster → Shift Types and assigned to staff on the Roster Board.' },
+  { term: 'Roster',           def: 'The weekly/monthly staff shift schedule. Planning-only — Attendance is the official record that feeds Payroll, though Attendance can be pre-filled from Roster via Generate from Roster.' },
+  { term: 'Final Settlement', def: 'The full-and-final payment computed when an employee leaves — unpaid salary, leave encashment, and gratuity, minus any pending dues.' },
+  { term: 'Festival Allowance', def: 'A statutory bonus (commonly tied to Dashain) equal to a proportion of annual basic salary, paid separately from monthly payroll with its own TDS treatment.' },
+  { term: 'Overtime (OT)',    def: 'Extra hours worked beyond the standard shift, paid at 1.5× the normal hourly rate on weekdays and 2× on public holidays.' },
+  // — Crest POS —
+  { term: 'KOT / BOT',        def: 'Kitchen Order Ticket / Bar Order Ticket — the printed slip sent to the kitchen or bar when an order item is sent, listing items and quantities to prepare.' },
+  { term: 'X-Report / Z-Report', def: 'End-of-shift sales summaries. X-Report is a read-only mid-shift snapshot; Z-Report closes the shift and resets running totals for the next one.' },
+  { term: 'Credit Note',      def: 'A document that reverses a billed sale (VAT Rules 2053, Rule 20) instead of deleting the original invoice — used whenever a paid bill needs correcting or refunding.' },
+  { term: '1L+ Report',       def: 'The "One Lakh and above" compliance report (Annexure 13) — lists every sale or purchase transaction of NPR 100,000 or more, as required for VAT recordkeeping.' },
+  // — Crest IMS (Growth/Pro) —
+  { term: 'Dead Stock',       def: 'Items with zero usage over the lookback window (Slow Movers = used less than 20% of available stock) — ingredients tying up money without turning over.' },
+  { term: 'Shrinkage',        def: 'Recurring unexplained stock loss seen consistently across multiple periods — distinguished from a one-off Variance by checking period-over-period consistency.' },
+  { term: 'Menu Engineering', def: 'Classifies menu items by popularity and profitability into four quadrants — Star (both high), Puzzle (profitable but unpopular), Plowhorse (popular but low-margin), Dog (both low) — to guide menu and pricing decisions.' },
+  { term: 'Demand Forecast',  def: 'A prediction of covers and revenue for upcoming days (7/30-day horizon), used to plan labour scheduling and purchasing.' },
+  { term: 'Requisition',      def: 'An internal stock transfer from the main store to a department (e.g. kitchen, bar), tracked separately from external purchases.' },
 ]
 
 const STARTER_FEATURES = [
@@ -422,6 +443,14 @@ const FAQ = [
   { q: 'Can I add many recipes at once instead of one line at a time?', a: 'Yes. In Recipe Costing, click ↓ Template to download a spreadsheet (one row per ingredient; recipe-level fields on the first row of each recipe). Fill it in Excel/Sheets — the template includes a "Your Items" sheet with your exact item names/codes/units to copy from — then click ↑ Import Excel. A preview shows what matched; unmatched ingredients are skipped (add those items to the Item Master first, then re-import). The ingredients must already exist as items because each item carries its own purchase rate and unit conversion. To copy a similar dish, use the Clone button on any recipe row.' },
   { q: 'Why won’t an item delete?', a: 'An item can only be hard-deleted if nothing references it. If it appears in any purchase, stock count, wastage, staff meal, requisition, vendor return, or recipe — even a zero-quantity one — the delete is blocked and you’ll see why. The best option is Hide: it removes the item from all lists and dropdowns while keeping its history intact. Admins also get a Force Delete option that erases the item and every record referencing it (this recalculates affected past reports and cannot be undone) — use it only for true duplicates/mistakes.' },
   { q: 'How do I quickly find an item in a long dropdown?', a: 'The item pickers in Purchases, Recipes, Stock’s Daily Wastage, and Requisitions are searchable — click the field and start typing to filter, then use ↑/↓ and Enter (or click) to choose. On Recipe Costing there is also a “Find ingredient in recipes” box that lists every recipe using a given ingredient, including ones where it’s inside a sub-recipe.' },
+  // — Crest HR —
+  { q: 'Why isn\'t SSF being deducted for an employee?', a: 'Check Pay Setup → Bank/SSF tab for that employee — the SSF Enrolled toggle must be switched on. It\'s off by default for new employees; until it\'s enabled, no 11%/20% SSF is computed anywhere, including Payroll.' },
+  { q: 'How does Payroll handle unpaid leave?', a: 'Mark the day Unpaid Leave in Attendance (or approve an unpaid leave request in Leave Management, which marks it automatically). Payroll deducts unpaid days from monthly-basis staff and simply doesn\'t pay for that day for daily/hourly staff.' },
+  { q: 'What does the ⚠ OT ×2? warning in Payroll mean?', a: 'It means the same employee has overtime hours logged both in the Attendance sheet\'s OT column and in an approved Overtime module entry for the same period — both get paid, so leaving both in place pays that OT twice. Remove one of the two sources before finalizing the run.' },
+  // — Crest POS —
+  { q: 'What\'s the difference between Void and Complimentary?', a: 'Void cancels a bill entirely — no sale is recorded. Complimentary keeps the sale on record (for stock/COGS purposes) but zeroes the amount charged to the guest. Both require Supervisor+ access and a reason.' },
+  { q: 'Why didn\'t an item reach the kitchen printer?', a: 'Check POS → POS Staff → Ticket Routing — each category (e.g. Beverage) is routed to either the Kitchen or Bar ticket. An item in a category with no route configured won\'t print anywhere when sent.' },
+  { q: 'Can I edit or delete a bill after it\'s been paid/closed?', a: 'No — once billed, an order can\'t be edited or deleted directly, so the original record is always preserved for audit. To correct a paid bill, issue a Credit Note, which reverses it instead of altering history.' },
 ]
 
 export default function Help() {
@@ -435,6 +464,23 @@ export default function Help() {
   const phone   = settings?.contact_phone   || ''
   const email   = settings?.contact_email   || ''
   const website = settings?.contact_website || ''
+
+  // Per-module (IMS/HR/POS) collapse on the Module Guide tab — same persisted-localStorage
+  // pattern as Layout.js's sidebar nav groups. Defaults open so nothing hides on first visit;
+  // collapsing a module you don't need is what shortens the page.
+  const [openModules, setOpenModules] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('crest_help_modules')) || {} } catch { return {} }
+  })
+  function moduleOpen(key, state = openModules) {
+    return state[key] !== undefined ? state[key] : true
+  }
+  function toggleModule(key) {
+    setOpenModules(prev => {
+      const next = { ...prev, [key]: !moduleOpen(key, prev) }
+      localStorage.setItem('crest_help_modules', JSON.stringify(next))
+      return next
+    })
+  }
 
   // Shared expandable card used for unlocked features
   function FeatureCard({ feat, moduleKey }) {
@@ -612,7 +658,10 @@ export default function Help() {
           {imsEnabled && (
             <div style={{ marginBottom: 32 }}>
               {/* Module header */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 12, borderBottom: '2px solid rgba(201,168,76,0.2)' }}>
+              <div
+                onClick={() => toggleModule('ims')}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 12, borderBottom: '2px solid rgba(201,168,76,0.2)', cursor: 'pointer' }}
+              >
                 <span style={{ fontSize: 18, color: 'var(--theme-accent)' }}>▦</span>
                 <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--theme-text1)', fontFamily: 'Georgia, serif' }}>Crest IMS</span>
                 <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--theme-green)', background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.2)', padding: '2px 8px', borderRadius: 10 }}>Active</span>
@@ -621,9 +670,10 @@ export default function Help() {
                     {plan === 'pro' ? 'Pro Plan' : plan === 'growth' ? 'Growth Plan' : 'Starter Plan'}
                   </span>
                 )}
+                <span style={{ marginLeft: 'auto', color: 'var(--theme-text3)', fontSize: 13 }}>{moduleOpen('ims') ? '▲' : '▼'}</span>
               </div>
 
-              {IMS_TIERS.map(tier => {
+              {moduleOpen('ims') && IMS_TIERS.map(tier => {
                 const unlocked = isTierUnlocked(tier.tier, plan, isAdmin)
                 return (
                   <div key={tier.tier} style={{ marginBottom: 20 }}>
@@ -673,32 +723,46 @@ export default function Help() {
           {/* ── Crest HR ── */}
           {hrEnabled && (
             <div style={{ marginBottom: 32 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 12, borderBottom: '2px solid rgba(96,165,250,0.2)' }}>
+              <div
+                onClick={() => toggleModule('hr')}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 12, borderBottom: '2px solid rgba(96,165,250,0.2)', cursor: 'pointer' }}
+              >
                 <span style={{ fontSize: 18, color: '#60a5fa' }}>👤</span>
                 <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--theme-text1)', fontFamily: 'Georgia, serif' }}>Crest HR</span>
                 <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--theme-green)', background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.2)', padding: '2px 8px', borderRadius: 10 }}>Active</span>
+                <span style={{ marginLeft: 'auto', color: 'var(--theme-text3)', fontSize: 13 }}>{moduleOpen('hr') ? '▲' : '▼'}</span>
               </div>
-              <div style={{ marginBottom: 8 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Human Resources</span>
-              </div>
-              {HR_FEATURES.map(feat => (
-                <FeatureCard key={feat.name} feat={feat} moduleKey="hr" />
-              ))}
+              {moduleOpen('hr') && (
+                <>
+                  <div style={{ marginBottom: 8 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Human Resources</span>
+                  </div>
+                  {HR_FEATURES.map(feat => (
+                    <FeatureCard key={feat.name} feat={feat} moduleKey="hr" />
+                  ))}
+                </>
+              )}
             </div>
           )}
 
           {/* ── Crest POS ── */}
           {posEnabled && (
             <div style={{ marginBottom: 32 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 12, borderBottom: '2px solid rgba(201,168,76,0.2)' }}>
+              <div
+                onClick={() => toggleModule('pos')}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 12, borderBottom: '2px solid rgba(201,168,76,0.2)', cursor: 'pointer' }}
+              >
                 <span style={{ fontSize: 18, color: 'var(--theme-accent)' }}>⊕</span>
                 <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--theme-text1)', fontFamily: 'Georgia, serif' }}>Crest POS</span>
                 <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--theme-green)', background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.2)', padding: '2px 8px', borderRadius: 10 }}>Active</span>
+                <span style={{ marginLeft: 'auto', color: 'var(--theme-text3)', fontSize: 13 }}>{moduleOpen('pos') ? '▲' : '▼'}</span>
               </div>
-              <div style={{ marginBottom: 8 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--theme-accent)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Point of Sale</span>
-              </div>
-              {[
+              {moduleOpen('pos') && (
+                <>
+                  <div style={{ marginBottom: 8 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--theme-accent)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Point of Sale</span>
+                  </div>
+                  {[
                 {
                   icon: '🔐', name: 'POS Login', path: '/pos/login',
                   desc: 'The PIN entry screen that POS staff see when opening the system. Each staff tile shows a colorful initials avatar (like Slack/Gmail) so staff can spot their own tile at a glance on a shared device, without needing to read every name. Staff tap their tile and enter their 4–6 digit PIN to access the POS. The Owner button (top-right) lets the property owner log in with their full email + password for manager-level access. Only staff with a POS role assigned appear on the screen.',
@@ -860,7 +924,9 @@ export default function Help() {
                 },
               ].map(feat => (
                 <FeatureCard key={feat.name} feat={feat} moduleKey="pos" />
-              ))}
+                  ))}
+                </>
+              )}
             </div>
           )}
 

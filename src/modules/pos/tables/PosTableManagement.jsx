@@ -633,89 +633,77 @@ export default function PosTableManagement() {
       {/* ══ TABLES TAB ══ */}
       {mainTab === 'tables' && (
         <>
-          {/* Quick Setup panel */}
-          <div className="card" style={{ marginBottom: 20, overflow: 'hidden' }}>
-            <button
-              onClick={() => { setQsOpen(o => !o); setQsMsg('') }}
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                width: '100%', padding: '13px 18px', background: 'none', border: 'none',
-                cursor: 'pointer', color: 'var(--theme-text1)', fontFamily: 'inherit',
-              }}
-            >
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 13 }}>
-                <span style={{ color: 'var(--theme-accent)' }}>⚡</span> Quick Setup
-                <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--theme-text3)' }}>
-                  — generate a batch of tables in one click
-                </span>
-              </span>
-              <span style={{ fontSize: 10, color: 'var(--theme-text3)', transform: qsOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', display: 'inline-block' }}>▶</span>
-            </button>
+          {/* Quick Setup trigger */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
+            <button className="tab-btn" onClick={() => { setQsOpen(true); setQsMsg('') }}>⚡ Quick Setup</button>
+          </div>
 
-            {qsOpen && (
-              <div style={{ padding: '0 18px 18px', borderTop: '1px solid var(--theme-border)' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 80px 80px 2fr 80px', gap: 10, marginTop: 14, marginBottom: 10 }}>
-                  <div>
-                    <label style={{ fontSize: 11, color: 'var(--theme-text3)', display: 'block', marginBottom: 4 }}>
-                      Prefix <Tip text="The name prefix — each table will be Prefix + number, e.g. 'Table 1', 'Bar 1'" />
-                    </label>
-                    <input className="form-select" style={{ width: '100%', boxSizing: 'border-box' }}
-                      value={qs.prefix} onChange={e => setQs(q => ({ ...q, prefix: e.target.value }))} placeholder="e.g. Table" />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 11, color: 'var(--theme-text3)', display: 'block', marginBottom: 4 }}>
-                      Start # <Tip text="First table number" />
-                    </label>
-                    <input type="number" min="1" className="form-select" style={{ width: '100%', boxSizing: 'border-box' }}
-                      value={qs.start} onChange={e => setQs(q => ({ ...q, start: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 11, color: 'var(--theme-text3)', display: 'block', marginBottom: 4 }}>
-                      Count <Tip text="How many tables to create (max 50)" />
-                    </label>
-                    <input type="number" min="1" max="50" className="form-select" style={{ width: '100%', boxSizing: 'border-box' }}
-                      value={qs.count} onChange={e => setQs(q => ({ ...q, count: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 11, color: 'var(--theme-text3)', display: 'block', marginBottom: 4 }}>
-                      Section <Tip text="Optional — groups these tables under a section tab (e.g. Main Hall, Bar, Outdoor)" />
-                    </label>
-                    <input className="form-select" style={{ width: '100%', boxSizing: 'border-box' }}
-                      value={qs.section} onChange={e => setQs(q => ({ ...q, section: e.target.value }))}
-                      placeholder="e.g. Main Hall" list="qs-section-list" />
-                    <datalist id="qs-section-list">
-                      {existingSections.map(s => <option key={s} value={s} />)}
-                    </datalist>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 11, color: 'var(--theme-text3)', display: 'block', marginBottom: 4 }}>
-                      Seats <Tip text="Default capacity for all tables in this batch" />
-                    </label>
-                    <input type="number" min="1" className="form-select" style={{ width: '100%', boxSizing: 'border-box' }}
-                      value={qs.capacity} onChange={e => setQs(q => ({ ...q, capacity: e.target.value }))} />
-                  </div>
+          {qsOpen && (
+            <Modal onClose={() => setQsOpen(false)}>
+              <h3 style={{ margin: '0 0 4px', color: 'var(--theme-text1)' }}>⚡ Quick Setup</h3>
+              <p style={{ fontSize: 12, color: 'var(--theme-text3)', margin: '0 0 18px' }}>Generate a batch of tables in one click</p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 80px 80px 2fr 80px', gap: 10, marginBottom: 10 }}>
+                <div>
+                  <label style={{ fontSize: 11, color: 'var(--theme-text3)', display: 'block', marginBottom: 4 }}>
+                    Prefix <Tip text="The name prefix — each table will be Prefix + number, e.g. 'Table 1', 'Bar 1'" />
+                  </label>
+                  <input className="form-select" style={{ width: '100%', boxSizing: 'border-box' }}
+                    value={qs.prefix} onChange={e => setQs(q => ({ ...q, prefix: e.target.value }))} placeholder="e.g. Table" />
                 </div>
-
-                <p style={{ fontSize: 12, color: 'var(--theme-text3)', margin: '0 0 14px', fontStyle: 'italic' }}>
-                  Will create: <span style={{ color: 'var(--theme-text2)', fontStyle: 'normal' }}>{qsPreview()}</span>
-                  {parseInt(qs.count, 10) > 0 && (
-                    <span style={{ color: 'var(--theme-accent)', marginLeft: 6 }}>({parseInt(qs.count, 10)} tables)</span>
-                  )}
-                </p>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <button className="btn btn-primary" onClick={handleGenerate} disabled={qsSaving}>
-                    {qsSaving ? 'Creating…' : `Generate ${parseInt(qs.count, 10) || 0} Tables`}
-                  </button>
-                  {qsMsg && (
-                    <span style={{ fontSize: 12, color: qsMsg.startsWith('error:') ? 'var(--theme-red)' : 'var(--theme-green)' }}>
-                      {qsMsg.replace(/^(error|ok):/, '')}
-                    </span>
-                  )}
+                <div>
+                  <label style={{ fontSize: 11, color: 'var(--theme-text3)', display: 'block', marginBottom: 4 }}>
+                    Start # <Tip text="First table number" />
+                  </label>
+                  <input type="number" min="1" className="form-select" style={{ width: '100%', boxSizing: 'border-box' }}
+                    value={qs.start} onChange={e => setQs(q => ({ ...q, start: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, color: 'var(--theme-text3)', display: 'block', marginBottom: 4 }}>
+                    Count <Tip text="How many tables to create (max 50)" />
+                  </label>
+                  <input type="number" min="1" max="50" className="form-select" style={{ width: '100%', boxSizing: 'border-box' }}
+                    value={qs.count} onChange={e => setQs(q => ({ ...q, count: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, color: 'var(--theme-text3)', display: 'block', marginBottom: 4 }}>
+                    Section <Tip text="Optional — groups these tables under a section tab (e.g. Main Hall, Bar, Outdoor)" />
+                  </label>
+                  <input className="form-select" style={{ width: '100%', boxSizing: 'border-box' }}
+                    value={qs.section} onChange={e => setQs(q => ({ ...q, section: e.target.value }))}
+                    placeholder="e.g. Main Hall" list="qs-section-list" />
+                  <datalist id="qs-section-list">
+                    {existingSections.map(s => <option key={s} value={s} />)}
+                  </datalist>
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, color: 'var(--theme-text3)', display: 'block', marginBottom: 4 }}>
+                    Seats <Tip text="Default capacity for all tables in this batch" />
+                  </label>
+                  <input type="number" min="1" className="form-select" style={{ width: '100%', boxSizing: 'border-box' }}
+                    value={qs.capacity} onChange={e => setQs(q => ({ ...q, capacity: e.target.value }))} />
                 </div>
               </div>
-            )}
-          </div>
+
+              <p style={{ fontSize: 12, color: 'var(--theme-text3)', margin: '0 0 14px', fontStyle: 'italic' }}>
+                Will create: <span style={{ color: 'var(--theme-text2)', fontStyle: 'normal' }}>{qsPreview()}</span>
+                {parseInt(qs.count, 10) > 0 && (
+                  <span style={{ color: 'var(--theme-accent)', marginLeft: 6 }}>({parseInt(qs.count, 10)} tables)</span>
+                )}
+              </p>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <button className="btn btn-primary" onClick={handleGenerate} disabled={qsSaving}>
+                  {qsSaving ? 'Creating…' : `Generate ${parseInt(qs.count, 10) || 0} Tables`}
+                </button>
+                {qsMsg && (
+                  <span style={{ fontSize: 12, color: qsMsg.startsWith('error:') ? 'var(--theme-red)' : 'var(--theme-green)' }}>
+                    {qsMsg.replace(/^(error|ok):/, '')}
+                  </span>
+                )}
+              </div>
+            </Modal>
+          )}
 
           {/* Stat cards */}
           {tables.length > 0 && (

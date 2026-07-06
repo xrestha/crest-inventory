@@ -132,6 +132,17 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S256 — 2026-07-06 — Four small roadmap items: Tables pill, Purchases day-pill shorten, Glossary/FAQ, Module Guide stacking
+
+- **POS Tables — Quick Setup**: replaced the always-visible full-width card panel above the floor grid with a small `⚡ Quick Setup` pill (matching the `tab-btn` convention used elsewhere), which opens the same form (unchanged) in a `Modal` instead of an inline expanding section.
+- **Purchases — day pills**: shortened `Day {d}` to `D{d}` in the existing day-filter pill strip (bill-count badges and "All Days" label untouched).
+- **Help page — Glossary/FAQ**: both were 100% IMS-only despite HR and POS having ~25 feature guides between them. Added 18 new Glossary terms (9 HR: TDS, Gratuity, CTC, Dearness Allowance, Shift Type, Roster, Final Settlement, Festival Allowance, Overtime; 4 POS: KOT/BOT, X/Z-Report, Credit Note, 1L+ Report; 5 IMS Growth/Pro gap terms: Dead Stock, Shrinkage, Menu Engineering, Demand Forecast, Requisition) and 6 new FAQ entries (3 HR, 3 POS — including one tying directly into the S255 SSF toggle fix).
+- **Help page — Module Guide stacking**: each module section (IMS/HR/POS) previously always rendered in full, so a POS-only user still scrolled past every collapsed IMS/HR feature row to reach POS. Reused the exact collapsible-group pattern from `Layout.js`'s sidebar nav groups (`openGroups`/`localStorage`-persisted state) at the module level — `openModules`/`crest_help_modules`, defaulting all three open (no regression), each module header now toggles independently.
+
+Live-verified via Playwright against Casa Acai Cafe: Quick Setup modal opens/generates correctly, day pills render `D2 · 1 bill` etc., collapsing Crest IMS on Module Guide leaves HR/POS untouched, and the new Glossary/FAQ entries render and expand correctly.
+
+**Files:** `src/modules/pos/tables/PosTableManagement.jsx`, `src/modules/ims/purchases/Purchases.js`, `src/pages/Help.js`
+
 ### S255 — 2026-07-06 — Bug fix: SSF Enrolled toggle was cosmetic — SSF always computed regardless
 
 Reported by Aashish: Pay Setup → Bank/SSF tab has an "SSF Enrolled" toggle, but turning it off didn't stop the Salary tab's Monthly Summary from showing an 11% SSF Employee deduction. Root cause found in two places, both computing `ssf_base = Math.min(basic, SSF_CAP)` unconditionally — never reading `ssf_enrolled` at all:

@@ -377,7 +377,7 @@ export default function Purchases() {
                   onClick={() => setFilterDay(String(d))}
                   style={{ whiteSpace: 'nowrap' }}
                 >
-                  Day {d}
+                  D{d}
                   {billCountPerDay[d] > 0 && (
                     <span style={{ marginLeft: 5, fontSize: 10, opacity: 0.65 }}>
                       · {billCountPerDay[d]} {billCountPerDay[d] === 1 ? 'bill' : 'bills'}
