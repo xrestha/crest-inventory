@@ -5,27 +5,16 @@ import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
 import Fab from '../../../components/Fab'
-import Modal from '../../../components/Modal'
 import SearchableSelect from '../../../components/SearchableSelect'
-import { NUTRIENTS, EMPTY_NUTRITION, calcRecipeNutrition, calcLiveNutrition, hasNutrition, buildNutritionPayload, defaultBasisUnit, convertQty } from '../../../utils/nutrition'
+import { NUTRIENTS, calcRecipeNutrition, calcLiveNutrition, hasNutrition } from '../../../utils/nutrition'
 import { getSuggestedPrice } from '../../../utils/recipeCost'
 import { printWithTitle } from '../../../utils/printTitle'
 import { suggestSeeds } from '../../../data/nutritionSeed'
 import { fetchUsdaNutrition } from '../../../utils/usdaNutrition'
-import * as XLSX from 'xlsx'
-
-const UNITS = ['GM', 'ML', 'KG', 'LTR', 'PCS', 'PKT', 'BTL', 'BOX', 'ROLL', 'BUNCH', 'JAR', 'CTN', 'BAG', 'TIN', 'SACHET']
-
-
-// Format one nutrient value for display, e.g. "130 kcal", "2.7 g".
-function fmtNutrient(def, value) {
-  const v = Number(value) || 0
-  return `${v.toFixed(def.dp)} ${def.unit}`
-}
-const EMPTY_RECIPE = { name: '', category: 'Food', selling_price: '', vat_rate: '0.13', yield_qty: '1', yield_uom: 'portion', target_fc_pct: '30' }
-
-// vat_rate may be 0 (No VAT); don't use `|| 0.13` — parseFloat(0) is falsy and would coerce 0% back to 13%.
-const vatOf = rec => (rec?.vat_rate === null || rec?.vat_rate === undefined) ? 0.13 : parseFloat(rec.vat_rate)
+import { EMPTY_RECIPE, fmtNutrient, vatOf, calcSubRecipeCostPerUnit, calcRecipeCost, calcLiveCost, recipeHasIngredient } from './recipeCostCalc'
+import RecipeCostCardPrint from './RecipeCostCardPrint'
+import RecipeImportButton from './RecipeImportButton'
+import NutritionEditorModal from './NutritionEditorModal'
 
 export default function Recipes() {
   const { clientId, hasFeature } = useAuth()
@@ -47,24 +36,11 @@ export default function Recipes() {
   const [search, setSearch] = useState('')
   const [ingSearch, setIngSearch] = useState('')
   const [printRecipe, setPrintRecipe] = useState(null)
-  // ── Bulk Excel import ──
-  const [importPreview, setImportPreview] = useState(null) // { recipes:[...], summary } | null
-  const [importBusy, setImportBusy] = useState(false)
-  const [importError, setImportError] = useState('')
   const filterCat = 'all' // no active UI to change this; filter always passes through
   const [fcFilter, setFcFilter] = useState('all')
 
   // ── Inline per-ingredient nutrition editor (saves to items.nutrition) ──
   const [nutriItemId, setNutriItemId] = useState(null)
-  const [nutriForm, setNutriForm] = useState({ ...EMPTY_NUTRITION })
-  const [nutriMatches, setNutriMatches] = useState([])
-  const [nutriSaving, setNutriSaving] = useState(false)
-  const [nutriError, setNutriError] = useState('')
-  // Open Food Facts lookup (branded/packaged products)
-  const [offQuery, setOffQuery] = useState('')
-  const [offResults, setOffResults] = useState([])
-  const [offBusy, setOffBusy] = useState(false)
-  const [offError, setOffError] = useState('')
   const [autoFillBusy, setAutoFillBusy] = useState(false)
 
   const init = useCallback(async () => {
@@ -132,57 +108,6 @@ export default function Recipes() {
     const t = setTimeout(() => { printWithTitle(`Recipe Cost Card - ${printRecipe.name}`); setPrintRecipe(null) }, 80)
     return () => clearTimeout(t)
   }, [printRecipe])
-
-  // ── Cost calculation (recursive) ──────────────────────────────
-  function calcSubRecipeCostPerUnit(subRecipe, allRecipes) {
-    if (!subRecipe) return 0
-    const ings = subRecipe.recipe_ingredients || []
-    let total = 0
-    ings.forEach(ri => {
-      if (ri.item_id && ri.items) {
-        const yieldFactor = (parseFloat(ri.items.yield_pct) || 100) / 100
-        total += (parseFloat(ri.qty_per_portion) / yieldFactor) * parseFloat(ri.items.per_uom_rate || 0)
-      } else if (ri.sub_recipe_id) {
-        const nested = allRecipes.find(r => r.id === ri.sub_recipe_id)
-        if (nested) {
-          const nestedCostPerUnit = calcSubRecipeCostPerUnit(nested, allRecipes)
-          total += parseFloat(ri.qty_per_portion) * nestedCostPerUnit
-        }
-      }
-    })
-    const yieldQty = parseFloat(subRecipe.yield_qty) || 1
-    return total / yieldQty
-  }
-
-  function calcRecipeCost(recipe, allRecipes) {
-    return (recipe.recipe_ingredients || []).reduce((sum, ri) => {
-      if (ri.item_id && ri.items) {
-        const yieldFactor = (parseFloat(ri.items.yield_pct) || 100) / 100
-        return sum + (parseFloat(ri.qty_per_portion) / yieldFactor) * parseFloat(ri.items.per_uom_rate || 0)
-      } else if (ri.sub_recipe_id && ri.sub_recipe) {
-        const costPerUnit = calcSubRecipeCostPerUnit(ri.sub_recipe, allRecipes)
-        return sum + parseFloat(ri.qty_per_portion) * costPerUnit
-      }
-      return sum
-    }, 0)
-  }
-
-  // Live cost in edit mode
-  function calcLiveCost(ingList, itemsList, allRecipes) {
-    return ingList.reduce((sum, ing) => {
-      if (ing.type === 'item') {
-        const item = itemsList.find(i => i.id === ing.item_id)
-        if (!item || !ing.qty_per_portion) return sum
-        const yieldFactor = (parseFloat(item.yield_pct) || 100) / 100
-        return sum + (parseFloat(ing.qty_per_portion) / yieldFactor) * parseFloat(item.per_uom_rate || 0)
-      } else {
-        const sr = allRecipes.find(r => r.id === ing.sub_recipe_id)
-        if (!sr || !ing.qty_per_portion) return sum
-        const costPerUnit = calcSubRecipeCostPerUnit(sr, allRecipes)
-        return sum + parseFloat(ing.qty_per_portion) * costPerUnit
-      }
-    }, 0)
-  }
 
   // Sub-recipes available as ingredients (all recipes with category Sub-Recipe)
   const subRecipes = recipes.filter(r => r.category === 'Sub-Recipe')
@@ -265,116 +190,18 @@ export default function Recipes() {
     setIngredients(prev => prev.map(r => r._key === key ? { ...r, type, item_id: '', sub_recipe_id: '', qty_per_portion: '' } : r))
   }
 
-  // ── Nutrition editor handlers ─────────────────────────────────
+  // ── Nutrition editor (per-ingredient modal, see NutritionEditorModal.jsx) ──
   const nutriItem = items.find(i => i.id === nutriItemId) || null
 
-  function openNutriEditor(itemId) {
-    const it = items.find(i => i.id === itemId)
-    if (!it) return
-    const n = it.nutrition || {}
-    const form = {
-      basis_qty: n.basis_qty != null ? n.basis_qty : 100,
-      // Default to GM/ML for mass/volume items so per-100g table values drop in directly;
-      // the engine converts the recipe qty (e.g. 0.009 KG) into this unit automatically.
-      basis_unit: n.basis_unit || defaultBasisUnit(it.uom),
-      allergens: n.allergens || '',
-      source: n.source || '',
-    }
-    NUTRIENTS.forEach(d => { form[d.key] = n[d.key] != null ? n[d.key] : '' })
-    setNutriForm(form)
-    setNutriMatches([])
-    setNutriError('')
-    setOffQuery('')
-    setOffResults([])
-    setOffError('')
-    setNutriItemId(itemId)
-  }
-
-  function setNF(val) { setNutriForm(prev => ({ ...prev, ...val })) }
-
-  function findNutriSeeds() {
-    const matches = suggestSeeds(nutriItem?.name || '')
-    setNutriMatches(matches)
-    setNutriError(matches.length === 0 ? `No library match for "${nutriItem?.name}". Enter values manually.` : '')
-  }
-
-  function applyNutriSeed(seed) {
-    setNutriError('')
-    setNutriMatches([])
-    setNutriForm(prev => ({
-      ...prev,
-      basis_qty: 100,
-      basis_unit: seed.unit || nutriItem?.uom || 'GM',
-      energy_kcal: seed.energy_kcal, protein_g: seed.protein_g, carbs_g: seed.carbs_g,
-      fat_g: seed.fat_g, sugar_g: seed.sugar_g, sodium_mg: seed.sodium_mg,
-      allergens: seed.allergens || '', source: seed.source || '',
-    }))
-  }
-
-  // ── Open Food Facts lookup (per 100 g; branded/packaged products) ──
-  function mapOffProduct(p) {
-    const n = p.nutriments || {}
-    const num = v => { const x = parseFloat(v); return Number.isFinite(x) ? x : null }
-    const r0 = v => v == null ? null : Math.round(v)
-    const r1 = v => v == null ? null : Math.round(v * 10) / 10
-
-    let kcal = num(n['energy-kcal_100g'])
-    if (kcal == null && num(n['energy_100g']) != null) kcal = num(n['energy_100g']) / 4.184 // kJ → kcal
-    let sodiumMg = null
-    if (num(n['sodium_100g']) != null) sodiumMg = num(n['sodium_100g']) * 1000
-    else if (num(n['salt_100g']) != null) sodiumMg = (num(n['salt_100g']) / 2.5) * 1000 // salt ≈ 2.5 × sodium
-
-    const vals = {
-      energy_kcal: r0(kcal),
-      protein_g: r1(num(n['proteins_100g'])),
-      carbs_g: r1(num(n['carbohydrates_100g'])),
-      fat_g: r1(num(n['fat_100g'])),
-      sugar_g: r1(num(n['sugars_100g'])),
-      sodium_mg: r0(sodiumMg),
-    }
-    if ([vals.energy_kcal, vals.protein_g, vals.carbs_g, vals.fat_g].every(v => v == null)) return null
-
-    const allergens = (p.allergens_tags || []).map(t => String(t).replace(/^[a-z]{2}:/, '')).join(', ')
-    const name = [p.product_name, p.brands].filter(Boolean).join(' · ') || `Barcode ${p.code || ''}`.trim()
-    return { name, code: p.code, unit: 'GM', source: 'Open Food Facts', allergens, ...vals }
-  }
-
-  async function fetchFromOFF() {
-    const q = offQuery.trim()
-    if (!q) return
-    setOffBusy(true); setOffError(''); setOffResults([])
-    const FIELDS = 'product_name,brands,code,nutriments,allergens_tags'
-    try {
-      const isBarcode = /^\d{6,14}$/.test(q)
-      let products = []
-      if (isBarcode) {
-        const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${q}.json?fields=${FIELDS}`)
-        const j = await res.json()
-        if (j.status === 1 && j.product) products = [j.product]
-      } else {
-        const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=6&fields=${FIELDS}`
-        const res = await fetch(url)
-        const j = await res.json()
-        products = j.products || []
-      }
-      const mapped = products.map(mapOffProduct).filter(Boolean)
-      setOffResults(mapped)
-      if (mapped.length === 0) setOffError('No products with usable nutrition found on Open Food Facts.')
-    } catch (e) {
-      setOffError('Could not reach Open Food Facts — check the connection and try again.')
-    }
-    setOffBusy(false)
-  }
-
-  function applyOffResult(row) {
-    setOffError(''); setOffResults([])
-    setNutriForm(prev => ({
-      ...prev,
-      basis_qty: 100, basis_unit: 'GM',
-      energy_kcal: row.energy_kcal ?? '', protein_g: row.protein_g ?? '', carbs_g: row.carbs_g ?? '',
-      fat_g: row.fat_g ?? '', sugar_g: row.sugar_g ?? '', sodium_mg: row.sodium_mg ?? '',
-      allergens: row.allergens || '', source: 'Open Food Facts',
-    }))
+  function handleNutriSaved(itemId, payload) {
+    // Reflect immediately in local state so the live label + detail panel recompute.
+    setItems(prev => prev.map(i => i.id === itemId ? { ...i, nutrition: payload } : i))
+    setRecipes(prev => prev.map(r => ({
+      ...r,
+      recipe_ingredients: (r.recipe_ingredients || []).map(ri =>
+        ri.item_id === itemId && ri.items ? { ...ri, items: { ...ri.items, nutrition: payload } } : ri)
+    })))
+    setNutriItemId(null)
   }
 
   // ── Auto-fill all ingredients' nutrition from the static library (best match) ──
@@ -456,24 +283,6 @@ export default function Recipes() {
     window.alert(`Filled ${Object.keys(okMap).length} ingredient(s).`
       + (failed ? ` ${failed} failed to save.` : '')
       + (stillUnmatched.length ? `\n\nStill need manual entry (no USDA match): ${stillUnmatched.join(', ')}` : ''))
-  }
-
-  async function saveNutri() {
-    if (!nutriItemId) return
-    setNutriSaving(true)
-    setNutriError('')
-    const payload = buildNutritionPayload(nutriForm, nutriForm.basis_unit)
-    const { error } = await supabase.from('items').update({ nutrition: payload }).eq('id', nutriItemId)
-    if (error) { setNutriError(error.message); setNutriSaving(false); return }
-    // Reflect immediately in local state so the live label + detail panel recompute.
-    setItems(prev => prev.map(i => i.id === nutriItemId ? { ...i, nutrition: payload } : i))
-    setRecipes(prev => prev.map(r => ({
-      ...r,
-      recipe_ingredients: (r.recipe_ingredients || []).map(ri =>
-        ri.item_id === nutriItemId && ri.items ? { ...ri, items: { ...ri.items, nutrition: payload } } : ri)
-    })))
-    setNutriSaving(false)
-    setNutriItemId(null)
   }
 
   function getNextSubRecipeCode() {
@@ -590,170 +399,6 @@ export default function Recipes() {
     init()
   }
 
-  // ── Bulk Excel import ─────────────────────────────────────────
-  const IMPORT_COLS = ['Menu Item (Recipe)', 'Category', 'Selling Price', 'Yield', 'Ingredient (name or code)', 'Qty', 'Unit']
-
-  function downloadRecipeTemplate() {
-    const example = [
-      ['Avocado Toast', 'Food', 433.63, 1, items[0]?.name || 'Sourdough Bread', 80, items[0]?.uom || 'GM'],
-      ['', '', '', '', items[1]?.name || 'Avocado', 100, items[1]?.uom || 'GM'],
-      ['Peri Peri Wings', 'Food', 575.22, 1, items[2]?.name || 'Chicken Wings', 250, items[2]?.uom || 'GM'],
-    ]
-    const wsRecipes = XLSX.utils.aoa_to_sheet([IMPORT_COLS, ...example])
-    wsRecipes['!cols'] = [{ wch: 24 }, { wch: 12 }, { wch: 13 }, { wch: 7 }, { wch: 26 }, { wch: 8 }, { wch: 8 }]
-
-    // Reference sheet: exact item + sub-recipe names/units to copy from
-    const itemRows = items.map(i => [i.item_code || '', i.name, (i.uom || '').toUpperCase()])
-    const wsItems = XLSX.utils.aoa_to_sheet([['Item Code', 'Item Name', 'Unit'], ...itemRows])
-    wsItems['!cols'] = [{ wch: 12 }, { wch: 30 }, { wch: 8 }]
-    const subRows = subRecipes.map(s => [s.name, `${s.yield_qty} ${s.yield_uom}`])
-    const wsSubs = XLSX.utils.aoa_to_sheet([['Sub-Recipe Name', 'Yields'], ...subRows])
-    wsSubs['!cols'] = [{ wch: 30 }, { wch: 14 }]
-
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, wsRecipes, 'Recipes')
-    XLSX.utils.book_append_sheet(wb, wsItems, 'Your Items')
-    XLSX.utils.book_append_sheet(wb, wsSubs, 'Your Sub-Recipes')
-    XLSX.writeFile(wb, 'Recipe-Import-Template.xlsx')
-  }
-
-  // Parse + validate an uploaded sheet against the current items/sub-recipes.
-  function parseImportRows(rows) {
-    const norm = s => String(s ?? '').trim()
-    const lc = s => norm(s).toLowerCase()
-    const itemByName = new Map(items.map(i => [lc(i.name), i]))
-    const itemByCode = new Map(items.filter(i => i.item_code).map(i => [lc(i.item_code), i]))
-    const subByName = new Map(subRecipes.map(s => [lc(s.name), s]))
-    const existingRecipeNames = new Set(recipes.filter(r => r.category !== 'Sub-Recipe').map(r => lc(r.name)))
-
-    const out = []
-    let current = null
-    for (const row of rows) {
-      const name = norm(row[0])
-      const ingName = norm(row[4])
-      if (name) {
-        current = {
-          name,
-          category: norm(row[1]) || 'Food',
-          selling_price: row[2] === '' || row[2] == null ? null : parseFloat(row[2]),
-          yield_qty: row[3] === '' || row[3] == null ? 1 : (parseFloat(row[3]) || 1),
-          lines: [],
-          duplicate: existingRecipeNames.has(lc(name)),
-          isSub: lc(norm(row[1])) === 'sub-recipe',
-        }
-        out.push(current)
-      }
-      if (!ingName) continue
-      if (!current) continue
-      const qty = parseFloat(row[5])
-      const unit = norm(row[6])
-      const key = lc(ingName)
-      let match = itemByCode.get(key) || itemByName.get(key)
-      let type = match ? 'item' : null
-      let sub = null
-      if (!match) { sub = subByName.get(key); if (sub) type = 'sub_recipe' }
-      let warning = ''
-      let finalQty = qty
-      if (match && unit) {
-        const itemUom = (match.uom || '').toUpperCase()
-        if (unit.toUpperCase() !== itemUom) {
-          const conv = convertQty(qty, unit, itemUom)
-          if (conv === qty && unit.toUpperCase() !== itemUom) warning = `unit "${unit}" ≠ item unit "${itemUom}" — qty used as-is`
-          else finalQty = conv
-        }
-      }
-      current.lines.push({
-        ingName, qty: finalQty, rawQty: qty, unit,
-        matched: !!type, type,
-        item_id: type === 'item' ? match.id : null,
-        sub_recipe_id: type === 'sub_recipe' ? sub.id : null,
-        reason: !type ? 'no matching item or sub-recipe' : (!(qty > 0) ? 'qty missing/invalid' : ''),
-        warning,
-      })
-    }
-    // A line is importable only if matched AND qty > 0
-    out.forEach(r => {
-      r.matchedLines = r.lines.filter(l => l.matched && l.qty > 0)
-      r.badLines = r.lines.filter(l => !(l.matched && l.qty > 0))
-      r.willImport = !r.duplicate && !r.isSub && r.matchedLines.length > 0
-    })
-    return out
-  }
-
-  function handleImportFile(e) {
-    setImportError('')
-    const file = e.target.files?.[0]
-    e.target.value = '' // allow re-selecting the same file
-    if (!file) return
-    if (!clientId) { setImportError('No client selected. Pick a client in the top-left switcher first.'); return }
-    const reader = new FileReader()
-    reader.onload = ev => {
-      try {
-        const wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array' })
-        const wsName = wb.SheetNames.find(n => n.toLowerCase() === 'recipes') || wb.SheetNames[0]
-        const ws = wb.Sheets[wsName]
-        const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false })
-        // Drop a header row if the first cell matches the template header
-        const body = aoa.length && String(aoa[0][0] || '').toLowerCase().startsWith('menu item') ? aoa.slice(1) : aoa
-        const parsed = parseImportRows(body)
-        if (parsed.length === 0) { setImportError('No recipes found in the sheet. Use the template format.'); return }
-        const summary = {
-          totalRecipes: parsed.length,
-          willImport: parsed.filter(r => r.willImport).length,
-          duplicates: parsed.filter(r => r.duplicate).length,
-          subs: parsed.filter(r => r.isSub).length,
-          matchedLines: parsed.reduce((s, r) => s + r.matchedLines.length, 0),
-          badLines: parsed.reduce((s, r) => s + r.badLines.length, 0),
-        }
-        setImportPreview({ recipes: parsed, summary })
-      } catch (err) {
-        setImportError('Could not read the file — make sure it is a valid .xlsx. (' + err.message + ')')
-      }
-    }
-    reader.readAsArrayBuffer(file)
-  }
-
-  async function runImport() {
-    if (!importPreview) return
-    if (!clientId) { setImportError('No client selected.'); return }
-    const toCreate = importPreview.recipes.filter(r => r.willImport)
-    if (toCreate.length === 0) { setImportError('Nothing to import — no recipe has a matched ingredient.'); return }
-    setImportBusy(true)
-    setImportError('')
-    let created = 0
-    try {
-      for (const r of toCreate) {
-        const { data: rec, error: recErr } = await scopedInsert('recipes', {
-          name: r.name,
-          category: r.category || 'Food',
-          selling_price: r.selling_price != null && !isNaN(r.selling_price) ? r.selling_price : null,
-          vat_rate: 0.13,
-          yield_qty: r.yield_qty || 1,
-          yield_uom: 'portion',
-          target_fc_pct: 30,
-          is_active: true,
-        }, { single: true })
-        if (recErr) { setImportError(`Failed on "${r.name}": ${recErr.message}`); break }
-        const ingPayload = r.matchedLines.map(l => ({
-          recipe_id: rec.id,
-          item_id: l.item_id,
-          sub_recipe_id: l.sub_recipe_id,
-          qty_per_portion: l.qty,
-        }))
-        const { error: ingErr } = await supabase.from('recipe_ingredients').insert(ingPayload)
-        if (ingErr) { setImportError(`Ingredients failed on "${r.name}": ${ingErr.message}`); break }
-        created++
-      }
-    } finally {
-      setImportBusy(false)
-      if (created > 0) {
-        setImportPreview(null)
-        await init()
-        alert(`Imported ${created} recipe${created !== 1 ? 's' : ''}.`)
-      }
-    }
-  }
-
   // ── Derived values for edit form ──────────────────────────────
   const isSubRecipeForm = recipeForm.category === 'Sub-Recipe'
   const liveCost = calcLiveCost(ingredients, items, recipes)
@@ -771,21 +416,6 @@ export default function Recipes() {
   const [activeTab, setActiveTab] = useState('all')
 
   // ── Filtered list ─────────────────────────────────────────────
-  // True if a recipe contains an ingredient (item or nested sub-recipe) matching `q`.
-  function recipeHasIngredient(recipe, q, allRecipes, seen = new Set()) {
-    if (!recipe || seen.has(recipe.id)) return false
-    seen.add(recipe.id)
-    return (recipe.recipe_ingredients || []).some(ri => {
-      if (ri.item_id && ri.items) return ri.items.name.toLowerCase().includes(q)
-      if (ri.sub_recipe_id) {
-        const sr = ri.sub_recipe || allRecipes.find(r => r.id === ri.sub_recipe_id)
-        if (sr?.name?.toLowerCase().includes(q)) return true
-        return recipeHasIngredient(sr, q, allRecipes, new Set(seen))
-      }
-      return false
-    })
-  }
-
   const fcWarn = settings.fc_warning_pct || 35
   const fcCrit = settings.fc_critical_pct || 45
   const ingQ = ingSearch.trim().toLowerCase()
@@ -857,14 +487,7 @@ export default function Recipes() {
             <input
               style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none', width: 240 }}
               placeholder="Search recipes…" value={search} onChange={e => setSearch(e.target.value)} />
-            <Tip text="Bulk-add recipes from a spreadsheet. Download the template, fill one row per ingredient (Menu Item on the recipe's first row, then its ingredients below), and upload. Ingredients are matched to your Item Master by name or code; unmatched ones are listed so you can fix them." width={320}>
-              <button className="btn btn-ghost" style={{ fontSize: 12, padding: '8px 12px' }} onClick={downloadRecipeTemplate}>↓ Template</button>
-            </Tip>
-            <label className="btn btn-ghost" style={{ fontSize: 12, padding: '8px 12px', cursor: 'pointer', margin: 0 }}>
-              ↑ Import Excel
-              <input type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleImportFile} />
-            </label>
-            {importError && <span style={{ fontSize: 11, color: 'var(--theme-red)' }}>{importError}</span>}
+            <RecipeImportButton items={items} subRecipes={subRecipes} recipes={recipes} clientId={clientId} scopedInsert={scopedInsert} onImported={init} />
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
               <Tip text="Find every recipe that uses an ingredient — e.g. type 'milk' to list all dishes containing it. Also matches ingredients hidden inside sub-recipes (e.g. 'coffee' finds a Flat White via its Doppio)." width={300}>
                 <span style={{ fontSize: 13, color: 'var(--theme-text2)' }}>ⓘ</span>
@@ -1335,7 +958,7 @@ export default function Recipes() {
                             const it = items.find(i => i.id === ing.item_id)
                             const has = hasNutrition(it?.nutrition)
                             return (
-                              <button onClick={() => openNutriEditor(ing.item_id)}
+                              <button onClick={() => setNutriItemId(ing.item_id)}
                                 style={{ background: 'none', border: `1px solid ${has ? 'rgba(52,211,153,0.4)' : 'var(--theme-border)'}`, borderRadius: 5, padding: '4px 8px', fontSize: 11, color: has ? 'var(--theme-green)' : 'var(--theme-text2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                                 {has ? '● Edit' : '+ Add'}
                               </button>
@@ -1578,454 +1201,22 @@ export default function Recipes() {
 
           {/* ── PRINT-ONLY COST CARD ── */}
           <div className="print-only">
-            <div style={{ fontFamily: 'Georgia, serif', color: '#000', padding: '20px 24px', maxWidth: 680, margin: '0 auto' }}>
-
-              {/* Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #000', paddingBottom: 10, marginBottom: 14 }}>
-                <div>
-                  <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#555', marginBottom: 2 }}>
-                    {settings?.app_name || 'Crest Inventory'}
-                  </div>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: '#000' }}>{selectedRecipe.name}</div>
-                  <div style={{ fontSize: 12, color: '#555', marginTop: 3 }}>
-                    {isSubRec
-                      ? `Sub-Recipe · Yield: ${selectedRecipe.yield_qty} ${selectedRecipe.yield_uom}`
-                      : `Category: ${selectedRecipe.category}`}
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 9, color: '#777', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Recipe Cost Card</div>
-                  <div style={{ fontSize: 11, color: '#555', marginTop: 4 }}>{new Date().toLocaleDateString('en-NP')}</div>
-                </div>
-              </div>
-
-              {/* Summary strip */}
-              <div style={{ display: 'grid', gridTemplateColumns: isSubRec ? '1fr 1fr 1fr' : 'repeat(5, 1fr)', gap: 12, marginBottom: 18, padding: '10px 0', borderBottom: '1px solid #ddd' }}>
-                {(isSubRec ? [
-                  { label: 'Total Batch Cost', value: `NPR ${cost.toFixed(2)}` },
-                  { label: `Cost per ${selectedRecipe.yield_uom}`, value: `NPR ${costPerUnit.toFixed(2)}` },
-                  { label: 'Yield', value: `${selectedRecipe.yield_qty} ${selectedRecipe.yield_uom}` },
-                ] : [
-                  { label: 'Food Cost', value: `NPR ${cost.toFixed(2)}` },
-                  { label: `Selling Price (ex-VAT)`, value: price ? `NPR ${price.toFixed(2)}` : '—' },
-                  { label: `Menu Price (incl. ${(vat * 100).toFixed(0)}% VAT)`, value: price ? `NPR ${(price * (1 + vat)).toFixed(0)}` : '—' },
-                  { label: 'Food Cost %', value: fcPct != null ? `${fcPct.toFixed(1)}%` : '—' },
-                  { label: 'Gross Margin %', value: fcPct != null ? `${(100 - fcPct).toFixed(1)}%` : '—' },
-                ]).map(m => (
-                  <div key={m.label}>
-                    <div style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#777', marginBottom: 3 }}>{m.label}</div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#000' }}>{m.value}</div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Ingredients label */}
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#555', marginBottom: 6 }}>Ingredients</div>
-
-              {/* Ingredient table */}
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #000' }}>
-                    {['Ingredient', 'Qty', 'UOM', 'Rate (NPR)', 'Cost (NPR)', '% of Dish'].map((h, i) => (
-                      <th key={h} style={{ textAlign: i === 0 ? 'left' : i === 2 ? 'left' : 'right', padding: '4px 6px', fontWeight: 700, fontSize: 10, color: '#555', textTransform: 'uppercase', letterSpacing: '0.06em', paddingLeft: i === 0 ? 0 : 6, paddingRight: i === 5 ? 0 : 6 }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {(selectedRecipe.recipe_ingredients || []).map((ri, idx) => {
-                    let ingName, ingUom, ingRate, ingCost
-                    if (ri.item_id && ri.items) {
-                      ingName = ri.items.name
-                      ingUom = ri.items.uom
-                      ingRate = parseFloat(ri.items.per_uom_rate || 0)
-                      ingCost = parseFloat(ri.qty_per_portion) * ingRate
-                    } else if (ri.sub_recipe_id && ri.sub_recipe) {
-                      const cpu = calcSubRecipeCostPerUnit(ri.sub_recipe, recipes)
-                      ingName = `⚙ ${ri.sub_recipe.name}`
-                      ingUom = ri.sub_recipe.yield_uom
-                      ingRate = cpu
-                      ingCost = parseFloat(ri.qty_per_portion) * cpu
-                    } else return null
-                    const pct = cost > 0 ? (ingCost / cost) * 100 : 0
-                    return (
-                      <tr key={ri.id || idx} style={{ borderBottom: '1px solid #eee' }}>
-                        <td style={{ padding: '5px 6px 5px 0', color: '#000' }}>{ingName}</td>
-                        <td style={{ padding: '5px 6px', textAlign: 'right' }}>{ri.qty_per_portion}</td>
-                        <td style={{ padding: '5px 6px', color: '#555' }}>{ingUom}</td>
-                        <td style={{ padding: '5px 6px', textAlign: 'right', color: '#555' }}>{ingRate.toFixed(2)}</td>
-                        <td style={{ padding: '5px 6px', textAlign: 'right', fontWeight: 600 }}>{ingCost.toFixed(2)}</td>
-                        <td style={{ padding: '5px 0 5px 6px', textAlign: 'right', color: '#555' }}>{pct.toFixed(1)}%</td>
-                      </tr>
-                    )
-                  })}
-                  <tr style={{ borderTop: '2px solid #000' }}>
-                    <td colSpan={4} style={{ padding: '7px 6px 7px 0', fontWeight: 700, fontSize: 12 }}>TOTAL FOOD COST</td>
-                    <td style={{ padding: '7px 6px', textAlign: 'right', fontWeight: 700, fontSize: 12 }}>NPR {cost.toFixed(2)}</td>
-                    <td></td>
-                  </tr>
-                </tbody>
-              </table>
-
-              {/* Nutrition strip (print) */}
-              {nutri && (
-                <div style={{ marginTop: 16, padding: '10px 12px', border: '1px solid #ccc', borderRadius: 3 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#555', marginBottom: 8 }}>
-                    Nutrition ({nutriLabel}){nutri.coverage.have < nutri.coverage.total ? ` — estimate, ${nutri.coverage.have}/${nutri.coverage.total} ingredients` : ''}
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10 }}>
-                    {NUTRIENTS.map(def => (
-                      <div key={def.key}>
-                        <div style={{ fontSize: 9, color: '#777', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>{def.label}</div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: '#000' }}>{fmtNutrient(def, nutriValues[def.key])}</div>
-                      </div>
-                    ))}
-                  </div>
-                  {nutri.allergens.length > 0 && (
-                    <div style={{ fontSize: 10, color: '#555', marginTop: 8, textTransform: 'capitalize' }}>
-                      Allergens: {nutri.allergens.join(', ')}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Overhead section */}
-              {!isSubRec && overheadData && price > 0 && (() => {
-                const ohPerPortion2 = overheadData.totalOverheads / overheadData.totalCovers
-                const trueCost2 = cost + ohPerPortion2
-                const trueMargin2 = price > 0 ? ((price - trueCost2) / price) * 100 : null
-                const suggestedVat2 = Math.ceil(((trueCost2 / 0.20) * (1 + vat)) / 5) * 5
-                return (
-                  <div style={{ marginTop: 16, padding: '10px 12px', border: '1px solid #ccc', borderRadius: 3 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#555', marginBottom: 8 }}>True Cost with Overheads</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-                      {[
-                        { label: 'Overhead / Portion', value: `NPR ${ohPerPortion2.toFixed(2)}` },
-                        { label: 'True Cost / Portion', value: `NPR ${trueCost2.toFixed(2)}` },
-                        { label: 'True Net Margin %', value: trueMargin2 != null ? `${trueMargin2.toFixed(1)}%` : '—' },
-                        { label: 'Suggested @ 20% Margin', value: `NPR ${suggestedVat2}` },
-                      ].map(m => (
-                        <div key={m.label}>
-                          <div style={{ fontSize: 9, color: '#777', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>{m.label}</div>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: '#000' }}>{m.value}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })()}
-
-              {/* Footer */}
-              <div style={{ marginTop: 20, paddingTop: 8, borderTop: '1px solid #ddd', display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#999' }}>
-                <span>CONFIDENTIAL — Internal use only</span>
-                <span>Generated by Crest Inventory · {new Date().toLocaleDateString('en-NP')}</span>
-              </div>
-            </div>
+            <RecipeCostCardPrint recipe={selectedRecipe} recipes={recipes} settings={settings} overheadData={overheadData} showNutrition={showNutrition} />
           </div>
           </>
         )
       })()}
 
       {/* ── LIST-VIEW PRINT CARD (fires when 🖶 clicked from list) ── */}
-      {printRecipe && (() => {
-        const r = printRecipe
-        const isSubRec = r.category === 'Sub-Recipe'
-        const cost = calcRecipeCost(r, recipes)
-        const price = parseFloat(r.selling_price) || 0
-        const vat = vatOf(r)
-        const fcPct = price > 0 ? (cost / price) * 100 : null
-        const yieldQty = parseFloat(r.yield_qty) || 1
-        const costPerUnit = cost / yieldQty
-        const nutri = showNutrition ? calcRecipeNutrition(r, recipes) : null
-        const nutriLabel = isSubRec ? 'total batch' : 'per portion'
-        const nutriValues = nutri ? nutri.perPortion : null
-        return (
-          <div className="print-only">
-            <div style={{ fontFamily: 'Georgia, serif', color: '#000', padding: '20px 24px', maxWidth: 680, margin: '0 auto' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #000', paddingBottom: 10, marginBottom: 14 }}>
-                <div>
-                  <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#555', marginBottom: 2 }}>{settings?.app_name || 'Crest Inventory'}</div>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: '#000' }}>{r.name}</div>
-                  <div style={{ fontSize: 12, color: '#555', marginTop: 3 }}>{isSubRec ? `Sub-Recipe · Yield: ${r.yield_qty} ${r.yield_uom}` : `Category: ${r.category}`}</div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 9, color: '#777', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Recipe Cost Card</div>
-                  <div style={{ fontSize: 11, color: '#555', marginTop: 4 }}>{new Date().toLocaleDateString('en-NP')}</div>
-                </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: isSubRec ? '1fr 1fr 1fr' : 'repeat(5, 1fr)', gap: 12, marginBottom: 18, padding: '10px 0', borderBottom: '1px solid #ddd' }}>
-                {(isSubRec ? [
-                  { label: 'Total Batch Cost', value: `NPR ${cost.toFixed(2)}` },
-                  { label: `Cost per ${r.yield_uom}`, value: `NPR ${costPerUnit.toFixed(2)}` },
-                  { label: 'Yield', value: `${r.yield_qty} ${r.yield_uom}` },
-                ] : [
-                  { label: 'Food Cost', value: `NPR ${cost.toFixed(2)}` },
-                  { label: 'Selling Price (ex-VAT)', value: price ? `NPR ${price.toFixed(2)}` : '—' },
-                  { label: `Menu Price (incl. ${(vat * 100).toFixed(0)}% VAT)`, value: price ? `NPR ${(price * (1 + vat)).toFixed(0)}` : '—' },
-                  { label: 'Food Cost %', value: fcPct != null ? `${fcPct.toFixed(1)}%` : '—' },
-                  { label: 'Gross Margin %', value: fcPct != null ? `${(100 - fcPct).toFixed(1)}%` : '—' },
-                ]).map(m => (
-                  <div key={m.label}>
-                    <div style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#777', marginBottom: 3 }}>{m.label}</div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#000' }}>{m.value}</div>
-                  </div>
-                ))}
-              </div>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#555', marginBottom: 6 }}>Ingredients</div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #000' }}>
-                    {['Ingredient', 'Qty', 'UOM', 'Rate (NPR)', 'Cost (NPR)', '% of Dish'].map((h, i) => (
-                      <th key={h} style={{ textAlign: i === 0 || i === 2 ? 'left' : 'right', padding: '4px 6px', fontWeight: 700, fontSize: 10, color: '#555', textTransform: 'uppercase', letterSpacing: '0.06em', paddingLeft: i === 0 ? 0 : 6, paddingRight: i === 5 ? 0 : 6 }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {(r.recipe_ingredients || []).map((ri, idx) => {
-                    let ingName, ingUom, ingRate, ingCost
-                    if (ri.item_id && ri.items) {
-                      ingName = ri.items.name; ingUom = ri.items.uom
-                      ingRate = parseFloat(ri.items.per_uom_rate || 0)
-                      ingCost = parseFloat(ri.qty_per_portion) * ingRate
-                    } else if (ri.sub_recipe_id && ri.sub_recipe) {
-                      const cpu = calcSubRecipeCostPerUnit(ri.sub_recipe, recipes)
-                      ingName = `⚙ ${ri.sub_recipe.name}`; ingUom = ri.sub_recipe.yield_uom
-                      ingRate = cpu; ingCost = parseFloat(ri.qty_per_portion) * cpu
-                    } else return null
-                    const pct = cost > 0 ? (ingCost / cost) * 100 : 0
-                    return (
-                      <tr key={ri.id || idx} style={{ borderBottom: '1px solid #eee' }}>
-                        <td style={{ padding: '5px 6px 5px 0' }}>{ingName}</td>
-                        <td style={{ padding: '5px 6px', textAlign: 'right' }}>{ri.qty_per_portion}</td>
-                        <td style={{ padding: '5px 6px', color: '#555' }}>{ingUom}</td>
-                        <td style={{ padding: '5px 6px', textAlign: 'right', color: '#555' }}>{ingRate.toFixed(2)}</td>
-                        <td style={{ padding: '5px 6px', textAlign: 'right', fontWeight: 600 }}>{ingCost.toFixed(2)}</td>
-                        <td style={{ padding: '5px 0 5px 6px', textAlign: 'right', color: '#555' }}>{pct.toFixed(1)}%</td>
-                      </tr>
-                    )
-                  })}
-                  <tr style={{ borderTop: '2px solid #000' }}>
-                    <td colSpan={4} style={{ padding: '7px 6px 7px 0', fontWeight: 700, fontSize: 12 }}>TOTAL FOOD COST</td>
-                    <td style={{ padding: '7px 6px', textAlign: 'right', fontWeight: 700, fontSize: 12 }}>NPR {cost.toFixed(2)}</td>
-                    <td></td>
-                  </tr>
-                </tbody>
-              </table>
-              {nutri && (
-                <div style={{ marginTop: 16, padding: '10px 12px', border: '1px solid #ccc', borderRadius: 3 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#555', marginBottom: 8 }}>
-                    Nutrition ({nutriLabel}){nutri.coverage.have < nutri.coverage.total ? ` — estimate, ${nutri.coverage.have}/${nutri.coverage.total} ingredients` : ''}
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10 }}>
-                    {NUTRIENTS.map(def => (
-                      <div key={def.key}>
-                        <div style={{ fontSize: 9, color: '#777', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>{def.label}</div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: '#000' }}>{fmtNutrient(def, nutriValues[def.key])}</div>
-                      </div>
-                    ))}
-                  </div>
-                  {nutri.allergens.length > 0 && (
-                    <div style={{ fontSize: 10, color: '#555', marginTop: 8, textTransform: 'capitalize' }}>
-                      Allergens: {nutri.allergens.join(', ')}
-                    </div>
-                  )}
-                </div>
-              )}
-              {!isSubRec && overheadData && price > 0 && (() => {
-                const ohPer = overheadData.totalOverheads / overheadData.totalCovers
-                const trueCost = cost + ohPer
-                const trueMargin = price > 0 ? ((price - trueCost) / price) * 100 : null
-                const suggested = Math.ceil(((trueCost / 0.20) * (1 + vat)) / 5) * 5
-                return (
-                  <div style={{ marginTop: 16, padding: '10px 12px', border: '1px solid #ccc', borderRadius: 3 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#555', marginBottom: 8 }}>True Cost with Overheads</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-                      {[
-                        { label: 'Overhead / Portion', value: `NPR ${ohPer.toFixed(2)}` },
-                        { label: 'True Cost / Portion', value: `NPR ${trueCost.toFixed(2)}` },
-                        { label: 'True Net Margin %', value: trueMargin != null ? `${trueMargin.toFixed(1)}%` : '—' },
-                        { label: 'Suggested @ 20% Margin', value: `NPR ${suggested}` },
-                      ].map(m => (
-                        <div key={m.label}>
-                          <div style={{ fontSize: 9, color: '#777', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>{m.label}</div>
-                          <div style={{ fontSize: 13, fontWeight: 700 }}>{m.value}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })()}
-              <div style={{ marginTop: 20, paddingTop: 8, borderTop: '1px solid #ddd', display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#999' }}>
-                <span>CONFIDENTIAL — Internal use only</span>
-                <span>Generated by Crest Inventory · {new Date().toLocaleDateString('en-NP')}</span>
-              </div>
-            </div>
-          </div>
-        )
-      })()}
+      {printRecipe && (
+        <div className="print-only">
+          <RecipeCostCardPrint recipe={printRecipe} recipes={recipes} settings={settings} overheadData={overheadData} showNutrition={showNutrition} />
+        </div>
+      )}
 
       {/* ── INLINE NUTRITION EDITOR (per ingredient) ── */}
       {nutriItemId && nutriItem && (
-        <Modal onClose={() => setNutriItemId(null)} title={`Nutrition — ${nutriItem.name}`} maxWidth={640}>
-          <p style={{ fontSize: 13, color: 'var(--theme-text2)', margin: '0 0 18px' }}>
-            Enter values <strong style={{ color: 'var(--theme-text1)' }}>per the reference quantity below</strong> (e.g. per {nutriForm.basis_qty} {nutriForm.basis_unit}).
-            {defaultBasisUnit(nutriItem.uom) !== (nutriItem.uom || '').toUpperCase() && (
-              <> This item is used in <strong style={{ color: 'var(--theme-text1)' }}>{nutriItem.uom}</strong> in recipes — that's fine, the conversion to {nutriForm.basis_unit} is automatic.</>
-            )}
-            {' '}Saved to the ingredient, so it fills <strong style={{ color: 'var(--theme-text1)' }}>every recipe</strong> that uses it.
-          </p>
-
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
-            <div className="form-field" style={{ width: 110 }}>
-              <label><Tip width={240} text="Reference amount these values describe. Food tables use 100 (per 100 GM/ML). For counted items use 1 (per piece).">Per (qty)</Tip></label>
-              <input type="number" min="0" step="any" value={nutriForm.basis_qty}
-                onChange={e => setNF({ basis_qty: e.target.value })} placeholder="100" />
-            </div>
-            <div className="form-field" style={{ width: 120 }}>
-              <label>Per (unit)</label>
-              <select value={nutriForm.basis_unit} onChange={e => setNF({ basis_unit: e.target.value })}>
-                {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-              </select>
-            </div>
-            <button className="btn btn-ghost" style={{ fontSize: 12, marginBottom: 4 }} onClick={findNutriSeeds}>
-              ⚡ Suggest from library
-            </button>
-            {nutriForm.source && (
-              <span style={{ fontSize: 11, color: 'var(--theme-green)', marginBottom: 8 }}>Source: {nutriForm.source}</span>
-            )}
-          </div>
-
-          {nutriMatches.length > 0 && (
-            <div style={{ marginBottom: 16, padding: '10px 14px', background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 8 }}>
-              <div style={{ fontSize: 11, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
-                {nutriMatches.length} match{nutriMatches.length > 1 ? 'es' : ''} — choose a source to fill
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {nutriMatches.map((s, i) => (
-                  <button key={i} className="btn btn-ghost" style={{ fontSize: 12, textAlign: 'left', padding: '7px 11px', lineHeight: 1.35 }} onClick={() => applyNutriSeed(s)}>
-                    <span style={{ display: 'block', color: 'var(--theme-text1)', fontWeight: 600 }}>{s.name}</span>
-                    <span style={{ display: 'block', color: 'var(--theme-text2)', fontSize: 11 }}>
-                      <span style={{ color: s.source === 'DFTQC Nepal' ? 'var(--theme-green)' : s.source === 'IFCT 2017' ? 'var(--theme-accent)' : 'var(--theme-text3)' }}>{s.source}</span>
-                      {' · '}{s.energy_kcal} kcal · P{s.protein_g} C{s.carbs_g} F{s.fat_g} /100{s.unit}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Open Food Facts — branded / packaged products */}
-          <div style={{ marginBottom: 16, padding: '12px 14px', background: 'rgba(52,211,153,0.05)', border: '1px solid rgba(52,211,153,0.18)', borderRadius: 8 }}>
-            <div style={{ fontSize: 11, color: 'var(--theme-green)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
-              <Tip width={280} text="For branded / packaged goods (sauces, drinks, snacks). Search by product name or paste a barcode. Pulls nutrition per 100 g from the Open Food Facts database.">Fetch from Open Food Facts</Tip>
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <input
-                value={offQuery}
-                onChange={e => setOffQuery(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); fetchFromOFF() } }}
-                placeholder="Product name or barcode…"
-                style={{ flex: 1, minWidth: 180, background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '7px 10px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none' }}
-              />
-              <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={fetchFromOFF} disabled={offBusy || !offQuery.trim()}>
-                {offBusy ? 'Searching…' : '🔍 Fetch'}
-              </button>
-            </div>
-            {offError && <p style={{ color: 'var(--theme-accent)', fontSize: 12, margin: '8px 0 0' }}>{offError}</p>}
-            {offResults.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
-                {offResults.map((r, i) => (
-                  <button key={i} className="btn btn-ghost" style={{ fontSize: 12, textAlign: 'left', padding: '7px 11px', lineHeight: 1.35 }} onClick={() => applyOffResult(r)}>
-                    <span style={{ display: 'block', color: 'var(--theme-text1)', fontWeight: 600 }}>{r.name}</span>
-                    <span style={{ display: 'block', color: 'var(--theme-text2)', fontSize: 11 }}>
-                      {r.energy_kcal ?? '–'} kcal · P{r.protein_g ?? '–'} C{r.carbs_g ?? '–'} F{r.fat_g ?? '–'} /100g
-                      {r.allergens ? ` · ${r.allergens}` : ''}
-                    </span>
-                  </button>
-                ))}
-                <span style={{ fontSize: 10, color: 'var(--theme-text2)', marginTop: 2 }}>Data from Open Food Facts (ODbL). Crowd-sourced — verify before relying on it.</span>
-              </div>
-            )}
-          </div>
-
-          <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 14 }}>
-            {NUTRIENTS.map(def => (
-              <div className="form-field" key={def.key}>
-                <label>
-                  {def.key === 'sodium_mg'
-                    ? <Tip width={220} text="Sodium is in milligrams (mg), not grams. 1 g salt ≈ 388 mg sodium.">{def.label} ({def.unit})</Tip>
-                    : `${def.label} (${def.unit})`}
-                </label>
-                <input type="number" min="0" step="any" value={nutriForm[def.key]}
-                  onChange={e => setNF({ [def.key]: e.target.value })} placeholder="0" />
-              </div>
-            ))}
-            <div className="form-field" style={{ gridColumn: 'span 2' }}>
-              <label><Tip width={240} text="Comma-separated allergen tags (e.g. dairy, gluten, nuts). Aggregated across the recipe's ingredients.">Allergens</Tip></label>
-              <input value={nutriForm.allergens} onChange={e => setNF({ allergens: e.target.value })} placeholder="e.g. dairy, gluten" />
-            </div>
-          </div>
-
-          <p style={{ fontSize: 11, color: 'var(--theme-text3)', margin: '12px 0 0' }}>
-            Library values are reference estimates — verify for branded or prepared items.
-          </p>
-          {nutriError && <p style={{ color: 'var(--theme-red)', fontSize: 13, margin: '10px 0 0' }}>{nutriError}</p>}
-          <div className="form-actions" style={{ marginTop: 16, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-            <button className="btn btn-ghost" onClick={() => setNutriItemId(null)}>Cancel</button>
-            <button className="btn btn-primary" onClick={saveNutri} disabled={nutriSaving}>
-              {nutriSaving ? 'Saving…' : 'Save Nutrition'}
-            </button>
-          </div>
-        </Modal>
-      )}
-
-      {/* ── Bulk import preview ── */}
-      {importPreview && (
-        <Modal onClose={() => { if (!importBusy) { setImportPreview(null); setImportError('') } }} title="Import Recipes — Preview" maxWidth={760}>
-          <div style={{ marginBottom: 12, fontSize: 13, color: 'var(--theme-text2)' }}>
-            <strong style={{ color: 'var(--theme-text1)' }}>{importPreview.summary.willImport}</strong> of {importPreview.summary.totalRecipes} recipes ready ·{' '}
-            <strong style={{ color: 'var(--theme-green)' }}>{importPreview.summary.matchedLines}</strong> ingredients matched
-            {importPreview.summary.badLines > 0 && <> · <strong style={{ color: 'var(--theme-red)' }}>{importPreview.summary.badLines}</strong> unmatched (skipped)</>}
-            {importPreview.summary.duplicates > 0 && <> · {importPreview.summary.duplicates} already exist (skipped)</>}
-            {importPreview.summary.subs > 0 && <> · {importPreview.summary.subs} sub-recipes (create in app)</>}
-          </div>
-
-          <div style={{ maxHeight: 360, overflowY: 'auto', border: '1px solid var(--theme-border)', borderRadius: 8 }}>
-            {importPreview.recipes.map((r, idx) => {
-              const status = r.willImport ? { t: 'Will import', c: 'var(--theme-green)' }
-                : r.duplicate ? { t: 'Already exists — skipped', c: 'var(--theme-amber)' }
-                : r.isSub ? { t: 'Sub-recipe — create in app', c: 'var(--theme-text3)' }
-                : { t: 'No matched ingredients — skipped', c: 'var(--theme-red)' }
-              return (
-                <div key={idx} style={{ padding: '10px 14px', borderBottom: idx < importPreview.recipes.length - 1 ? '1px solid var(--theme-border-lt)' : 'none', opacity: r.willImport ? 1 : 0.75 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-                    <div style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>
-                      {r.name} <span style={{ fontSize: 11, color: 'var(--theme-text3)', fontWeight: 400 }}>· {r.category} · {r.matchedLines.length}/{r.lines.length} ingredients</span>
-                    </div>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: status.c, whiteSpace: 'nowrap' }}>{status.t}</span>
-                  </div>
-                  {r.badLines.length > 0 && (
-                    <div style={{ marginTop: 6, fontSize: 11, color: 'var(--theme-red)' }}>
-                      {r.badLines.map((l, i) => <div key={i}>✗ {l.ingName || '(blank)'} — {l.reason}</div>)}
-                    </div>
-                  )}
-                  {r.matchedLines.some(l => l.warning) && (
-                    <div style={{ marginTop: 4, fontSize: 11, color: 'var(--theme-amber)' }}>
-                      {r.matchedLines.filter(l => l.warning).map((l, i) => <div key={i}>⚠ {l.ingName}: {l.warning}</div>)}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-
-          {importError && <p style={{ color: 'var(--theme-red)', fontSize: 12, marginTop: 10 }}>{importError}</p>}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
-            <button className="btn btn-ghost" onClick={() => { setImportPreview(null); setImportError('') }} disabled={importBusy}>Cancel</button>
-            <button className="btn btn-primary" onClick={runImport} disabled={importBusy || importPreview.summary.willImport === 0}>
-              {importBusy ? 'Importing…' : `Import ${importPreview.summary.willImport} recipe${importPreview.summary.willImport !== 1 ? 's' : ''}`}
-            </button>
-          </div>
-        </Modal>
+        <NutritionEditorModal item={nutriItem} onClose={() => setNutriItemId(null)} onSaved={handleNutriSaved} />
       )}
 
       <Fab onClick={openNew} label="+ New Recipe" show={view === 'list'} />
