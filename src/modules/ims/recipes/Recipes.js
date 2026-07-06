@@ -17,7 +17,7 @@ import RecipeImportButton from './RecipeImportButton'
 import NutritionEditorModal from './NutritionEditorModal'
 
 export default function Recipes() {
-  const { clientId, hasFeature } = useAuth()
+  const { clientId, hasFeature, isAdmin } = useAuth()
   const showNutrition = hasFeature('nutrition_facts')
   const { settings, recipeCategories } = useSettings()
   const { scopedFrom, scopedInsert, scopedUpdate, scopedDelete } = useScopedDb()
@@ -487,7 +487,7 @@ export default function Recipes() {
             <input
               style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none', width: 240 }}
               placeholder="Search recipes…" value={search} onChange={e => setSearch(e.target.value)} />
-            <RecipeImportButton items={items} subRecipes={subRecipes} recipes={recipes} clientId={clientId} scopedInsert={scopedInsert} onImported={init} />
+            <RecipeImportButton items={items} subRecipes={subRecipes} recipes={recipes} clientId={clientId} scopedInsert={scopedInsert} onImported={init} isAdmin={isAdmin} />
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
               <Tip text="Find every recipe that uses an ingredient — e.g. type 'milk' to list all dishes containing it. Also matches ingredients hidden inside sub-recipes (e.g. 'coffee' finds a Flat White via its Doppio)." width={300}>
                 <span style={{ fontSize: 13, color: 'var(--theme-text2)' }}>ⓘ</span>

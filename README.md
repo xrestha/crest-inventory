@@ -132,6 +132,12 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S258 — 2026-07-06 — Recipe Export restricted to Crest Admin
+
+Follow-up to S257: the new ↓ Export button (and the cross-client portability it enables) is now gated behind `isAdmin` — client users no longer see it, only Crest Admin. `Recipes.js` passes `isAdmin` (from `useAuth()`) down to `RecipeImportButton`; ↓ Template / ↑ Import Excel are unaffected and stay available to everyone, as before.
+
+**Files:** `src/modules/ims/recipes/Recipes.js`, `src/modules/ims/recipes/RecipeImportButton.jsx`, `src/pages/Help.js`
+
 ### S257 — 2026-07-06 — Recipe Costing: Export Recipe function
 
 Recipe Costing had a bulk import path (↓ Template / ↑ Import Excel) and a per-recipe print (Recipe Cost Card), but no way to get *existing* recipes back out — no backup, no bulk-editing offline, nothing to hand to another location. Added a "↓ Export" button (`RecipeImportButton.jsx`) that downloads every current recipe and sub-recipe with its full ingredient breakdown.

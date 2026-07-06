@@ -75,7 +75,7 @@ function parseImportRows(rows, items, subRecipes, recipes) {
 // self-contained. Renders the two toolbar buttons and (once a file is parsed) the preview modal.
 // The parent only needs to hand over its current items/subRecipes/recipes (for ingredient
 // matching and duplicate detection) and get an onImported() callback to reload its recipe list.
-export default function RecipeImportButton({ items, subRecipes, recipes, clientId, scopedInsert, onImported }) {
+export default function RecipeImportButton({ items, subRecipes, recipes, clientId, scopedInsert, onImported, isAdmin }) {
   const [importPreview, setImportPreview] = useState(null) // { recipes:[...], summary } | null
   const [importBusy, setImportBusy] = useState(false)
   const [importError, setImportError] = useState('')
@@ -237,9 +237,11 @@ export default function RecipeImportButton({ items, subRecipes, recipes, clientI
         ↑ Import Excel
         <input type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleImportFile} />
       </label>
-      <Tip text="Download every current recipe and sub-recipe with its full ingredient breakdown and cost — a backup, an editable spreadsheet, or a file to hand to another location. Same format as ↓ Template, so it can be edited and re-imported (here, or into a different client)." width={320}>
-        <button className="btn btn-ghost" style={{ fontSize: 12, padding: '8px 12px' }} onClick={downloadRecipeExport} disabled={recipes.length === 0}>↓ Export</button>
-      </Tip>
+      {isAdmin && (
+        <Tip text="Crest Admin only. Download every current recipe and sub-recipe with its full ingredient breakdown and cost — a backup, an editable spreadsheet, or a file to hand to another location. Same format as ↓ Template, so it can be edited and re-imported (here, or into a different client)." width={320}>
+          <button className="btn btn-ghost" style={{ fontSize: 12, padding: '8px 12px' }} onClick={downloadRecipeExport} disabled={recipes.length === 0}>↓ Export</button>
+        </Tip>
+      )}
       {importError && <span style={{ fontSize: 11, color: 'var(--theme-red)' }}>{importError}</span>}
 
       {importPreview && (
