@@ -94,6 +94,16 @@ The app is one React app / one Supabase project with three modules toggled by pe
 
 `clientModules` in `AuthContext` drives **display** (sidebar + dashboard sections). `imsEnabled` / `hrEnabled` drive **route access** (admin bypasses both).
 
+### Splitting a page component once it outgrows one file
+
+As of 2026-07-06, the six pages that had grown past 1,200 lines (`AdminClients.js`, `Roster.jsx`, `Dashboard.js`, `Purchases.js`, `Recipes.js`, `PosOrders.jsx`) were each split, using whichever of these fits what's actually inside — don't force a pattern that doesn't match:
+- **Already-self-contained sub-component sitting in the same file** (a modal or panel with its own local state, just not in its own file yet) → move it verbatim into a same-name subfolder (e.g. `src/pages/adminClients/ClientDrawer.js`). Pure relocation, no behavior change — a near-identical production bundle hash is the sanity check.
+- **One file secretly rendering two unrelated views behind a boolean** (e.g. `Dashboard.js`'s admin-overview vs. per-client view, sharing almost no state) → split along that boolean into two components, each with its own `useAuth()`/data loading, and leave the original file as a thin router.
+- **Genuinely tangled state with no existing seam** (e.g. `Purchases.js`'s bill-entry form, `Recipes.js`'s nutrition editor) → extract a new self-contained component that owns its own form state and reports back through a single `onSaved(...)`/`onChanged()` callback, rather than lifting the state up and prop-threading it.
+- **Pure HTML/string builders that close over component state** (receipt/KOT print templates) → parameterize them explicitly and move to a plain `.js` file (see `posOrderPrintHtml.js`, `creditNoteHtml.js`) so the same builder can back both the real print path and a live preview without duplicating logic.
+
+For a high-traffic, stateful screen (`PosOrders.jsx` — live order-taking, billing, offline sync), prefer the smallest safe cut (pure builders/constants only) over a full architectural split — the risk of a subtle real-time bug that only surfaces on a live device outweighs the line-count win.
+
 ### Bikram Sambat (BS) calendar
 
 All periods and dates in the app use the Nepali calendar. Key utilities in `src/utils/bsCalendar.js`:
