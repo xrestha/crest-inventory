@@ -14,7 +14,7 @@ const BORDER = 'var(--theme-border)'
 const FAQS = [
   {
     q: 'Is the 1-month trial really free?',
-    a: 'Yes — the IMS Starter plan is completely free for the first month with no credit card and no hidden fees. After 1 month it continues at its listed monthly rate, or you can upgrade to Growth or Pro at any time.',
+    a: 'Yes — the IMS Starter plan is completely free for the first 7 days with no credit card and no hidden fees. After that it continues at its listed monthly rate, or you can upgrade to Growth or Pro at any time.',
   },
   {
     q: 'Can I negotiate the price?',
@@ -145,7 +145,7 @@ export default function Pricing() {
               <div style={{ marginBottom: 22, paddingBottom: 22, borderBottom: `1px solid ${BORDER}` }}>
                 {plan.key === 'starter' && !annual ? (
                   <>
-                    <div style={{ fontSize: 11, color: MODULE_COLORS.ims, fontWeight: 800, marginBottom: 5, letterSpacing: '0.07em' }}>FREE FOR 1 MONTH</div>
+                    <div style={{ fontSize: 11, color: MODULE_COLORS.ims, fontWeight: 800, marginBottom: 5, letterSpacing: '0.07em' }}>FREE FOR 7 DAYS</div>
                     <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--theme-text1)', lineHeight: 1 }}>
                       NPR {plan.monthly.toLocaleString()}
                       <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--theme-text2)' }}>/mo after</span>

@@ -132,6 +132,14 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S266 — 2026-07-06 — Pricing: fixed stale "FREE FOR 1 MONTH" trial copy, bolder Help.js Pricing intro
+
+Two follow-ups from a client review of the S263-265 pricing rollout. **Trial copy bug:** the IMS Starter tier's badge said "FREE FOR 1 MONTH" (both `Pricing.js` and Help.js's Pricing tab) and a FAQ answer echoed "free for the first month" — both stale, left over from the pre-existing file content, and contradicting the real trial mechanism: a **7-day** self-service trial (`AuthContext.js`'s `trial_expires_at`/`isTrial`, `Login.js`'s own "7-day free trial" copy), which the same page's hero banner already correctly advertises ("1-week free trial"). Corrected the badge to "FREE FOR 7 DAYS" in both places and reworded the FAQ answer to match.
+
+**Pricing intro visual pass:** Help.js's "Plans & Pricing" heading was a plain small `<h2>` with a thin subtitle — asked to be made more visually captivating for new clients. Added a row of three small module-colored dots (blue/green/violet) above the heading, bumped the heading to a bolder/larger treatment, and rewrote the subtitle to name all three modules ("One system for IMS, HR, and POS — pick a module or bundle them all") instead of the generic "Choose the plan that fits your property."
+
+**Files:** `src/pages/Pricing.js`, `src/pages/Help.js`
+
 ### S265 — 2026-07-06 — Help.js Pricing tab: split the combined HR/POS heading into its two module colors
 
 Follow-up to S264: the "Crest HR & Crest POS" eyebrow label above that section was entirely colored green (`MODULE_COLORS.hr`) even though it introduces both modules — visually implying POS was green too, when its card right below is violet. Split into three spans: "Crest HR" in green, "&" in neutral gray, "Crest POS" in violet, so the label matches the two cards it precedes.

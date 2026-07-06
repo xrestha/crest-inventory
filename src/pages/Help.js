@@ -1191,8 +1191,13 @@ export default function Help() {
       {activeSection === 'pricing' && (
         <div>
           <div style={{ textAlign: 'center', marginBottom: 28 }}>
-            <h2 style={{ fontSize: 20, margin: '0 0 8px', fontFamily: 'Georgia, serif', color: 'var(--theme-text1)' }}>Plans & Pricing</h2>
-            <p style={{ fontSize: 13, color: 'var(--theme-text2)', margin: '0 0 20px' }}>Choose the plan that fits your property</p>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 7, marginBottom: 10 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: MODULE_COLORS.ims }} />
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: MODULE_COLORS.hr }} />
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: MODULE_COLORS.pos }} />
+            </div>
+            <h2 style={{ fontSize: 28, fontWeight: 800, margin: '0 0 8px', fontFamily: 'Georgia, serif', color: 'var(--theme-text1)' }}>Plans & Pricing</h2>
+            <p style={{ fontSize: 13, color: 'var(--theme-text2)', margin: '0 0 20px' }}>One system for IMS, HR, and POS — pick a module or bundle them all</p>
             <div style={{ display: 'inline-flex', background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 8, padding: 3, gap: 2 }}>
               <button onClick={() => setPricingAnnual(false)} style={{ background: !pricingAnnual ? 'rgba(201,168,76,0.15)' : 'none', border: !pricingAnnual ? '1px solid rgba(201,168,76,0.3)' : '1px solid transparent', color: !pricingAnnual ? 'var(--theme-accent)' : 'var(--theme-text2)', padding: '6px 18px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>Monthly</button>
               <button onClick={() => setPricingAnnual(true)}  style={{ background:  pricingAnnual ? 'rgba(201,168,76,0.15)' : 'none', border:  pricingAnnual ? '1px solid rgba(201,168,76,0.3)' : '1px solid transparent', color:  pricingAnnual ? 'var(--theme-accent)' : 'var(--theme-text2)', padding: '6px 18px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1220,7 +1225,7 @@ export default function Help() {
                   <div style={{ marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid var(--theme-border)' }}>
                     {plan.key === 'starter' && !pricingAnnual ? (
                       <>
-                        <div style={{ fontSize: 10, color: MODULE_COLORS.ims, fontWeight: 800, marginBottom: 4, letterSpacing: '0.07em' }}>FREE FOR 1 MONTH</div>
+                        <div style={{ fontSize: 10, color: MODULE_COLORS.ims, fontWeight: 800, marginBottom: 4, letterSpacing: '0.07em' }}>FREE FOR 7 DAYS</div>
                         <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--theme-text1)' }}>NPR {plan.monthly.toLocaleString()}<span style={{ fontSize: 12, fontWeight: 400, color: 'var(--theme-text2)' }}>/mo after</span></div>
                       </>
                     ) : (
