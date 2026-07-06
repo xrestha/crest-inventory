@@ -138,19 +138,21 @@ export default function Pricing() {
                 </div>
               )}
 
-              <div style={{ marginBottom: 20 }}>
+              <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 20, fontWeight: 700, color: MODULE_COLORS.ims, fontFamily: 'Georgia, serif' }}>{plan.label}</span>
+                {plan.key === 'starter' && !annual && (
+                  <span style={{ fontSize: 10, fontStyle: 'italic', fontWeight: 800, color: MODULE_COLORS.ims, background: `${MODULE_COLORS.ims}15`, border: `1px solid ${MODULE_COLORS.ims}40`, padding: '3px 8px', borderRadius: 8, letterSpacing: '0.05em' }}>
+                    FREE FOR 7 DAYS TRIAL
+                  </span>
+                )}
               </div>
 
               <div style={{ marginBottom: 22, paddingBottom: 22, borderBottom: `1px solid ${BORDER}` }}>
                 {plan.key === 'starter' && !annual ? (
-                  <>
-                    <div style={{ fontSize: 14, fontStyle: 'italic', color: MODULE_COLORS.ims, fontWeight: 800, marginBottom: 5, letterSpacing: '0.07em' }}>FREE FOR 7 DAYS</div>
-                    <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--theme-text1)', lineHeight: 1 }}>
-                      NPR {plan.monthly.toLocaleString()}
-                      <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--theme-text2)' }}>/mo after</span>
-                    </div>
-                  </>
+                  <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--theme-text1)', lineHeight: 1 }}>
+                    NPR {plan.monthly.toLocaleString()}
+                    <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--theme-text2)' }}>/mo after trial</span>
+                  </div>
                 ) : (
                   <>
                     <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--theme-text1)', lineHeight: 1 }}>

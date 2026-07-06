@@ -132,6 +132,12 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S269 — 2026-07-06 — Pricing: aligned the IMS tier price rows, moved the trial badge inline
+
+Follow-up to S267: the "FREE FOR 7 DAYS" badge sat on its own line above the Starter tier's price, pushing that price one row lower than Growth's and Pro's — the three cards no longer lined up. Moved the badge inline next to the "Starter" title (now a small pill reading "FREE FOR 7 DAYS TRIAL"), freeing the price row to sit at the same height across all three tiers. Also reworded "/mo after" → "/mo after trial" for clarity on what the recurring price is after (the trial ending, not a typo/truncation).
+
+**Files:** `src/pages/Pricing.js`, `src/pages/Help.js`
+
 ### S268 — 2026-07-06 — Login page: added a "View Pricing" link for pre-login visitors
 
 `/pricing` has been a public, no-auth route all along, but nothing on the Login page ever pointed to it — a new visitor had no way to discover it existed unless they already knew the URL. Added a "View Pricing →" button in the top-right of `Login.js`'s brand row (next to the "Crest Inventory" logo/name, above both the trial-signup form and the sign-in form), navigating to `/pricing` via the existing `useNavigate()` hook. Visible immediately without scrolling, for both new visitors and existing users who forgot the plan details.

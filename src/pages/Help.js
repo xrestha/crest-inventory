@@ -1219,15 +1219,17 @@ export default function Help() {
                       Most Popular
                     </div>
                   )}
-                  <div style={{ marginBottom: 6 }}>
+                  <div style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 16, fontWeight: 700, color: MODULE_COLORS.ims, fontFamily: 'Georgia, serif' }}>{plan.label}</span>
+                    {plan.key === 'starter' && !pricingAnnual && (
+                      <span style={{ fontSize: 9, fontStyle: 'italic', fontWeight: 800, color: MODULE_COLORS.ims, background: `${MODULE_COLORS.ims}15`, border: `1px solid ${MODULE_COLORS.ims}40`, padding: '2px 6px', borderRadius: 7, letterSpacing: '0.05em' }}>
+                        FREE FOR 7 DAYS TRIAL
+                      </span>
+                    )}
                   </div>
                   <div style={{ marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid var(--theme-border)' }}>
                     {plan.key === 'starter' && !pricingAnnual ? (
-                      <>
-                        <div style={{ fontSize: 13, fontStyle: 'italic', color: MODULE_COLORS.ims, fontWeight: 800, marginBottom: 4, letterSpacing: '0.07em' }}>FREE FOR 7 DAYS</div>
-                        <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--theme-text1)' }}>NPR {plan.monthly.toLocaleString()}<span style={{ fontSize: 12, fontWeight: 400, color: 'var(--theme-text2)' }}>/mo after</span></div>
-                      </>
+                      <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--theme-text1)' }}>NPR {plan.monthly.toLocaleString()}<span style={{ fontSize: 12, fontWeight: 400, color: 'var(--theme-text2)' }}>/mo after trial</span></div>
                     ) : (
                       <>
                         <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--theme-text1)' }}>NPR {price.toLocaleString()}<span style={{ fontSize: 12, fontWeight: 400, color: 'var(--theme-text2)' }}>/mo</span></div>
