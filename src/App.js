@@ -139,7 +139,7 @@ export default function App() {
               <Route path="/budget"
                 element={<ModuleGate module="ims"><PremiumGate featureKey="budget_vs_actual" minPlan="growth"><BudgetVsActual /></PremiumGate></ModuleGate>} />
               <Route path="/demand-forecast"
-                element={<ModuleGate module="ims"><PremiumGate featureKey="demand_forecast" minPlan="growth"><DemandForecast /></PremiumGate></ModuleGate>} />
+                element={<ModuleGate module="ims"><PremiumGate featureKey="demand_forecast" minPlan="pro"><DemandForecast /></PremiumGate></ModuleGate>} />
               <Route path="/combo-builder"
                 element={<ModuleGate module="ims"><PremiumGate featureKey="combo_builder" minPlan="growth"><ComboBuilder /></PremiumGate></ModuleGate>} />
               <Route path="/requisitions"

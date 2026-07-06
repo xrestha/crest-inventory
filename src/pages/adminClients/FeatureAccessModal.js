@@ -41,6 +41,7 @@ const FEATURE_GROUPS = [
     { key: 'wastage_report',  label: 'Wastage Report' },
     { key: 'stock_report',    label: 'Stock Report' },
     { key: 'settings',        label: 'Settings' },
+    { key: 'staff_meals',     label: 'Staff Meals' },
   ]},
   { tier: 'growth',  label: 'Growth Plan',      color: 'var(--theme-green)', features: [
     { key: 'recipe_costing',       label: 'Recipe Costing' },
@@ -52,10 +53,8 @@ const FEATURE_GROUPS = [
     { key: 'dead_stock',           label: 'Dead Stock' },
     { key: 'recipe_margin',        label: 'Recipe Margin' },
     { key: 'outstanding_payables', label: 'Outstanding Payables' },
-    { key: 'staff_meals',          label: 'Staff Meals' },
     { key: 'nutrition_facts',      label: 'Nutrition Facts' },
     { key: 'menu_repricing',       label: 'Menu Repricing' },
-    { key: 'demand_forecast',      label: 'Demand Forecast' },
     { key: 'combo_builder',        label: 'Combo Builder' },
   ]},
   { tier: 'pro',     label: 'Pro Plan',         color: 'var(--theme-accent)', features: [
@@ -67,6 +66,7 @@ const FEATURE_GROUPS = [
     { key: 'theoretical_variance', label: 'Theoretical Variance' },
     { key: 'period_comparison',    label: 'Period Comparison' },
     { key: 'shrinkage_report',     label: 'Shrinkage Report' },
+    { key: 'demand_forecast',      label: 'Demand Forecast' },
   ]},
 ]
 

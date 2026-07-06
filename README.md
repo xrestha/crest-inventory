@@ -132,6 +132,18 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S259 — 2026-07-06 — IMS re-tiering: Staff Meals → Starter, Demand Forecast → Pro
+
+Part of the pricing/bundling strategy work: moved two features between IMS plan tiers ahead of the actual price-number rollout. `staff_meals` (Growth → Starter) and `demand_forecast` (Growth → Pro).
+
+This touched more than the two `Set`s in `AuthContext.js` — `demand_forecast` is gated by a route-level `PremiumGate minPlan="growth"` in `App.js` (independent of `GROWTH_KEYS`/`PRO_KEYS` membership; `PremiumGate`'s `meetsMinPlan` check compares plan rank directly against the `minPlan` prop), so that had to move to `minPlan="pro"` too, along with the matching display-only `minPlan` hint on the Demand Forecast nav item in `Layout.js`. `staff_meals` has no dedicated route — it's gated inline via `hasFeature('staff_meals')` inside `Stock.js`'s tab list — so the `Set` move alone was sufficient there.
+
+**Found and fixed a pre-existing bug in the process:** Help.js's Module Guide accordion (`IMS_TIERS`) had the "Demand Forecast" feature card filed under the **Starter** tier's array, even though `GROWTH_KEYS` and Help's own Pricing-tab list both already said Growth — a display-only inconsistency, now corrected as part of the same move (to Pro's array, matching its new tier).
+
+Also updated: `FeatureAccessModal.js`'s admin per-client override groupings, Help.js's `STARTER_FEATURES`/`GROWTH_EXTRAS`/`PRO_EXTRAS` pricing lists, and two stale "Growth plan and above" text mentions on the Stock Count feature card.
+
+**Files:** `src/context/AuthContext.js`, `src/App.js`, `src/components/Layout.js`, `src/pages/adminClients/FeatureAccessModal.js`, `src/pages/Help.js`
+
 ### S258 — 2026-07-06 — Recipe Export restricted to Crest Admin
 
 Follow-up to S257: the new ↓ Export button (and the cross-client portability it enables) is now gated behind `isAdmin` — client users no longer see it, only Crest Admin. `Recipes.js` passes `isAdmin` (from `useAuth()`) down to `RecipeImportButton`; ↓ Template / ↑ Import Excel are unaffected and stay available to everyone, as before.

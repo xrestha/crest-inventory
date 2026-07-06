@@ -35,8 +35,8 @@ const IMS_TIERS = [
       },
       {
         icon: '⊞', name: 'Stock Count',
-        guide: 'Tabs: Opening Stock (start of month), Closing Stock (physical count at month end), Wastage (a quick monthly catch-all total per item), Daily Wastage (log spoilage by day with a reason — Spoilage, Expiry, Over-prep, etc.), and Staff Meals (Growth+ only — internal consumption by staff). The Summary tab computes Used = Opening + Net Purchases − Wastage − Staff Meals − Closing, where Wastage = the monthly catch-all + all daily entries. Export to Excel.',
-        tips: ['Use the Daily Wastage tab to log spoilage by day and reason as it happens — these roll into the period total and COGS', 'The Wastage tab is the monthly catch-all: a single quick figure per item, on top of any daily entries', 'Enter opening stock before any purchases for accurate COGS', 'The Wastage Report now groups by item and includes a By-Reason breakdown', 'Staff Meals tab only appears on Growth plan and above']
+        guide: 'Tabs: Opening Stock (start of month), Closing Stock (physical count at month end), Wastage (a quick monthly catch-all total per item), Daily Wastage (log spoilage by day with a reason — Spoilage, Expiry, Over-prep, etc.), and Staff Meals (internal consumption by staff). The Summary tab computes Used = Opening + Net Purchases − Wastage − Staff Meals − Closing, where Wastage = the monthly catch-all + all daily entries. Export to Excel.',
+        tips: ['Use the Daily Wastage tab to log spoilage by day and reason as it happens — these roll into the period total and COGS', 'The Wastage tab is the monthly catch-all: a single quick figure per item, on top of any daily entries', 'Enter opening stock before any purchases for accurate COGS', 'The Wastage Report now groups by item and includes a By-Reason breakdown']
       },
       {
         icon: '◉', name: 'Mobile App',
@@ -84,11 +84,6 @@ const IMS_TIERS = [
         tips: ['Set par levels based on supplier lead time × daily usage rate', 'Review the reorder report weekly, not just at month end', 'Book Stock only reflects POS-recorded sales/comps — if you also log sales manually, Current Stock is the more complete number']
       },
       {
-        icon: '↗', name: 'Demand Forecast',
-        guide: 'Predicts covers, revenue, and per-dish quantity for the next 7 or 30 days using a day-of-week moving average over your last ~12 weeks of POS sales (falls back to manual Sales entries if POS history is thin). Click "Recompute Forecast" to generate or refresh it — it does not run automatically. Click a day\'s row to see its top forecasted items. A holiday badge means the target date matches your Holiday Calendar, but the model does not automatically boost or dampen for it — treat the number as a floor, not a ceiling, on festival days.',
-        tips: ['Recompute weekly for the freshest prediction — it only reflects sales up to the last time you ran it', 'A thin or brand-new POS history produces a less confident forecast — give it a few weeks of data', 'Add movable holidays (Dashain, Tihar) to the Holiday Calendar so they at least get flagged on the report']
-      },
-      {
         icon: '⊛', name: 'VAT Report',
         guide: 'Summarises input VAT on purchases. Toggle the VAT-inclusive flag per purchase entry in the Purchases page. Shows total VAT paid per period for use in your IRD VAT return.',
         tips: ['Only purchases marked as VAT-inclusive are counted in the VAT total', 'Match this against your supplier VAT invoices before filing']
@@ -112,6 +107,11 @@ const IMS_TIERS = [
         icon: '◧', name: 'Settings',
         guide: 'Configure your outlet details — business name, location, VAT number, contact phone, email, and website. These appear on printed sheets and reports. Also set thresholds for FC% warnings and item codes. Theme tab lets you switch between Dark and Light mode.',
         tips: ['Set the correct contact details — they appear in the Help page footer for staff', 'Only admins can change settings for a client account']
+      },
+      {
+        icon: '⊞', name: 'Staff Meals Tracking',
+        guide: 'A dedicated Staff Meals tab in Stock Count. Track food consumed by staff or given as complimentary — kept separate from wastage so it doesn\'t inflate your spoilage numbers. Staff meals are deducted from COGS separately in the Monthly Summary.',
+        tips: ['Record staff meals daily, not at month end, for accurate COGS tracking', 'Separate from Wastage so management can see both figures independently']
       },
     ]
   },
@@ -173,11 +173,6 @@ const IMS_TIERS = [
         guide: 'Create and manage purchase orders to send to vendors before stock arrives. POs can be drafted, approved, and marked as received. Maintains a proper procurement trail ahead of Purchases entries.',
         tips: ['Raise a PO before the vendor delivers to keep procurement organised', 'Match the received PO against the actual invoice when entering Purchases']
       },
-      {
-        icon: '⊞', name: 'Staff Meals Tracking',
-        guide: 'A dedicated Staff Meals tab appears in Stock Count (Growth plan and above). Track food consumed by staff or given as complimentary — kept separate from wastage so it doesn\'t inflate your spoilage numbers. Staff meals are deducted from COGS separately in the Monthly Summary.',
-        tips: ['Record staff meals daily, not at month end, for accurate COGS tracking', 'Separate from Wastage so management can see both figures independently']
-      },
     ]
   },
   {
@@ -222,6 +217,11 @@ const IMS_TIERS = [
         icon: '△', name: 'Theoretical Variance',
         guide: 'Advanced variance analysis that isolates theoretical food cost vs actual, broken down by category. Deeper drill-down than the standard Variance Report. Compare against budget for a complete financial picture.',
         tips: ['Items with both high theoretical and high actual usage → recipe portion sizes may need revision', 'Use alongside Budget vs Actual for the most complete picture']
+      },
+      {
+        icon: '↗', name: 'Demand Forecast',
+        guide: 'Predicts covers, revenue, and per-dish quantity for the next 7 or 30 days using a day-of-week moving average over your last ~12 weeks of POS sales (falls back to manual Sales entries if POS history is thin). Click "Recompute Forecast" to generate or refresh it — it does not run automatically. Click a day\'s row to see its top forecasted items. A holiday badge means the target date matches your Holiday Calendar, but the model does not automatically boost or dampen for it — treat the number as a floor, not a ceiling, on festival days.',
+        tips: ['Recompute weekly for the freshest prediction — it only reflects sales up to the last time you ran it', 'A thin or brand-new POS history produces a less confident forecast — give it a few weeks of data', 'Add movable holidays (Dashain, Tihar) to the Holiday Calendar so they at least get flagged on the report']
       },
     ]
   },
@@ -398,6 +398,7 @@ const STARTER_FEATURES = [
   'VAT & Non-VAT Reports',
   'Wastage Report with Excel Export',
   'Settings & Outlet Customisation',
+  'Staff Meals Tracking',
 ]
 const GROWTH_EXTRAS = [
   'Recipe Costing & Live FC%',
@@ -410,9 +411,7 @@ const GROWTH_EXTRAS = [
   'Menu Repricing (Underpriced Dish Finder)',
   'Best & Worst Sellers Analysis',
   'Purchase Orders',
-  'Staff Meals Tracking',
   'Nutrition Facts & Allergen Labels',
-  'Demand Forecast (7/30-Day Covers & Revenue Prediction)',
 ]
 const PRO_EXTRAS = [
   'Period Comparison (6 / 12 / 24 / All Periods)',
@@ -423,6 +422,7 @@ const PRO_EXTRAS = [
   'Supplier Price Tracker & Rate Alerts',
   'Overheads, P&L, and Break-Even Analysis',
   'Theoretical Variance (Advanced Drill-Down)',
+  'Demand Forecast (7/30-Day Covers & Revenue Prediction)',
 ]
 const PRICE_PLANS = [
   { name: 'Starter', icon: '◎', color: 'var(--theme-accent)', badge: '1 Month Free', badgeBg: 'var(--theme-accent)',               monthly: 5000,  annual: 3750, features: STARTER_FEATURES, highlight: false, cta: 'Start Free Trial' },

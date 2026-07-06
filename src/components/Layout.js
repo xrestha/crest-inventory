@@ -33,7 +33,7 @@ const REPORTS = [
   // Stock & variance
   { to: '/stock-report',         label: 'Stock Report',         icon: '▤', featureKey: 'stock_report',         cat: 'stock' },
   { to: '/reorder',              label: 'Reorder Report',       icon: '↻', featureKey: 'reorder_report',       cat: 'stock' },
-  { to: '/demand-forecast',      label: 'Demand Forecast',      icon: '↗', featureKey: 'demand_forecast',      cat: 'stock', minPlan: 'growth' },
+  { to: '/demand-forecast',      label: 'Demand Forecast',      icon: '↗', featureKey: 'demand_forecast',      cat: 'stock', minPlan: 'pro' },
   { to: '/wastage-report',       label: 'Wastage Report',       icon: '⚠', featureKey: 'wastage_report',       cat: 'stock' },
   { to: '/dead-stock',           label: 'Dead Stock',           icon: '⊘', featureKey: 'dead_stock',           cat: 'stock', minPlan: 'growth' },
   { to: '/variance',             label: 'Variance Report',      icon: '△', featureKey: 'variance_report',      cat: 'stock', minPlan: 'growth' },
