@@ -111,7 +111,8 @@ export default function Login() {
             </div>
             <button
               onClick={() => navigate('/pricing')}
-              style={{ background: 'none', border: 'none', color: 'var(--theme-accent)', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              className="login-btn login-btn--trial"
+              style={{ padding: '7px 16px', fontSize: 12, marginTop: 0 }}>
               View Pricing →
             </button>
           </div>

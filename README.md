@@ -132,6 +132,12 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S270 — 2026-07-06 — Login page: View Pricing styled as a solid button
+
+Follow-up to S268: the "View Pricing" link was plain text, easy to miss next to the branding. Restyled it as a solid green pill using the same `login-btn login-btn--trial` classes as the "Start Free Trial" button below it, just scaled down (smaller padding/font) to fit the corner.
+
+**Files:** `src/pages/Login.js`
+
 ### S269 — 2026-07-06 — Pricing: aligned the IMS tier price rows, moved the trial badge inline
 
 Follow-up to S267: the "FREE FOR 7 DAYS" badge sat on its own line above the Starter tier's price, pushing that price one row lower than Growth's and Pro's — the three cards no longer lined up. Moved the badge inline next to the "Starter" title (now a small pill reading "FREE FOR 7 DAYS TRIAL"), freeing the price row to sit at the same height across all three tiers. Also reworded "/mo after" → "/mo after trial" for clarity on what the recurring price is after (the trial ending, not a typo/truncation).
