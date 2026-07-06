@@ -132,6 +132,12 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S264 — 2026-07-06 — Pricing: module-color titles applied consistently across all 3 modules
+
+Follow-up to S263: the new module-color convention (blue/green/violet) was only applied to dots, checkmarks, and borders — the actual card/section titles ("Starter"/"Growth"/"Pro", "Crest HR", "Crest POS") were still plain white text, and `ClientDrawer.js`'s billing panel still colored the "CREST IMS" header and the Pro tier's active state gold (a leftover from the old per-tier scheme) instead of IMS's blue. Fixed in all three files: `Pricing.js` and Help.js's Pricing tab now color each IMS tier's name and each HR/POS card's name with `MODULE_COLORS.ims`/`mod.color`; `ClientDrawer.js`'s per-module header (`CREST IMS`/`CREST HR`/`CREST POS`) now uses `accentBase` (`MODULE_COLORS[mod.key]`), and the IMS Starter/Growth/Pro tier-picker's active-state accent is now uniformly `MODULE_COLORS.ims` for all three tiers instead of gold-for-Pro/blue-for-Growth/gray-for-Starter.
+
+**Files:** `src/pages/Pricing.js`, `src/pages/Help.js`, `src/pages/adminClients/ClientDrawer.js`
+
 ### S263 — 2026-07-06 — Pricing rollout: new IMS/HR/POS numbers, one shared pricing data file, module colors
 
 Three independent hand-maintained copies of pricing had already drifted from each other and from the real tier assignments in `AuthContext.js`: the public `/pricing` page, Help.js's logged-in Pricing tab, and `ClientDrawer.js`'s admin billing panel (which applies the same Starter/Growth/Pro ladder to every module tab, including HR/POS even though neither has ever actually been tier-gated). Consolidated all three onto one new file, **`src/data/pricingPlans.js`** — `MODULE_COLORS` (blue `#60a5fa` IMS / green `#34d399` HR / violet `#a78bfa` POS, matching the pill convention from S260-262), `IMS_TIERS` (Starter NPR 2,000 / Growth 2,600 / Pro 3,500 monthly, 25% off annual), `HR_PRICING` and `POS_PRICING` (flat NPR 2,600 and 2,000/mo — never real tiers), and `SUITE_BUNDLES` (IMS+HR+POS bundled at ~20% off buying separately: 5,300 / 5,800 / 6,500).

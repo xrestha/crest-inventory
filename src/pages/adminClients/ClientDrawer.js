@@ -653,7 +653,7 @@ export default function ClientDrawer({ client, onClose, onClientUpdated }) {
                     <div key={mod.key} style={{ marginBottom: 24, paddingBottom: 24, borderBottom: '1px solid var(--theme-border)' }}>
                       {/* Header */}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                        <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--theme-text1)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{mod.label}</p>
+                        <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: accentBase, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{mod.label}</p>
                         {s.label && (
                           <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 3, color: s.color, background: s.bg, border: `1px solid ${s.border}` }}>
                             {s.label}
@@ -679,7 +679,7 @@ export default function ClientDrawer({ client, onClose, onClientUpdated }) {
                             {IMS_TIERS.map(p => {
                               const price = billingCycle === 'annual' ? p.annual : p.monthly
                               const active = mod.plan === p.key
-                              const accentColor = p.key === 'pro' ? 'var(--theme-accent)' : p.key === 'growth' ? MODULE_COLORS.ims : 'var(--theme-text2)'
+                              const accentColor = MODULE_COLORS.ims
                               return (
                                 <button key={p.key} onClick={() => mod.setPlan(p.key)} style={{
                                   flex: 1, padding: '8px 4px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 700, lineHeight: 1.4,

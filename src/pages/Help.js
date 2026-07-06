@@ -1215,7 +1215,7 @@ export default function Help() {
                     </div>
                   )}
                   <div style={{ marginBottom: 6 }}>
-                    <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--theme-text1)', fontFamily: 'Georgia, serif' }}>{plan.label}</span>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: MODULE_COLORS.ims, fontFamily: 'Georgia, serif' }}>{plan.label}</span>
                   </div>
                   <div style={{ marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid var(--theme-border)' }}>
                     {plan.key === 'starter' && !pricingAnnual ? (
@@ -1259,7 +1259,7 @@ export default function Help() {
               return (
                 <div key={mod.key} className="card" style={{ display: 'flex', flexDirection: 'column', padding: '32px 22px 22px' }}>
                   <div style={{ marginBottom: 6 }}>
-                    <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--theme-text1)', fontFamily: 'Georgia, serif' }}>{mod.name}</span>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: mod.color, fontFamily: 'Georgia, serif' }}>{mod.name}</span>
                   </div>
                   <div style={{ marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid var(--theme-border)' }}>
                     <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--theme-text1)' }}>NPR {price.toLocaleString()}<span style={{ fontSize: 12, fontWeight: 400, color: 'var(--theme-text2)' }}>/mo</span></div>

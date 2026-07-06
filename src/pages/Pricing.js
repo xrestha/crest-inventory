@@ -139,7 +139,7 @@ export default function Pricing() {
               )}
 
               <div style={{ marginBottom: 20 }}>
-                <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--theme-text1)', fontFamily: 'Georgia, serif' }}>{plan.label}</span>
+                <span style={{ fontSize: 20, fontWeight: 700, color: MODULE_COLORS.ims, fontFamily: 'Georgia, serif' }}>{plan.label}</span>
               </div>
 
               <div style={{ marginBottom: 22, paddingBottom: 22, borderBottom: `1px solid ${BORDER}` }}>
@@ -198,7 +198,7 @@ export default function Pricing() {
           return (
             <div key={mod.key} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '36px 28px 28px', display: 'flex', flexDirection: 'column' }}>
               <div style={{ marginBottom: 8 }}>
-                <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--theme-text1)', fontFamily: 'Georgia, serif' }}>{mod.name}</span>
+                <span style={{ fontSize: 20, fontWeight: 700, color: mod.color, fontFamily: 'Georgia, serif' }}>{mod.name}</span>
               </div>
               <p style={{ fontSize: 13, color: 'var(--theme-text2)', margin: '0 0 20px', lineHeight: 1.5 }}>{mod.tagline}</p>
 
