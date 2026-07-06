@@ -132,6 +132,39 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S255 — 2026-07-06 — Bug fix: SSF Enrolled toggle was cosmetic — SSF always computed regardless
+
+Reported by Aashish: Pay Setup → Bank/SSF tab has an "SSF Enrolled" toggle, but turning it off didn't stop the Salary tab's Monthly Summary from showing an 11% SSF Employee deduction. Root cause found in two places, both computing `ssf_base = Math.min(basic, SSF_CAP)` unconditionally — never reading `ssf_enrolled` at all:
+
+- **`PayForm.jsx`** (the Pay Setup edit modal) — the live Monthly Summary and the Deductions tab's "SSF — Employee (11%) · auto" row both showed SSF regardless of the toggle.
+- **`PaySetup.jsx`** (the Pay Setup list page) — same bug, one level up: the SSF Employee/Employer stat cards, the per-row Deductions/Net Salary/SSF Employer columns, and the Excel export all computed SSF for every monthly employee, toggle or not.
+
+`payrollCompute.js` (the actual payroll run) already gated correctly on `employee.ssf_enrolled` — confirmed live on Casa Acai Cafe's real (non-enrolled) staff: the payroll draft already showed "no SSF" badges and NPR 0 employer SSF, while both Pay Setup screens showed non-zero SSF for the same four employees. Fixed by gating `ssf_base` on `ssf_enrolled` in both files (one-line fix each) plus hiding/showing the SSF summary rows in `PayForm.jsx` accordingly. Verified live: toggling SSF off on Ananda now correctly zeroes SSF Employee/Employer and raises Net/CTC to just Gross; the list page's totals dropped from NPR 5,799/10,542 to NPR 0/0 for the four non-enrolled employees, matching the real payroll draft.
+
+**Files:** `src/modules/hr/pay/PayForm.jsx`, `src/modules/hr/pay/PaySetup.jsx`
+
+### S254 — 2026-07-06 — POS Login: colorful initials avatars
+
+The POS staff login screen (`/pos/login`) already had a name-only tile picker — no photo, no color, nothing to help staff spot their own tile quickly on a shared floor device. Roadmap ask was "colourful or pictogram for picture+name"; scoped down to the colorful-initials option (Slack/Gmail-style) rather than real photo upload, since that needs zero new schema/Storage/edge-function work and ships the actual UX win (fast tile recognition) immediately.
+
+**New `src/utils/avatarColor.js`** (pure, tested): `getInitials(fullName)` and `avatarColorFor(id, isDark)`, the latter hashing the staff `id` (not list position, so colors never reshuffle when staff are added/removed) into one of 8 categorical hues from the dataviz skill's validated reference palette, picking the light or dark column by the active theme's background luminance, and choosing white vs near-black initials text by whichever has higher computed WCAG contrast against that specific hue (verified all 8 slots clear ≥3:1, the large-text AA threshold — worst case 3.98:1).
+
+`PosLogin.jsx` tiles grew from 130×80 text-only to 130×128 with a 52px avatar circle on top; no RPC/schema change (`get_pos_staff` already returns `id` + `full_name`). Verified live in both dark and a light theme preset via a Playwright session with the `get_pos_staff` RPC intercepted (no real POS staff accounts existed yet on the test client, so synthetic staff were fed in rather than creating real login credentials just to screenshot).
+
+**Files:** `src/utils/avatarColor.js` (new), `src/utils/avatarColor.test.js` (new), `src/modules/pos/login/PosLogin.jsx`, `src/pages/Help.js`
+
+### S253 — 2026-07-06 — Attendance: "Generate from Roster" pre-fill
+
+Roster already captured who's scheduled to work which shift each day (`hr_roster`), but nothing downstream used it — Attendance (the table Payroll actually reads) was 100% manually keyed, one employee/day at a time, every month. Added a "⚡ Generate from Roster" button to the Attendance page's Mark Attendance tab that pre-fills the month from Roster shift assignments in one click.
+
+**Fills gaps only, never overwrites:** for each employee × day in the selected period, a roster shift resolving to real hours → `present` with those hours; no roster row on a Saturday → `weekly_off` (matches the existing default); anything else (already has an attendance row, or no roster entry on a non-Saturday) is left untouched for manual entry. Leave, unscheduled offs, and OT stay 100% manual, matching how they work today.
+
+**Bug caught during live verification, fixed before shipping:** some venues create custom zero-hour shift types on the Roster board purely to mark exceptions visually (e.g. a "LEAVE" or "OFF" entry with no start/end time) — verified live on Casa Acai Cafe's real roster data, which already had exactly this. The first pass treated any roster row as "present," so an employee on a whole week of roster-marked "LEAVE" got paid-present days generated. Fixed: a roster row only counts as present when its shift resolves to positive hours; a zero/unresolvable-hours roster entry now falls through to the same handling as no roster row at all (blank, or Saturday default).
+
+No schema change, no changes to `payrollCompute.js` — the generator only ever writes ordinary `hr_attendance` rows, so payroll's hot path is untouched.
+
+**Files:** `src/modules/hr/attendance/attendanceFromRoster.js` (new, pure logic + tests), `src/modules/hr/attendance/AttendanceSheet.jsx`, `src/modules/hr/roster/laborForecast.js` (exported existing `shiftHours` helper for reuse), `src/pages/Help.js`
+
 ### S252 — 2026-07-06 — Split all six "god components" flagged in the architecture report
 
 Closed the last item from the S249 architecture report: the six files over 1,200 lines. Two shapes of fix, chosen per file based on what was actually inside:

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../../supabaseClient'
+import { useTheme } from '../../../context/ThemeContext'
+import { getInitials, avatarColorFor, relativeLuminance } from '../../../utils/avatarColor'
 
 const KEYS = [
   ['1', '2', '3'],
@@ -11,6 +13,8 @@ const KEYS = [
 
 export default function PosLogin() {
   const navigate = useNavigate()
+  const { colors } = useTheme()
+  const isDark = relativeLuminance(colors.bg) < 0.5
   const clientId   = localStorage.getItem('pos_device_client_id')
   const clientName = localStorage.getItem('pos_device_client_name') || 'Crest POS'
 
@@ -99,33 +103,46 @@ const pinDots = Math.max(4, pin.length)
             </p>
           ) : (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, justifyContent: 'center', maxWidth: 500 }}>
-              {staff.map(s => (
-                <button
-                  key={s.id}
-                  onClick={() => pickStaff(s)}
-                  style={{
-                    width: 130, height: 80,
-                    background: 'var(--theme-card)',
-                    border: '1px solid var(--theme-border)',
-                    borderRadius: 12,
-                    color: 'var(--theme-text1)',
-                    fontSize: 14, fontWeight: 600,
-                    cursor: 'pointer',
-                    padding: '10px 8px',
-                    lineHeight: 1.3,
-                    transition: 'border-color 0.15s, background 0.15s',
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--theme-accent)'; e.currentTarget.style.background = 'var(--theme-table-hover)' }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--theme-border)'; e.currentTarget.style.background = 'var(--theme-card)' }}
-                >
-                  <div>{s.full_name}</div>
-                  {s.pos_job_title && (
-                    <div style={{ fontSize: 11, fontWeight: 400, color: 'var(--theme-text3)', marginTop: 3 }}>
-                      {s.pos_job_title}
+              {staff.map(s => {
+                const avatar = avatarColorFor(s.id, isDark)
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => pickStaff(s)}
+                    style={{
+                      width: 130, height: 128,
+                      display: 'flex', flexDirection: 'column', alignItems: 'center',
+                      background: 'var(--theme-card)',
+                      border: '1px solid var(--theme-border)',
+                      borderRadius: 12,
+                      color: 'var(--theme-text1)',
+                      fontSize: 14, fontWeight: 600,
+                      cursor: 'pointer',
+                      padding: '12px 8px 10px',
+                      lineHeight: 1.3,
+                      transition: 'border-color 0.15s, background 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--theme-accent)'; e.currentTarget.style.background = 'var(--theme-table-hover)' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--theme-border)'; e.currentTarget.style.background = 'var(--theme-card)' }}
+                  >
+                    <div style={{
+                      width: 52, height: 52, borderRadius: '50%',
+                      background: avatar.bg, color: avatar.fg,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 18, fontWeight: 700, letterSpacing: 0.5,
+                      marginBottom: 8, flexShrink: 0,
+                    }}>
+                      {getInitials(s.full_name)}
                     </div>
-                  )}
-                </button>
-              ))}
+                    <div style={{ textAlign: 'center' }}>{s.full_name}</div>
+                    {s.pos_job_title && (
+                      <div style={{ fontSize: 11, fontWeight: 400, color: 'var(--theme-text3)', marginTop: 3, textAlign: 'center' }}>
+                        {s.pos_job_title}
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
             </div>
           )}
 

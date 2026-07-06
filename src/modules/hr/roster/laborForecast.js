@@ -17,7 +17,7 @@ export function rKey(year, month, day, empId) {
   return `${year}:${month}:${day}:${empId}`
 }
 
-function shiftHours(shift) {
+export function shiftHours(shift) {
   if (!shift) return 0
   return shift.hours ?? calcHours(shift.start_time, shift.end_time) ?? 0
 }

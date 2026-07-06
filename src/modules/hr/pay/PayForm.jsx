@@ -128,7 +128,7 @@ export default function PayForm({ employee, onSave, onClose }) {
   const deductions    = components.filter(c => c.type === 'deduction')
   const otherEarnings = earnings.reduce((s, c) => s + calcAmount(c, basic), 0)
   const totalDeductions = deductions.reduce((s, c) => s + calcAmount(c, basic), 0)
-  const ssf_base      = Math.min(basic, SSF_CAP)
+  const ssf_base      = form.ssf_enrolled ? Math.min(basic, SSF_CAP) : 0
   const ssf_employee  = Math.round(ssf_base * SSF_EMPLOYEE_PCT)
   const ssf_employer  = Math.round(ssf_base * SSF_EMPLOYER_PCT)
   const gross         = basic + dearnessAmt + otherEarnings
@@ -312,7 +312,7 @@ export default function PayForm({ employee, onSave, onClose }) {
                       ))}
                     </div>
                     {/* SSF auto row */}
-                    {basic > 0 && (
+                    {basic > 0 && form.ssf_enrolled && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: '#0f1117', borderRadius: 6, marginBottom: 6, border: '1px solid #2a2f3d' }}>
                         <span style={{ fontSize: 12, color: '#6b7280' }}>
                           <Tip text="11% of basic salary deducted from the employee each month. Mandatory under SSF Act. Basic is capped at NPR 100,000 for SSF calculation." width={280}>
@@ -320,6 +320,13 @@ export default function PayForm({ employee, onSave, onClose }) {
                           </Tip>
                         </span>
                         <span style={{ fontSize: 13, color: '#e8e0d0', fontWeight: 500 }}>NPR {ssf_employee.toLocaleString('en-NP')}</span>
+                      </div>
+                    )}
+                    {basic > 0 && !form.ssf_enrolled && (
+                      <div style={{ padding: '7px 10px', fontSize: 12, color: '#4b5563' }}>
+                        <Tip text="Enable SSF Enrolled in the Bank / SSF tab to apply the 11% employee / 20% employer SSF deduction." width={280}>
+                          SSF not enrolled — no SSF deduction applied
+                        </Tip>
                       </div>
                     )}
                     {deductions.map((comp, i) => {
@@ -357,11 +364,11 @@ export default function PayForm({ employee, onSave, onClose }) {
                       dearnessAmt > 0 && { label: 'Dearness Allowance', value: dearnessAmt, indent: true,  color: '#34d399' },
                       otherEarnings > 0 && { label: `Other Allowances${earnings.length > 0 ? ` (${earnings.length})` : ''}`, value: otherEarnings, indent: true, color: '#34d399' },
                       { label: 'Gross Earnings',         value: gross,          indent: false, color: '#e8e0d0', bold: true, separator: true },
-                      { label: `SSF Employee (11%${basic > SSF_CAP ? ' · capped' : ''})`, value: -ssf_employee, indent: true, color: '#f87171' },
+                      form.ssf_enrolled && { label: `SSF Employee (11%${basic > SSF_CAP ? ' · capped' : ''})`, value: -ssf_employee, indent: true, color: '#f87171' },
                       ...deductions.map(c => ({ label: c.name || 'Deduction', value: -calcAmount(c, basic), indent: true, color: '#f87171' })),
                       { label: 'Net (Cash in Hand)',      value: net,            indent: false, color: '#c9a84c', bold: true, big: true, separator: true },
                       { label: 'Cost to Company (CTC)',  value: ctc,            indent: false, color: '#60a5fa', bold: true, big: true, separator: true, bg: 'rgba(96,165,250,0.05)' },
-                      { label: 'Employer SSF (20%)',     value: ssf_employer,   indent: true,  color: '#6b7280', note: 'paid by company' },
+                      form.ssf_enrolled && { label: 'Employer SSF (20%)', value: ssf_employer, indent: true,  color: '#6b7280', note: 'paid by company' },
                     ].filter(Boolean).map((r, i) => (
                       <div key={i} style={{
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',

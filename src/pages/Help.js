@@ -252,15 +252,15 @@ const HR_FEATURES = [
   },
   {
     icon: '🗓️', name: 'Attendance',
-    guide: 'Daily attendance per BS month. The Mark Attendance tab lets you pick a day and set each employee\'s status (Present, Half-day, Absent, Paid/Unpaid Leave, Weekly Off, Holiday), plus hours worked (for hourly staff) and overtime hours. Saturdays are auto-defaulted to Weekly Off; use the quick buttons to mark the whole team Present, Weekly Off, or Holiday in one click. The Month Summary tab shows a colour-coded grid of the whole month with per-employee totals, and exports to Excel. Attendance is the data source the upcoming Payroll module uses to calculate actual pay for daily and hourly workers and to apply overtime.',
-    tips: ['Pick the day, set statuses, then click Save Day — each day is saved as a complete set for all active employees', 'Saturdays default to Weekly Off (Nepal standard) — change anyone who actually worked', 'Public holidays are marked manually — use the "All Holiday" button or set Holiday per employee', 'The Hours column only appears for hourly-paid employees; OT hours can be entered for anyone', 'Overtime is captured here and paid at 1.5× the normal hourly rate during the payroll run', 'Only active and probation employees appear on the sheet']
+    guide: 'Daily attendance per BS month. The Mark Attendance tab lets you pick a day and set each employee\'s status (Present, Half-day, Absent, Paid/Unpaid Leave, Weekly Off, Holiday), plus hours worked (for hourly staff) and overtime hours. Saturdays are auto-defaulted to Weekly Off; use the quick buttons to mark the whole team Present, Weekly Off, or Holiday in one click, or click ⚡ Generate from Roster to pre-fill the whole month from Staff Roster shift assignments in one step. The Month Summary tab shows a colour-coded grid of the whole month with per-employee totals, and exports to Excel. Attendance is the data source Payroll uses to calculate actual pay for daily and hourly workers and to apply overtime.',
+    tips: ['Pick the day, set statuses, then click Save Day — each day is saved as a complete set for all active employees', '⚡ Generate from Roster fills blank days from that month\'s Staff Roster shift assignments (marked Present, with hours from the shift) and defaults unrostered Saturdays to Weekly Off — it never overwrites a day you\'ve already marked, so re-running it after adding late roster entries is safe', 'A roster shift with no hours (e.g. a custom "LEAVE" or "OFF" shift type some venues create just to mark the board) is skipped by Generate from Roster rather than counted as Present — mark those days manually', 'Saturdays default to Weekly Off (Nepal standard) — change anyone who actually worked', 'Public holidays are marked manually — use the "All Holiday" button or set Holiday per employee', 'The Hours column only appears for hourly-paid employees; OT hours can be entered for anyone', 'Overtime is captured here and paid at 1.5× the normal hourly rate during the payroll run', 'Only active and probation employees appear on the sheet']
   },
   {
     icon: '📋', name: 'Roster',
     guide: 'Plan weekly or monthly staff shifts. Three tabs: Roster Board (the schedule itself), Shift Types (customise shift names, times, colours, hours), and Labor Forecast (demand-forecast overlay — see below). Two view modes on the board: Monthly (pick a BS month; the board splits into two halves — days 1–16 and 17–end — so nothing overflows) and Weekly (7-day grid centred on the selected week). Click a cell to assign a shift, or click-and-drag across a rectangle of cells (multiple days, multiple staff, or both) to assign the same shift to all of them in one action — useful for a multi-day Leave block or a whole week of the same shift. Print the schedule with a Company Name/Address letterhead for department heads — the Board only prints the shift assignments, never any labor-cost data.',
     tips: [
       'Plan the roster before the month starts — it helps forecast labour cost and avoids scheduling conflicts',
-      'Roster is for planning only — Attendance is the official record that feeds payroll',
+      'Roster is for planning; Attendance is the official record that feeds payroll — use ⚡ Generate from Roster on the Attendance page to pull shift assignments across as a starting point instead of retyping them',
       'Click and drag across cells to assign the same shift to multiple days/staff at once, instead of one click per cell',
       'Each employee can only have one shift per day — assigning a new one replaces whatever was there before',
       'The Shifts tab lets you rename, recolour, and adjust the hours of any shift to match your venue\'s terminology',
@@ -701,12 +701,13 @@ export default function Help() {
               {[
                 {
                   icon: '🔐', name: 'POS Login', path: '/pos/login',
-                  desc: 'The PIN entry screen that POS staff see when opening the system. Staff tap their name and enter their 4–6 digit PIN to access the POS. The Owner button (top-right) lets the property owner log in with their full email + password for manager-level access. Only staff with a POS role assigned appear on the screen.',
+                  desc: 'The PIN entry screen that POS staff see when opening the system. Each staff tile shows a colorful initials avatar (like Slack/Gmail) so staff can spot their own tile at a glance on a shared device, without needing to read every name. Staff tap their tile and enter their 4–6 digit PIN to access the POS. The Owner button (top-right) lets the property owner log in with their full email + password for manager-level access. Only staff with a POS role assigned appear on the screen.',
                   tips: [
                     'PINs are set or reset in POS → Staff — staff cannot change their own PIN',
                     'Only staff with a POS role assigned appear on the login screen; users without a role see nothing',
                     'Forgotten PIN? Go to POS → Staff → Reset PIN beside the staff member\'s name',
                     'The Owner login gives full access — share it only with trusted management',
+                    'Avatar colors are assigned automatically and stay fixed per staff member — they don\'t change when other staff are added or removed',
                   ],
                 },
                 {

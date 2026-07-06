@@ -5,6 +5,7 @@ import Tip from '../../../components/Tip'
 import * as XLSX from 'xlsx'
 import { BS_MONTHS, daysInBsMonth, bsToAd, getBsToday } from '../../../utils/bsCalendar'
 import { ATTENDANCE_STATUSES, WEEKLY_OFF_WEEKDAY } from '../payrollConstants'
+import { buildAttendanceFromRoster } from './attendanceFromRoster'
 
 const STATUS_MAP = Object.fromEntries(ATTENDANCE_STATUSES.map(s => [s.key, s]))
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -37,6 +38,7 @@ export default function AttendanceSheet() {
   const [selectedDay, setSelectedDay] = useState(getBsToday().day)
   const [saving,    setSaving]    = useState(false)
   const [savedMsg,  setSavedMsg]  = useState('')
+  const [generating, setGenerating] = useState(false)
 
   const loadAttendance = useCallback(async (periodId) => {
     const { data } = await scopedFrom('hr_attendance').eq('period_id', periodId)
@@ -128,6 +130,43 @@ export default function AttendanceSheet() {
     await loadAttendance(period.id)
     setSavedMsg('ok:Saved Day ' + selectedDay)
     setSaving(false)
+  }
+
+  async function generateFromRoster() {
+    if (!period) return
+    setGenerating(true); setSavedMsg('')
+    const [{ data: rosterRows }, { data: shiftTypes }] = await Promise.all([
+      scopedFrom('hr_roster', 'employee_id, shift_type_id, bs_day')
+        .eq('bs_year', period.bs_year).eq('bs_month', period.bs_month),
+      scopedFrom('hr_shift_types', 'id, hours, start_time, end_time'),
+    ])
+    const shiftTypesById = Object.fromEntries((shiftTypes || []).map(s => [s.id, s]))
+    const alreadySet = Object.keys(records).length
+    const rows = buildAttendanceFromRoster({
+      rosterRows: rosterRows || [],
+      shiftTypesById,
+      employeeIds: employees.map(e => e.id),
+      existingDayKeys: new Set(Object.keys(records)),
+      bsYear: period.bs_year,
+      bsMonth: period.bs_month,
+      days,
+      periodId: period.id,
+    })
+    if (rows.length === 0) {
+      setSavedMsg('ok:Nothing to generate — every day already has an entry, or no employees are on the roster this month.')
+      setGenerating(false)
+      return
+    }
+    const ok = window.confirm(
+      `Generate attendance for ${rows.length} employee-day(s) from the roster?\n` +
+      `${alreadySet} day(s) already have entries and will be left unchanged.`
+    )
+    if (!ok) { setGenerating(false); return }
+    const { error } = await scopedUpsert('hr_attendance', rows, { onConflict: 'employee_id,period_id,bs_day' })
+    if (error) { setSavedMsg('error:' + error.message); setGenerating(false); return }
+    await loadAttendance(period.id)
+    setSavedMsg(`ok:Generated ${rows.length} entr${rows.length === 1 ? 'y' : 'ies'} from roster`)
+    setGenerating(false)
   }
 
   // ── Month summary aggregation ──────────────────────────────────────────────
@@ -226,6 +265,9 @@ export default function AttendanceSheet() {
               <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => markAll('weekly_off')}>All Weekly Off</button>
               <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => markAll('holiday')}>All Holiday</button>
             </div>
+            <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={generateFromRoster} disabled={generating}>
+              {generating ? 'Generating…' : '⚡ Generate from Roster'}
+            </button>
             <div style={{ flex: 1 }} />
             {savedMsg && (
               <span style={{ fontSize: 12, color: savedMsg.startsWith('ok') ? '#34d399' : '#f87171' }}>
@@ -242,6 +284,12 @@ export default function AttendanceSheet() {
               ⚠ Day {selectedDay} is a Saturday — defaulted to Weekly Off. Adjust any staff who worked.
             </div>
           )}
+
+          <div style={{ marginBottom: 14, fontSize: 11, color: '#6b7280', lineHeight: 1.6 }}>
+            <Tip text="Fills blank days across the whole month from Staff Roster shift assignments — marked Present, with hours from the shift — and defaults unrostered Saturdays to Weekly Off. A roster shift with no hours (e.g. a custom 'LEAVE' or 'OFF' entry) is skipped rather than marked Present. Never overwrites a day that already has an entry, so leave, extra offs, and OT still need manual entry afterward." width={320}>
+              ⚡ Generate from Roster
+            </Tip>{' '}pre-fills this month from Staff Roster shift assignments; it never overwrites a day you've already marked.
+          </div>
 
           <div className="card" style={{ padding: 0 }}>
             <div className="table-wrap">

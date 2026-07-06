@@ -68,7 +68,7 @@ export default function PaySetup() {
     const otherAllowances = earnings.reduce((s, c)   => s + calcAmount(c, basic), 0)
     const totalAllowances = dearnessAmt + otherAllowances
     const totalOtherDed   = deductions.reduce((s, c) => s + calcAmount(c, basic), 0)
-    const ssf_base  = Math.min(basic, SSF_CAP)
+    const ssf_base  = emp.ssf_enrolled ? Math.min(basic, SSF_CAP) : 0
     const ssf_emp   = Math.round(ssf_base * SSF_EMPLOYEE_PCT)
     const ssf_emp_  = Math.round(ssf_base * SSF_EMPLOYER_PCT)
     const gross     = basic + totalAllowances
