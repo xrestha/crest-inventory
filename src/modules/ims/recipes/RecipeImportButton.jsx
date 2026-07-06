@@ -3,6 +3,7 @@ import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
 import Modal from '../../../components/Modal'
 import { convertQty } from '../../../utils/nutrition'
+import { calcRecipeCost, calcSubRecipeCostPerUnit } from './recipeCostCalc'
 import * as XLSX from 'xlsx'
 
 const IMPORT_COLS = ['Menu Item (Recipe)', 'Category', 'Selling Price', 'Yield', 'Ingredient (name or code)', 'Qty', 'Unit']
@@ -103,6 +104,56 @@ export default function RecipeImportButton({ items, subRecipes, recipes, clientI
     XLSX.writeFile(wb, 'Recipe-Import-Template.xlsx')
   }
 
+  // Every current recipe + sub-recipe, one row per ingredient, in the same shape as the import
+  // template (first 7 columns) plus reference-only cost columns appended after — so this file is
+  // both a readable cost report AND re-importable as-is (parseImportRows reads positionally and
+  // ignores anything past column 6). Portable across clients too: only names are written, never
+  // item_id/recipe_id, so importing it into a different client matches against that client's own
+  // Item Master instead of carrying over any client-specific identifiers.
+  function downloadRecipeExport() {
+    const rows = []
+    recipes.forEach(r => {
+      const cost = calcRecipeCost(r, recipes)
+      const price = parseFloat(r.selling_price) || 0
+      const fcPct = price > 0 ? (cost / price) * 100 : null
+      const ings = (r.recipe_ingredients || []).filter(ri => (ri.item_id && ri.items) || (ri.sub_recipe_id && ri.sub_recipe))
+      if (ings.length === 0) {
+        rows.push([r.name, r.category, r.selling_price ?? '', r.yield_qty, '', '', '', '', '', cost.toFixed(2), fcPct != null ? fcPct.toFixed(1) : ''])
+        return
+      }
+      ings.forEach((ri, idx) => {
+        const isFirst = idx === 0
+        let ingName, ingUom, ingRate
+        if (ri.item_id && ri.items) {
+          ingName = ri.items.name
+          ingUom = ri.items.uom
+          ingRate = parseFloat(ri.items.per_uom_rate || 0)
+        } else {
+          ingName = ri.sub_recipe.name
+          ingUom = ri.sub_recipe.yield_uom
+          ingRate = calcSubRecipeCostPerUnit(ri.sub_recipe, recipes)
+        }
+        const ingCost = parseFloat(ri.qty_per_portion) * ingRate
+        rows.push([
+          isFirst ? r.name : '',
+          isFirst ? r.category : '',
+          isFirst ? (r.selling_price ?? '') : '',
+          isFirst ? r.yield_qty : '',
+          ingName, ri.qty_per_portion, ingUom,
+          ingRate.toFixed(2), ingCost.toFixed(2),
+          isFirst ? cost.toFixed(2) : '',
+          isFirst ? (fcPct != null ? fcPct.toFixed(1) : '') : '',
+        ])
+      })
+    })
+    const header = [...IMPORT_COLS, 'Ingredient Rate (NPR)', 'Ingredient Cost (NPR)', 'Recipe Food Cost (NPR)', 'Recipe FC%']
+    const ws = XLSX.utils.aoa_to_sheet([header, ...rows])
+    ws['!cols'] = [{ wch: 24 }, { wch: 12 }, { wch: 13 }, { wch: 7 }, { wch: 26 }, { wch: 8 }, { wch: 8 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 10 }]
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Recipes')
+    XLSX.writeFile(wb, 'Recipe-Export.xlsx')
+  }
+
   function handleImportFile(e) {
     setImportError('')
     const file = e.target.files?.[0]
@@ -186,6 +237,9 @@ export default function RecipeImportButton({ items, subRecipes, recipes, clientI
         ↑ Import Excel
         <input type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleImportFile} />
       </label>
+      <Tip text="Download every current recipe and sub-recipe with its full ingredient breakdown and cost — a backup, an editable spreadsheet, or a file to hand to another location. Same format as ↓ Template, so it can be edited and re-imported (here, or into a different client)." width={320}>
+        <button className="btn btn-ghost" style={{ fontSize: 12, padding: '8px 12px' }} onClick={downloadRecipeExport} disabled={recipes.length === 0}>↓ Export</button>
+      </Tip>
       {importError && <span style={{ fontSize: 11, color: 'var(--theme-red)' }}>{importError}</span>}
 
       {importPreview && (

@@ -132,6 +132,16 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S257 — 2026-07-06 — Recipe Costing: Export Recipe function
+
+Recipe Costing had a bulk import path (↓ Template / ↑ Import Excel) and a per-recipe print (Recipe Cost Card), but no way to get *existing* recipes back out — no backup, no bulk-editing offline, nothing to hand to another location. Added a "↓ Export" button (`RecipeImportButton.jsx`) that downloads every current recipe and sub-recipe with its full ingredient breakdown.
+
+**Format is a superset of the import template** — same first 7 columns (`Menu Item`, `Category`, `Selling Price`, `Yield`, `Ingredient`, `Qty`, `Unit`), plus 4 reference-only columns appended after (`Ingredient Rate`, `Ingredient Cost`, `Recipe Food Cost`, `Recipe FC%`) since `parseImportRows` reads positionally and ignores anything past column 6 — so the export doubles as a standalone cost report and a re-importable file. Reuses `calcRecipeCost`/`calcSubRecipeCostPerUnit` from `recipeCostCalc.js` — no new cost-calculation logic.
+
+**Explicitly designed and verified for cross-client portability** (Aashish's requirement): the file carries only recipe/ingredient *names*, never `item_id`/`recipe_id`, so importing one client's export into a different client matches against that client's own Item Master and checks duplicates against that client's own recipes — not the export's origin. Verified live: exported all 88 recipes/54 sub-recipes (641 rows) from Casa Acai Cafe, re-imported into Casa Acai Cafe itself (0 to import, all 88 correctly flagged "Already exists", 640/640 ingredients matched — proves byte-for-byte import compatibility), then imported the same file into the unrelated TRIAL client (0 false "Already exists" flags, 33/142 recipes matched via overlapping generic ingredient names like Banana/Milk/Honey, the acai-specific recipes correctly skipped since TRIAL's Item Master has no matching ingredients) — proving the file is genuinely portable, not just re-importable into its own client.
+
+**Files:** `src/modules/ims/recipes/RecipeImportButton.jsx`, `src/pages/Help.js`
+
 ### S256 — 2026-07-06 — Four small roadmap items: Tables pill, Purchases day-pill shorten, Glossary/FAQ, Module Guide stacking
 
 - **POS Tables — Quick Setup**: replaced the always-visible full-width card panel above the floor grid with a small `⚡ Quick Setup` pill (matching the `tab-btn` convention used elsewhere), which opens the same form (unchanged) in a `Modal` instead of an inline expanding section.
