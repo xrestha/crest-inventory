@@ -58,7 +58,9 @@ export default function MonthlySummary() {
       scopedFrom('vendor_returns', 'item_id, qty, rate').eq('period_id', periodId),
       supabase.from('wastages').select('item_id, qty').eq('period_id', periodId),
       supabase.from('staff_meals').select('item_id, qty').eq('period_id', periodId),
-      supabase.from('sales_entries').select('recipe_id, qty_sold').eq('period_id', periodId),
+      // Revenue excludes comps (source='pos_comp') — a comped dish was never paid for. See
+      // migration 20260706170000 for why sales_entries now carries that source separately.
+      supabase.from('sales_entries').select('recipe_id, qty_sold').eq('period_id', periodId).neq('source', 'pos_comp'),
       scopedFrom('recipes', 'id, selling_price')
     ])
 

@@ -119,11 +119,14 @@ export default function MenuEngineering() {
           .in('recipe_id', recipes.map(r => r.id))
       : { data: [] }
 
-    // Load sales for this period
+    // Load sales for this period — comps (source='pos_comp') excluded, since the BCG-style
+    // revenue/margin quadrant below is about what actually sold at menu price, not what was
+    // given away.
     const { data: sales } = await supabase
       .from('sales_entries')
       .select('recipe_id, qty_sold')
       .eq('period_id', periodId)
+      .neq('source', 'pos_comp')
 
     if (!recipes) { setLoading(false); return }
 

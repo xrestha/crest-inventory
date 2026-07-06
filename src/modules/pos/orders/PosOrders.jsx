@@ -122,6 +122,11 @@ export default function PosOrders() {
   const [conflictOrders,  setConflictOrders]  = useState([]) // queued orders whose server row was no longer 'open' at flush time
   const [floorMsg,        setFloorMsg]        = useState('') // transient floor-view banner (e.g. blocked-table message)
   const flushRef = useRef(null)
+  // Re-entry guard for closeOrder — a manual Charge tap and the QR auto-confirm poll both call
+  // closeOrder('paid') and could otherwise land inside the same order concurrently. A ref (not
+  // state) because the poll's setInterval closure needs the CURRENT value synchronously, not
+  // whatever `closing` was when the interval callback was created.
+  const closingRef = useRef(false)
 
   useEffect(() => {
     if (!clientId) return
@@ -260,8 +265,14 @@ export default function PosOrders() {
       const hit = data?.[0]
       if (!hit || cancelled) return
       if (hit.provider !== payMethod || Math.abs(hit.amount - payTotal) > 1) return
-      await scopedUpdate('pos_payment_confirmations', { consumed_at: new Date().toISOString() }).eq('id', hit.id)
-      if (!cancelled) closeOrder('paid')
+      // Consume the confirmation only once closeOrder actually finishes billing — not before.
+      // Marking it consumed first (as this used to) would burn it on a close that aborts (e.g.
+      // the comp-reason guard, or closingRef rejecting a concurrent manual tap), leaving no
+      // unconsumed confirmation left for the next poll tick to retry against.
+      const ok = await closeOrder('paid')
+      if (ok && !cancelled) {
+        await scopedUpdate('pos_payment_confirmations', { consumed_at: new Date().toISOString() }).eq('id', hit.id)
+      }
     }, 4000)
     return () => { cancelled = true; clearInterval(poll) }
   }, [billingOpen, splitMode, orderId, payMethod, billQrUrl, payTotal]) // eslint-disable-line
@@ -886,7 +897,24 @@ export default function PosOrders() {
     if (today.year !== open.bs_year || today.month !== open.bs_month) return
 
     const soldItems = orderItems.filter(i => i.recipe_id)
-    const rows = soldItems.map(i => ({ period_id: open.id, recipe_id: i.recipe_id, bs_day: today.day, qty_sold: i.qty, source: 'pos' }))
+    // Split each line's qty into its sold and comped portions — a whole-order Complimentary
+    // close (closeType==='writeoff') comps the entire qty; an otherwise-paid order only comps
+    // whatever the Pay tab's item-level comp picker recorded (compQtyMap, keyed by recipe_id).
+    const qtySplit = soldItems.map(i => {
+      const compQty = closeType === 'writeoff' ? i.qty : Math.min(compQtyMap[i.recipe_id] || 0, i.qty)
+      return { ...i, compQty, saleQty: i.qty - compQty }
+    })
+    // Recorded under separate sources (not both as 'pos') so revenue-facing IMS reports
+    // (MonthlySummary, PeriodComparison, AnnualSummary, MenuRepricing, MenuEngineering,
+    // Overheads, BestSellers, Sales.js) can exclude 'pos_comp' — a comped dish was never paid
+    // for — while consumption-facing reports (Variance, TheoreticalVariance, ShrinkageReport,
+    // ReorderReport, StockReport, Recipes.js's per-cover overhead) keep summing every source
+    // unfiltered, since that food was still prepared and consumed regardless of who paid for it.
+    const rows = []
+    qtySplit.forEach(({ recipe_id, saleQty, compQty }) => {
+      if (saleQty > 0) rows.push({ period_id: open.id, recipe_id, bs_day: today.day, qty_sold: saleQty, source: 'pos' })
+      if (compQty > 0) rows.push({ period_id: open.id, recipe_id, bs_day: today.day, qty_sold: compQty, source: 'pos_comp' })
+    })
     if (rows.length > 0) await supabase.from('sales_entries').insert(rows)
 
     // Best-effort stock depletion — never blocks or fails the close (matches the sales_entries
@@ -900,10 +928,8 @@ export default function PosOrders() {
       if (recipeIds.length > 0) {
         const breakdown = await explodeRecipeIngredients(supabase, recipeIds)
         const aggBySource = { pos_sale: {}, pos_comp: {} }
-        soldItems.forEach(i => {
-          const compQty = closeType === 'writeoff' ? i.qty : Math.min(compQtyMap[i.recipe_id] || 0, i.qty)
-          const saleQty = i.qty - compQty
-          ;(breakdown[i.recipe_id] || []).forEach(({ item_id, qty }) => {
+        qtySplit.forEach(({ recipe_id, saleQty, compQty }) => {
+          ;(breakdown[recipe_id] || []).forEach(({ item_id, qty }) => {
             if (saleQty > 0) aggBySource.pos_sale[item_id] = (aggBySource.pos_sale[item_id] || 0) + qty * saleQty
             if (compQty > 0) aggBySource.pos_comp[item_id] = (aggBySource.pos_comp[item_id] || 0) + qty * compQty
           })
@@ -924,144 +950,141 @@ export default function PosOrders() {
   }
 
   async function closeOrder(closeType) {
-    if (!orderId || !clientId) return
+    if (!orderId || !clientId) return false
     if ((closeType === 'void' || closeType === 'writeoff') && !closeReason) {
-      setCloseMsg('error:Select a reason.'); return
+      setCloseMsg('error:Select a reason.'); return false
     }
     if (closeType === 'paid' && discountAmt > 0 && !discountReason) {
-      setCloseMsg('error:Select a discount reason.'); return
+      setCloseMsg('error:Select a discount reason.'); return false
     }
     if (closeType === 'paid' && requireBuyerId && (!buyerName.trim() || !buyerPhone.trim())) {
-      setCloseMsg('error:Buyer Name + Phone are required for a discount or Credit sale.'); return
+      setCloseMsg('error:Buyer Name + Phone are required for a discount or Credit sale.'); return false
     }
     if (closeType === 'paid' && splitMode && (remaining > 0 || tenders.length === 0)) {
-      setCloseMsg('error:Split payment is not fully collected yet.'); return
+      setCloseMsg('error:Split payment is not fully collected yet.'); return false
     }
     if (closeType === 'paid' && hasItemComp && !itemCompReason) {
-      setCloseMsg('error:Select a reason for the complimentary item(s).'); return
+      setCloseMsg('error:Select a reason for the complimentary item(s).'); return false
     }
     if (closeType === 'paid' && orderItems.length > 0 && payableOrderItems.length === 0) {
-      setCloseMsg('error:Every item is comped — use the Complimentary tab instead of issuing a ₨0 bill.'); return
+      setCloseMsg('error:Every item is comped — use the Complimentary tab instead of issuing a ₨0 bill.'); return false
     }
+    // Guards a manual Charge tap and the QR auto-confirm poll from racing each other — the poll
+    // calls closeOrder directly, bypassing the Confirm Payment button's own disabled={closing}.
+    // Returns a boolean (false on any abort/failure, true only once the order is actually
+    // billed) so the poll can tell whether it's safe to consume the payment confirmation it
+    // matched — see the effect above, which no longer marks consumed_at until this resolves true.
+    if (closingRef.current) return false
+    closingRef.current = true
     setClosing(true); setCloseMsg('')
 
-    const isSplit = closeType === 'paid' && splitMode && tenders.length > 0
-    const today = getBsToday()
-    const payload = {
-      status:           closeType === 'void' ? 'voided' : 'billed',
-      close_type:       closeType,
-      payment_method:   closeType === 'paid' ? (isSplit ? 'Split' : payMethod) : null,
-      paid_amount:      closeType === 'paid' ? payTotal : (closeType === 'writeoff' ? 0 : null),
-      tendered_amount:  closeType === 'paid' && !isSplit && payMethod === 'Cash' ? (parseFloat(tenderedStr) || payTotal) : null,
-      close_reason:     closeType === 'paid' ? null : closeReason,
-      discount_amount:  closeType === 'paid' ? discountAmt : null,
-      discount_reason:  closeType === 'paid' ? (discountReason || null) : null,
-      buyer_name:       buyerName.trim() || null,
-      buyer_address:    buyerAddress.trim() || null,
-      buyer_pan:        buyerPan.trim() || null,
-      buyer_phone:      buyerPhone.trim() || null,
-      bill_remarks:     billRemarks.trim() || null,
-      closed_by:        profile?.id || null,
-      closed_at:        new Date().toISOString(),
-      // Both Pay and Complimentary get their own sequential number (TI/PB for Pay, NC for
-      // Complimentary) — the DB trigger partitions the counter by close_type so the two
-      // sequences never share numbers. Void never gets one (order was never fulfilled).
-      ...(closeType !== 'void' ? { invoice_fy: getBsFiscalYear(today.year, today.month) } : {}),
-      // Best-effort shift attribution — openShiftId is cached, not re-queried per close, so an
-      // order closed just after another device closes the shift gets stamped with whatever shift
-      // is open at that instant (possibly null, possibly the next one). That's correct
-      // bookkeeping, not a bug: shift linkage is informational only and never blocks Charge.
-      shift_id: openShiftId,
-    }
+    try {
+      const isSplit = closeType === 'paid' && splitMode && tenders.length > 0
+      const today = getBsToday()
 
-    const { data: updated, error } = await scopedUpdate('pos_orders', payload).eq('id', orderId)
-      .select('*').single()
-    if (error) { setCloseMsg('error:' + error.message); setClosing(false); return }
-
-    if (isSplit) {
-      await scopedInsert('pos_order_payments', tenders.map(t => ({
-        order_id: orderId,
-        payment_method: t.method, amount: t.amount, tendered_amount: t.tenderedAmount,
-        recorded_by: profile?.id || null,
-      })))
-    }
-
-    if (closeType !== 'void') await writeSalesEntries(closeType)
-
-    // Item-level comp: mark the comped rows so they carry a reason/audit trail, and pull one
-    // shared comp-slip number for all of them from the same series a whole-order Complimentary
-    // Slip uses (see get_next_pos_comp_slip_no + assign_pos_invoice_no's writeoff branch) — one
-    // Charge action, one slip/one number, not one per line. Best-effort: if this fails, the paid
-    // items still bill correctly; the comp slip just won't have anything to print.
-    let compedItemRows = []
-    if (closeType === 'paid' && hasItemComp) {
-      const compFy = getBsFiscalYear(today.year, today.month)
-      const { data: nextNo, error: noErr } = await supabase.rpc('get_next_pos_comp_slip_no', { p_client_id: clientId, p_fy: compFy })
-      if (noErr) {
-        console.error('comp slip numbering failed:', noErr)
-      } else {
-        const compMeta = {
-          comped: true, comp_reason: itemCompReason, comped_by: profile?.id || null,
-          comped_at: new Date().toISOString(), comp_fy: compFy, comp_no: nextNo,
-        }
-        // A fully-comped line (compQty === the line's whole qty) just gets marked comped in
-        // place. A partially-comped line (e.g. 1 of 3) needs splitting: shrink the existing row
-        // to the paid remainder, and insert a new row for the comped portion — there's no single
-        // DB row that represents "1 of these 3" until this split creates one.
+      // Item-level comp is applied BEFORE the order is marked billed, via one atomic RPC
+      // (apply_pos_item_comps, see migration 20260706170000) that reserves the shared NC-series
+      // number and writes every comped/split row in a single transaction — closing the race the
+      // previous get_next_pos_comp_slip_no-then-write-separately dance couldn't (the advisory
+      // lock released the instant that RPC returned, before this component's writes landed). If
+      // it fails, abort here: nothing has been billed yet, so the cashier just sees an error and
+      // retries, instead of the order going out paid while its comped items silently never got
+      // marked (the old "best-effort" behavior).
+      let compNo = null
+      let compedItemRows = []
+      if (closeType === 'paid' && hasItemComp) {
+        const compFy = getBsFiscalYear(today.year, today.month)
         const fullCompRecipeIds = []
         const partialComps = []
         for (const i of orderItems) {
           const compQty = Math.min(compQtyByRecipe[i.recipe_id] || 0, i.qty)
           if (compQty <= 0) continue
           if (compQty === i.qty) fullCompRecipeIds.push(i.recipe_id)
-          else partialComps.push({ item: i, compQty })
-        }
-
-        if (fullCompRecipeIds.length > 0) {
-          // Matched by (order_id, recipe_id), not row id — the row may not have synced to the DB
-          // under this component's eyes yet (see compQtyByRecipe above), but it's always saved by
-          // the time Charge runs (performSave/saveOrder already persisted it before billing opens).
-          const { data, error: compErr } = await scopedUpdate('pos_order_items', compMeta)
-            .eq('order_id', orderId).in('recipe_id', fullCompRecipeIds).select('*')
-          if (compErr) console.error('item comp write failed:', compErr)
-          else compedItemRows.push(...(data || []))
-        }
-        for (const { item, compQty } of partialComps) {
-          const { error: shrinkErr } = await scopedUpdate('pos_order_items', { qty: item.qty - compQty })
-            .eq('order_id', orderId).eq('recipe_id', item.recipe_id)
-          if (shrinkErr) { console.error('partial comp split (paid remainder) failed:', shrinkErr); continue }
-          const { data, error: insErr } = await scopedInsert('pos_order_items', {
-            order_id: orderId, recipe_id: item.recipe_id, name: item.name, category: item.category,
-            qty: compQty, unit_price: item.unit_price, vat_rate: item.vat_rate, sent_to_kot: item.sent_to_kot,
-            ...compMeta,
+          else partialComps.push({
+            recipe_id: i.recipe_id, comp_qty: compQty, name: i.name, category: i.category,
+            unit_price: i.unit_price, vat_rate: i.vat_rate, sent_to_kot: i.sent_to_kot,
           })
-          if (insErr) console.error('partial comp split (new comped row) failed:', insErr)
-          else compedItemRows.push(...(data || []))
         }
+        const { data: newCompNo, error: compErr } = await supabase.rpc('apply_pos_item_comps', {
+          p_order_id: orderId, p_client_id: clientId, p_fy: compFy,
+          p_comp_reason: itemCompReason, p_comped_by: profile?.id || null,
+          p_full_recipe_ids: fullCompRecipeIds, p_partial: partialComps,
+        })
+        if (compErr) {
+          setCloseMsg('error:Could not apply the complimentary item(s) — ' + compErr.message)
+          return false
+        }
+        compNo = newCompNo
+        const { data } = await scopedFrom('pos_order_items', '*').eq('order_id', orderId).eq('comp_no', compNo)
+        compedItemRows = data || []
       }
+
+      const payload = {
+        status:           closeType === 'void' ? 'voided' : 'billed',
+        close_type:       closeType,
+        payment_method:   closeType === 'paid' ? (isSplit ? 'Split' : payMethod) : null,
+        paid_amount:      closeType === 'paid' ? payTotal : (closeType === 'writeoff' ? 0 : null),
+        tendered_amount:  closeType === 'paid' && !isSplit && payMethod === 'Cash' ? (parseFloat(tenderedStr) || payTotal) : null,
+        close_reason:     closeType === 'paid' ? null : closeReason,
+        discount_amount:  closeType === 'paid' ? discountAmt : null,
+        discount_reason:  closeType === 'paid' ? (discountReason || null) : null,
+        buyer_name:       buyerName.trim() || null,
+        buyer_address:    buyerAddress.trim() || null,
+        buyer_pan:        buyerPan.trim() || null,
+        buyer_phone:      buyerPhone.trim() || null,
+        bill_remarks:     billRemarks.trim() || null,
+        closed_by:        profile?.id || null,
+        closed_at:        new Date().toISOString(),
+        // Both Pay and Complimentary get their own sequential number (TI/PB for Pay, NC for
+        // Complimentary) — the DB trigger partitions the counter by close_type so the two
+        // sequences never share numbers. Void never gets one (order was never fulfilled).
+        ...(closeType !== 'void' ? { invoice_fy: getBsFiscalYear(today.year, today.month) } : {}),
+        // Best-effort shift attribution — openShiftId is cached, not re-queried per close, so an
+        // order closed just after another device closes the shift gets stamped with whatever shift
+        // is open at that instant (possibly null, possibly the next one). That's correct
+        // bookkeeping, not a bug: shift linkage is informational only and never blocks Charge.
+        shift_id: openShiftId,
+      }
+
+      const { data: updated, error } = await scopedUpdate('pos_orders', payload).eq('id', orderId)
+        .select('*').single()
+      if (error) { setCloseMsg('error:' + error.message); return false }
+
+      if (isSplit) {
+        await scopedInsert('pos_order_payments', tenders.map(t => ({
+          order_id: orderId,
+          payment_method: t.method, amount: t.amount, tendered_amount: t.tenderedAmount,
+          recorded_by: profile?.id || null,
+        })))
+      }
+
+      if (closeType !== 'void') await writeSalesEntries(closeType)
+
+      // Auto-build the customer book: any bill with buyer Name + Phone (required for discounts and
+      // Credit sales) adds/updates a pos_customers row keyed by phone. Non-fatal — never blocks billing.
+      if (buyerName.trim() && buyerPhone.trim()) {
+        const custRow = { name: buyerName.trim(), phone: buyerPhone.trim(), updated_at: new Date().toISOString() }
+        if (buyerAddress.trim()) custRow.address = buyerAddress.trim()
+        if (buyerPan.trim())     custRow.pan     = buyerPan.trim()
+        await scopedUpsert('pos_customers', custRow, { onConflict: 'client_id,phone' })
+      }
+
+      if (activeTable?.id) {
+        await scopedUpdate('pos_tables', { status: 'available' }).eq('id', activeTable.id)
+      }
+
+      if (closeType === 'paid') await printBill(updated, payableOrderItems)
+      if (closeType === 'writeoff') await printCompSlip(updated, orderItems)
+      if (closeType === 'paid' && compNo != null) await printItemCompSlip(updated, compedItemRows)
+
+      setBillingOpen(false)
+      await loadFloor()
+      backToFloor()
+      return true
+    } finally {
+      closingRef.current = false
+      setClosing(false)
     }
-
-    // Auto-build the customer book: any bill with buyer Name + Phone (required for discounts and
-    // Credit sales) adds/updates a pos_customers row keyed by phone. Non-fatal — never blocks billing.
-    if (buyerName.trim() && buyerPhone.trim()) {
-      const custRow = { name: buyerName.trim(), phone: buyerPhone.trim(), updated_at: new Date().toISOString() }
-      if (buyerAddress.trim()) custRow.address = buyerAddress.trim()
-      if (buyerPan.trim())     custRow.pan     = buyerPan.trim()
-      await scopedUpsert('pos_customers', custRow, { onConflict: 'client_id,phone' })
-    }
-
-    if (activeTable?.id) {
-      await scopedUpdate('pos_tables', { status: 'available' }).eq('id', activeTable.id)
-    }
-
-    if (closeType === 'paid') await printBill(updated, payableOrderItems)
-    if (closeType === 'writeoff') await printCompSlip(updated, orderItems)
-    if (closeType === 'paid' && compedItemRows.length > 0) await printItemCompSlip(updated, compedItemRows)
-
-    setClosing(false)
-    setBillingOpen(false)
-    await loadFloor()
-    backToFloor()
   }
 
   // Pure HTML builder — no side effects, no DB calls. Shared by the actual print (printBill)

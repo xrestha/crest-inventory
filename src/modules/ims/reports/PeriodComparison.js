@@ -54,7 +54,8 @@ export default function PeriodComparison() {
       supabase.from('wastages').select('period_id, qty, items(per_uom_rate)').in('period_id', ids),
       supabase.from('opening_stock').select('period_id, qty, items(per_uom_rate)').in('period_id', ids),
       supabase.from('closing_stock').select('period_id, physical_qty, items(per_uom_rate)').in('period_id', ids),
-      supabase.from('sales_entries').select('period_id, qty_sold, recipes(selling_price)').in('period_id', ids),
+      // Revenue excludes comps (source='pos_comp') — a comped dish was never paid for.
+      supabase.from('sales_entries').select('period_id, qty_sold, recipes(selling_price)').in('period_id', ids).neq('source', 'pos_comp'),
     ])
 
     const result = {}

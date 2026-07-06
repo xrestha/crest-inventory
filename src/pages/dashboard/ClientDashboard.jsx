@@ -81,7 +81,9 @@ export default function ClientDashboard() {
       scopedFrom('recipes', '*', { count: 'exact', head: true }).eq('is_active', true).eq('category', 'Sub-Recipe'),
       period ? supabase.from('purchase_entries').select('item_id, qty, rate, bs_day').eq('period_id', period.id) : { data: [] },
       period ? supabase.from('vendor_returns').select('item_id, qty, rate, bs_day').eq('period_id', period.id) : { data: [] },
-      period ? supabase.from('sales_entries').select('recipe_id, qty_sold, bs_day').eq('period_id', period.id) : { data: [] },
+      // Revenue (and the daily revenue trend below) excludes comps (source='pos_comp') — a
+      // comped dish was never paid for.
+      period ? supabase.from('sales_entries').select('recipe_id, qty_sold, bs_day').eq('period_id', period.id).neq('source', 'pos_comp') : { data: [] },
       scopedFrom('recipes', 'id, name, selling_price, category, is_active, target_fc_pct'),
       period ? supabase.from('opening_stock').select('item_id, qty').eq('period_id', period.id) : { data: [] },
       period ? supabase.from('closing_stock').select('item_id, physical_qty').eq('period_id', period.id) : { data: [] },
@@ -339,7 +341,8 @@ export default function ClientDashboard() {
     const [{ data: allPurch }, { data: allRet }, { data: allSales }, { data: recipeData }] = await Promise.all([
       periodIds.length ? supabase.from('purchase_entries').select('period_id, qty, rate').in('period_id', periodIds) : { data: [] },
       periodIds.length ? supabase.from('vendor_returns').select('period_id, qty, rate').in('period_id', periodIds)   : { data: [] },
-      periodIds.length ? supabase.from('sales_entries').select('period_id, recipe_id, qty_sold').in('period_id', periodIds) : { data: [] },
+      // Revenue excludes comps (source='pos_comp') — a comped dish was never paid for.
+      periodIds.length ? supabase.from('sales_entries').select('period_id, recipe_id, qty_sold').in('period_id', periodIds).neq('source', 'pos_comp') : { data: [] },
       scopedFrom('recipes', 'id, selling_price'),
     ])
 

@@ -371,6 +371,14 @@ authorization_url_path = "/oauth/consent"
 # Allow dynamic client registration
 allow_dynamic_registration = false
 
+# pos-payment-webhook is called by an external payment provider (FonePay/eSewa), which has no
+# Supabase session and so can never send a Supabase JWT — leaving verify_jwt at its default
+# (true) would make the Edge gateway reject every real provider call with 401 before the
+# function's own HMAC signature check (supabase/functions/pos-payment-webhook/index.ts) ever
+# runs. That signature check is what actually authenticates the caller here.
+[functions.pos-payment-webhook]
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.

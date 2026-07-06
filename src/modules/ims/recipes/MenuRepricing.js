@@ -50,7 +50,9 @@ export default function MenuRepricing() {
   async function fetchData(periodId) {
     setLoading(true)
     const [{ data: salesData }, { data: recipes }] = await Promise.all([
-      supabase.from('sales_entries').select('recipe_id, qty_sold').eq('period_id', periodId),
+      // Repricing suggestions weigh recipes by sales volume/revenue at the current price —
+      // comps (source='pos_comp') never generated revenue at that price, so they're excluded.
+      supabase.from('sales_entries').select('recipe_id, qty_sold').eq('period_id', periodId).neq('source', 'pos_comp'),
       scopedFrom('recipes', 'id, name, category, selling_price, vat_rate, target_fc_pct')
         .neq('category', 'Sub-Recipe')
         .eq('is_active', true),

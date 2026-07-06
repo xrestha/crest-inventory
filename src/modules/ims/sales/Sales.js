@@ -79,9 +79,11 @@ export default function Sales() {
   }
 
   async function loadDailySales(periodId, day) {
+    // Excludes comps (source='pos_comp') — a comped item was never actually sold, and this
+    // page's every figure (including the Day revenue shown alongside it) means real sales.
     const { data } = await supabase
       .from('sales_entries').select('*')
-      .eq('period_id', periodId).eq('bs_day', day)
+      .eq('period_id', periodId).eq('bs_day', day).neq('source', 'pos_comp')
     const map = {}
     ;(data || []).forEach(s => { map[s.recipe_id] = parseFloat(s.qty_sold) || 0 })
     setDailySales(map)
@@ -90,7 +92,7 @@ export default function Sales() {
 
   async function loadAllDaySums(periodId) {
     const { data } = await supabase
-      .from('sales_entries').select('recipe_id, qty_sold').eq('period_id', periodId)
+      .from('sales_entries').select('recipe_id, qty_sold').eq('period_id', periodId).neq('source', 'pos_comp')
     const agg = {}
     ;(data || []).forEach(e => { agg[e.recipe_id] = (agg[e.recipe_id] || 0) + (parseFloat(e.qty_sold) || 0) })
     setAllDaySums(agg)
@@ -99,7 +101,7 @@ export default function Sales() {
   async function loadMonthlyEntries(periodId) {
     setMonthlyLoading(true)
     const { data } = await supabase
-      .from('sales_entries').select('recipe_id, bs_day, qty_sold').eq('period_id', periodId)
+      .from('sales_entries').select('recipe_id, bs_day, qty_sold').eq('period_id', periodId).neq('source', 'pos_comp')
     setMonthlyEntries(data || [])
     setMonthlyLoading(false)
   }

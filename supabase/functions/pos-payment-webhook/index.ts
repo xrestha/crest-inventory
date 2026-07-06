@@ -5,6 +5,27 @@ const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Fixed-time byte compare — a `===` on hex strings (the previous implementation) short-circuits
+// at the first mismatched character, so how quickly this rejects leaks how many leading hex
+// digits were right. That's a real side channel for a signature check: over enough attempts
+// against a public HTTP endpoint, timing alone can be used to guess the correct signature one
+// byte at a time. XOR-accumulating over the whole length instead means every input takes the
+// same time regardless of where (or whether) it first diverges.
+function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false
+  let diff = 0
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i]
+  return diff === 0
+}
+
+function hexToBytes(hex: string): Uint8Array | null {
+  const clean = (hex || '').trim().toLowerCase()
+  if (clean.length === 0 || clean.length % 2 !== 0 || !/^[0-9a-f]+$/.test(clean)) return null
+  const bytes = new Uint8Array(clean.length / 2)
+  for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16)
+  return bytes
+}
+
 // Placeholder verification scheme — real FonePay/eSewa webhook payload shapes and signature
 // schemes differ per provider and aren't onboarded yet (see product-roadmap memory: "QR
 // payment auto-confirmation"). Until a real merchant account is wired up, this expects a
@@ -18,9 +39,10 @@ async function verifySignature(
 ): Promise<boolean> {
   const enc = new TextEncoder()
   const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
-  const mac = await crypto.subtle.sign('HMAC', key, enc.encode(`${payload.txn_ref}|${payload.amount}|${payload.provider}`))
-  const hex = [...new Uint8Array(mac)].map(b => b.toString(16).padStart(2, '0')).join('')
-  return hex === (signature || '').toLowerCase()
+  const mac = new Uint8Array(await crypto.subtle.sign('HMAC', key, enc.encode(`${payload.txn_ref}|${payload.amount}|${payload.provider}`)))
+  const given = hexToBytes(signature)
+  if (!given) return false
+  return timingSafeEqual(mac, given)
 }
 
 Deno.serve(async (req) => {

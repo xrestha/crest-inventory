@@ -40,7 +40,9 @@ export default function BestSellers() {
   async function fetchData(periodId) {
     setLoading(true)
     const [{ data: entries }, { data: recipes }] = await Promise.all([
-      supabase.from('sales_entries').select('recipe_id, qty_sold').eq('period_id', periodId),
+      // "Best seller" ranks by real demand — comps (source='pos_comp') never sold at menu
+      // price and would misleadingly inflate a heavily-comped item's qty/revenue rank.
+      supabase.from('sales_entries').select('recipe_id, qty_sold').eq('period_id', periodId).neq('source', 'pos_comp'),
       scopedFrom('recipes', 'id, name, category, selling_price').neq('category', 'Sub-Recipe'),
     ])
 

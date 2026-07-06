@@ -79,7 +79,8 @@ export default function AnnualSummary() {
       supabase.from('purchase_entries').select('period_id, item_id, qty, rate').in('period_id', periodIds),
       scopedFrom('vendor_returns', 'period_id, item_id, qty, rate').in('period_id', periodIds),
       supabase.from('wastages').select('period_id, item_id, qty').in('period_id', periodIds),
-      supabase.from('sales_entries').select('period_id, recipe_id, qty_sold').in('period_id', periodIds),
+      // Revenue excludes comps (source='pos_comp') — a comped dish was never paid for.
+      supabase.from('sales_entries').select('period_id, recipe_id, qty_sold').in('period_id', periodIds).neq('source', 'pos_comp'),
       scopedFrom('recipes', 'id, selling_price'),
     ])
 

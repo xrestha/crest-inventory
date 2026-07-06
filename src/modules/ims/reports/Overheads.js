@@ -117,7 +117,8 @@ export default function Overheads() {
     ] = await Promise.all([
       supabase.from('purchase_entries').select('qty, rate').eq('period_id', periodId),
       scopedFrom('vendor_returns', 'qty, rate').eq('period_id', periodId),
-      supabase.from('sales_entries').select('recipe_id, qty_sold').eq('period_id', periodId),
+      // Revenue excludes comps (source='pos_comp') — a comped dish was never paid for.
+      supabase.from('sales_entries').select('recipe_id, qty_sold').eq('period_id', periodId).neq('source', 'pos_comp'),
       scopedFrom('recipes', 'id, selling_price')
     ])
 

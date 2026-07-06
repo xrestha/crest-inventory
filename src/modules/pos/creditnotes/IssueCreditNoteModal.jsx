@@ -78,8 +78,9 @@ export default function IssueCreditNoteModal({ order, onClose, onIssued }) {
   // Item-level comps were never billed at menu price (they printed on their own Complimentary
   // Slip — see PosOrders.jsx), so a Credit Note correcting this bill's revenue must exclude them
   // too, or its face value overstates what the party actually paid. The sales_entries reversal
-  // below still uses the full, unfiltered `items` — it mirrors the original write, which counted
-  // every item (comped or not) as qty_sold.
+  // below now uses this same payableItems list — a comped item was posted as source='pos_comp',
+  // never 'pos', so reversing it too under 'pos_credit' would create a negative entry with no
+  // matching positive one to offset, wrongly understating that recipe's revenue.
   const payableItems = items.filter(i => !i.comped)
   const amounts = !loading ? computeOrderAmounts(order, payableItems, vatReg) : null
 
@@ -126,7 +127,7 @@ export default function IssueCreditNoteModal({ order, onClose, onIssued }) {
         .order('bs_year', { ascending: false }).order('bs_month', { ascending: false })
       const open = (periods || []).find(p => p.status === 'open')
       if (open && today.year === open.bs_year && today.month === open.bs_month) {
-        const rows = items.filter(i => i.recipe_id).map(i => ({
+        const rows = payableItems.filter(i => i.recipe_id).map(i => ({
           period_id: open.id, recipe_id: i.recipe_id, bs_day: today.day, qty_sold: -i.qty, source: 'pos_credit',
         }))
         if (rows.length > 0) await supabase.from('sales_entries').insert(rows)

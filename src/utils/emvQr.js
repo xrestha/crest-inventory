@@ -73,7 +73,11 @@ export function validateEmvQr(str) {
 export function buildDynamicQr(baseStr, amount, reference) {
   const check = validateEmvQr(baseStr)
   if (!check.ok) return null
-  let tags = parseEmvQr(baseStr.trim()).filter(t => t.id !== '63' && t.id !== '54' && t.id !== '62')
+  // Tag 62 is left in place (not stripped like 54/63) — the merchant's static QR may already
+  // carry its own subfields there (e.g. Bill Number, Terminal Label) that a banking app expects
+  // to still see. Only subfield 05 (Reference Label) is ours to set, merged in below rather
+  // than discarding whatever else was already in tag 62.
+  let tags = parseEmvQr(baseStr.trim()).filter(t => t.id !== '63' && t.id !== '54')
   const poi = tags.find(t => t.id === '01')
   if (poi) poi.value = '12'
   else tags.splice(1, 0, { id: '01', value: '12' })
@@ -83,10 +87,19 @@ export function buildDynamicQr(baseStr, amount, reference) {
   if (idx54 === -1) tags.push(amtTag)
   else tags.splice(idx54, 0, amtTag)
   if (reference) {
-    const refTag = { id: '62', value: serialize([{ id: '05', value: String(reference).slice(0, 25) }]) }
-    const idx62 = tags.findIndex(t => parseInt(t.id, 10) > 62)
-    if (idx62 === -1) tags.push(refTag)
-    else tags.splice(idx62, 0, refTag)
+    const existing62 = tags.find(t => t.id === '62')
+    const subFields = existing62 ? (parseEmvQr(existing62.value) || []) : []
+    const refSub = subFields.find(s => s.id === '05')
+    if (refSub) refSub.value = String(reference).slice(0, 25)
+    else subFields.push({ id: '05', value: String(reference).slice(0, 25) })
+    if (existing62) {
+      existing62.value = serialize(subFields)
+    } else {
+      const refTag = { id: '62', value: serialize(subFields) }
+      const idx62 = tags.findIndex(t => parseInt(t.id, 10) > 62)
+      if (idx62 === -1) tags.push(refTag)
+      else tags.splice(idx62, 0, refTag)
+    }
   }
   const body = serialize(tags) + '6304'
   return body + crc16(body)

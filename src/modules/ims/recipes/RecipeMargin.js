@@ -43,7 +43,9 @@ export default function RecipeMargin() {
   async function fetchData(periodId) {
     setLoading(true)
     const [{ data: salesData }, { data: recipes }] = await Promise.all([
-      supabase.from('sales_entries').select('recipe_id, qty_sold').eq('period_id', periodId),
+      // Margin is revenue-based — comps (source='pos_comp') never sold at menu price and would
+      // understate the true margin percentage if counted as if they had.
+      supabase.from('sales_entries').select('recipe_id, qty_sold').eq('period_id', periodId).neq('source', 'pos_comp'),
       scopedFrom('recipes', 'id, name, category, selling_price')
         .neq('category', 'Sub-Recipe')
         .eq('is_active', true),

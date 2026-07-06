@@ -18,12 +18,22 @@ export async function viewPosBill(clientId, row) {
   const orderId = row.isItemComp ? row.parentOrderId : row.id
   if (!clientId || !orderId) return
 
+  // Opened synchronously, before any await — the click's transient user-activation is gone by
+  // the time the Supabase queries below resolve, so opening it after them gets silently
+  // popup-blocked on Safari/iPad (no gesture left to point to) and often on Chrome too on a
+  // slow connection. A tab open on a blank/loading page beats no tab at all.
+  const w = window.open('', '_blank')
+  if (w) w.document.write('<p style="font-family:sans-serif;color:#666;padding:24px">Loading…</p>')
+
   const [{ data: order }, { data: settings }, { data: client }] = await Promise.all([
     scopedFrom('pos_orders', clientId).eq('id', orderId).single(),
     supabase.from('settings').select('is_vat_registered, invoice_prefix, vat_number, property_address, property_phone').eq('client_id', clientId).maybeSingle(),
     supabase.from('clients').select('name').eq('id', clientId).single(),
   ])
-  if (!order) return
+  if (!order) {
+    if (w) { w.document.write('<p style="font-family:sans-serif;color:#c00;padding:24px">Could not load this bill.</p>'); w.document.close() }
+    return
+  }
 
   const billingSettings = {
     is_vat_registered: settings?.is_vat_registered ?? true,
@@ -92,8 +102,11 @@ export async function viewPosBill(clientId, row) {
     })
   }
 
-  const w = window.open('', '_blank')
   if (!w) return
+  // .open() clears the "Loading…" placeholder written above — without it, document.write()
+  // on a still-open document APPENDS rather than replaces, leaving the placeholder in place
+  // above the real bill.
+  w.document.open()
   w.document.write(html)
   w.document.close()
 }
