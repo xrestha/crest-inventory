@@ -1249,7 +1249,11 @@ export default function Help() {
           </div>
 
           {/* Crest HR + Crest POS — flat modules */}
-          <p style={{ fontSize: 11, color: MODULE_COLORS.hr, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 10 }}>Crest HR &amp; Crest POS</p>
+          <p style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 10 }}>
+            <span style={{ color: MODULE_COLORS.hr }}>Crest HR</span>
+            <span style={{ color: 'var(--theme-text3)' }}> &amp; </span>
+            <span style={{ color: MODULE_COLORS.pos }}>Crest POS</span>
+          </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 24 }}>
             {[
               { key: 'hr',  name: 'Crest HR',  color: MODULE_COLORS.hr,  pricing: HR_PRICING },

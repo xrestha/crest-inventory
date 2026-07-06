@@ -132,6 +132,12 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S265 — 2026-07-06 — Help.js Pricing tab: split the combined HR/POS heading into its two module colors
+
+Follow-up to S264: the "Crest HR & Crest POS" eyebrow label above that section was entirely colored green (`MODULE_COLORS.hr`) even though it introduces both modules — visually implying POS was green too, when its card right below is violet. Split into three spans: "Crest HR" in green, "&" in neutral gray, "Crest POS" in violet, so the label matches the two cards it precedes.
+
+**Files:** `src/pages/Help.js`
+
 ### S264 — 2026-07-06 — Pricing: module-color titles applied consistently across all 3 modules
 
 Follow-up to S263: the new module-color convention (blue/green/violet) was only applied to dots, checkmarks, and borders — the actual card/section titles ("Starter"/"Growth"/"Pro", "Crest HR", "Crest POS") were still plain white text, and `ClientDrawer.js`'s billing panel still colored the "CREST IMS" header and the Pro tier's active state gold (a leftover from the old per-tier scheme) instead of IMS's blue. Fixed in all three files: `Pricing.js` and Help.js's Pricing tab now color each IMS tier's name and each HR/POS card's name with `MODULE_COLORS.ims`/`mod.color`; `ClientDrawer.js`'s per-module header (`CREST IMS`/`CREST HR`/`CREST POS`) now uses `accentBase` (`MODULE_COLORS[mod.key]`), and the IMS Starter/Growth/Pro tier-picker's active-state accent is now uniformly `MODULE_COLORS.ims` for all three tiers instead of gold-for-Pro/blue-for-Growth/gray-for-Starter.
