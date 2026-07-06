@@ -132,6 +132,28 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S252 — 2026-07-06 — Split all six "god components" flagged in the architecture report
+
+Closed the last item from the S249 architecture report: the six files over 1,200 lines. Two shapes of fix, chosen per file based on what was actually inside:
+
+**Mechanical extraction (already had self-contained sub-components sitting in the same file, just not physically separated):**
+- `AdminClients.js` 1813 → 448 lines. `ClientDrawer` (1036 lines) and `FeatureAccessModal` (216 lines) moved to `src/pages/adminClients/`, plus `adminOp.js` for the edge-function helper. Pure relocation — verified by a near-zero bundle size delta.
+- `Roster.jsx` 1254 → 839 lines. `ShiftPicker`, `SuggestPopover`, `ShiftSettingsPanel` moved to their own files under `src/modules/hr/roster/`, plus `rosterHelpers.js` for the shared `fmtTime`.
+
+**Split along a real internal boundary:**
+- `Dashboard.js` 1347 → 9 lines + 2 modules. It was two unrelated dashboards (`AdminDashboardOverview`, cross-tenant; `ClientDashboard`, per-client financial) gated by one boolean sharing almost no state. `Dashboard.js` is now a thin router; each half owns its own `useAuth()`/data-loading instead of prop-threading.
+
+**Genuine extraction — no pre-existing seams, had to design the split:**
+- `Purchases.js` 1262 → 659 lines + 3 modules. `PurchaseBillModal.jsx` (multi-row bill form, now owns its own header/line state, calls back `onSaved(validLines)` so the parent's rate-change-detection stays where the `items` cache lives) and `ReturnsTab.jsx` (return form + table, fully self-contained), plus `purchasesHelpers.js` for `getCf()`.
+- `Recipes.js` 2034 → 1225 lines + 4 modules. `recipeCostCalc.js` (pure cost/nutrition-filter functions), `RecipeCostCardPrint.jsx` (the A4 print card, previously duplicated verbatim in two places), `NutritionEditorModal.jsx` (per-ingredient nutrition editor with library-seed + Open Food Facts lookup), `RecipeImportButton.jsx` (the whole bulk-Excel-import feature).
+- `PosOrders.jsx` 2348 → 2085 lines + 2 modules — deliberately the smallest cut. This is the highest-traffic, highest-stakes live screen (order-taking, billing, offline sync), so only genuinely zero-behavior-risk moves were made: `posOrderPrintHtml.js` (the pure bill/comp-slip/tender-slip/KOT-BOT HTML builders, parameterized instead of closing over component state — same pattern as `printCreditNote` from S251) and `posOrdersConstants.js` (pure constants, confirmed zero-risk by an identical production bundle hash before/after). The floor/order/billing/offline-queue state stays one component — splitting it further risks subtle real-time bugs that need a live device to catch, not just a build check.
+
+Every step verified via `CI=true npm run build` (clean each time) and the pure-function test suite (67 tests). `Dashboard.js` and `PosOrders.jsx` additionally got a dev-server + Playwright screenshot check (app shell loads, no console errors) since neither could be verified past the Supabase auth gate without real credentials.
+
+**Not done, still open:** manual click-through testing of each split page in a real browser session (build/lint catch reference errors, not behavioral regressions) — recommended before relying on any of these in production, especially `Purchases.js` and `PosOrders.jsx` since they're money-handling. Broader component/UI test coverage remains at zero — the only automated tests are the pure-function suites from S249.
+
+**Files:** `src/pages/adminClients/{ClientDrawer,FeatureAccessModal,adminOp}.js` (new), `src/modules/hr/roster/{ShiftPicker,SuggestPopover,ShiftSettingsPanel,rosterHelpers}.js` (new), `src/pages/dashboard/{AdminDashboardOverview,ClientDashboard}.jsx` (new), `src/modules/ims/purchases/{PurchaseBillModal,ReturnsTab,purchasesHelpers}.js` (new), `src/modules/ims/recipes/{recipeCostCalc,RecipeCostCardPrint,NutritionEditorModal,RecipeImportButton}.js` (new), `src/modules/pos/orders/{posOrderPrintHtml,posOrdersConstants}.js` (new), plus the six original files trimmed down
+
 ### S251 — 2026-07-05 — scopedDb rollout finished: POS + core/admin pages; architecture punch list closed
 
 Closed out the last item from the S249 architecture report: migrated the remaining POS module (9 files) and the 5 core/admin pages (`AdminClients`, `AuditLog`, `Dashboard`, `Periods`, `Settings`).
