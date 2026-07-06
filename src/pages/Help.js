@@ -642,7 +642,7 @@ export default function Help() {
                       Crest tracks your ingredient purchases, stock levels, and food cost in real time. The core idea is simple:
                     </p>
                     <div style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '10px 16px', display: 'inline-block', marginBottom: 8 }}>
-                      <span style={{ fontSize: 13, color: 'var(--theme-accent)', fontWeight: 600 }}>Opening Stock + Purchases − Wastage − Closing Stock = COGS (what you actually used)</span>
+                      <span style={{ fontSize: 13, color: '#60a5fa', fontWeight: 600 }}>Opening Stock + Purchases − Wastage − Closing Stock = COGS (what you actually used)</span>
                     </div>
                     <p style={{ margin: 0, fontSize: 13, color: 'var(--theme-text2)', lineHeight: 1.75 }}>
                       Follow the steps below to get set up. First-time setup takes about 30–60 minutes. After that, the monthly routine takes 15–20 minutes of admin at month end.
@@ -748,7 +748,7 @@ export default function Help() {
                         Crest HR runs payroll, attendance, and Nepal-compliant SSF/TDS deductions for your staff. The core idea is simple:
                       </p>
                       <div style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '10px 16px', display: 'inline-block', marginBottom: 8 }}>
-                        <span style={{ fontSize: 13, color: '#60a5fa', fontWeight: 600 }}>Attendance → Payroll: what you mark each day becomes what people get paid</span>
+                        <span style={{ fontSize: 13, color: '#34d399', fontWeight: 600 }}>Attendance → Payroll: what you mark each day becomes what people get paid</span>
                       </div>
                     </>
                   )}

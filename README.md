@@ -132,6 +132,12 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S262 — 2026-07-06 — Getting Started tagline colors corrected to match the module-pill convention
+
+Follow-up to S261: the IMS and HR tagline boxes were gold and blue respectively, which don't actually match the app's established IMS/HR/POS module-pill colors (`AdminDashboardOverview.jsx`'s client-list pills: IMS `#60a5fa` blue, HR `#34d399` green, POS `#a78bfa` violet — the same reference used to color POS's tagline in S261, but not yet applied back to IMS/HR at the time). Corrected: IMS tagline → blue, HR tagline → green. POS was already correct.
+
+**Files:** `src/pages/Help.js`
+
 ### S261 — 2026-07-06 — Getting Started: added the missing POS core-idea tagline
 
 Follow-up to S260: the Crest Inventory and Crest HR "Welcome" cards each have a one-line core-idea tagline in a highlighted box (COGS formula / Attendance→Payroll), but POS's card was missing one. Added "Order → Bill → Shift Close: every sale reconciles back to the cash drawer at day's end," styled the same way. Colored violet (`#a78bfa`, the POS color from the module-pill convention on the Admin Dashboard's client list, `AdminDashboardOverview.jsx`) rather than reusing IMS's gold, so the tagline reads as its own module instead of a shade of IMS.
