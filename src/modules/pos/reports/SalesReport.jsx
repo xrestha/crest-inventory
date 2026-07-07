@@ -210,9 +210,12 @@ export default function SalesReport() {
   // customer), tagged via delivery_partner rather than payment_method. Commission/settlement
   // come from Customers → Outstanding Credit → Settle, not Charge time, so an unsettled row here
   // has no commission/net-received yet — that's expected, not missing data.
+  // Unlike Bill Register (an invoice-number ledger), this is a working settlement-tracking list —
+  // a credited order has nothing left to settle/commission on, so it's excluded entirely rather
+  // than kept with a badge (same exclusion rule as dailyRows/paymentRows).
   const deliveryPartnerRows = useMemo(() => (
     orders
-      .filter(o => o.delivery_partner)
+      .filter(o => o.delivery_partner && !o.credit_note_id)
       .map(o => ({
         id: o.id, orderNo: o.order_no, invoiceNo: o.invoice_no, closedAt: o.closed_at,
         deliveryPartner: o.delivery_partner, tableName: o.table_name,
@@ -373,7 +376,12 @@ export default function SalesReport() {
 
   const dailyTotals = dailyRows.reduce((s, r) => ({ bills: s.bills + r.bills, qty: s.qty + r.qty, gross: s.gross + r.gross, discount: s.discount + r.discount, taxable: s.taxable + r.taxable, nonTaxable: s.nonTaxable + r.nonTaxable, vat: s.vat + r.vat, net: s.net + r.net }), { bills: 0, qty: 0, gross: 0, discount: 0, taxable: 0, nonTaxable: 0, vat: 0, net: 0 })
   const hourlyTotals = hourlyRows.reduce((s, h) => ({ bills: s.bills + h.bills, qty: s.qty + h.qty, net: s.net + h.net }), { bills: 0, qty: 0, net: 0 })
-  const voucherTotals = filteredVoucherRows.reduce((s, v) => ({ gross: s.gross + v.gross, discount: s.discount + v.discount, taxable: s.taxable + v.taxable, nonTaxable: s.nonTaxable + v.nonTaxable, vat: s.vat + v.vat, net: s.net + v.net }), { gross: 0, discount: 0, taxable: 0, nonTaxable: 0, vat: 0, net: 0 })
+  // Rows stay visible even when credited (Bill Register is an invoice-number ledger — every
+  // issued sequential number must be accounted for, reversed or not — see the "Credit Noted"
+  // badge on the row itself), but the footer TOTAL excludes them, same exclusion rule as every
+  // other tab, so this tab's total reconciles with Daily/Payment/Category/Customer instead of
+  // double-counting a bill whose revenue was already reversed.
+  const voucherTotals = filteredVoucherRows.filter(v => !v.credited).reduce((s, v) => ({ gross: s.gross + v.gross, discount: s.discount + v.discount, taxable: s.taxable + v.taxable, nonTaxable: s.nonTaxable + v.nonTaxable, vat: s.vat + v.vat, net: s.net + v.net }), { gross: 0, discount: 0, taxable: 0, nonTaxable: 0, vat: 0, net: 0 })
   const paymentTotals = paymentRows.reduce((s, p) => ({ bills: s.bills + p.bills, gross: s.gross + p.gross, discount: s.discount + p.discount, taxable: s.taxable + p.taxable, nonTaxable: s.nonTaxable + p.nonTaxable, vat: s.vat + p.vat, net: s.net + p.net }), { bills: 0, gross: 0, discount: 0, taxable: 0, nonTaxable: 0, vat: 0, net: 0 })
   const categoryNetOf = c => c.gross - c.discount + c.vat
   const categoryTotals = categoryRows.reduce((s, c) => ({ qtySales: s.qtySales + c.qtySales, qtyReturn: s.qtyReturn + c.qtyReturn, gross: s.gross + c.gross, discount: s.discount + c.discount, taxable: s.taxable + c.taxable, nonTaxable: s.nonTaxable + c.nonTaxable, vat: s.vat + c.vat }), { qtySales: 0, qtyReturn: 0, gross: 0, discount: 0, taxable: 0, nonTaxable: 0, vat: 0 })

@@ -38,11 +38,19 @@ export default function KitchenDisplay() {
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
   const [now, setNow] = useState(() => Date.now()) // ticks every 30s to redraw elapsed-time labels/colors
+  // Ticket ids with an advance() write in flight — a rapid double-tap on greasy kitchen
+  // touchscreens could otherwise fire two overlapping updates whose responses arrive out of
+  // order, leaving the row reverted to an earlier stage than what was actually tapped.
+  const [advancing, setAdvancing] = useState(() => new Set())
 
   const load = useCallback(async () => {
     const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0)
+    // 'cancelled' (set by PosOrders.jsx's closeOrder when the parent order is voided) is excluded
+    // entirely rather than shown as a 4th column — there's nothing left for kitchen/bar to do
+    // with a ticket whose order no longer exists.
     const { data } = await scopedFrom('pos_kot_log', 'id, order_id, order_no, table_name, station, items, sent_at, status, started_at, ready_at')
       .eq('station', station)
+      .neq('status', 'cancelled')
       .gte('sent_at', startOfDay.toISOString())
       .order('sent_at', { ascending: true })
     setTickets(data || [])
@@ -65,12 +73,15 @@ export default function KitchenDisplay() {
   }
 
   async function advance(ticket, nextStatus) {
+    if (advancing.has(ticket.id)) return
+    setAdvancing(prev => new Set(prev).add(ticket.id))
     // Optimistic — the next poll (≤4s) reconciles with the server either way.
     setTickets(prev => prev.map(t => t.id === ticket.id ? { ...t, status: nextStatus } : t))
     const patch = { status: nextStatus, status_updated_by: profile?.id || null }
     if (nextStatus === 'in_progress') patch.started_at = new Date().toISOString()
     if (nextStatus === 'ready') patch.ready_at = new Date().toISOString()
     await scopedUpdate('pos_kot_log', patch).eq('id', ticket.id)
+    setAdvancing(prev => { const next = new Set(prev); next.delete(ticket.id); return next })
   }
 
   if (!hasPosAccess('staff')) return <Navigate to="/pos" replace />
@@ -120,7 +131,7 @@ export default function KitchenDisplay() {
                     <div className="card" style={{ padding: 20, textAlign: 'center', color: 'var(--theme-text3)', fontSize: 12 }}>—</div>
                   )}
                   {colTickets.map(t => (
-                    <TicketCard key={t.id} ticket={t} now={now} onAdvance={advance} action={col.action} next={col.next} />
+                    <TicketCard key={t.id} ticket={t} now={now} onAdvance={advance} action={col.action} next={col.next} advancing={advancing.has(t.id)} />
                   ))}
                 </div>
               </div>
@@ -132,7 +143,7 @@ export default function KitchenDisplay() {
   )
 }
 
-function TicketCard({ ticket, now, onAdvance, action, next }) {
+function TicketCard({ ticket, now, onAdvance, action, next, advancing }) {
   const sentMs = new Date(ticket.sent_at).getTime()
   const elapsedMin = Math.max(0, Math.round((now - sentMs) / 60000))
   const isLate = ticket.status !== 'ready' && (now - sentMs) > LATE_MS
@@ -159,8 +170,8 @@ function TicketCard({ ticket, now, onAdvance, action, next }) {
           </span>
         </Tip>
         {action && (
-          <button className="btn btn-primary" style={{ fontSize: 12, padding: '5px 12px' }} onClick={() => onAdvance(ticket, next)}>
-            {action}
+          <button className="btn btn-primary" style={{ fontSize: 12, padding: '5px 12px' }} disabled={advancing} onClick={() => onAdvance(ticket, next)}>
+            {advancing ? '…' : action}
           </button>
         )}
       </div>

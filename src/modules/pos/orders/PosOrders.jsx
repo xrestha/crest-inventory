@@ -201,12 +201,17 @@ export default function PosOrders() {
   }, [view, tableOrders]) // eslint-disable-line
 
   // Keeps pending guest-order requests live both on the floor grid (badge) and while a table is
-  // open (Accept/Dismiss banner) — a guest can submit a new request at any point.
+  // open (Accept/Dismiss banner) — a guest can submit a new request at any point. clientId is in
+  // the deps (not just view) so an admin "view as" client switch tears down and recreates this
+  // interval with a fresh loadPendingGuestOrders closure bound to the new client — without it, the
+  // running interval kept calling the OLD closure (and its OLD scopedFrom) until view happened to
+  // change too, meaning the previous client's guest-order banner/chime could keep firing after
+  // the switch.
   useEffect(() => {
     if (view !== 'floor' && view !== 'order') return
     const poll = setInterval(() => loadPendingGuestOrders(), 5000)
     return () => clearInterval(poll)
-  }, [view]) // eslint-disable-line
+  }, [view, clientId]) // eslint-disable-line
 
   useEffect(() => {
     const up   = () => { setIsOnline(true);  flushRef.current?.() }
@@ -1225,6 +1230,14 @@ export default function PosOrders() {
       const { data: updated, error } = await scopedUpdate('pos_orders', payload).eq('id', orderId)
         .select('*').single()
       if (error) { setCloseMsg('error:' + error.message); return false }
+
+      if (closeType === 'void') {
+        // Best-effort — a KDS ticket for a voided order should disappear from the board rather
+        // than sit accumulating "late" alerts forever with no signal the order no longer exists.
+        // Comps (writeoff) don't cancel here: the food was actually prepared/served, so its
+        // ticket keeps its normal lifecycle.
+        try { await scopedUpdate('pos_kot_log', { status: 'cancelled' }).eq('order_id', orderId) } catch (_) { /* non-fatal */ }
+      }
 
       if (isSplit) {
         await scopedInsert('pos_order_payments', tenders.map(t => ({

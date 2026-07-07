@@ -138,6 +138,30 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S300 — 2026-07-07 — POS audit fixes: stale guest-poll closure, shift double-close, KDS void reconciliation
+
+Continuing S298/S299's POS module audit — fixed the next three High-severity findings.
+
+**Stale closure in the guest-order poll across a client switch.** The 5s `setInterval` that keeps the floor-view guest-order banner/chime live only depended on `[view]`, not `clientId` — an admin switching "view as" client without leaving the floor view kept the interval calling its OLD closure (bound to the OLD client's `scopedFrom`) until `view` happened to change too. Added `clientId` to the effect's dependency array so the interval tears down and recreates with a fresh closure on every client switch.
+
+**Shift close double-submit race.** `PosShifts.jsx`'s `submitClose` updated by `id` alone with no `status` guard — the only real DB constraint (`pos_shifts_one_open_per_client`) guards concurrent *opens*, not closes. Two supervisors closing the same shift on two terminals: the second submit silently overwrote the first's real cash count with no error. Fixed by adding `.eq('status', 'open').select()` to the update and checking whether it actually matched a row — a stale double-close now surfaces "This shift was already closed" instead of silently succeeding.
+
+**KDS tickets never reconciled against a voided order.** Nothing previously updated `pos_kot_log` when an order was voided after its KOT/BOT already printed — the ticket sat on the Kitchen Display board forever, accumulating "late" alerts for an order that no longer existed. New `cancelled` status on `pos_kot_log` (migration, extends the CHECK constraint); `PosOrders.jsx`'s `closeOrder` now cancels an order's tickets on `void` only (not `writeoff`/Complimentary — that food was actually served, so its ticket keeps its normal lifecycle); `KitchenDisplay.jsx` excludes `cancelled` tickets from its board entirely. Same-file bonus fix: `advance()` had no per-ticket in-flight guard, so a rapid double-tap on a touchscreen could fire two overlapping updates that arrive out of order and revert a ticket to an earlier stage — added an `advancing` Set that disables a ticket's action button while its own update is in flight.
+
+**Files:** `supabase/migrations/20260707250000_pos_kot_log_cancelled_status.sql` (not yet run), `src/modules/pos/orders/PosOrders.jsx`, `src/modules/pos/shifts/PosShifts.jsx`, `src/modules/pos/kds/KitchenDisplay.jsx`
+
+### S299 — 2026-07-07 — POS audit fixes: PIN lockout, stale client-switch settings, credit-note totals
+
+Continuing S298's POS module audit — fixed the next three High-severity findings the user asked to prioritize.
+
+**PIN brute-force mitigation.** `PosLogin.jsx`'s PIN literally is the full Supabase Auth password (`signInWithPassword({ email: pos_email, password: pin })`), and `pos_email` itself is public via `get_pos_staff` (needed for the staff picker on this unauthenticated page) — together, an attacker gets the username for free and only needs to brute-force a short PIN with no lockout. Added the standard mitigation for low-entropy credentials rather than redesigning the auth flow: new `profiles.pos_pin_failed_attempts`/`pos_pin_locked_until` columns plus `check_pos_pin_lock`/`record_pos_pin_attempt` RPCs (both restricted to real PIN-based POS staff, same filter as `get_pos_staff`) — 5 failed attempts locks the account for 15 minutes. Accepted trade-off: since both RPCs are anon-callable (this runs pre-auth), anyone can call `record_pos_pin_attempt` directly to lock one specific staff member out for 15 minutes without a real sign-in attempt — a griefing risk, but a far smaller one than unlimited-attempt PIN brute-forcing.
+
+**Stale settings across an admin client switch.** `PosTableManagement.jsx`'s Routing/Notes/HSC/Discounts/Delivery Partners tabs each guard their one-time load with a `*Loaded` boolean that was never reset when `clientId` changed — an admin switching "view as" client while sitting on one of these tabs kept showing (and could Save-overwrite) the *previous* client's data under the new client's id. New effect resets every `*Loaded` flag on `clientId` change and immediately reloads whichever tab is currently open.
+
+**SalesReport.jsx totals didn't reconcile across tabs.** Bill Register's footer summed every row's full amount with no exclusion for credit-noted bills, while every other tab (Daily/Payment/Category/Customer) explicitly excludes them — a fully-reversed bill inflated Bill Register's total while showing zero everywhere else. Fixed by excluding credited rows from the footer sum only (the row itself stays visible with its existing "Credit Noted" badge — Bill Register is an invoice-number ledger, every issued number must be accounted for). Delivery Partners' list is a working settlement tracker, not a compliance ledger, so credited orders are excluded from the list entirely instead — there's nothing left to settle/commission on once reversed.
+
+**Files:** `supabase/migrations/20260707240000_pos_pin_lockout.sql` (not yet run), `src/modules/pos/login/PosLogin.jsx`, `src/modules/pos/tables/PosTableManagement.jsx`, `src/modules/pos/reports/SalesReport.jsx`
+
 ### S298 — 2026-07-07 — POS module audit: fixed stored-XSS in every printed document + a chime bug
 
 User asked for a general code review/audit of the POS module. Ran three parallel deep-dive passes covering order taking/billing, floor/staff/shifts/KDS, and customers/credit notes/reports/guest ordering; independently verified the highest-severity findings before acting. Fixed the two the user asked to prioritize now (full list of ~20 findings, ranked, given to the user — most remain open for a future pass).

@@ -87,6 +87,25 @@ export default function PosTableManagement() {
 
   useEffect(() => { if (clientId) load() }, [clientId]) // eslint-disable-line
 
+  // Each settings tab below only loads once per its own xLoaded flag — cheap while clientId is
+  // stable, but those flags were never reset on an admin "view as" client switch, so a tab left
+  // open across a switch kept showing (and could Save-overwrite) the PREVIOUS client's data under
+  // the NEW client's id. Reset every flag here, and re-load whichever tab is currently open so a
+  // switch mid-tab refreshes immediately instead of waiting for a manual tab re-click.
+  useEffect(() => {
+    setRoutingLoaded(false)
+    setNotesLoaded(false)
+    setHscLoaded(false)
+    setDiscLoaded(false)
+    setDeliveryLoaded(false)
+    if (!clientId) return
+    if (mainTab === 'routing') loadRouting()
+    else if (mainTab === 'notes') loadNotePresets()
+    else if (mainTab === 'hsc') loadHscItems()
+    else if (mainTab === 'discounts') loadDiscReasons()
+    else if (mainTab === 'delivery') loadDeliverySettings()
+  }, [clientId]) // eslint-disable-line
+
   if (!hasPosAccess('supervisor')) return <Navigate to="/pos" replace />
 
   async function load() {

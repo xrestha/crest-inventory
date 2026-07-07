@@ -53,17 +53,41 @@ export default function PosLogin() {
   async function handleSignIn() {
     if (pin.length < 4 || signingIn) return
     setSigningIn(true); setError('')
+
+    // The PIN doubles as the full Supabase Auth password, so an app-level lockout is the standard
+    // mitigation for its low entropy — see migration 20260707240000_pos_pin_lockout.sql. Checked
+    // before attempting sign-in so an already-locked account doesn't burn a real auth attempt.
+    const { data: lockData } = await supabase.rpc('check_pos_pin_lock', { p_staff_id: selected.id })
+    if (lockData?.[0]?.locked) {
+      setError(`Too many incorrect attempts. Try again ${formatLockRemaining(lockData[0].locked_until)}.`)
+      setPin('')
+      setSigningIn(false)
+      return
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
       email:    selected.pos_email,
       password: pin,
     })
+    const { data: attemptData } = await supabase.rpc('record_pos_pin_attempt', {
+      p_staff_id: selected.id, p_success: !error,
+    })
+
     if (error) {
-      setError('Incorrect PIN. Try again.')
+      const afterAttempt = attemptData?.[0]
+      setError(afterAttempt?.locked
+        ? `Too many incorrect attempts. Try again ${formatLockRemaining(afterAttempt.locked_until)}.`
+        : 'Incorrect PIN. Try again.')
       setPin('')
       setSigningIn(false)
       return
     }
     navigate('/pos', { replace: true })
+  }
+
+  function formatLockRemaining(lockedUntil) {
+    const mins = Math.max(1, Math.ceil((new Date(lockedUntil).getTime() - Date.now()) / 60000))
+    return `in ${mins} minute${mins !== 1 ? 's' : ''}`
   }
 
   function pickStaff(s) { setSelected(s); setPin(''); setError('') }

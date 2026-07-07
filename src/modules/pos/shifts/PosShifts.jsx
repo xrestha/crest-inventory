@@ -388,13 +388,24 @@ export default function PosShifts() {
     setSaving(true); setMsg('')
     const closing_cash = sumDenoms(denomCounts)
     const closedAt = new Date()
-    const { error } = await scopedUpdate('pos_shifts', {
+    // .eq('status', 'open') + .select() together detect a double-close: the DB's only relevant
+    // constraint (pos_shifts_one_open_per_client) guards concurrent opens, not closes, so without
+    // this a second supervisor closing the same shift on another terminal would silently overwrite
+    // the first person's real cash count with no error (a WHERE clause matching zero rows isn't a
+    // Postgres error — it just updates nothing).
+    const { data: closed, error } = await scopedUpdate('pos_shifts', {
       status: 'closed', closed_at: closedAt.toISOString(), closed_by: profile?.id || null,
       closing_cash,
       closing_denominations: Object.fromEntries(DENOMINATIONS.map(d => [d, parseInt(denomCounts[d]) || 0])),
-    }).eq('id', openShift.id)
+    }).eq('id', openShift.id).eq('status', 'open').select()
     setSaving(false)
     if (error) { setMsg('error:' + error.message); return }
+    if (!closed || closed.length === 0) {
+      setMsg('error:This shift was already closed — refresh to see the latest reconciliation.')
+      setModal(null)
+      await loadOpenShift()
+      return
+    }
     printHtml(buildShiftSlipHtml({
       mode: 'close', outletName, propertyAddress,
       label: openShift.label || 'Shift',
