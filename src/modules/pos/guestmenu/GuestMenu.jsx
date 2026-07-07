@@ -9,23 +9,40 @@ const fmtNutrient = (def, value) => `${(Number(value) || 0).toFixed(def.dp)} ${d
 const priceIncVat = item => Math.round((parseFloat(item.selling_price) || 0) * (1 + (parseFloat(item.vat_rate) || 0)))
 
 // Same three stages + wording as the staff-side floor-view badge (PosOrders.jsx) and KDS board —
-// worded from the guest's point of view: their order was Sent to the kitchen, is being Prepared,
-// or is Ready to be served.
+// used as a fallback badge when this browser has no submitted-order snapshot of its own (e.g. a
+// guest who never ordered, just checking a table staff already opened manually).
 const KOT_STATUS_BADGE = { new: 'badge-red', in_progress: 'badge-amber', ready: 'badge-green' }
 const KOT_STATUS_LABEL = { new: 'Order sent to kitchen', in_progress: 'Being prepared', ready: 'Ready to serve' }
 
-// Status of the guest's own submitted request, distinct from KOT_STATUS above — this tracks
-// whether staff has even Accepted the request yet (see submit_guest_order/pos_guest_order_requests),
-// which happens before a KOT is ever sent. Once staff actually sends the KOT, KOT_STATUS_BADGE
-// above takes over as the more specific signal, so this banner hides itself once kotStatus exists.
-const REQUEST_BADGE = { pending: 'badge-amber', accepted: 'badge-green', dismissed: 'badge-red' }
-const REQUEST_LABEL = {
-  pending: 'Order sent to staff — waiting for confirmation…',
-  accepted: 'Order confirmed by staff',
-  dismissed: "Staff couldn't take this order — please ask for assistance",
+// Unified 5-stage view of the guest's own order, combining pos_guest_order_requests.status
+// (whether staff has even Accepted yet) with the table's pos_kot_log status (once the accepted
+// items are actually sent to the kitchen) — kotStatus supersedes requestStatus once it exists,
+// same precedence the small pre-redesign badge used.
+const STAGES = ['placed', 'confirmed', 'kot_sent', 'preparing', 'ready']
+const STAGE_LABEL = {
+  placed: 'Order placed — waiting for staff to confirm…',
+  confirmed: 'Confirmed by staff — heading to the kitchen',
+  kot_sent: 'Sent to kitchen',
+  preparing: 'Being prepared',
+  ready: 'Ready to serve',
+}
+function computeStage(requestStatus, kotStatus) {
+  if (kotStatus === 'ready') return 'ready'
+  if (kotStatus === 'in_progress') return 'preparing'
+  if (kotStatus === 'new') return 'kot_sent'
+  if (requestStatus === 'accepted') return 'confirmed'
+  return 'placed'
 }
 
 const sessionKey = tableId => `guestOrderReq:${tableId}`
+function loadStoredRequest(tableId) {
+  try {
+    const raw = sessionStorage.getItem(sessionKey(tableId))
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
 
 // Fully public, unauthenticated page — reached by a guest scanning a table's QR code (see
 // PosTableManagement.jsx's "Print QR" action). Shows the live POS menu for that table's client;
@@ -42,11 +59,18 @@ export default function GuestMenu() {
   const [kotStatus, setKotStatus] = useState(null) // null = no open order / nothing sent yet
 
   const [cart, setCart] = useState({}) // recipe_id -> qty
+  const [covers, setCovers] = useState(2)
   const [reviewOpen, setReviewOpen] = useState(false)
   const [guestNote, setGuestNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
-  const [requestId, setRequestId] = useState(() => sessionStorage.getItem(sessionKey(tableId)) || null)
+  const [requestId, setRequestId] = useState(() => loadStoredRequest(tableId)?.requestId || null)
+  // { items: [{name, qty}], covers } — kept alongside the request id so the confirmation card can
+  // show what was actually ordered even after items/cart are cleared, and survives a page reload.
+  const [requestSnapshot, setRequestSnapshot] = useState(() => {
+    const stored = loadStoredRequest(tableId)
+    return stored ? { items: stored.items || [], covers: stored.covers || 1 } : null
+  })
   const [requestStatus, setRequestStatus] = useState(null)
 
   useEffect(() => {
@@ -124,51 +148,53 @@ export default function GuestMenu() {
     setSubmitting(true)
     setSubmitError('')
     const payload = cartLines.map(l => ({ recipe_id: l.item.recipe_id, qty: l.qty }))
+    const itemsSnapshot = cartLines.map(l => ({ name: l.item.name, qty: l.qty }))
     const { data, error: err } = await supabase.rpc('submit_guest_order', {
-      p_table_id: tableId, p_items: payload, p_notes: guestNote || null,
+      p_table_id: tableId, p_items: payload, p_notes: guestNote || null, p_covers: covers,
     })
     setSubmitting(false)
     if (err) {
       setSubmitError(err.message || 'Could not place order — please ask staff for assistance.')
       return
     }
-    sessionStorage.setItem(sessionKey(tableId), data)
+    sessionStorage.setItem(sessionKey(tableId), JSON.stringify({ requestId: data, items: itemsSnapshot, covers }))
     setRequestId(data)
+    setRequestSnapshot({ items: itemsSnapshot, covers })
     setRequestStatus('pending')
     setCart({})
     setGuestNote('')
+    setCovers(2)
     setReviewOpen(false)
   }
 
   function orderAgain() {
     sessionStorage.removeItem(sessionKey(tableId))
     setRequestId(null)
+    setRequestSnapshot(null)
     setRequestStatus(null)
   }
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--theme-bg)', color: 'var(--theme-text1)' }}>
       <div style={{ maxWidth: 640, margin: '0 auto', padding: '28px 20px 100px' }}>
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+        <div style={{ textAlign: 'center', marginBottom: 20 }}>
           <h1 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 700 }}>{outletName}</h1>
           <p style={{ margin: 0, fontSize: 13, color: 'var(--theme-text3)' }}>{tableName}</p>
-          {kotStatus ? (
-            <span className={KOT_STATUS_BADGE[kotStatus]} style={{ display: 'inline-block', marginTop: 10, fontSize: 11 }}>
+        </div>
+
+        {requestSnapshot ? (
+          <OrderStatusCard
+            requestStatus={requestStatus} kotStatus={kotStatus}
+            items={requestSnapshot.items} covers={requestSnapshot.covers}
+            onOrderAgain={orderAgain}
+          />
+        ) : kotStatus && (
+          <div style={{ textAlign: 'center', marginBottom: 20 }}>
+            <span className={KOT_STATUS_BADGE[kotStatus]} style={{ display: 'inline-block', fontSize: 11 }}>
               {KOT_STATUS_LABEL[kotStatus]}
             </span>
-          ) : requestStatus && (
-            <div style={{ marginTop: 10 }}>
-              <span className={REQUEST_BADGE[requestStatus]} style={{ display: 'inline-block', fontSize: 11 }}>
-                {REQUEST_LABEL[requestStatus]}
-              </span>
-              {requestStatus === 'dismissed' && (
-                <div style={{ marginTop: 8 }}>
-                  <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={orderAgain}>Order again</button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {categories.map(cat => (
           <div key={cat} style={{ marginBottom: 28 }}>
@@ -226,6 +252,10 @@ export default function GuestMenu() {
                   <span>Total</span>
                   <span>{fmtNpr(cartTotal)}</span>
                 </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                  <span style={{ fontSize: 13 }}>How many of you are dining?</span>
+                  <Stepper qty={covers} onChange={n => setCovers(Math.max(1, Math.min(50, n)))} />
+                </div>
                 <textarea
                   value={guestNote} onChange={e => setGuestNote(e.target.value)}
                   placeholder="Any notes for the kitchen? (optional)"
@@ -247,6 +277,61 @@ export default function GuestMenu() {
             )}
           </div>
         </Modal>
+      )}
+    </div>
+  )
+}
+
+function OrderStatusCard({ requestStatus, kotStatus, items, covers, onOrderAgain }) {
+  if (requestStatus === 'dismissed') {
+    return (
+      <div className="card" style={{ padding: 16, marginBottom: 24, borderColor: 'var(--theme-red)' }}>
+        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--theme-red)' }}>
+          Staff couldn't take this order
+        </p>
+        <p style={{ margin: '6px 0 0', fontSize: 12.5, color: 'var(--theme-text2)' }}>
+          Please ask a staff member for assistance.
+        </p>
+        <button className="btn btn-ghost" style={{ marginTop: 10, fontSize: 12 }} onClick={onOrderAgain}>Order again</button>
+      </div>
+    )
+  }
+
+  const stage = computeStage(requestStatus, kotStatus)
+  const stageIdx = STAGES.indexOf(stage)
+
+  return (
+    <div className="card" style={{ padding: 16, marginBottom: 24, borderColor: 'var(--theme-accent)' }}>
+      <p style={{ margin: '0 0 14px', fontSize: 15, fontWeight: 700, color: 'var(--theme-text1)' }}>
+        {STAGE_LABEL[stage]}
+      </p>
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
+        {STAGES.map((s, i) => (
+          <div key={s} style={{ display: 'flex', alignItems: 'center', flex: i < STAGES.length - 1 ? 1 : '0 0 auto' }}>
+            <div style={{
+              width: 11, height: 11, borderRadius: '50%', flexShrink: 0,
+              background: i <= stageIdx ? 'var(--theme-accent)' : 'var(--theme-border)',
+              transition: 'background 0.2s',
+            }} />
+            {i < STAGES.length - 1 && (
+              <div style={{
+                flex: 1, height: 2, margin: '0 2px',
+                background: i < stageIdx ? 'var(--theme-accent)' : 'var(--theme-border)',
+                transition: 'background 0.2s',
+              }} />
+            )}
+          </div>
+        ))}
+      </div>
+      {items?.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingTop: 10, borderTop: '1px solid var(--theme-border)' }}>
+          {items.map((it, i) => (
+            <span key={i} style={{ fontSize: 13, color: 'var(--theme-text2)' }}>{it.qty}× {it.name}</span>
+          ))}
+          {covers > 0 && (
+            <span style={{ fontSize: 11.5, color: 'var(--theme-text3)', marginTop: 4 }}>{covers} guest{covers > 1 ? 's' : ''}</span>
+          )}
+        </div>
       )}
     </div>
   )

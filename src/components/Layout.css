@@ -550,6 +550,23 @@ input[type="number"] {
   color: var(--theme-accent);
 }
 
+/* Guest QR self-ordering: an unmissable pulse on the new-order banner and the affected floor
+   tile (PosOrders.jsx) — paired with a one-time audio chime when a request first arrives. */
+@keyframes guest-order-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.guest-order-banner {
+  animation: guest-order-pulse 1.4s ease-in-out infinite;
+}
+@keyframes guest-order-glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(201,168,76,0.5); }
+  50% { box-shadow: 0 0 0 6px rgba(201,168,76,0.18); }
+}
+.guest-order-glow {
+  animation: guest-order-glow-pulse 1.4s ease-in-out infinite;
+}
+
 .badge-amber {
   background: rgba(251,191,36,0.12);
   color: var(--theme-amber);

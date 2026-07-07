@@ -37,9 +37,13 @@ export default function PosOrders() {
   // table_id -> 'new' | 'in_progress' | 'ready' — least-advanced pos_kot_log status for that
   // table's open order, so wait staff can see Sent/Started/Ready without walking to the kitchen.
   const [kotStatusByTable, setKotStatusByTable] = useState({})
-  // table_id -> array of pending pos_guest_order_requests rows ({ id, items, guest_notes, created_at })
+  // table_id -> array of pending pos_guest_order_requests rows ({ id, items, guest_notes, covers, created_at })
   // awaiting staff Accept/Dismiss — see submit_guest_order (Guest QR self-ordering, Pro-tier feature).
   const [pendingGuestOrders, setPendingGuestOrders] = useState({})
+  // Request ids already seen by loadPendingGuestOrders, so the chime only fires for a genuinely
+  // new arrival, not on every 5s re-poll of a request that's still sitting there pending.
+  const seenGuestRequestIds = useRef(new Set())
+  const guestOrdersLoadedOnce = useRef(false)
 
   /* ── covers modal ── */
   const [coversModal,      setCoversModal]      = useState(false)
@@ -377,14 +381,49 @@ export default function PosOrders() {
   // Guest ordering only ever happens online, so (like loadKotStatus) this is skipped offline.
   async function loadPendingGuestOrders() {
     if (!navigator.onLine) return
-    const { data } = await scopedFrom('pos_guest_order_requests', 'id, table_id, items, guest_notes, created_at')
+    const { data } = await scopedFrom('pos_guest_order_requests', 'id, table_id, items, guest_notes, covers, created_at')
       .eq('status', 'pending')
+    const rows = data || []
+
+    // Chime once per genuinely new request — skipped on the very first load (that's just
+    // whatever was already pending when this screen opened, not a fresh arrival).
+    if (guestOrdersLoadedOnce.current && rows.some(r => !seenGuestRequestIds.current.has(r.id))) {
+      playGuestOrderChime()
+    }
+    seenGuestRequestIds.current = new Set(rows.map(r => r.id))
+    guestOrdersLoadedOnce.current = true
+
     const map = {}
-    for (const r of (data || [])) {
+    for (const r of rows) {
       if (!map[r.table_id]) map[r.table_id] = []
       map[r.table_id].push(r)
     }
     setPendingGuestOrders(map)
+  }
+
+  // Short two-tone beep synthesized via the Web Audio API — no audio asset to host/ship. Browsers
+  // block audio before any user gesture on the page; staff have already interacted with the page
+  // via PIN login by the time they reach the floor view, so this is a low-impact caveat in
+  // practice rather than a real gap.
+  function playGuestOrderChime() {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext
+      if (!Ctx) return
+      const ctx = new Ctx()
+      const now = ctx.currentTime
+      ;[880, 660].forEach((freq, i) => {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'sine'
+        osc.frequency.value = freq
+        gain.gain.setValueAtTime(0.0001, now + i * 0.18)
+        gain.gain.exponentialRampToValueAtTime(0.3, now + i * 0.18 + 0.02)
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.18 + 0.16)
+        osc.connect(gain); gain.connect(ctx.destination)
+        osc.start(now + i * 0.18)
+        osc.stop(now + i * 0.18 + 0.18)
+      })
+    } catch (_) { /* audio blocked or unsupported — visual banner still shows */ }
   }
 
   // Merges one guest-requested item into the local cart, same dedup-by-recipe_id logic as
@@ -618,10 +657,22 @@ export default function PosOrders() {
       cachePosOrderForTable(table.id, { orderId: existing.id, orderNo: existing.order_no || null, covers: existing.covers || 1, items })
       setMsg(''); setView('order'); loadMenu()
     } else {
-      setPendingTable(table)
-      setPendingCoversStr('')
-      setCoversModal(true)
-      loadMenu()
+      const pendingGuestReq = pendingGuestOrders[table.id]?.[0]
+      if (pendingGuestReq) {
+        // The guest already gave a covers count when placing their order — skip the redundant
+        // numpad and go straight to the order screen with it pre-filled. This does NOT merge the
+        // request's items into the cart; that still only happens via an explicit Accept tap on
+        // the banner below (decideGuestOrder), same as always.
+        setActiveTable(table)
+        setOrderId(null); setOrderNo(null); setOrderItems([])
+        setCovers(pendingGuestReq.covers || 1)
+        setMsg(''); setView('order'); loadMenu()
+      } else {
+        setPendingTable(table)
+        setPendingCoversStr('')
+        setCoversModal(true)
+        loadMenu()
+      }
     }
   }
 
@@ -2334,6 +2385,28 @@ export default function PosOrders() {
         </div>
       </div>
 
+      {Object.keys(pendingGuestOrders).length > 0 && (() => {
+        const total = Object.values(pendingGuestOrders).reduce((s, arr) => s + arr.length, 0)
+        const tableNames = Object.keys(pendingGuestOrders).map(tid => tables.find(t => t.id === tid)?.name || '?')
+        const firstTable = tables.find(t => t.id === Object.keys(pendingGuestOrders)[0])
+        return (
+          <div
+            className="guest-order-banner"
+            onClick={() => firstTable && openTable(firstTable)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
+              background: 'rgba(201,168,76,0.16)', border: '1px solid var(--theme-accent)',
+              borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontSize: 13.5, fontWeight: 700,
+              color: 'var(--theme-accent)',
+            }}
+          >
+            <span style={{ fontSize: 18 }}>🔔</span>
+            <span>{total} new guest order{total !== 1 ? 's' : ''} — {tableNames.join(', ')}</span>
+            <span style={{ marginLeft: 'auto', fontWeight: 600 }}>Tap to review →</span>
+          </div>
+        )
+      })()}
+
       {!isOnline && (
         <div style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.25)', borderRadius: 8, padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--theme-amber)' }}>
           <span>📵</span>
@@ -2393,10 +2466,11 @@ export default function PosOrders() {
           {visTables.map(t => {
             const ord      = tableOrders[t.id]
             const inactive = t.status === 'inactive'
+            const hasPendingGuest = pendingGuestOrders[t.id]?.length > 0
             return (
               <div
                 key={t.id}
-                className="card"
+                className={`card${hasPendingGuest ? ' guest-order-glow' : ''}`}
                 onClick={() => !inactive && openTable(t)}
                 style={{
                   padding: '16px 18px',
