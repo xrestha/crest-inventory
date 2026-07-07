@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../../context/AuthContext'
 import { useScopedDb } from '../../../shared/hooks/useScopedDb'
+import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
 import Fab from '../../../components/Fab'
 import EmployeeForm from './EmployeeForm'
 import EmployeeJoiningForm from './EmployeeJoiningForm'
+
+function pinValid(pin) { return /^\d{4,6}$/.test(pin) }
 
 const STATUS_COLORS = {
   active:      { color: '#34d399', bg: 'rgba(52,211,153,0.1)',  border: 'rgba(52,211,153,0.2)'  },
@@ -53,8 +56,16 @@ export default function EmployeeList() {
   const [editing, setEditing]     = useState(null)
   const [printForm, setPrintForm] = useState(false)
 
+  // employee_id -> profile_id, for employees with self-service already enabled
+  const [selfServiceMap, setSelfServiceMap] = useState({})
+  const [ssTarget, setSsTarget] = useState(null) // employee row being enabled
+  const [ssPin, setSsPin] = useState('')
+  const [ssBusy, setSsBusy] = useState(false)
+  const [ssMsg, setSsMsg] = useState('')
+  const [linkCopied, setLinkCopied] = useState(false)
+
   useEffect(() => {
-    if (effectiveClientId) fetchEmployees()
+    if (effectiveClientId) { fetchEmployees(); fetchSelfServiceStatus() }
   }, [effectiveClientId]) // eslint-disable-line
 
   async function fetchEmployees() {
@@ -64,9 +75,41 @@ export default function EmployeeList() {
     setLoading(false)
   }
 
+  // profiles doesn't follow the standard client-scoped RLS pattern (self-or-admin only), so this
+  // goes through a dedicated RPC rather than a raw/scoped query — see get_hr_self_service_status.
+  async function fetchSelfServiceStatus() {
+    const { data } = await supabase.rpc('get_hr_self_service_status', { p_client_id: effectiveClientId })
+    setSelfServiceMap(Object.fromEntries((data || []).map(r => [r.employee_id, r.profile_id])))
+  }
+
+  function openEnableSelfService(emp) { setSsTarget(emp); setSsPin(''); setSsMsg('') }
+
+  async function enableSelfService() {
+    if (!pinValid(ssPin)) { setSsMsg('PIN must be 4–6 digits.'); return }
+    setSsBusy(true); setSsMsg('')
+    const { data, error } = await supabase.functions.invoke('admin-user-ops', {
+      body: { action: 'create_hr_self_service_login', client_id: effectiveClientId, employee_id: ssTarget.id, pin: ssPin },
+    })
+    if (error || data?.error) {
+      let detail = data?.error || error?.message || 'Failed to enable self-service'
+      try { const b = await error?.context?.json(); detail = b?.error || detail } catch (_) {}
+      setSsMsg('Error: ' + detail); setSsBusy(false); return
+    }
+    setSsTarget(null); setSsBusy(false)
+    fetchSelfServiceStatus()
+  }
+
   function openAdd() { setEditing(null); setDrawer(true) }
   function openEdit(emp) { setEditing(emp); setDrawer(true) }
   function closeDrawer() { setDrawer(false); setEditing(null) }
+
+  // One shared login link per client — the admin sends this to every self-service employee.
+  function copySelfServiceLink() {
+    const url = `${window.location.origin}/hr/self-service/login/${effectiveClientId}`
+    navigator.clipboard.writeText(url)
+    setLinkCopied(true)
+    setTimeout(() => setLinkCopied(false), 2000)
+  }
 
   // Resolve supervisor names + the set of employees actually used as a supervisor (for the filter).
   const nameById = Object.fromEntries(employees.map(e => [e.id, e.full_name]))
@@ -104,9 +147,16 @@ export default function EmployeeList() {
           <h1 className="page-title">Employees</h1>
           <p className="page-subtitle">Employee master — personal info, employment details, salary and banking</p>
         </div>
-        <button className="btn btn-ghost" onClick={() => setPrintForm(true)} style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
-          🖨 Print Joining Form
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Tip text="Copies a link employees can open on their own phone to log in with their PIN and view their payslip, submit leave, and see their roster. Same link works for every self-service employee at this company.">
+            <button className="btn btn-ghost" onClick={copySelfServiceLink} style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+              {linkCopied ? '✓ Link Copied' : '🔗 Copy Self-Service Link'}
+            </button>
+          </Tip>
+          <button className="btn btn-ghost" onClick={() => setPrintForm(true)} style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+            🖨 Print Joining Form
+          </button>
+        </div>
       </div>
 
       {/* Stat cards */}
@@ -272,13 +322,24 @@ export default function EmployeeList() {
                       </span>
                     </td>
                     <td style={{ textAlign: 'right' }}>
-                      <button
-                        className="btn btn-ghost"
-                        style={{ fontSize: 11, padding: '3px 10px' }}
-                        onClick={() => openEdit(e)}
-                      >
-                        Edit
-                      </button>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                        {selfServiceMap[e.id] ? (
+                          <Tip text="This employee can log in via the Self-Service link to view their own payslip, submit leave, and see their roster.">
+                            <span className="badge badge-green" style={{ fontSize: 10 }}>✓ Self-Service</span>
+                          </Tip>
+                        ) : (
+                          <button className="btn btn-ghost" style={{ fontSize: 11, padding: '3px 10px' }} onClick={() => openEnableSelfService(e)}>
+                            Enable Self-Service
+                          </button>
+                        )}
+                        <button
+                          className="btn btn-ghost"
+                          style={{ fontSize: 11, padding: '3px 10px' }}
+                          onClick={() => openEdit(e)}
+                        >
+                          Edit
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )
@@ -300,6 +361,31 @@ export default function EmployeeList() {
       <Fab onClick={openAdd} label="+ Add Employee" show={!drawerOpen} />
 
       {printForm && <EmployeeJoiningForm onClose={() => setPrintForm(false)} />}
+
+      {ssTarget && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card" style={{ width: 380, padding: 28, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <h3 style={{ margin: 0, fontSize: 16, color: 'var(--theme-text1)' }}>Enable Self-Service</h3>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--theme-text3)' }}>
+              {ssTarget.full_name} will be able to log in with this PIN via the "Copy Self-Service Link" button
+              above to view their own payslip, submit leave requests, and see their roster. Set an initial PIN —
+              they can be given a new one later by repeating this action.
+            </p>
+            <div>
+              <label style={{ fontSize: 11, color: 'var(--theme-text3)', marginBottom: 4, display: 'block' }}>PIN (4–6 digits)</label>
+              <input
+                style={{ background: 'var(--theme-input-bg)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '7px 10px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none', width: '100%' }}
+                type="password" inputMode="numeric" maxLength={6} value={ssPin} onChange={e => setSsPin(e.target.value.replace(/\D/g, ''))}
+              />
+            </div>
+            {ssMsg && <div style={{ fontSize: 12, color: 'var(--theme-red)' }}>{ssMsg}</div>}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn btn-ghost" onClick={() => setSsTarget(null)}>Cancel</button>
+              <button className="btn btn-primary" onClick={enableSelfService} disabled={ssBusy}>{ssBusy ? 'Enabling…' : 'Enable'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

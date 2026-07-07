@@ -61,6 +61,10 @@ import FinalSettlement from './modules/hr/settlement/FinalSettlement'
 import Roster from './modules/hr/roster/Roster'
 import HolidayCalendar from './modules/hr/holidays/HolidayCalendar'
 import Overtime from './modules/hr/overtime/Overtime'
+import TadaClaims from './modules/hr/tada/TadaClaims'
+import IncentiveRun from './modules/hr/incentives/IncentiveRun'
+import SelfServiceLogin from './modules/hr/selfservice/SelfServiceLogin'
+import SelfServiceHome from './modules/hr/selfservice/SelfServiceHome'
 import HrDashboard from './modules/hr/dashboard/HrDashboard'
 import Pos from './modules/pos/Pos'
 import PosOrders from './modules/pos/orders/PosOrders'
@@ -95,6 +99,8 @@ export default function App() {
             <Route path="/pricing"   element={<Pricing />} />
             <Route path="/pos/login" element={<PosLogin />} />
             <Route path="/pos/menu/:tableId" element={<GuestMenu />} />
+            <Route path="/hr/self-service/login/:clientId" element={<SelfServiceLogin />} />
+            <Route path="/hr/self-service" element={<SelfServiceHome />} />
             <Route path="/" element={<RootRedirect />} />
             <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
 
@@ -189,6 +195,8 @@ export default function App() {
               <Route path="/hr/reports"    element={<ModuleGate module="hr"><HrReports /></ModuleGate>} />
               <Route path="/hr/festival"   element={<ModuleGate module="hr"><FestivalAllowance /></ModuleGate>} />
               <Route path="/hr/advances"   element={<ModuleGate module="hr"><Advances /></ModuleGate>} />
+              <Route path="/hr/tada"       element={<ModuleGate module="hr"><TadaClaims /></ModuleGate>} />
+              <Route path="/hr/incentives" element={<ModuleGate module="hr"><IncentiveRun /></ModuleGate>} />
               <Route path="/hr/gratuity"   element={<ModuleGate module="hr"><GratuityTracker /></ModuleGate>} />
               <Route path="/hr/settlement" element={<ModuleGate module="hr"><FinalSettlement /></ModuleGate>} />
               <Route path="/hr/roster"     element={<ModuleGate module="hr"><Roster /></ModuleGate>} />

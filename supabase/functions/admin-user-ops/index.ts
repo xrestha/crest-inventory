@@ -158,6 +158,56 @@ Deno.serve(async (req) => {
       return json({ success: true, userId: authData.user.id })
     }
 
+    // ── Enable HR Employee Self-Service — PIN login, mirrors create_pos_staff exactly ────────
+    // Restricted to admin or the client owner (not POS managers — HR access isn't necessarily
+    // delegated to a floor manager the way POS staff management is).
+    if (action === 'create_hr_self_service_login') {
+      if (!(isCallerAdmin || isCallerOwner)) return json({ error: 'Forbidden' }, 403)
+
+      const targetClientId = isCallerAdmin ? params.client_id : profile?.client_id
+      if (!targetClientId) return json({ error: 'client_id required' }, 400)
+
+      const { employee_id, pin } = params
+      if (!employee_id || !pin) return json({ error: 'employee_id and pin are required' }, 400)
+      if (!/^\d{4,6}$/.test(pin)) return json({ error: 'PIN must be 4–6 digits' }, 400)
+
+      const { data: employee } = await admin
+        .from('hr_employees').select('id, full_name, client_id')
+        .eq('id', employee_id).eq('client_id', targetClientId).single()
+      if (!employee) return json({ error: 'Employee not found' }, 400)
+
+      const slug   = employee.full_name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12)
+      const suffix = Math.random().toString(36).slice(2, 7)
+      const email  = `${slug}_${suffix}@hr.internal`
+
+      const { data: authData, error: authErr } = await admin.auth.admin.createUser({
+        email,
+        password:      pin,
+        email_confirm: true,
+        user_metadata: { full_name: employee.full_name },
+      })
+      if (authErr || !authData?.user) {
+        return json({ error: authErr?.message || 'Failed to create user' }, 400)
+      }
+
+      const { error: profileErr } = await admin.from('profiles').upsert({
+        id:                     authData.user.id,
+        full_name:              employee.full_name,
+        role:                   'client',
+        client_id:              targetClientId,
+        hr_employee_id:         employee.id,
+        hr_self_service:        true,
+        hr_self_service_email:  email,
+      }, { onConflict: 'id' })
+
+      if (profileErr) {
+        await admin.auth.admin.deleteUser(authData.user.id)
+        return json({ error: profileErr.message }, 400)
+      }
+
+      return json({ success: true, userId: authData.user.id })
+    }
+
     // ── Update a POS staff member's role ─────────────────────────────────────
     if (action === 'update_pos_role') {
       const { userId, pos_role, pos_job_title } = params

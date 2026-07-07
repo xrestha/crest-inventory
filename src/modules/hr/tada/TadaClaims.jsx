@@ -1,0 +1,404 @@
+import { useState, useEffect, useCallback } from 'react'
+import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
+import Tip from '../../../components/Tip'
+import SearchableSelect from '../../../components/SearchableSelect'
+import BsCalendarPicker from '../../../components/BsCalendarPicker'
+import { adToBs } from '../../../utils/bsCalendar'
+
+const fmt  = n => Math.round(n || 0).toLocaleString('en-NP')
+const fmtD = iso => {
+  if (!iso) return '—'
+  const bs = adToBs(new Date(iso + 'T00:00:00'))
+  return `${bs.year}-${String(bs.month).padStart(2, '0')}-${String(bs.day).padStart(2, '0')}`
+}
+const inp = {
+  background: 'var(--theme-input-bg)', border: '1px solid var(--theme-border)',
+  borderRadius: 6, padding: '7px 10px', fontSize: 13, color: 'var(--theme-text1)',
+  outline: 'none', width: '100%', fontFamily: 'inherit',
+}
+const lbl = { fontSize: 11, color: 'var(--theme-text3)', marginBottom: 4, display: 'block' }
+
+const CATEGORIES = ['Transport', 'Lodging', 'Daily Allowance', 'Other']
+const STATUS_BADGE = { pending: 'badge-amber', approved: 'badge-yellow', rejected: 'badge-red', paid: 'badge-green' }
+const EMPTY_ITEM = () => ({ category: 'Transport', description: '', amount: '' })
+const EMPTY_ADD = {
+  employee_id: '', trip_purpose: '', destination: '', start_date: '', end_date: '', notes: '',
+  items: [EMPTY_ITEM()],
+}
+const PAID_METHODS = ['Cash', 'Bank Transfer', 'Cheque']
+
+export default function TadaClaims() {
+  const { clientId, profile } = useAuth()
+  const { scopedFrom, scopedInsert, scopedUpdate, scopedDelete } = useScopedDb()
+
+  const [employees, setEmployees] = useState([])
+  const [claims,    setClaims]    = useState([])
+  const [items,     setItems]     = useState([])
+  const [loading,   setLoading]   = useState(true)
+
+  const [filterStatus, setFilterStatus] = useState('pending') // pending | approved | rejected | paid | all
+  const [selected,     setSelected]     = useState(null)
+  const [showAdd,      setShowAdd]      = useState(false)
+  const [addForm,      setAddForm]      = useState(EMPTY_ADD)
+  const [saving,       setSaving]       = useState(false)
+  const [error,        setError]        = useState('')
+  const [payTarget,    setPayTarget]    = useState(null)
+  const [payMethod,    setPayMethod]    = useState('Cash')
+  const [rejectTarget, setRejectTarget] = useState(null)
+
+  const load = useCallback(async () => {
+    if (!clientId) return
+    setLoading(true)
+    const [{ data: emps }, { data: cls }] = await Promise.all([
+      scopedFrom('hr_employees', 'id, full_name, employee_code, status').order('full_name'),
+      scopedFrom('hr_tada_claims').order('created_at', { ascending: false }),
+    ])
+    setEmployees(emps || [])
+    setClaims(cls || [])
+    const claimIds = (cls || []).map(c => c.id)
+    if (claimIds.length > 0) {
+      const { data: its } = await scopedFrom('hr_tada_claim_items').in('claim_id', claimIds)
+      setItems(its || [])
+    } else {
+      setItems([])
+    }
+    setLoading(false)
+  }, [clientId, scopedFrom])
+
+  useEffect(() => { load() }, [load])
+
+  const empMap = Object.fromEntries(employees.map(e => [e.id, e]))
+  const itemsByClaimId = {}
+  items.forEach(i => { (itemsByClaimId[i.claim_id] = itemsByClaimId[i.claim_id] || []).push(i) })
+
+  const filtered = filterStatus === 'all' ? claims : claims.filter(c => c.status === filterStatus)
+
+  const pendingCount  = claims.filter(c => c.status === 'pending').length
+  const pendingTotal  = claims.filter(c => c.status === 'pending').reduce((s, c) => s + parseFloat(c.total_amount), 0)
+  const approvedTotal = claims.filter(c => c.status === 'approved').reduce((s, c) => s + parseFloat(c.total_amount), 0)
+  const paidThisYear  = claims.filter(c => c.status === 'paid').reduce((s, c) => s + parseFloat(c.total_amount), 0)
+
+  function setAdd(f, v) { setAddForm(p => ({ ...p, [f]: v })) }
+  function setItem(idx, f, v) {
+    setAddForm(p => ({ ...p, items: p.items.map((it, i) => i === idx ? { ...it, [f]: v } : it) }))
+  }
+  function addItemRow() { setAddForm(p => ({ ...p, items: [...p.items, EMPTY_ITEM()] })) }
+  function removeItemRow(idx) { setAddForm(p => ({ ...p, items: p.items.filter((_, i) => i !== idx) })) }
+  const addTotal = addForm.items.reduce((s, it) => s + (parseFloat(it.amount) || 0), 0)
+
+  async function handleAdd() {
+    if (!clientId) return
+    if (!addForm.employee_id) { setError('Select an employee.'); return }
+    if (!addForm.start_date || !addForm.end_date) { setError('Set the trip dates.'); return }
+    const validItems = addForm.items.filter(it => parseFloat(it.amount) > 0)
+    if (validItems.length === 0) { setError('Add at least one expense line with an amount.'); return }
+    setError(''); setSaving(true)
+
+    const { data: claim, error: err } = await scopedInsert('hr_tada_claims', {
+      employee_id:   addForm.employee_id,
+      trip_purpose:  addForm.trip_purpose || null,
+      destination:   addForm.destination || null,
+      start_date:    addForm.start_date,
+      end_date:      addForm.end_date,
+      total_amount:  addTotal,
+      status:        'pending',
+      submitted_by:  profile?.id || null,
+      notes:         addForm.notes || null,
+    }, { single: true })
+    if (err) { setError(err.message); setSaving(false); return }
+
+    const { error: itemErr } = await scopedInsert('hr_tada_claim_items', validItems.map(it => ({
+      claim_id: claim.id, category: it.category, description: it.description || null, amount: parseFloat(it.amount),
+    })))
+    setSaving(false)
+    if (itemErr) { setError(itemErr.message); return }
+    setShowAdd(false); setAddForm(EMPTY_ADD); load()
+  }
+
+  async function handleApprove(claimId) {
+    await scopedUpdate('hr_tada_claims', {
+      status: 'approved', approved_by: profile?.id || null, approved_at: new Date().toISOString(),
+    }).eq('id', claimId)
+    load()
+  }
+
+  async function handleReject() {
+    if (!rejectTarget) return
+    await scopedUpdate('hr_tada_claims', { status: 'rejected' }).eq('id', rejectTarget.id)
+    setRejectTarget(null)
+    if (selected === rejectTarget.id) setSelected(null)
+    load()
+  }
+
+  async function handleMarkPaid() {
+    if (!payTarget) return
+    await scopedUpdate('hr_tada_claims', {
+      status: 'paid', paid_at: new Date().toISOString(), paid_method: payMethod,
+    }).eq('id', payTarget.id)
+    setPayTarget(null)
+    load()
+  }
+
+  async function handleDelete(claimId) {
+    await scopedDelete('hr_tada_claim_items').eq('claim_id', claimId)
+    await scopedDelete('hr_tada_claims').eq('id', claimId)
+    if (selected === claimId) setSelected(null)
+    load()
+  }
+
+  const selectedClaim = selected ? claims.find(c => c.id === selected) : null
+  const selectedItems = selected ? (itemsByClaimId[selected] || []) : []
+
+  const tabBtn = (val, cur, set, label) => (
+    <button className={`tab-btn${cur === val ? ' tab-btn--active' : ''}`} onClick={() => set(val)}>{label}</button>
+  )
+
+  if (loading) return <div style={{ padding: 32, color: 'var(--theme-text3)' }}>Loading…</div>
+
+  return (
+    <div style={{ padding: '24px 28px', maxWidth: 1100 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--theme-text1)' }}>TADA Claims</h2>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--theme-text3)' }}>Travel &amp; Daily Allowance expense reimbursement</p>
+        </div>
+        <button className="btn btn-primary" onClick={() => { setAddForm(EMPTY_ADD); setError(''); setShowAdd(true) }}>
+          + New Claim
+        </button>
+      </div>
+
+      {/* Summary cards */}
+      <div className="stat-grid" style={{ marginBottom: 20 }}>
+        {[
+          { label: 'Pending Review', value: `NPR ${fmt(pendingTotal)}`, tip: `${pendingCount} claim(s) awaiting approval.` },
+          { label: 'Approved, Unpaid', value: `NPR ${fmt(approvedTotal)}`, tip: 'Approved claims not yet marked paid.' },
+          { label: 'Paid', value: `NPR ${fmt(paidThisYear)}`, tip: 'Total of all claims marked paid.' },
+        ].map(c => (
+          <div key={c.label} className="card" style={{ padding: '14px 16px' }}>
+            <div style={{ fontSize: 11, color: 'var(--theme-text3)', marginBottom: 4 }}><Tip text={c.tip}>{c.label}</Tip></div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--theme-text1)' }}>{c.value}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="tab-bar" style={{ marginBottom: 16 }}>
+        {tabBtn('pending',  filterStatus, setFilterStatus, 'Pending')}
+        {tabBtn('approved', filterStatus, setFilterStatus, 'Approved')}
+        {tabBtn('paid',     filterStatus, setFilterStatus, 'Paid')}
+        {tabBtn('rejected', filterStatus, setFilterStatus, 'Rejected')}
+        {tabBtn('all',      filterStatus, setFilterStatus, 'All')}
+      </div>
+
+      <div className="table-wrap" style={{ marginBottom: selected ? 12 : 0 }}>
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Employee</th><th>Trip</th><th>Dates (BS)</th>
+              <th style={{ textAlign: 'right' }}>Total</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 && (
+              <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--theme-text3)', padding: 32 }}>No claims found.</td></tr>
+            )}
+            {filtered.map(c => {
+              const emp = empMap[c.employee_id] || {}
+              const isSel = selected === c.id
+              return (
+                <tr key={c.id} onClick={() => setSelected(isSel ? null : c.id)}
+                  style={{ cursor: 'pointer', background: isSel ? 'rgba(201,168,76,0.07)' : undefined }}>
+                  <td>
+                    <div style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{emp.full_name || '—'}</div>
+                    {emp.employee_code && <div style={{ fontSize: 11, color: 'var(--theme-text3)' }}>{emp.employee_code}</div>}
+                  </td>
+                  <td style={{ color: 'var(--theme-text2)', fontSize: 13 }}>
+                    {c.destination || '—'}
+                    {c.trip_purpose && <div style={{ fontSize: 11, color: 'var(--theme-text3)' }}>{c.trip_purpose}</div>}
+                  </td>
+                  <td style={{ color: 'var(--theme-text2)', fontSize: 12 }}>{fmtD(c.start_date)} → {fmtD(c.end_date)}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--theme-text1)' }}>{fmt(c.total_amount)}</td>
+                  <td><span className={STATUS_BADGE[c.status]} style={{ textTransform: 'capitalize' }}>{c.status}</span></td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Detail panel */}
+      {selectedClaim && (
+        <div className="card" style={{ padding: 20, marginBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--theme-text1)' }}>
+                {empMap[selectedClaim.employee_id]?.full_name} — {selectedClaim.destination || 'Trip'}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--theme-text3)', marginTop: 3 }}>
+                {fmtD(selectedClaim.start_date)} → {fmtD(selectedClaim.end_date)}
+                {selectedClaim.trip_purpose && ` · ${selectedClaim.trip_purpose}`}
+              </div>
+              {selectedClaim.notes && <div style={{ fontSize: 12, color: 'var(--theme-text3)', marginTop: 4 }}>{selectedClaim.notes}</div>}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {selectedClaim.status === 'pending' && (
+                <>
+                  <button className="btn btn-ghost" style={{ fontSize: 12, color: '#34d399' }} onClick={() => handleApprove(selectedClaim.id)}>✓ Approve</button>
+                  <button className="btn btn-ghost" style={{ fontSize: 12, color: '#f87171' }} onClick={() => setRejectTarget(selectedClaim)}>✕ Reject</button>
+                </>
+              )}
+              {selectedClaim.status === 'approved' && (
+                <button className="btn btn-ghost" style={{ fontSize: 12, color: '#34d399' }}
+                  onClick={() => { setPayMethod('Cash'); setPayTarget(selectedClaim) }}>
+                  💵 Mark Paid
+                </button>
+              )}
+              {selectedClaim.status === 'pending' && (
+                <button className="btn btn-ghost" style={{ fontSize: 12, color: '#f87171' }} onClick={() => handleDelete(selectedClaim.id)}>Delete</button>
+              )}
+            </div>
+          </div>
+
+          {selectedClaim.status === 'paid' && (
+            <div style={{ fontSize: 12, color: '#34d399', marginBottom: 12 }}>
+              Paid via {selectedClaim.paid_method} on {fmtD(selectedClaim.paid_at?.slice(0, 10))}
+            </div>
+          )}
+
+          <table className="data-table" style={{ fontSize: 12 }}>
+            <thead>
+              <tr><th>Category</th><th>Description</th><th style={{ textAlign: 'right' }}>Amount</th></tr>
+            </thead>
+            <tbody>
+              {selectedItems.map(it => (
+                <tr key={it.id}>
+                  <td>{it.category}</td>
+                  <td style={{ color: 'var(--theme-text3)' }}>{it.description || '—'}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--theme-text1)' }}>{fmt(it.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr style={{ fontWeight: 700 }}>
+                <td colSpan={2}>Total</td>
+                <td style={{ textAlign: 'right' }}>{fmt(selectedClaim.total_amount)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
+
+      {/* New Claim modal */}
+      {showAdd && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div className="card" style={{ width: 560, maxHeight: '85vh', overflowY: 'auto', padding: 28, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <h3 style={{ margin: 0, fontSize: 16, color: 'var(--theme-text1)' }}>New TADA Claim</h3>
+
+            <div>
+              <label style={lbl}>Employee</label>
+              <SearchableSelect
+                options={employees.filter(e => e.status === 'active' || e.status === 'probation').map(e => ({ value: e.id, label: `${e.full_name}${e.employee_code ? ` (${e.employee_code})` : ''}` }))}
+                value={addForm.employee_id} onChange={v => setAdd('employee_id', v)} placeholder="Select employee…"
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <label style={lbl}>Destination</label>
+                <input style={inp} placeholder="e.g. Pokhara" value={addForm.destination} onChange={e => setAdd('destination', e.target.value)} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={lbl}>Purpose</label>
+                <input style={inp} placeholder="e.g. Vendor site visit" value={addForm.trip_purpose} onChange={e => setAdd('trip_purpose', e.target.value)} />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <label style={lbl}>Start Date (BS)</label>
+                <BsCalendarPicker value={addForm.start_date} onChange={v => setAdd('start_date', v)} placeholder="Select date" clearable />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={lbl}>End Date (BS)</label>
+                <BsCalendarPicker value={addForm.end_date} onChange={v => setAdd('end_date', v)} placeholder="Select date" clearable />
+              </div>
+            </div>
+
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <label style={{ ...lbl, marginBottom: 0 }}>Expenses</label>
+                <button className="btn btn-ghost" style={{ fontSize: 11, padding: '3px 10px' }} onClick={addItemRow}>+ Add line</button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {addForm.items.map((it, idx) => (
+                  <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <select className="form-select" style={{ width: 140, flexShrink: 0 }} value={it.category} onChange={e => setItem(idx, 'category', e.target.value)}>
+                      {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <input style={inp} placeholder="Description (optional)" value={it.description} onChange={e => setItem(idx, 'description', e.target.value)} />
+                    <input style={{ ...inp, width: 110, flexShrink: 0 }} type="number" min="0" placeholder="Amount" value={it.amount} onChange={e => setItem(idx, 'amount', e.target.value)} />
+                    {addForm.items.length > 1 && (
+                      <button style={{ background: 'none', border: 'none', color: 'var(--theme-text3)', cursor: 'pointer', fontSize: 16, flexShrink: 0 }} onClick={() => removeItemRow(idx)}>✕</button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div style={{ textAlign: 'right', marginTop: 8, fontSize: 13, fontWeight: 700, color: 'var(--theme-accent)' }}>
+                Total: NPR {fmt(addTotal)}
+              </div>
+            </div>
+
+            <div>
+              <label style={lbl}>Notes</label>
+              <textarea style={{ ...inp, height: 50, resize: 'vertical' }} placeholder="Optional" value={addForm.notes} onChange={e => setAdd('notes', e.target.value)} />
+            </div>
+
+            {error && <div style={{ fontSize: 12, color: '#f87171' }}>{error}</div>}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn btn-ghost" onClick={() => { setShowAdd(false); setError('') }}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleAdd} disabled={saving}>{saving ? 'Submitting…' : 'Submit Claim'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mark Paid modal */}
+      {payTarget && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card" style={{ width: 380, padding: 28, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <h3 style={{ margin: 0, fontSize: 16, color: 'var(--theme-text1)' }}>Mark Paid</h3>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--theme-text3)' }}>
+              {empMap[payTarget.employee_id]?.full_name} · NPR {fmt(payTarget.total_amount)}
+            </p>
+            <div>
+              <label style={lbl}>Payment Method</label>
+              <select className="form-select" value={payMethod} onChange={e => setPayMethod(e.target.value)}>
+                {PAID_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn btn-ghost" onClick={() => setPayTarget(null)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleMarkPaid}>Confirm</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject confirmation */}
+      {rejectTarget && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card" style={{ width: 360, padding: 28, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <h3 style={{ margin: 0, fontSize: 16, color: 'var(--theme-text1)' }}>Reject this claim?</h3>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--theme-text2)' }}>
+              {empMap[rejectTarget.employee_id]?.full_name} · NPR {fmt(rejectTarget.total_amount)}
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn btn-ghost" onClick={() => setRejectTarget(null)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleReject}>Reject</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
