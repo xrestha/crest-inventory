@@ -52,7 +52,9 @@ function DenomGrid({ counts, onChange }) {
               <span style={{ fontSize: 10, color: 'var(--theme-text3)' }}>{fmtNpr(d * (parseInt(counts[d]) || 0))}</span>
             </div>
             <input type="number" min="0" step="1" value={counts[d]}
-              onChange={e => onChange({ ...counts, [d]: e.target.value })}
+              // min="0" only blocks the spinner arrows — a typed "-5" still lands in the input
+              // unless clamped here, since every downstream sum just does parseInt(...) || 0.
+              onChange={e => onChange({ ...counts, [d]: e.target.value === '' ? '' : String(Math.max(0, parseInt(e.target.value) || 0)) })}
               className="form-select" style={{ width: '100%', textAlign: 'center', padding: '4px 6px' }} />
           </div>
         ))}

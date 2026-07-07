@@ -21,7 +21,7 @@ const EMPTY_ROLE  = { label: '', level: 'staff' }
 function pinValid(pin) { return /^\d{4,6}$/.test(pin) }
 
 export default function PosStaff() {
-  const { clientId, isAdmin, hasPosAccess } = useAuth()
+  const { clientId, hasPosAccess } = useAuth()
   const [staff,       setStaff]       = useState([])
   const [loading,     setLoading]     = useState(true)
   const [saving,      setSaving]      = useState({})
@@ -46,7 +46,6 @@ export default function PosStaff() {
   const [resetting,   setResetting]   = useState(false)
   const [pinMsg,      setPinMsg]      = useState('')
 
-  const canEdit        = isAdmin || hasPosAccess('manager')
   const effectiveRoles = customRoles.length > 0 ? customRoles : DEFAULT_ROLES
 
   useEffect(() => { if (clientId) init() }, [clientId]) // eslint-disable-line
@@ -233,16 +232,14 @@ export default function PosStaff() {
             Assign roles to your team. Staff log in with their name and PIN.
           </p>
         </div>
-        {canEdit && (
-          <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
-            <button className="btn btn-ghost" style={{ whiteSpace: 'nowrap' }} onClick={() => setRolesModal(true)}>
-              Manage Roles
-            </button>
-            <button className="btn btn-primary" style={{ whiteSpace: 'nowrap' }} onClick={openAdd}>
-              + Add Staff
-            </button>
-          </div>
-        )}
+        <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+          <button className="btn btn-ghost" style={{ whiteSpace: 'nowrap' }} onClick={() => setRolesModal(true)}>
+            Manage Roles
+          </button>
+          <button className="btn btn-primary" style={{ whiteSpace: 'nowrap' }} onClick={openAdd}>
+            + Add Staff
+          </button>
+        </div>
       </div>
 
       {/* Permission level legend */}
@@ -272,7 +269,7 @@ export default function PosStaff() {
                 <th><Tip text="Custom role name defined for this team (e.g. Cashier, Bartender).">Role</Tip></th>
                 <th><Tip text="Permission level this role maps to — controls which screens they can access.">Access Level</Tip></th>
                 <th><Tip text="Last time this user was active in the app">Last Seen</Tip></th>
-                {canEdit && <th style={{ width: 200 }}>Actions</th>}
+                <th style={{ width: 200 }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -282,27 +279,21 @@ export default function PosStaff() {
                   <tr key={p.id}>
                     <td style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{p.full_name || '—'}</td>
                     <td>
-                      {canEdit ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <select
-                            className="form-select"
-                            style={{ minWidth: 160 }}
-                            value={displayTitle || ''}
-                            disabled={saving[p.id]}
-                            onChange={e => updateRole(p.id, e.target.value)}
-                          >
-                            <option value="">— No Access —</option>
-                            {effectiveRoles.map(r => (
-                              <option key={r.label} value={r.label}>{r.label}</option>
-                            ))}
-                          </select>
-                          {saving[p.id] && <span style={{ fontSize: 12, color: 'var(--theme-text3)' }}>Saving…</span>}
-                        </div>
-                      ) : (
-                        displayTitle
-                          ? <span style={{ fontSize: 13, color: 'var(--theme-text1)' }}>{displayTitle}</span>
-                          : <span style={{ fontSize: 12, color: 'var(--theme-text3)' }}>No access</span>
-                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <select
+                          className="form-select"
+                          style={{ minWidth: 160 }}
+                          value={displayTitle || ''}
+                          disabled={saving[p.id]}
+                          onChange={e => updateRole(p.id, e.target.value)}
+                        >
+                          <option value="">— No Access —</option>
+                          {effectiveRoles.map(r => (
+                            <option key={r.label} value={r.label}>{r.label}</option>
+                          ))}
+                        </select>
+                        {saving[p.id] && <span style={{ fontSize: 12, color: 'var(--theme-text3)' }}>Saving…</span>}
+                      </div>
                     </td>
                     <td>
                       {p.pos_role
@@ -317,34 +308,26 @@ export default function PosStaff() {
                         ? new Date(p.last_seen_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
                         : '—'}
                     </td>
-                    {canEdit && (
-                      <td>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => openReset(p)}>
-                            Reset PIN
-                          </button>
-                          <button
-                            className="btn btn-ghost"
-                            style={{ fontSize: 12, padding: '4px 10px', color: 'var(--theme-red)', borderColor: 'var(--theme-red)' }}
-                            onClick={() => deleteStaff(p)}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    )}
+                    <td>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => openReset(p)}>
+                          Reset PIN
+                        </button>
+                        <button
+                          className="btn btn-ghost"
+                          style={{ fontSize: 12, padding: '4px 10px', color: 'var(--theme-red)', borderColor: 'var(--theme-red)' }}
+                          onClick={() => deleteStaff(p)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 )
               })}
             </tbody>
           </table>
         </div>
-      )}
-
-      {!canEdit && (
-        <p style={{ fontSize: 12, color: 'var(--theme-text3)', marginTop: 16 }}>
-          Role changes require Manager access. Contact your manager or Crest admin.
-        </p>
       )}
 
       {/* ── Manage Roles modal ───────────────────────────────────────────────── */}

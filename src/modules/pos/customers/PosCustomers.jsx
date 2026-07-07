@@ -118,8 +118,10 @@ export default function PosCustomers() {
     const defaultPct = partner?.commission_pct
     setSettleCommissionPct(defaultPct != null ? String(defaultPct) : '')
     setSettleExVatLoading(true)
-    const { data: items } = await scopedFrom('pos_order_items', 'qty, unit_price, vat_rate').eq('order_id', order.id)
-    const amounts = computeOrderAmounts(order, items || [], vatReg)
+    const { data: items } = await scopedFrom('pos_order_items', 'qty, unit_price, vat_rate, comped').eq('order_id', order.id)
+    // Excludes comped items — commission has nothing to withhold on a line that was never
+    // actually charged, same exclusion every other revenue calc in this codebase applies.
+    const amounts = computeOrderAmounts(order, (items || []).filter(i => !i.comped), vatReg)
     setSettleExVatBase(amounts.taxableBase + amounts.nonTaxableBase)
     setSettleExVatLoading(false)
   }

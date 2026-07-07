@@ -138,6 +138,17 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S302 — 2026-07-07 — POS audit fixes: Low-severity batch — audit complete
+
+Closes out the POS module audit (S298–S302): fixed the last four Low-severity findings.
+
+- **`PosCustomers.jsx`**: the delivery-partner commission-base calc at Settle time summed every item including any individually comped one, inflating the suggested commission. Now fetches `comped` and filters it out before `computeOrderAmounts`, same exclusion every other revenue calc in this codebase already applies.
+- **`PosShifts.jsx`**: the denomination-count inputs' `min="0"` only blocked the spinner arrows — a typed `-5` still landed in state and silently subtracted from the opening/closing cash total. Clamped in the `onChange` handler itself so a negative value can never enter state at all.
+- **`PosStaff.jsx`**: removed dead code — `canEdit = isAdmin || hasPosAccess('manager')` was always `true` given the page's own `<Navigate>` route guard one line below, which already requires manager access to render at all. Deleted every `canEdit`-gated branch (all unconditionally true) and the always-unreachable `!canEdit` "contact your manager" message, along with the now-unused `isAdmin` destructure.
+- **`PosTableManagement.jsx`**: the Delivery Partners tab tooltip claimed commission "is applied automatically... at Charge" — directly contradicting the tab's own body text ("never calculated at Charge... only a starting suggestion... at settlement"). Tooltip corrected to match the actual (correct) behavior.
+
+**Files:** `src/modules/pos/customers/PosCustomers.jsx`, `src/modules/pos/shifts/PosShifts.jsx`, `src/modules/pos/staff/PosStaff.jsx`, `src/modules/pos/tables/PosTableManagement.jsx`
+
 ### S301 — 2026-07-07 — POS audit fixes: Medium-severity batch (6 findings)
 
 Continuing the POS module audit — fixed all six remaining Medium-severity findings in one pass.

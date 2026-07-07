@@ -508,7 +508,7 @@ export default function PosTableManagement() {
             onClick={openDiscountsTab}
           >Discounts</button>
         </Tip>
-        <Tip text="Foodmandu/Pathao commission % — applied automatically whenever staff selects one of them as the payment method at Charge, so Sales Report can show what the platform withholds vs. what you actually receive">
+        <Tip text="Foodmandu/Pathao commission % — never applied automatically at Charge (their orders close as Credit, not their own payment method). It's only a starting suggestion shown when you settle that bill in Customers → Outstanding Credit, adjustable against what the platform actually remitted">
           <button
             className={`tab-btn${mainTab === 'delivery' ? ' tab-btn--active' : ''}`}
             onClick={openDeliveryTab}
