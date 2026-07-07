@@ -138,6 +138,14 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S303 — 2026-07-07 — Fixed a regression from S298: print popups stuck blank
+
+Live testing after S298 caught a real regression from that session's `noopener,noreferrer` fix on all four print `window.open(...)` calls: passing `noopener` as a window-open *feature* makes the call return `null` for the window reference in Chrome/Firefox — so `printHtml`/`printCreditNoteHtml`/`printQr` opened the popup, then immediately hit their own `if (!w) return` guard and never wrote content, never printed, never closed it. Every KOT/BOT/Bill/Credit Note/QR print left a permanently blank popup window behind.
+
+Fixed by keeping the window reference (drop `noopener,noreferrer` from the feature string) and severing `window.opener` manually instead — `w.opener = null` right after opening, on the reference we keep — same "the popup can't reach back into the live app" protection, without losing the ability to actually write/print/close it.
+
+**Files:** `src/modules/pos/orders/PosOrders.jsx`, `src/modules/pos/creditnotes/creditNoteHtml.js`, `src/modules/pos/tables/PosTableManagement.jsx`, `src/modules/pos/shifts/PosShifts.jsx`
+
 ### S302 — 2026-07-07 — POS audit fixes: Low-severity batch — audit complete
 
 Closes out the POS module audit (S298–S302): fixed the last four Low-severity findings.

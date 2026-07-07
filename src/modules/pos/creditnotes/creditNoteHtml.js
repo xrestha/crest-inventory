@@ -88,8 +88,12 @@ export function buildCreditNoteHtml(creditNote, items, settings, outletName, hsc
 }
 
 export function printCreditNoteHtml(html, onPopupBlocked) {
-  const w = window.open('', '_blank', 'width=340,height=480,left=200,top=100,noopener,noreferrer')
+  // noopener as a window.open feature makes the call return null (no way to then write/print/
+  // close the popup) — sever window.opener manually instead, on the reference we keep, for the
+  // same "can't reach back into the live app" protection without losing that reference.
+  const w = window.open('', '_blank', 'width=340,height=480,left=200,top=100')
   if (!w) { onPopupBlocked?.(); return false }
+  w.opener = null
   w.document.write(html)
   w.document.close()
   w.focus()

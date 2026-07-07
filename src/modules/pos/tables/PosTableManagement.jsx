@@ -215,8 +215,12 @@ export default function PosTableManagement() {
 
   function printQr() {
     if (!qrTable || !qrDataUrl) return
-    const w = window.open('', '_blank', 'width=380,height=520,left=200,top=100,noopener,noreferrer')
+    // noopener as a window.open feature makes the call return null (no way to then write/print/
+    // close the popup) — sever window.opener manually instead, on the reference we keep, for the
+    // same "can't reach back into the live app" protection without losing that reference.
+    const w = window.open('', '_blank', 'width=380,height=520,left=200,top=100')
     if (!w) return
+    w.opener = null
     w.document.write(`
       <html><head><title>${esc(qrTable.name)} — Menu QR</title></head>
       <body style="font-family:sans-serif;text-align:center;padding:24px">
