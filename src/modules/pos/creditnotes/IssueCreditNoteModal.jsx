@@ -3,7 +3,7 @@ import { useAuth } from '../../../context/AuthContext'
 import { supabase } from '../../../supabaseClient'
 import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
-import { getBsToday, adToBs, BS_MONTHS } from '../../../utils/bsCalendar'
+import { getBsToday, getBsFiscalYear, adToBs, BS_MONTHS } from '../../../utils/bsCalendar'
 import { computeOrderAmounts } from '../../../utils/posBillingMath'
 import { printCreditNote } from './creditNoteHtml'
 
@@ -91,10 +91,18 @@ export default function IssueCreditNoteModal({ order, onClose, onIssued }) {
     const bs = adToBs(new Date(order.closed_at))
     const original_invoice_date_bs = `${bs.day} ${BS_MONTHS[bs.month - 1]} ${bs.year}`
     const original_invoice_label = invoiceLabel(order, vatReg, settings.invoice_prefix)
+    // The CN's own invoice_fy (which drives its sequential credit_note_no via
+    // assign_pos_credit_note_no) is the fiscal year it's actually issued in — matching the
+    // revenue-reversal logic below ("the period the correction is discovered in"), not the
+    // original bill's period. A CN issued after a fiscal-year rollover would otherwise number
+    // itself into that old, already-closed FY's sequence. The original bill stays fully
+    // traceable regardless via original_invoice_no/original_invoice_label/original_invoice_date_bs.
+    const today = getBsToday()
+    const issuance_fy = getBsFiscalYear(today.year, today.month)
 
     const payload = {
       order_id: order.id,
-      invoice_fy: order.invoice_fy,
+      invoice_fy: issuance_fy,
       original_invoice_no: order.invoice_no,
       original_invoice_label,
       original_invoice_date_bs,
@@ -122,7 +130,6 @@ export default function IssueCreditNoteModal({ order, onClose, onIssued }) {
     // correction is discovered in), not the original bill's period. Stock/ingredient depletion is
     // deliberately NOT reversed — the food was already served; this corrects billing/tax, not stock.
     try {
-      const today = getBsToday()
       const { data: periods } = await scopedFrom('monthly_periods')
         .order('bs_year', { ascending: false }).order('bs_month', { ascending: false })
       const open = (periods || []).find(p => p.status === 'open')

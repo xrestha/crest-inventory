@@ -138,6 +138,24 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S305 — 2026-07-07 — Credit Note numbering: issuance FY, not the original bill's FY — audit fully closed
+
+The last open item from the POS module audit (S298–S304): `IssueCreditNoteModal.jsx` set the CN's own `invoice_fy` (which drives its sequential `credit_note_no` via `assign_pos_credit_note_no`) to the *original bill's* fiscal year, while the revenue reversal a few lines below it deliberately posts into *today's* open period, reasoning "the period the correction is discovered in, not the original bill's period." A CN issued after a fiscal-year rollover against an old-FY bill got numbered into that old, already-closed FY's sequence — inconsistent with the function's own stated rule one block below it. Confirmed with the user this was worth fixing rather than intentional design.
+
+Switched `invoice_fy` to the issuance FY (`getBsFiscalYear(today.year, today.month)`, computed once and reused by both the payload and the revenue-reversal block that already needed it) — a CN issued today gets numbered into today's active series, same period its revenue effect lands in. The original bill stays fully traceable regardless via the separate `original_invoice_no`/`original_invoice_label`/`original_invoice_date_bs` fields, which were never tied to this.
+
+**Files:** `src/modules/pos/creditnotes/IssueCreditNoteModal.jsx`
+
+### S304 — 2026-07-07 — Upsell/Cross-sell suggestion chips: actually gated by plan tier
+
+The three-layer suggestion-chip engine (S210) was fully built but never actually gated — `computeSuggestions()` had no plan/feature check at all, so every client got the full Pro+IMS experience (manual pairings + co-occurrence + Menu Engineering-driven ranking) regardless of what they were on, and the planned "POS Starter: category nudge" fallback was never built (an empty-data client just saw no chips at all).
+
+Added the tiering the roadmap always specified: `posPlanTier`/`imsAvailable` consts (admin always gets full Pro+IMS, same "admin bypasses gates" convention as `hasFeature()`) drive three flags — `allowManualSuggestions` (Growth+), `allowCoOccurrence` (Growth+ with IMS), `allowMeFilter` (Pro with IMS). `rank()`'s scoring is unchanged, but now only includes items with a genuinely-earned non-zero score — without that, a tier with nothing to score on (e.g. Growth without IMS) would've padded out to 4 arbitrary tied-at-0 menu items instead of showing just its manual pairings, or nothing. The "CHEF'S PICK" badge in the render is now also gated on `allowMeFilter`, so stale `me_class` data from a since-downgraded plan can't surface a label that tier isn't entitled to.
+
+New `categoryNudgeSuggestions()` for the Starter tier — no sales/ME data to work with, so it just nudges toward one category not yet represented in the order (menu order, no smart ranking) per client.
+
+**Files:** `src/modules/pos/orders/PosOrders.jsx`, `src/pages/Help.js`
+
 ### S303 — 2026-07-07 — Fixed a regression from S298: print popups stuck blank
 
 Live testing after S298 caught a real regression from that session's `noopener,noreferrer` fix on all four print `window.open(...)` calls: passing `noopener` as a window-open *feature* makes the call return `null` for the window reference in Chrome/Firefox — so `printHtml`/`printCreditNoteHtml`/`printQr` opened the popup, then immediately hit their own `if (!w) return` guard and never wrote content, never printed, never closed it. Every KOT/BOT/Bill/Credit Note/QR print left a permanently blank popup window behind.

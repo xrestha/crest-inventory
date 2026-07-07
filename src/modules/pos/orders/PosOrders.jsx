@@ -23,8 +23,21 @@ import {
 } from './posOrdersConstants'
 
 export default function PosOrders() {
-  const { clientId, profile, hasPosAccess, isAdmin, isOwner } = useAuth()
+  const { clientId, profile, hasPosAccess, isAdmin, isOwner, posPlan, imsEnabled } = useAuth()
   const { scopedFrom, scopedInsert, scopedUpsert, scopedUpdate, scopedDelete } = useScopedDb()
+
+  // Upsell/Cross-sell suggestion-chip tiering (product-roadmap memory, built S210 but never
+  // actually gated by plan until now — every client got the full Pro+IMS experience for free).
+  // Driven by the POS plan since this is a POS feature; IMS is additionally required for the two
+  // layers that lean on cross-module data (co-occurrence is POS-only data technically, but IMS+
+  // is the sold bundle for it; the ME filter genuinely needs recipes.me_class, which only IMS's
+  // Menu Engineering report ever populates). Admin always sees the full Pro+IMS experience, same
+  // "admin bypasses gates" convention as hasFeature()/ModuleGate/PremiumGate elsewhere.
+  const posPlanTier           = isAdmin ? 'pro' : (posPlan || 'starter')
+  const imsAvailable          = isAdmin || imsEnabled
+  const allowManualSuggestions = posPlanTier !== 'starter'
+  const allowCoOccurrence      = allowManualSuggestions && imsAvailable
+  const allowMeFilter          = posPlanTier === 'pro' && imsAvailable
 
   /* ── view ── */
   const [view, setView] = useState('floor')
@@ -773,12 +786,36 @@ export default function PosOrders() {
     computeSuggestions(recipe)
   }
 
+  // Starter-tier fallback: no manual pairings, no co-occurrence, no ME data to work with, so
+  // just nudge toward a category not yet represented in the order — one item per missing
+  // category, in menu order (no smart ranking, nothing data-driven).
+  function categoryNudgeSuggestions(recipe, currentIds) {
+    const presentCats = new Set([recipe.category || 'Other', ...orderItems.map(i => i.category || 'Other')])
+    const seenCats = new Set()
+    const picks = []
+    for (const r of menu) {
+      if (currentIds.has(r.id)) continue
+      const cat = r.category || 'Other'
+      if (presentCats.has(cat) || seenCats.has(cat)) continue
+      seenCats.add(cat)
+      picks.push(r)
+      if (picks.length >= 4) break
+    }
+    return picks
+  }
+
   async function computeSuggestions(recipe) {
-    const currentIds  = new Set([...orderItems.map(i => i.recipe_id), recipe.id])
-    const hasMeData   = menu.some(r => r.me_class)
-    const isPlowhouse = recipe.me_class === 'plowhouse'
+    const currentIds = new Set([...orderItems.map(i => i.recipe_id), recipe.id])
+
+    if (posPlanTier === 'starter') {
+      setSuggestions(categoryNudgeSuggestions(recipe, currentIds))
+      return
+    }
+
+    const hasMeData   = allowMeFilter && menu.some(r => r.me_class)
+    const isPlowhouse = allowMeFilter && recipe.me_class === 'plowhouse'
     const triggerCat  = recipe.category || 'Other'
-    const manualIds   = new Set(manualSuggestions[recipe.id] || [])
+    const manualIds   = new Set(manualSuggestions[recipe.id] || []) // allowManualSuggestions is true at this point
 
     function calcScore(r, coMap = {}, maxCo = 0) {
       if (manualIds.has(r.id)) return 100
@@ -788,25 +825,29 @@ export default function PosOrders() {
         if (r.category !== triggerCat) s += 3
         if (isPlowhouse && r.category === triggerCat) s -= 4
       }
-      if (coMap[r.id] && maxCo > 0) s += (coMap[r.id] / maxCo) * 5
+      if (allowCoOccurrence && coMap[r.id] && maxCo > 0) s += (coMap[r.id] / maxCo) * 5
       return s
     }
 
     function rank(coMap = {}, maxCo = 0) {
       return menu
-        .filter(r => !currentIds.has(r.id) && (manualIds.has(r.id) || r.me_class !== 'dog'))
+        .filter(r => !currentIds.has(r.id) && (manualIds.has(r.id) || !allowMeFilter || r.me_class !== 'dog'))
         .map(r => ({ ...r, _score: calcScore(r, coMap, maxCo), _manual: manualIds.has(r.id) }))
+        // Only genuinely-earned suggestions — without this, a tier with nothing to score on
+        // (e.g. Growth without IMS, where every non-manual item ties at 0) would still pad out
+        // to 4 arbitrary menu items instead of showing just its manual pairings (or nothing).
+        .filter(r => r._score > 0)
         .sort((a, b) => b._score - a._score)
         .slice(0, 4)
     }
 
-    // Layer 2 + 3: immediate suggestions from local data
+    // Manual pairings + ME filter: immediate suggestions from local data
     const initial = rank()
     if (initial.length === 0) { setSuggestions([]); return }
     setSuggestions(initial)
 
-    // Layer 1: co-occurrence (async — re-ranks on arrival)
-    if (!clientId) return
+    // Co-occurrence (async — re-ranks on arrival)
+    if (!allowCoOccurrence || !clientId) return
     const { data: coData } = await supabase.rpc('get_cooccurrence', {
       p_client_id: clientId, p_recipe_id: recipe.id, p_days: 90,
     })
@@ -1824,7 +1865,7 @@ export default function PosOrders() {
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {suggestions.map(r => {
                   const price        = Math.round((parseFloat(r.selling_price) || 0) * (1 + (vatReg ? vatOf(r) : 0)))
-                  const isChefsPick  = r.me_class === 'puzzle' && !r._manual
+                  const isChefsPick  = allowMeFilter && r.me_class === 'puzzle' && !r._manual
                   return (
                     <button
                       key={r.id}
