@@ -8,13 +8,14 @@
 import { adToBs, BS_MONTHS } from '../../../utils/bsCalendar'
 import { numberToWordsNpr } from '../../../utils/numberToWords'
 import { scopedUpdate } from '../../../shared/scopedDb'
+import { escapeHtml as esc } from '../../../utils/escapeHtml'
 
 export const COPY_LABEL = n => n <= 1 ? 'ORIGINAL-COPY' : n === 2 ? 'SECOND-COPY' : n === 3 ? 'THIRD-COPY' : `REPRINT #${n}`
 
 export function buildCreditNoteHtml(creditNote, items, settings, outletName, hscMap, copyLabel) {
   const vatReg = settings.is_vat_registered
-  const prefix = settings.invoice_prefix || ''
-  const cnNo   = `CN${creditNote.credit_note_no}-${prefix}${prefix ? '-' : ''}${creditNote.invoice_fy || ''}`
+  const prefix = esc(settings.invoice_prefix || '')
+  const cnNo   = `CN${creditNote.credit_note_no}-${prefix}${prefix ? '-' : ''}${esc(creditNote.invoice_fy || '')}`
   const now       = new Date(creditNote.created_at || Date.now())
   const nowStr    = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
   const adDateStr = now.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' })
@@ -44,27 +45,27 @@ export function buildCreditNoteHtml(creditNote, items, settings, outletName, hsc
   .copy { font-size:11px; letter-spacing:1px; }
 </style>
 </head><body>
-  ${outletName ? `<div class="c b" style="font-size:13px">${outletName}</div>` : ''}
-  ${settings.property_address ? `<div class="c" style="font-size:11px">${settings.property_address}</div>` : ''}
-  ${settings.property_phone ? `<div class="c" style="font-size:11px">${settings.property_phone}</div>` : ''}
-  ${settings.vat_number ? `<div class="c" style="font-size:11px">${vatReg ? 'VAT No' : 'PAN No'}: ${settings.vat_number}</div>` : ''}
+  ${outletName ? `<div class="c b" style="font-size:13px">${esc(outletName)}</div>` : ''}
+  ${settings.property_address ? `<div class="c" style="font-size:11px">${esc(settings.property_address)}</div>` : ''}
+  ${settings.property_phone ? `<div class="c" style="font-size:11px">${esc(settings.property_phone)}</div>` : ''}
+  ${settings.vat_number ? `<div class="c" style="font-size:11px">${vatReg ? 'VAT No' : 'PAN No'}: ${esc(settings.vat_number)}</div>` : ''}
   <div class="c b lg" style="margin-top:4px">CREDIT NOTE</div>
-  <div class="c copy">${copyLabel}</div>
+  <div class="c copy">${esc(copyLabel)}</div>
   <hr>
   <div class="row"><span>CN No:</span><span class="b">${cnNo}</span></div>
   <div class="row"><span>Date:</span><span>${adDateStr}</span></div>
   <div class="row"><span>Miti:</span><span>${bsDateStr}</span></div>
-  <div class="row"><span>Ref. Invoice:</span><span class="b">${creditNote.original_invoice_label}</span></div>
-  <div class="row"><span>Invoice Date:</span><span>${creditNote.original_invoice_date_bs}</span></div>
-  <div class="row"><span>Name:</span><span>${creditNote.buyer_name || ''}</span></div>
-  <div class="row"><span>Address:</span><span>${creditNote.buyer_address || ''}</span></div>
-  <div class="row"><span>PAN No: ${creditNote.buyer_pan || ''}</span><span>Phone: ${creditNote.buyer_phone || ''}</span></div>
-  <div class="row"><span>Reason:</span><span>${creditNote.reason}</span></div>
+  <div class="row"><span>Ref. Invoice:</span><span class="b">${esc(creditNote.original_invoice_label)}</span></div>
+  <div class="row"><span>Invoice Date:</span><span>${esc(creditNote.original_invoice_date_bs)}</span></div>
+  <div class="row"><span>Name:</span><span>${esc(creditNote.buyer_name || '')}</span></div>
+  <div class="row"><span>Address:</span><span>${esc(creditNote.buyer_address || '')}</span></div>
+  <div class="row"><span>PAN No: ${esc(creditNote.buyer_pan || '')}</span><span>Phone: ${esc(creditNote.buyer_phone || '')}</span></div>
+  <div class="row"><span>Reason:</span><span>${esc(creditNote.reason)}</span></div>
   <hr>
   <table>
     <thead><tr><th>Sn</th><th>HSC</th><th>Particulars</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead>
     <tbody>
-      ${items.map((i, idx) => `<tr><td>${idx + 1}</td><td>${hscMap[i.recipe_id] || ''}</td><td>${i.name}</td><td>${i.qty}</td><td>${i.unit_price.toFixed(2)}</td><td>${(i.qty * i.unit_price).toFixed(2)}</td></tr>`).join('')}
+      ${items.map((i, idx) => `<tr><td>${idx + 1}</td><td>${esc(hscMap[i.recipe_id] || '')}</td><td>${esc(i.name)}</td><td>${i.qty}</td><td>${i.unit_price.toFixed(2)}</td><td>${(i.qty * i.unit_price).toFixed(2)}</td></tr>`).join('')}
     </tbody>
   </table>
   <hr>
@@ -87,7 +88,7 @@ export function buildCreditNoteHtml(creditNote, items, settings, outletName, hsc
 }
 
 export function printCreditNoteHtml(html, onPopupBlocked) {
-  const w = window.open('', '_blank', 'width=340,height=480,left=200,top=100')
+  const w = window.open('', '_blank', 'width=340,height=480,left=200,top=100,noopener,noreferrer')
   if (!w) { onPopupBlocked?.(); return false }
   w.document.write(html)
   w.document.close()

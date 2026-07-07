@@ -995,7 +995,7 @@ export default function PosOrders() {
   }
 
   function printHtml(html) {
-    const w = window.open('', '_blank', 'width=340,height=480,left=200,top=100')
+    const w = window.open('', '_blank', 'width=340,height=480,left=200,top=100,noopener,noreferrer')
     if (!w) { setMsg('error:Allow pop-ups to print.'); return false }
     w.document.write(html)
     w.document.close()

@@ -7,6 +7,7 @@ import QRCode from 'qrcode'
 import Fab from '../../../components/Fab'
 import Modal from '../../../components/Modal'
 import Tip from '../../../components/Tip'
+import { escapeHtml as esc } from '../../../utils/escapeHtml'
 
 const STATUS_CYCLE = ['available', 'reserved', 'occupied', 'inactive']
 const STATUS_BADGE = { available: 'badge-green', occupied: 'badge-red', reserved: 'badge-amber', inactive: 'badge-gray' }
@@ -195,12 +196,12 @@ export default function PosTableManagement() {
 
   function printQr() {
     if (!qrTable || !qrDataUrl) return
-    const w = window.open('', '_blank', 'width=380,height=520,left=200,top=100')
+    const w = window.open('', '_blank', 'width=380,height=520,left=200,top=100,noopener,noreferrer')
     if (!w) return
     w.document.write(`
-      <html><head><title>${qrTable.name} — Menu QR</title></head>
+      <html><head><title>${esc(qrTable.name)} — Menu QR</title></head>
       <body style="font-family:sans-serif;text-align:center;padding:24px">
-        <h2 style="margin:0 0 4px">${qrTable.name}</h2>
+        <h2 style="margin:0 0 4px">${esc(qrTable.name)}</h2>
         <p style="margin:0 0 20px;color:#666;font-size:13px">Scan for our menu</p>
         <img src="${qrDataUrl}" style="width:240px;height:240px" />
       </body></html>

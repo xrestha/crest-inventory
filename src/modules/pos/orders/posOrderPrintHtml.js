@@ -1,6 +1,7 @@
 import { adToBs, BS_MONTHS } from '../../../utils/bsCalendar'
 import { numberToWordsNpr } from '../../../utils/numberToWords'
 import { computeOrderAmounts } from '../../../utils/posBillingMath'
+import { escapeHtml as esc } from '../../../utils/escapeHtml'
 
 // Pure 80mm-thermal HTML builders for PosOrders.jsx — no React, no Supabase, no component state.
 // Everything they need (outlet/billing settings, table name, cashier name, HSC codes) is passed
@@ -27,18 +28,18 @@ export function buildKotBotHtml({ station, items, ticketNo, outletName, tableNam
   .note { font-size:11px; font-style:italic; color:#000; padding:0 0 3px 10px; }
 </style>
 </head><body>
-  ${outletName ? `<div class="c b" style="font-size:14px">${outletName}</div>` : ''}
+  ${outletName ? `<div class="c b" style="font-size:14px">${esc(outletName)}</div>` : ''}
   <div class="c b lg">${stationLabel}</div>
   <hr>
-  <div class="row"><span class="b" style="font-size:15px">${tableName}</span><span class="b" style="font-size:15px">${ticketNo ? `#${ticketNo}` : ''}</span></div>
-  <div class="row"><span>${takenBy ? `Taken by: ${takenBy}` : ''}</span><span>Covers: ${covers}</span></div>
+  <div class="row"><span class="b" style="font-size:15px">${esc(tableName)}</span><span class="b" style="font-size:15px">${ticketNo ? `#${ticketNo}` : ''}</span></div>
+  <div class="row"><span>${takenBy ? `Taken by: ${esc(takenBy)}` : ''}</span><span>Covers: ${covers}</span></div>
   <div class="row" style="font-size:11px;color:#000"><span>${date}</span><span>${now}</span></div>
   <hr>
   ${items.map(i => {
       const delta = (i.sent_qty || 0) > 0 ? i.qty - i.sent_qty : 0
       const label = delta > 0 ? `+${delta}` : `×${i.qty}`
-      const note  = i.notes ? `<div class="note">↳ ${i.notes}</div>` : ''
-      return `<div class="row"><span class="b">${i.name}</span><span class="qty">${label}</span></div>${note}`
+      const note  = i.notes ? `<div class="note">↳ ${esc(i.notes)}</div>` : ''
+      return `<div class="row"><span class="b">${esc(i.name)}</span><span class="qty">${label}</span></div>${note}`
     }).join('')}
   <hr>
 </body></html>`
@@ -46,9 +47,9 @@ export function buildKotBotHtml({ station, items, ticketNo, outletName, tableNam
 
 export function buildBillHtml({ order, items, copyLabel, qrUrl, payments, qrAmount, outletName, billingSettings, hscMap, tableName, cashierName }) {
   const vatReg      = billingSettings.is_vat_registered
-  const prefix      = billingSettings.invoice_prefix || ''
+  const prefix      = esc(billingSettings.invoice_prefix || '')
   const invoiceNo   = order.invoice_no != null
-    ? `${vatReg ? 'TI' : 'PB'}${order.invoice_no}-${prefix}${prefix ? '-' : ''}${order.invoice_fy || ''}`
+    ? `${vatReg ? 'TI' : 'PB'}${order.invoice_no}-${prefix}${prefix ? '-' : ''}${esc(order.invoice_fy || '')}`
     : `${vatReg ? 'TI' : 'PB'}-(on confirm)`
   const now         = new Date()
   const nowStr      = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
@@ -88,28 +89,28 @@ export function buildBillHtml({ order, items, copyLabel, qrUrl, payments, qrAmou
   .copy { font-size:11px; letter-spacing:1px; }
 </style>
 </head><body>
-  ${outletName ? `<div class="c b" style="font-size:13px">${outletName}</div>` : ''}
-  ${billingSettings.property_address ? `<div class="c" style="font-size:11px">${billingSettings.property_address}</div>` : ''}
-  ${billingSettings.property_phone ? `<div class="c" style="font-size:11px">${billingSettings.property_phone}</div>` : ''}
-  ${billingSettings.vat_number ? `<div class="c" style="font-size:11px">${vatReg ? 'VAT No' : 'PAN No'}: ${billingSettings.vat_number}</div>` : ''}
+  ${outletName ? `<div class="c b" style="font-size:13px">${esc(outletName)}</div>` : ''}
+  ${billingSettings.property_address ? `<div class="c" style="font-size:11px">${esc(billingSettings.property_address)}</div>` : ''}
+  ${billingSettings.property_phone ? `<div class="c" style="font-size:11px">${esc(billingSettings.property_phone)}</div>` : ''}
+  ${billingSettings.vat_number ? `<div class="c" style="font-size:11px">${vatReg ? 'VAT No' : 'PAN No'}: ${esc(billingSettings.vat_number)}</div>` : ''}
   <div class="c b lg" style="margin-top:4px">${vatReg ? 'TAX INVOICE' : 'BILL'}</div>
-  <div class="c copy">${copyLabel}</div>
+  <div class="c copy">${esc(copyLabel)}</div>
   <hr>
   <div class="row"><span>Bill No:</span><span class="b">${invoiceNo}</span></div>
   <div class="row"><span>Date:</span><span>${adDateStr}</span></div>
   <div class="row"><span>Miti:</span><span>${bsDateStr}</span></div>
-  <div class="row"><span>Name:</span><span>${order.buyer_name || ''}</span></div>
-  <div class="row"><span>Address:</span><span>${order.buyer_address || ''}</span></div>
-  <div class="row"><span>PAN No: ${order.buyer_pan || ''}</span><span>Phone: ${order.buyer_phone || ''}</span></div>
-  <div class="row"><span>Payment Mode:</span><span>${isSplitBill ? 'Split' : payLabel}</span></div>
-  <div class="row"><span>Remarks:</span><span>${order.bill_remarks || ''}</span></div>
-  <div class="row" style="font-size:11px;color:#000"><span>${tableName === 'Takeaway' ? 'Takeaway' : `Dine-In: ${tableName}`}</span><span>Covers: ${order.covers ?? ''}</span></div>
-  <div class="row" style="font-size:11px;color:#000"><span>Cashier: ${cashierName || ''}</span><span>${nowStr}</span></div>
+  <div class="row"><span>Name:</span><span>${esc(order.buyer_name || '')}</span></div>
+  <div class="row"><span>Address:</span><span>${esc(order.buyer_address || '')}</span></div>
+  <div class="row"><span>PAN No: ${esc(order.buyer_pan || '')}</span><span>Phone: ${esc(order.buyer_phone || '')}</span></div>
+  <div class="row"><span>Payment Mode:</span><span>${isSplitBill ? 'Split' : esc(payLabel)}</span></div>
+  <div class="row"><span>Remarks:</span><span>${esc(order.bill_remarks || '')}</span></div>
+  <div class="row" style="font-size:11px;color:#000"><span>${tableName === 'Takeaway' ? 'Takeaway' : `Dine-In: ${esc(tableName)}`}</span><span>Covers: ${order.covers ?? ''}</span></div>
+  <div class="row" style="font-size:11px;color:#000"><span>Cashier: ${esc(cashierName || '')}</span><span>${nowStr}</span></div>
   <hr>
   <table>
     <thead><tr><th>Sn</th><th>HSC</th><th>Particulars</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead>
     <tbody>
-      ${items.map((i, idx) => `<tr><td>${idx + 1}</td><td>${hscMap[i.recipe_id] || ''}</td><td>${i.name}</td><td>${i.qty}</td><td>${i.unit_price.toFixed(2)}</td><td>${(i.qty * i.unit_price).toFixed(2)}</td></tr>`).join('')}
+      ${items.map((i, idx) => `<tr><td>${idx + 1}</td><td>${esc(hscMap[i.recipe_id] || '')}</td><td>${esc(i.name)}</td><td>${i.qty}</td><td>${i.unit_price.toFixed(2)}</td><td>${(i.qty * i.unit_price).toFixed(2)}</td></tr>`).join('')}
     </tbody>
   </table>
   <hr>
@@ -123,7 +124,7 @@ export function buildBillHtml({ order, items, copyLabel, qrUrl, payments, qrAmou
   ` : ''}
   <div class="row tot"><span>Net Amount:</span><span>${net.toFixed(2)}</span></div>
   <hr>
-  ${isSplitBill ? payments.map(p => `<div class="row"><span>${p.method}:</span><span>${p.amount.toFixed(2)}</span></div>`).join('') : `
+  ${isSplitBill ? payments.map(p => `<div class="row"><span>${esc(p.method)}:</span><span>${p.amount.toFixed(2)}</span></div>`).join('') : `
   <div class="row"><span>Tender:</span><span>${tendered.toFixed(2)}</span></div>
   <div class="row"><span>Change:</span><span>${change.toFixed(2)}</span></div>
   `}
@@ -174,11 +175,11 @@ export function buildTenderSlipHtml({ tender, remainingAfter, outletName, tableN
   .tot { font-weight:bold; font-size:12px; }
 </style>
 </head><body>
-  ${outletName ? `<div class="c b" style="font-size:13px">${outletName}</div>` : ''}
+  ${outletName ? `<div class="c b" style="font-size:13px">${esc(outletName)}</div>` : ''}
   <div class="c" style="font-size:11px; margin-top:2px">Payment Received</div>
   <hr>
-  <div class="row"><span>Table:</span><span>${tableName}</span></div>
-  <div class="row"><span>Method:</span><span class="b">${tender.method}</span></div>
+  <div class="row"><span>Table:</span><span>${esc(tableName)}</span></div>
+  <div class="row"><span>Method:</span><span class="b">${esc(tender.method)}</span></div>
   <div class="row tot"><span>Amount:</span><span>NPR ${tender.amount.toFixed(2)}</span></div>
   ${tender.tenderedAmount != null ? `
   <div class="row"><span>Tendered:</span><span>${tender.tenderedAmount.toFixed(2)}</span></div>
@@ -224,31 +225,31 @@ export function buildCompSlipHtml({ order, items, costMap, copyLabel, outletName
   .copy { font-size:11px; letter-spacing:1px; }
 </style>
 </head><body>
-  <div class="c copy">${copyLabel}</div>
-  ${outletName ? `<div class="c b" style="font-size:13px">${outletName}</div>` : ''}
+  <div class="c copy">${esc(copyLabel)}</div>
+  ${outletName ? `<div class="c b" style="font-size:13px">${esc(outletName)}</div>` : ''}
   <div class="c b lg" style="margin-top:4px">COMPLIMENTARY SLIP</div>
   <div class="c" style="font-size:11px">Internal record — not a Tax Invoice or PAN Bill</div>
   <hr>
   <div class="row"><span>No:</span><span class="b">${ncNo}</span></div>
   <div class="row"><span>Order Ref:</span><span>#${order.order_no ?? ''}</span></div>
-  <div class="row"><span>Table:</span><span>${tableName}</span></div>
+  <div class="row"><span>Table:</span><span>${esc(tableName)}</span></div>
   <div class="row"><span>Date:</span><span>${adDateStr}</span></div>
   <div class="row"><span>Miti:</span><span>${bsDateStr}</span></div>
-  <div class="row"><span>Reason:</span><span>${order.close_reason || ''}</span></div>
-  <div class="row"><span>Authorized by:</span><span>${authorizedBy || ''}</span></div>
-  <div class="row"><span>Remarks:</span><span>${order.bill_remarks || ''}</span></div>
+  <div class="row"><span>Reason:</span><span>${esc(order.close_reason || '')}</span></div>
+  <div class="row"><span>Authorized by:</span><span>${esc(authorizedBy || '')}</span></div>
+  <div class="row"><span>Remarks:</span><span>${esc(order.bill_remarks || '')}</span></div>
   <hr>
   <table>
     <thead><tr><th>Item</th><th>Qty</th><th>Cost</th></tr></thead>
     <tbody>
-      ${items.map(i => `<tr><td>${i.name}</td><td>${i.qty}</td><td>${(i.qty * (costMap[i.recipe_id] || 0)).toFixed(2)}</td></tr>`).join('')}
+      ${items.map(i => `<tr><td>${esc(i.name)}</td><td>${i.qty}</td><td>${(i.qty * (costMap[i.recipe_id] || 0)).toFixed(2)}</td></tr>`).join('')}
     </tbody>
   </table>
   <hr>
   <div class="row"><span>Total Qty:</span><span>${totalQty}</span></div>
   <div class="row tot"><span>Total Food Cost:</span><span>NPR ${totalCost.toFixed(2)}</span></div>
   <hr>
-  <div class="row" style="font-size:11px;color:#000"><span>Table: ${tableName}</span><span>${nowStr}</span></div>
+  <div class="row" style="font-size:11px;color:#000"><span>Table: ${esc(tableName)}</span><span>${nowStr}</span></div>
   <div style="margin-top:16px">
     <div class="row">
       <span style="border-bottom:1px solid #000; width:60%; display:inline-block">&nbsp;</span>

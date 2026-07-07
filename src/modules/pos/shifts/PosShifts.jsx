@@ -8,6 +8,7 @@ import Tip from '../../../components/Tip'
 import { computeRecipeCosts } from '../../../utils/recipeCost'
 import { adToBs, BS_MONTHS } from '../../../utils/bsCalendar'
 import { PAYMENT_METHODS } from '../orders/posOrdersConstants'
+import { escapeHtml as esc } from '../../../utils/escapeHtml'
 
 const fmtNpr = n => `NPR ${Math.round(n).toLocaleString()}`
 // Was its own hardcoded copy of the tender-type list (drifted from posOrdersConstants.js) — a
@@ -96,15 +97,15 @@ function buildShiftSlipHtml({ mode, outletName, propertyAddress, label, openedBy
   .tot { font-weight:bold; font-size:12px; }
 </style>
 </head><body>
-  ${outletName ? `<div class="c b" style="font-size:13px">${outletName}</div>` : ''}
-  ${propertyAddress ? `<div class="c" style="font-size:11px">${propertyAddress}</div>` : ''}
+  ${outletName ? `<div class="c b" style="font-size:13px">${esc(outletName)}</div>` : ''}
+  ${propertyAddress ? `<div class="c" style="font-size:11px">${esc(propertyAddress)}</div>` : ''}
   <div class="c b lg" style="margin-top:4px">${mode === 'open' ? 'SHIFT OPENING' : 'CASH SETTLEMENT'}</div>
   <hr>
-  <div class="row"><span>Shift:</span><span class="b">${label || 'Shift'}</span></div>
+  <div class="row"><span>Shift:</span><span class="b">${esc(label || 'Shift')}</span></div>
   <div class="row"><span>Opened:</span><span>${fmtAdBs(openedAt)}</span></div>
   ${mode === 'close' ? `<div class="row"><span>Closed:</span><span>${fmtAdBs(closedAt)}</span></div>` : ''}
-  <div class="row"><span>Opened By:</span><span>${openedByName || ''}</span></div>
-  ${mode === 'close' ? `<div class="row"><span>Closed By:</span><span>${closedByName || ''}</span></div>` : ''}
+  <div class="row"><span>Opened By:</span><span>${esc(openedByName || '')}</span></div>
+  ${mode === 'close' ? `<div class="row"><span>Closed By:</span><span>${esc(closedByName || '')}</span></div>` : ''}
   ${mode === 'close' && report ? `
   <hr>
   <div class="row tot"><span>Total Collection:</span><span>NPR ${report.salesTotal.toFixed(2)}</span></div>
@@ -306,7 +307,7 @@ export default function PosShifts() {
   // On a POS device launched with Chrome's --kiosk-printing flag this goes straight to the
   // default printer with no dialog; without that flag it falls back to the normal print dialog.
   function printHtml(html) {
-    const w = window.open('', '_blank', 'width=340,height=480,left=200,top=100')
+    const w = window.open('', '_blank', 'width=340,height=480,left=200,top=100,noopener,noreferrer')
     if (!w) return false
     w.document.write(html)
     w.document.close()

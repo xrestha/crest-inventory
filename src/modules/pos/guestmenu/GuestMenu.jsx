@@ -209,6 +209,10 @@ export default function GuestMenu() {
     setRequestId(null)
     setRequestSnapshot(null)
     setRequestStatus(null)
+    // Without this, prevStageRef stays at 'dismissed' — the next order's first 'placed' stage
+    // would then look like a change from mount's perspective and chime immediately, when it
+    // should stay silent just like a fresh page load does.
+    prevStageRef.current = null
   }
 
   return (

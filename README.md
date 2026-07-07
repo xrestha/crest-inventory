@@ -138,6 +138,16 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S298 — 2026-07-07 — POS module audit: fixed stored-XSS in every printed document + a chime bug
+
+User asked for a general code review/audit of the POS module. Ran three parallel deep-dive passes covering order taking/billing, floor/staff/shifts/KDS, and customers/credit notes/reports/guest ordering; independently verified the highest-severity findings before acting. Fixed the two the user asked to prioritize now (full list of ~20 findings, ranked, given to the user — most remain open for a future pass).
+
+**Critical: stored XSS reaching a live, same-origin `window.opener`.** Every hand-built print template (`posOrderPrintHtml.js`'s KOT/BOT/Bill/Tender-slip/Comp-slip builders, `creditNoteHtml.js`'s Credit Note builder, plus `PosTableManagement.jsx`'s QR-print popup and `PosShifts.jsx`'s shift-slip builder) interpolated free-text fields — item notes, buyer name/address/phone, shift label, table name, staff names, outlet/property settings, HSC codes, discount/comp/void reasons — directly into HTML strings with zero escaping, then wrote that HTML into a `window.open()` popup with no `noopener`. Guest-submitted order notes (via the new self-ordering feature) and staff-typed buyer/shift-label fields both reach this unsanitized, and the missing `noopener` meant a payload could execute with a live handle back into the authenticated app. Fixed both halves: new shared `src/utils/escapeHtml.js`, applied to every free-text interpolation across all four files (money/date/enum values left alone — they're never attacker-controlled), and `noopener,noreferrer` added to all four `window.open(...)` print calls.
+
+**Fixed: `GuestMenu.jsx`'s "Order again" chime bug.** `orderAgain()` reset `requestId`/`requestSnapshot`/`requestStatus` but not the stage-chime's `prevStageRef`, which stayed at `'dismissed'` — the next order's first `'placed'` stage then looked like a change and chimed immediately, when a fresh order (like a fresh page load) should stay silent. One-line fix: `orderAgain()` now also resets `prevStageRef.current = null`.
+
+**Files:** `src/utils/escapeHtml.js` (new), `src/modules/pos/orders/posOrderPrintHtml.js`, `src/modules/pos/creditnotes/creditNoteHtml.js`, `src/modules/pos/tables/PosTableManagement.jsx`, `src/modules/pos/shifts/PosShifts.jsx`, `src/modules/pos/orders/PosOrders.jsx`, `src/modules/pos/guestmenu/GuestMenu.jsx`
+
 ### S297 — 2026-07-07 — Guest ordering: chime on the guest's own phone when order stage changes
 
 Small follow-up to S296's staff-side chime — the guest's own phone now plays a short synthesized chime (same Web Audio approach, pitched ascending instead of descending so it reads as a distinct cue) whenever their order's unified stage actually advances (Placed → Confirmed → Sent to Kitchen → Preparing → Ready, or Dismissed), not on every 5s poll that finds no change. Tracked via a `prevStageRef` in `GuestMenu.jsx`, `null` on first render so mounting the page never chimes — only genuine transitions do.
