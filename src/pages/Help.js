@@ -1096,6 +1096,17 @@ export default function Help() {
                   ],
                 },
                 {
+                  icon: '🍽', name: 'Covers Report', path: '/pos/covers-report',
+                  desc: 'Guest-traffic analytics built from the covers number entered when a table is opened: average party size, revenue per guest (not per bill), how long tables actually turn over by party size, when covers peak through the day, and each server\'s covers/revenue. Requires Manager role or above.',
+                  tips: [
+                    'Revenue/Cover is the standard restaurant "average check per guest" metric — different from Sales Report\'s per-bill averages, since a bill for 6 people should read differently than a bill for 1',
+                    'Turnover Time is bucketed by party size (1–2, 3–4, 5–6, 7+) because a 2-top and an 8-top have very different expected dine times — one blended average wouldn\'t mean much',
+                    'Peak Hours buckets by when the table was opened (guests seated), not when the bill was paid — that\'s the number that tells you when to add floor staff',
+                    'RevPASH (Revenue Per Available Seat-Hour) needs your Operating Hours set on the Overview tab first — without it, the card just prompts you to set them',
+                    'By Server ranks staff by covers served, not bills — a server who takes fewer but larger tables can still lead here',
+                  ],
+                },
+                {
                   icon: '🧾', name: 'KOT Log', path: '/pos/kot-log',
                   desc: 'Register is a queryable log of every kitchen/bar ticket ever sent. Reconciliation compares what was actually sent to the kitchen against what\'s currently on each order — the anti-fraud check that catches food cooked and served but quietly reduced, removed, or never billed. Bill Trail shows every paid/voided bill with its complete KOT/BOT history in one expandable view, including bills that never sent anything to the kitchen at all. Requires Manager role or above.',
                   tips: [

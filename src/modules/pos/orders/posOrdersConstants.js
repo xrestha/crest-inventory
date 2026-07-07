@@ -24,6 +24,15 @@ export const QR_PAY_METHODS = ['eSewa', 'Khalti', 'FonePay']
 export const STATUS_BADGE = { available: 'badge-green', occupied: 'badge-red', reserved: 'badge-amber', inactive: 'badge-gray' }
 export const STATUS_LABEL = { available: 'Available', occupied: 'Occupied', reserved: 'Reserved', inactive: 'Inactive' }
 
+// Kitchen/bar status pulled from pos_kot_log for the floor-view table badge — same 3 stages as
+// KitchenDisplay.jsx's board, worded from the wait staff's point of view rather than the kitchen's
+// (they don't "start" or "ready" a ticket, they see it get Sent/Started/Ready).
+export const KOT_STATUS_BADGE = { new: 'badge-red', in_progress: 'badge-amber', ready: 'badge-green' }
+export const KOT_STATUS_LABEL = { new: 'Sent', in_progress: 'Started', ready: 'Ready' }
+// Lower = less done. When a table has multiple open tickets at different stages, the floor badge
+// shows the least-advanced one — that's the one still needing attention.
+export const KOT_STATUS_RANK  = { new: 0, in_progress: 1, ready: 2 }
+
 export const PAYMENT_METHODS = ['Cash', 'Card', 'eSewa', 'Khalti', 'FonePay']
 // Delivery partners (Foodmandu, Pathao, etc.) are NOT payment methods — they don't pay the
 // restaurant at the counter (they remit later, minus commission), so their orders close as Credit

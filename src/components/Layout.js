@@ -86,6 +86,7 @@ const POS_GROUPS = [
     { to: '/pos/credit-notes', label: 'Credit Notes', icon: '↩', minPosRole: 'manager' },
     { to: '/pos/sales-report', label: 'Sales Report', icon: '▤', minPosRole: 'manager' },
     { to: '/pos/kot-log', label: 'KOT Log', icon: '🧾', minPosRole: 'manager' },
+    { to: '/pos/covers-report', label: 'Covers Report', icon: '🍽', minPosRole: 'manager' },
   ]},
   { key: 'pos-admin', label: 'Admin', items: [
     { to: '/pos/staff', label: 'POS Staff', icon: '👥', minPosRole: 'manager' },

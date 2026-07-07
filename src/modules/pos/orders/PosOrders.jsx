@@ -17,6 +17,7 @@ import {
 import { buildKotBotHtml, buildBillHtml, buildTenderSlipHtml, buildCompSlipHtml } from './posOrderPrintHtml'
 import {
   vatOf, fmtNpr, toItemPayload, QR_PAY_METHODS, STATUS_BADGE, STATUS_LABEL,
+  KOT_STATUS_BADGE, KOT_STATUS_LABEL, KOT_STATUS_RANK,
   PAYMENT_METHODS, VOID_REASONS, COMP_REASONS, DEFAULT_DISCOUNT_REASONS, COPY_LABEL,
   btnSm, billInput,
 } from './posOrdersConstants'
@@ -33,6 +34,9 @@ export default function PosOrders() {
   const [tableOrders, setTableOrders] = useState({})
   const [secFilter,   setSecFilter]   = useState('All')
   const [floorLoad,   setFloorLoad]   = useState(true)
+  // table_id -> 'new' | 'in_progress' | 'ready' — least-advanced pos_kot_log status for that
+  // table's open order, so wait staff can see Sent/Started/Ready without walking to the kitchen.
+  const [kotStatusByTable, setKotStatusByTable] = useState({})
 
   /* ── covers modal ── */
   const [coversModal,      setCoversModal]      = useState(false)
@@ -181,6 +185,14 @@ export default function PosOrders() {
     if (navigator.onLine) flushRef.current?.()
   }, [clientId]) // eslint-disable-line
 
+  // Keeps the floor-view Sent/Started/Ready badges live while a staff member is just looking at
+  // the board (not tapping into a table, which is the only other time loadFloor/loadKotStatus run).
+  useEffect(() => {
+    if (view !== 'floor') return
+    const poll = setInterval(() => loadKotStatus(), 5000)
+    return () => clearInterval(poll)
+  }, [view, tableOrders]) // eslint-disable-line
+
   useEffect(() => {
     const up   = () => { setIsOnline(true);  flushRef.current?.() }
     const down = () => setIsOnline(false)
@@ -312,6 +324,7 @@ export default function PosOrders() {
       for (const q of queue) { if (q.table_id) map[q.table_id] = queuedOrderToOverlay(q) }
       setTableOrders(map)
       setPendingOrderIds(new Set(queue.map(q => q.order_id)))
+      setKotStatusByTable({}) // pos_kot_log is server-only — no reliable status while offline
       setFloorLoad(false)
       return
     }
@@ -344,6 +357,33 @@ export default function PosOrders() {
     setTableOrders(map)
     setPendingOrderIds(new Set(queue.map(q => q.order_id)))
     setFloorLoad(false)
+    loadKotStatus(map)
+  }
+
+  // Worst (least-advanced) pos_kot_log status per table, across all tickets sent for that
+  // table's currently open order — a table with a Ready starter and a New main still shows "Sent",
+  // the one that actually needs attention. Takes an optional fresh map (passed synchronously from
+  // loadFloor right after setTableOrders) to avoid reading stale state before that setState lands.
+  async function loadKotStatus(ordersMap = tableOrders) {
+    if (!navigator.onLine) return
+    const orderIdToTable = {}
+    for (const [tableId, ord] of Object.entries(ordersMap)) {
+      if (ord?.orderId && !ord.offlinePending) orderIdToTable[ord.orderId] = tableId
+    }
+    const orderIds = Object.keys(orderIdToTable)
+    if (orderIds.length === 0) { setKotStatusByTable({}); return }
+    const { data } = await scopedFrom('pos_kot_log', 'order_id, status').in('order_id', orderIds)
+    const worstRank = {}
+    for (const row of (data || [])) {
+      const rank = KOT_STATUS_RANK[row.status] ?? 0
+      if (!(row.order_id in worstRank) || rank < worstRank[row.order_id]) worstRank[row.order_id] = rank
+    }
+    const rankToStatus = Object.fromEntries(Object.entries(KOT_STATUS_RANK).map(([k, v]) => [v, k]))
+    const map = {}
+    for (const [oid, tableId] of Object.entries(orderIdToTable)) {
+      if (oid in worstRank) map[tableId] = rankToStatus[worstRank[oid]]
+    }
+    setKotStatusByTable(map)
   }
 
   // Replays every queued offline order against Supabase, one at a time (structurally identical to
@@ -2279,6 +2319,13 @@ export default function PosOrders() {
                     <span className={STATUS_BADGE[t.status] || 'badge-gray'} style={{ fontSize: 10 }}>
                       {STATUS_LABEL[t.status] || t.status}
                     </span>
+                    {ord && kotStatusByTable[t.id] && (
+                      <Tip text="Kitchen/bar status of items sent for this order — Sent (not yet started) / Started (being prepared) / Ready (waiting to be served)">
+                        <span className={KOT_STATUS_BADGE[kotStatusByTable[t.id]]} style={{ fontSize: 9 }}>
+                          {KOT_STATUS_LABEL[kotStatusByTable[t.id]]}
+                        </span>
+                      </Tip>
+                    )}
                     {ord?.offlinePending && (
                       <Tip text="Not yet synced to the server — will upload automatically once this device reconnects">
                         <span style={{

@@ -72,6 +72,7 @@ import PosShifts from './modules/pos/shifts/PosShifts'
 import CreditNotes from './modules/pos/creditnotes/CreditNotes'
 import SalesReport from './modules/pos/reports/SalesReport'
 import KotLog from './modules/pos/reports/KotLog'
+import CoversReport from './modules/pos/reports/CoversReport'
 import PurchaseOneLakhAboveReport from './modules/ims/reports/PurchaseOneLakhAboveReport'
 import PosLogin from './modules/pos/login/PosLogin'
 import GuestMenu from './modules/pos/guestmenu/GuestMenu'
@@ -204,6 +205,7 @@ export default function App() {
               <Route path="/pos/credit-notes" element={<ModuleGate module="pos"><CreditNotes /></ModuleGate>} />
               <Route path="/pos/sales-report" element={<ModuleGate module="pos"><SalesReport /></ModuleGate>} />
               <Route path="/pos/kot-log" element={<ModuleGate module="pos"><KotLog /></ModuleGate>} />
+              <Route path="/pos/covers-report" element={<ModuleGate module="pos"><CoversReport /></ModuleGate>} />
               <Route path="/pos/kds" element={<ModuleGate module="pos"><KitchenDisplay /></ModuleGate>} />
               <Route path="/pos/staff"  element={<ModuleGate module="pos"><PosStaff /></ModuleGate>} />
 

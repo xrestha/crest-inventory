@@ -20,6 +20,10 @@ const COLUMNS = [
   { status: 'ready',       label: 'Ready',        action: null,     next: null },
 ]
 
+// Stage color, independent of the elapsed-time lateness border below — a ticket can be both
+// "New" (red stage) AND late (red lateness border) at once; that's a stronger, not conflicting, signal.
+const STATUS_COLOR = { new: 'var(--theme-red)', in_progress: 'var(--theme-amber)', ready: 'var(--theme-green)' }
+
 // On-screen ticket board that runs ALONGSIDE the existing printed KOT/BOT tickets — sending a
 // KOT/BOT from Order Taking still prints exactly as before (see PosOrders.jsx); this just gives
 // the kitchen/bar a live view of the same send events, with a tap-to-advance status per ticket.
@@ -106,7 +110,9 @@ export default function KitchenDisplay() {
                 <h3 style={{
                   fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em',
                   color: 'var(--theme-text2)', margin: '0 0 10px',
+                  display: 'flex', alignItems: 'center', gap: 7,
                 }}>
+                  <span style={{ width: 9, height: 9, borderRadius: '50%', background: STATUS_COLOR[col.status], flexShrink: 0 }} />
                   {col.label} <span style={{ color: 'var(--theme-text3)', fontWeight: 400 }}>({colTickets.length})</span>
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -132,9 +138,11 @@ function TicketCard({ ticket, now, onAdvance, action, next }) {
   const isLate = ticket.status !== 'ready' && (now - sentMs) > LATE_MS
   const isWarn = ticket.status !== 'ready' && !isLate && (now - sentMs) > WARN_MS
   const borderColor = isLate ? 'var(--theme-red)' : isWarn ? 'var(--theme-amber)' : 'var(--theme-border)'
+  const stageColor = STATUS_COLOR[ticket.status] || 'var(--theme-border)'
 
   return (
-    <div className="card" style={{ padding: 14, borderColor, borderWidth: isLate || isWarn ? 2 : 1 }}>
+    <div className="card" style={{ padding: 14, borderColor, borderWidth: isLate || isWarn ? 2 : 1, overflow: 'hidden' }}>
+      <div style={{ margin: '-14px -14px 10px', height: 6, background: stageColor }} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
         <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--theme-text1)' }}>{ticket.table_name || 'Takeaway'}</span>
         <span style={{ fontSize: 11, color: 'var(--theme-text3)' }}>#{ticket.order_no}</span>
