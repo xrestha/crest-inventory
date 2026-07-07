@@ -138,6 +138,22 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S301 — 2026-07-07 — POS audit fixes: Medium-severity batch (6 findings)
+
+Continuing the POS module audit — fixed all six remaining Medium-severity findings in one pass.
+
+**Guest-order Accept, hardened.** Two related gaps in the same flow: (1) no re-entrancy guard — a double-tap on Accept/Dismiss could double-merge the same items into the cart; (2) Accept wrote `status: 'accepted'` to the DB immediately, before the merged items were ever actually saved via Send/Update Order — navigating back to the floor first silently dropped the merge while the guest's phone permanently claimed "confirmed, heading to kitchen." Fixed both: a `decidingGuestReqIds` Set guards against double-tap (buttons disable while a decision is in flight); the DB write is now deferred into `performSave()` itself via a `pendingAcceptedGuestReqIds` Set — a request only becomes 'accepted' in the DB once its items are genuinely persisted, and `backToFloor()` clears the set and re-polls to restore an abandoned request back into the banner/badge instead of leaving it permanently (and incorrectly) hidden.
+
+**`KotLog.jsx` reconciliation overwrite bug.** Both `loadReconciliation` and `loadBillTrail` built a `{order_id::recipe_id: qty}` map via plain assignment (`=`), not accumulation — `apply_pos_item_comps` splits a partially-comped line into two `pos_order_items` rows sharing that same key (the shrunk paid remainder + a new comped row), so one row silently overwrote the other, understating the true current qty and falsely flagging a legitimate partial comp as a shrinkage discrepancy. Both call sites now sum (`+=`) instead of assign.
+
+**`GuestMenu.jsx` stale state across a `tableId` change without remount.** `requestId`/`requestSnapshot` were only ever seeded once via a lazy `useState` initializer — a shared kiosk device reused across guest turns, or client-side back/forward between two different tables' QR links in the same tab, kept showing the *previous* table's order status. New effect re-derives everything from `sessionStorage` per `tableId`, and additionally clears any half-filled cart from the previous table so it can never accidentally get submitted against the wrong one.
+
+**KOT/BOT reduction with no signal it's a cut, not an addition.** Reducing an already-sent item's qty then resending fell back to a plain `×qty` label (delta ≤ 0 was treated the same as a fresh send) — the kitchen had no way to tell "this is 3 now" from "make 3 more". Printed tickets now show `↓N (now qty)` for a genuine reduction. Related gap found while fixing this: the KDS-facing `pos_kot_log` write for the same case clamped the delta to 0 but still logged a ticket row for it, which would show a nonsensical "0 × Item" entry on the Kitchen Display — a pure reduction (every item's delta clamped to 0) is now skipped from that write entirely; the printed slip alone is the record of the cut.
+
+**QR auto-confirm poll, remaining stale-dependency gaps.** The effect's dependency array was missing several fields `closeOrder('paid')`'s own validation reads — `discountAmt`/`discountReason`, buyer-id fields, `hasItemComp`/`itemCompReason`, `payableOrderItems`. Filling one of these in after the effect had last refreshed (e.g. typing a discount reason after the discount amount itself, which *was* in the list) left the poll's closure holding the pre-fill value — a payment that looked complete on screen could spuriously fail the auto-confirm path. All fields the 'paid' guards actually read are now listed.
+
+**Files:** `src/modules/pos/orders/PosOrders.jsx`, `src/modules/pos/orders/posOrderPrintHtml.js`, `src/modules/pos/reports/KotLog.jsx`, `src/modules/pos/guestmenu/GuestMenu.jsx`
+
 ### S300 — 2026-07-07 — POS audit fixes: stale guest-poll closure, shift double-close, KDS void reconciliation
 
 Continuing S298/S299's POS module audit — fixed the next three High-severity findings.

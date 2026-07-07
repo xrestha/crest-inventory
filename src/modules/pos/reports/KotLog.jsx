@@ -102,9 +102,14 @@ export default function KotLog() {
     ])
 
     const sentByOrderItem = sumSentQtyByOrderItem(logs)
+    // Sum, not assign — a partially-comped line (apply_pos_item_comps splits it into two
+    // pos_order_items rows sharing the same order_id+recipe_id: the shrunk paid remainder and a
+    // new comped row) would otherwise have one row silently overwrite the other, understating the
+    // true current qty and falsely flagging a legitimate comp as a shrinkage discrepancy.
     const currentByOrderItem = {}
     for (const i of (currentItems || [])) {
-      currentByOrderItem[`${i.order_id}::${i.recipe_id}`] = i.qty
+      const key = `${i.order_id}::${i.recipe_id}`
+      currentByOrderItem[key] = (currentByOrderItem[key] || 0) + i.qty
     }
     const rows = flagOrderDiscrepancies(orderById, sentByOrderItem, currentByOrderItem)
     setDiscrepancies(rows.sort((a, b) => new Date(b.order.closed_at) - new Date(a.order.closed_at)))
@@ -149,9 +154,11 @@ export default function KotLog() {
       ;(logsByOrder[log.order_id] = logsByOrder[log.order_id] || []).push(log)
     }
     const sentByOrderItem = sumSentQtyByOrderItem(logs)
+    // Sum, not assign — see loadReconciliation's identical comment above.
     const currentByOrderItem = {}
     for (const i of (currentItems || [])) {
-      currentByOrderItem[`${i.order_id}::${i.recipe_id}`] = i.qty
+      const key = `${i.order_id}::${i.recipe_id}`
+      currentByOrderItem[key] = (currentByOrderItem[key] || 0) + i.qty
     }
     const flagsByOrder = {}
     for (const f of flagOrderDiscrepancies(orderById, sentByOrderItem, currentByOrderItem)) {

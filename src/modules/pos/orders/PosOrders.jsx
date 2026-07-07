@@ -44,6 +44,14 @@ export default function PosOrders() {
   // new arrival, not on every 5s re-poll of a request that's still sitting there pending.
   const seenGuestRequestIds = useRef(new Set())
   const guestOrdersLoadedOnce = useRef(false)
+  // Request ids Accepted locally (items merged into orderItems) but not yet DB-marked accepted —
+  // deferred until performSave() actually persists them, so navigating away before saving leaves
+  // the request still 'pending' in the DB (accurate — nothing was really saved) instead of
+  // permanently telling the guest "confirmed, heading to kitchen" for items that got dropped.
+  const [pendingAcceptedGuestReqIds, setPendingAcceptedGuestReqIds] = useState(new Set())
+  // Request ids currently mid-decision — guards a rapid double-tap on Accept/Dismiss from
+  // double-merging the same items or firing the decision write twice.
+  const [decidingGuestReqIds, setDecidingGuestReqIds] = useState(new Set())
 
   /* ── covers modal ── */
   const [coversModal,      setCoversModal]      = useState(false)
@@ -314,7 +322,16 @@ export default function PosOrders() {
       }
     }, 4000)
     return () => { cancelled = true; clearInterval(poll) }
-  }, [billingOpen, splitMode, orderId, payMethod, billQrUrl, payTotal]) // eslint-disable-line
+    // closeOrder('paid') (called inside poll) also validates discountReason/buyer-id/itemCompReason
+    // /payableOrderItems — these weren't in the dependency list, so a field filled in AFTER this
+    // effect last ran (e.g. a discount reason typed in after the discount amount itself, which
+    // WAS in the list) left the poll's closure holding the pre-fill value, spuriously rejecting a
+    // payment that looks complete on screen. All fields closeOrder's 'paid' guards actually read
+    // are listed here so the closure never goes stale.
+  }, [ // eslint-disable-line
+    billingOpen, splitMode, orderId, payMethod, billQrUrl, payTotal,
+    discountAmt, discountReason, requireBuyerId, buyerName, buyerPhone, hasItemComp, itemCompReason, payableOrderItems,
+  ])
 
   if (!hasPosAccess('staff')) return <Navigate to="/pos" replace />
 
@@ -463,16 +480,35 @@ export default function PosOrders() {
 
   // Accept merges the request's items into the staff's local cart (the same way tapping a menu
   // tile does) — the actual pos_order_items write still only ever happens through the existing
-  // performSave(), never here. Dismiss makes no cart change. Either way the request is marked
-  // decided so it drops out of the pending list/badge.
+  // performSave(), never here. The request's own DB status write is deferred the same way: Accept
+  // only marks it locally (pendingAcceptedGuestReqIds), and performSave() persists 'accepted' once
+  // the merged items are actually saved — see the comment there. Dismiss makes no cart change and
+  // writes immediately, since there's nothing to lose by navigating away afterward.
   async function decideGuestOrder(request, decision) {
-    if (decision === 'accepted') {
-      for (const it of (request.items || [])) mergeGuestItem(it)
+    if (decidingGuestReqIds.has(request.id)) return
+    setDecidingGuestReqIds(prev => new Set(prev).add(request.id))
+    try {
+      if (decision === 'accepted') {
+        for (const it of (request.items || [])) mergeGuestItem(it)
+        setPendingAcceptedGuestReqIds(prev => new Set(prev).add(request.id))
+        // Hide it from the banner/floor badge now (it's already reflected in the cart) — restored
+        // by loadPendingGuestOrders() if the staff navigates away before saving (backToFloor).
+        setPendingGuestOrders(prev => {
+          const next = { ...prev }
+          const filtered = (next[request.table_id] || []).filter(r => r.id !== request.id)
+          if (filtered.length > 0) next[request.table_id] = filtered
+          else delete next[request.table_id]
+          return next
+        })
+      } else {
+        await scopedUpdate('pos_guest_order_requests', {
+          status: decision, decided_at: new Date().toISOString(), decided_by: profile?.id || null,
+        }).eq('id', request.id)
+        loadPendingGuestOrders()
+      }
+    } finally {
+      setDecidingGuestReqIds(prev => { const next = new Set(prev); next.delete(request.id); return next })
     }
-    await scopedUpdate('pos_guest_order_requests', {
-      status: decision, decided_at: new Date().toISOString(), decided_by: profile?.id || null,
-    }).eq('id', request.id)
-    loadPendingGuestOrders()
   }
 
   // Worst (least-advanced) pos_kot_log status per table, across all tickets sent for that
@@ -874,6 +910,23 @@ export default function PosOrders() {
     )
     if (iErr) return null
     if (activeTable?.id) cachePosOrderForTable(activeTable.id, { orderId: oid, orderNo: oNo, covers, items: orderItems })
+
+    // Only now — the merged items are actually persisted — mark any Accepted-locally guest
+    // requests as accepted in the DB too. Best-effort/non-blocking (matches the rest of this
+    // file's guest-ordering writes); if it fails the request just stays 'pending' and can be
+    // Accepted again next save. Not attempted in the offline branch above — an offline device
+    // has no way to reach this table anyway, and the ids stay pending until a later online save.
+    if (pendingAcceptedGuestReqIds.size > 0) {
+      const ids = Array.from(pendingAcceptedGuestReqIds)
+      setPendingAcceptedGuestReqIds(new Set())
+      try {
+        await scopedUpdate('pos_guest_order_requests', {
+          status: 'accepted', decided_at: new Date().toISOString(), decided_by: profile?.id || null,
+        }).in('id', ids)
+      } catch (_) { /* non-fatal — see comment above */ }
+      loadPendingGuestOrders()
+    }
+
     loadFloor()
     return { oid, oNo }
   }
@@ -973,9 +1026,13 @@ export default function PosOrders() {
         // Clamped at 0: a reduced-then-resent item must not log a negative delta, which would
         // cancel its earlier sends in the cumulative sum and un-flag it in KOT Reconciliation.
         qty: (i.sent_qty || 0) > 0 ? Math.max(0, i.qty - i.sent_qty) : i.qty,
-      })),
+      })).filter(i => i.qty > 0), // a pure reduction has nothing new to prepare — see below
       sent_by: profile?.id || null,
     }
+    // A pure reduction (every item clamped to 0 above) has no work left for this station to log
+    // as a KDS ticket — the printed slip (built from the un-clamped `items` separately, with its
+    // own "↓N (now qty)" label) is still the record of the cut; there's just nothing to add here.
+    if (payload.items.length === 0) return
     // Offline: queued alongside the order and replayed on sync — same best-effort contract as the
     // online path (a failed replay is silently retried later, never blocks/surfaces to the waiter).
     if (!navigator.onLine) {
@@ -1411,6 +1468,14 @@ export default function PosOrders() {
     setView('floor'); setActiveTable(null); setOrderId(null); setOrderNo(null); setOrderItems([]); setMsg('')
     setSuggestions([])
     setMenuLoaded(false)
+    // Any guest request Accepted-locally-but-not-yet-saved is abandoned along with orderItems
+    // above — it was never written to the DB (see performSave), so it's still genuinely
+    // 'pending' there. Clear the local flag and re-poll to bring it back into the banner/badge
+    // instead of leaving it permanently hidden.
+    if (pendingAcceptedGuestReqIds.size > 0) {
+      setPendingAcceptedGuestReqIds(new Set())
+      loadPendingGuestOrders()
+    }
   }
 
   // Live bill/slip preview inside the Billing modal — built from the exact same functions used
@@ -1540,8 +1605,10 @@ export default function PosOrders() {
               </span>
               <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
                 <button className="btn btn-primary" style={{ fontSize: 12, padding: '4px 12px' }}
+                  disabled={decidingGuestReqIds.has(req.id)}
                   onClick={() => decideGuestOrder(req, 'accepted')}>Accept</button>
                 <button className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 12px' }}
+                  disabled={decidingGuestReqIds.has(req.id)}
                   onClick={() => decideGuestOrder(req, 'dismissed')}>Dismiss</button>
               </div>
             </div>

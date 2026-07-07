@@ -96,6 +96,26 @@ export default function GuestMenu() {
     return stored ? { items: stored.items || [], covers: stored.covers || 1 } : null
   })
   const [requestStatus, setRequestStatus] = useState(null)
+  const prevStageRef = useRef(null)
+
+  // requestId/requestSnapshot above are only seeded once, via a lazy useState initializer that
+  // runs on mount — if tableId changes without a full remount (client-side back/forward between
+  // two different tables' QR links in the same tab, or a shared kiosk device reused across guest
+  // turns), they'd otherwise keep showing the PREVIOUS table's order status. Re-derive everything
+  // per-table here instead, including clearing any half-filled cart from the previous table so it
+  // can never accidentally get submitted against the wrong one.
+  useEffect(() => {
+    const stored = loadStoredRequest(tableId)
+    setRequestId(stored?.requestId || null)
+    setRequestSnapshot(stored ? { items: stored.items || [], covers: stored.covers || 1 } : null)
+    setRequestStatus(null)
+    prevStageRef.current = null
+    setCart({})
+    setCovers(2)
+    setGuestNote('')
+    setSubmitError('')
+    setReviewOpen(false)
+  }, [tableId])
 
   useEffect(() => {
     let cancelled = false
@@ -137,7 +157,6 @@ export default function GuestMenu() {
   // Chime once whenever the guest's own order actually advances a stage (placed → confirmed →
   // sent to kitchen → preparing → ready, or dismissed) — not on every 5s poll that finds no
   // change. null on first render (nothing to compare against yet) so mounting never chimes.
-  const prevStageRef = useRef(null)
   useEffect(() => {
     if (!requestId) return
     const stage = requestStatus === 'dismissed' ? 'dismissed' : computeStage(requestStatus, kotStatus)

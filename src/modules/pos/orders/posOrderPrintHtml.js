@@ -37,7 +37,10 @@ export function buildKotBotHtml({ station, items, ticketNo, outletName, tableNam
   <hr>
   ${items.map(i => {
       const delta = (i.sent_qty || 0) > 0 ? i.qty - i.sent_qty : 0
-      const label = delta > 0 ? `+${delta}` : `×${i.qty}`
+      // A negative delta (qty reduced since the last send, then resent) needs its own label —
+      // falling back to a plain "×qty" here would read as a fresh full order rather than a cut,
+      // and the kitchen has no other way to tell "this is 3 now" from "make 3 more".
+      const label = delta > 0 ? `+${delta}` : delta < 0 ? `↓${Math.abs(delta)} (now ${i.qty})` : `×${i.qty}`
       const note  = i.notes ? `<div class="note">↳ ${esc(i.notes)}</div>` : ''
       return `<div class="row"><span class="b">${esc(i.name)}</span><span class="qty">${label}</span></div>${note}`
     }).join('')}
