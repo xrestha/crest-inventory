@@ -1,4 +1,4 @@
-const CACHE_NAME = 'crest-v15';
+const CACHE_NAME = 'crest-v16';
 
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -51,4 +51,24 @@ self.addEventListener('fetch', event => {
       });
     })
   );
+});
+
+// Web Push — HR Roster publish/shift-swap notifications (src/utils/webPush.js subscribes,
+// supabase/functions/hr-push sends). Payload is always JSON: { title, body, url }.
+self.addEventListener('push', event => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (_) {}
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'Crest HR', {
+      body: data.body || '',
+      icon: '/logo192.png',
+      data: { url: data.url || '/hr/self-service' },
+    })
+  );
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const url = event.notification.data?.url || '/hr/self-service';
+  event.waitUntil(clients.openWindow(url));
 });

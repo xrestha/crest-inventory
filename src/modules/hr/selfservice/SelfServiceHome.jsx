@@ -5,6 +5,7 @@ import { supabase } from '../../../supabaseClient'
 import BsCalendarPicker from '../../../components/BsCalendarPicker'
 import { getBsToday, BS_MONTHS } from '../../../utils/bsCalendar'
 import { workingDaysInRange } from '../leave/leaveConstants'
+import { subscribeToPush, isPushSubscribed } from '../../../utils/webPush'
 
 const fmt = n => Math.round(n || 0).toLocaleString('en-NP')
 const inp = {
@@ -13,6 +14,10 @@ const inp = {
 }
 const lbl = { fontSize: 11, color: 'var(--theme-text3)', marginBottom: 4, display: 'block' }
 const STATUS_BADGE = { pending: 'badge-amber', approved: 'badge-green', rejected: 'badge-red', cancelled: 'badge-gray' }
+const SWAP_STATUS_BADGE = {
+  pending_target: 'badge-amber', pending_admin: 'badge-amber', approved: 'badge-green',
+  rejected_by_target: 'badge-red', rejected_by_admin: 'badge-red', cancelled: 'badge-gray',
+}
 
 // Employee-facing self-service home — own payslip / leave / roster only, via narrow RPCs scoped
 // to the caller's own hr_employee_id (see migration 20260707260000). No ModuleGate/Layout chrome,
@@ -30,6 +35,7 @@ export default function SelfServiceHome() {
   const [rosterYear, setRosterYear] = useState(today.year)
   const [rosterMonth, setRosterMonth] = useState(today.month)
   const [roster, setRoster] = useState(null)
+  const [rosterPublished, setRosterPublished] = useState(false)
 
   const [leaveTypeId, setLeaveTypeId] = useState('')
   const [startDate, setStartDate] = useState('')
@@ -38,11 +44,37 @@ export default function SelfServiceHome() {
   const [submitting, setSubmitting] = useState(false)
   const [msg, setMsg] = useState('')
 
+  const [pushEnabled, setPushEnabled] = useState(false)
+  const [pushBusy, setPushBusy] = useState(false)
+  const [pushMsg, setPushMsg] = useState('')
+
+  const [swapRequests, setSwapRequests] = useState(null)
+  const [swapDay, setSwapDay] = useState(null) // the requester's own day being offered
+  const [coworkerRoster, setCoworkerRoster] = useState([])
+  const [swapTargetEmpId, setSwapTargetEmpId] = useState('')
+  const [swapTargetDay, setSwapTargetDay] = useState('')
+  const [swapNote, setSwapNote] = useState('')
+  const [swapSubmitting, setSwapSubmitting] = useState(false)
+  const [swapMsg, setSwapMsg] = useState('')
+
   useEffect(() => {
     if (!authLoading && (!session || !profile?.hr_self_service)) {
       navigate('/login', { replace: true })
     }
   }, [authLoading, session, profile, navigate])
+
+  useEffect(() => { isPushSubscribed().then(setPushEnabled) }, [])
+
+  async function enableNotifications() {
+    setPushBusy(true); setPushMsg('')
+    try {
+      await subscribeToPush(session.user.id, profile.client_id)
+      setPushEnabled(true)
+    } catch (err) {
+      setPushMsg(err.message || 'Could not enable notifications.')
+    }
+    setPushBusy(false)
+  }
 
   const loadPayslips = useCallback(async () => {
     const { data } = await supabase.rpc('get_my_hr_payslips')
@@ -60,13 +92,53 @@ export default function SelfServiceHome() {
   }, [leaveTypeId])
 
   const loadRoster = useCallback(async () => {
-    const { data } = await supabase.rpc('get_my_roster', { p_bs_year: rosterYear, p_bs_month: rosterMonth })
+    const [{ data }, { data: published }] = await Promise.all([
+      supabase.rpc('get_my_roster', { p_bs_year: rosterYear, p_bs_month: rosterMonth }),
+      supabase.rpc('get_my_roster_publish_status', { p_bs_year: rosterYear, p_bs_month: rosterMonth }),
+    ])
     setRoster(data || [])
+    setRosterPublished(!!published)
   }, [rosterYear, rosterMonth])
+
+  const loadSwapRequests = useCallback(async () => {
+    const { data } = await supabase.rpc('get_my_swap_requests')
+    setSwapRequests(data || [])
+  }, [])
 
   useEffect(() => { if (profile?.hr_self_service && tab === 'payslip') loadPayslips() }, [profile, tab, loadPayslips])
   useEffect(() => { if (profile?.hr_self_service && tab === 'leave') loadLeave() }, [profile, tab, loadLeave])
-  useEffect(() => { if (profile?.hr_self_service && tab === 'roster') loadRoster() }, [profile, tab, loadRoster])
+  useEffect(() => { if (profile?.hr_self_service && tab === 'roster') { loadRoster(); loadSwapRequests() } }, [profile, tab, loadRoster, loadSwapRequests])
+
+  function openSwapRequest(bsDay) {
+    setSwapDay(bsDay); setSwapTargetEmpId(''); setSwapTargetDay(''); setSwapNote(''); setSwapMsg('')
+    supabase.rpc('get_coworker_roster', { p_bs_year: rosterYear, p_bs_month: rosterMonth })
+      .then(({ data }) => setCoworkerRoster(data || []))
+  }
+
+  const coworkerNames = [...new Map(coworkerRoster.map(r => [r.employee_id, r.full_name])).entries()]
+  const coworkerDays = coworkerRoster.filter(r => r.employee_id === swapTargetEmpId)
+
+  async function submitSwapRequest() {
+    if (!swapTargetEmpId || !swapTargetDay) { setSwapMsg('Pick a coworker and one of their scheduled days.'); return }
+    setSwapSubmitting(true); setSwapMsg('')
+    const { data: requestId, error } = await supabase.rpc('request_shift_swap', {
+      p_target_employee_id: swapTargetEmpId, p_bs_year: rosterYear, p_bs_month: rosterMonth,
+      p_my_bs_day: swapDay, p_target_bs_day: parseInt(swapTargetDay, 10), p_note: swapNote,
+    })
+    setSwapSubmitting(false)
+    if (error) { setSwapMsg(error.message); return }
+    supabase.functions.invoke('hr-push', { body: { action: 'notify_swap_request', request_id: requestId } })
+    setSwapDay(null)
+    loadSwapRequests()
+  }
+
+  async function respondSwap(requestId, accept) {
+    const { error } = await supabase.rpc('respond_shift_swap', { p_request_id: requestId, p_accept: accept })
+    if (!error) {
+      supabase.functions.invoke('hr-push', { body: { action: 'notify_swap_target_response', request_id: requestId } })
+      loadSwapRequests()
+    }
+  }
 
   const days = startDate && endDate ? workingDaysInRange(startDate, endDate).length : 0
 
@@ -101,8 +173,16 @@ export default function SelfServiceHome() {
             <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: 'var(--theme-text1)' }}>{profile.full_name}</h1>
             <p style={{ margin: 0, fontSize: 12, color: 'var(--theme-text3)' }}>Employee Self-Service</p>
           </div>
-          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={signOut}>Sign Out</button>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+            <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={signOut}>Sign Out</button>
+            {!pushEnabled && (
+              <button className="btn btn-ghost" style={{ fontSize: 11 }} disabled={pushBusy} onClick={enableNotifications}>
+                {pushBusy ? 'Enabling…' : '🔔 Enable Notifications'}
+              </button>
+            )}
+          </div>
         </div>
+        {pushMsg && <p style={{ fontSize: 11, color: 'var(--theme-red)', margin: '-14px 0 14px', textAlign: 'right' }}>{pushMsg}</p>}
 
         <div className="tab-bar" style={{ marginBottom: 20 }}>
           <button className={`tab-btn${tab === 'payslip' ? ' tab-btn--active' : ''}`} onClick={() => setTab('payslip')}>Payslip</button>
@@ -200,17 +280,80 @@ export default function SelfServiceHome() {
               </select>
             </div>
             {roster === null ? <p style={{ color: 'var(--theme-text3)' }}>Loading…</p>
+              : !rosterPublished ? <p style={{ color: 'var(--theme-text3)', fontSize: 13 }}>Your manager hasn't published the schedule for this month yet.</p>
               : roster.length === 0 ? <p style={{ color: 'var(--theme-text3)', fontSize: 13 }}>No shifts scheduled this month.</p>
               : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
                   {roster.map((r, i) => (
-                    <div key={i} className="card" style={{ padding: 12, display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: 13, color: 'var(--theme-text1)', fontWeight: 600 }}>Day {r.bs_day}</span>
-                      <span style={{ fontSize: 13, color: 'var(--theme-text2)' }}>
-                        {r.shift_type_name || '—'}{r.shift_start && ` (${r.shift_start}–${r.shift_end})`}
-                      </span>
+                    <div key={i} className="card" style={{ padding: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: 13, color: 'var(--theme-text1)', fontWeight: 600 }}>Day {r.bs_day}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{ fontSize: 13, color: 'var(--theme-text2)' }}>
+                            {r.shift_type_name || '—'}{r.shift_start && ` (${r.shift_start}–${r.shift_end})`}
+                          </span>
+                          <button className="btn btn-ghost" style={{ fontSize: 10, padding: '3px 8px' }} onClick={() => openSwapRequest(r.bs_day)}>
+                            Request Swap
+                          </button>
+                        </div>
+                      </div>
+
+                      {swapDay === r.bs_day && (
+                        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--theme-border-lt)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <select className="form-select" style={{ width: '100%' }} value={swapTargetEmpId}
+                            onChange={e => { setSwapTargetEmpId(e.target.value); setSwapTargetDay('') }}>
+                            <option value="">Swap with…</option>
+                            {coworkerNames.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+                          </select>
+                          {swapTargetEmpId && (
+                            <select className="form-select" style={{ width: '100%' }} value={swapTargetDay} onChange={e => setSwapTargetDay(e.target.value)}>
+                              <option value="">Their day…</option>
+                              {coworkerDays.map(d => <option key={d.bs_day} value={d.bs_day}>Day {d.bs_day} — {d.shift_type_name || '—'}</option>)}
+                            </select>
+                          )}
+                          <textarea placeholder="Note (optional)" style={{ ...inp, height: 44, resize: 'vertical' }} value={swapNote} onChange={e => setSwapNote(e.target.value)} />
+                          {swapMsg && <div style={{ fontSize: 11, color: 'var(--theme-red)' }}>{swapMsg}</div>}
+                          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                            <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setSwapDay(null)}>Cancel</button>
+                            <button className="btn btn-primary" style={{ fontSize: 12 }} disabled={swapSubmitting} onClick={submitSwapRequest}>
+                              {swapSubmitting ? 'Sending…' : 'Send Request'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
+                </div>
+              )}
+
+            <h3 style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--theme-text1)' }}>Swap Requests</h3>
+            {swapRequests === null ? <p style={{ color: 'var(--theme-text3)' }}>Loading…</p>
+              : swapRequests.length === 0 ? <p style={{ color: 'var(--theme-text3)', fontSize: 13 }}>No swap requests yet.</p>
+              : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {swapRequests.map(r => {
+                    const iAmTarget = r.target_employee_id === profile.hr_employee_id
+                    return (
+                      <div key={r.id} className="card" style={{ padding: 12 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ fontSize: 12, color: 'var(--theme-text2)' }}>
+                            <b style={{ color: 'var(--theme-text1)' }}>{r.requester_name}</b> (day {r.requester_bs_day}, {r.requester_shift_name || '—'})
+                            {' ⇄ '}
+                            <b style={{ color: 'var(--theme-text1)' }}>{r.target_name}</b> (day {r.target_bs_day}, {r.target_shift_name || '—'})
+                          </div>
+                          <span className={SWAP_STATUS_BADGE[r.status] || 'badge-gray'} style={{ fontSize: 9, textTransform: 'capitalize', whiteSpace: 'nowrap' }}>
+                            {r.status.replace(/_/g, ' ')}
+                          </span>
+                        </div>
+                        {iAmTarget && r.status === 'pending_target' && (
+                          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+                            <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => respondSwap(r.id, false)}>Decline</button>
+                            <button className="btn btn-primary" style={{ fontSize: 11 }} onClick={() => respondSwap(r.id, true)}>Accept</button>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               )}
           </div>

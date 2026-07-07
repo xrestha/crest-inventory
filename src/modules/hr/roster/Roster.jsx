@@ -13,6 +13,7 @@ import { fmtTime } from './rosterHelpers'
 import ShiftPicker from './ShiftPicker'
 import SuggestPopover from './SuggestPopover'
 import ShiftSettingsPanel from './ShiftSettingsPanel'
+import SwapRequestsPanel from './SwapRequestsPanel'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -57,7 +58,7 @@ const STICKY_CLS = 'roster-sticky'
 // ── Main Roster ───────────────────────────────────────────────────────────────
 
 export default function Roster() {
-  const { clientId } = useAuth()
+  const { clientId, profile } = useAuth()
   const { scopedFrom, scopedInsert, scopedUpsert, scopedDelete } = useScopedDb()
   const today = getBsToday()
 
@@ -239,10 +240,78 @@ export default function Roster() {
 
   useEffect(() => { loadRoster() }, [loadRoster])
 
+  // ── Publish state (Monthly view only — publish is keyed by BS month) ───────────────────────
+  // Self-service employees never see a draft roster; get_my_roster only returns rows for a
+  // month once a hr_roster_publish_state row exists for it (see the migration).
+  const [publishState, setPublishState] = useState(null) // { published_at, published_by } | null
+  const [publishing,   setPublishing]   = useState(false)
+  const loadPublishState = useCallback(async () => {
+    if (!clientId) return
+    const { data } = await scopedFrom('hr_roster_publish_state')
+      .eq('bs_year', bsYear).eq('bs_month', bsMonth).maybeSingle()
+    setPublishState(data || null)
+  }, [clientId, bsYear, bsMonth, scopedFrom])
+  useEffect(() => { loadPublishState() }, [loadPublishState])
+
+  async function publishRoster() {
+    if (!clientId || publishing) return
+    setPublishing(true)
+    const { data, error } = await scopedUpsert('hr_roster_publish_state', {
+      bs_year: bsYear, bs_month: bsMonth, published_at: new Date().toISOString(), published_by: profile?.id,
+    }, { onConflict: 'client_id,bs_year,bs_month' })
+    if (!error) {
+      setPublishState(data?.[0] || null)
+      supabase.functions.invoke('hr-push', {
+        body: { action: 'notify_roster_published', client_id: clientId, bs_year: bsYear, bs_month: bsMonth },
+      })
+    }
+    setPublishing(false)
+  }
+
+  // ── Leave-conflict detection ────────────────────────────────────────────────────────────────
+  // Approved leave requests for the client, fetched once (small table) — same "fetch all, filter
+  // in JS" precedent as LeaveManagement.jsx. Used to flag/block scheduling an employee on a day
+  // they already have approved leave for.
+  const [approvedLeaveByEmp, setApprovedLeaveByEmp] = useState({}) // { employeeId: [{start:Date, end:Date}] }
+  useEffect(() => {
+    if (!clientId) return
+    scopedFrom('hr_leave_requests', 'employee_id, start_date, end_date').eq('status', 'approved')
+      .then(({ data }) => {
+        const map = {}
+        for (const r of data || []) {
+          if (!map[r.employee_id]) map[r.employee_id] = []
+          map[r.employee_id].push({ start: new Date(r.start_date), end: new Date(r.end_date) })
+        }
+        setApprovedLeaveByEmp(map)
+      })
+  }, [clientId, scopedFrom])
+
+  function isOnApprovedLeave(empId, col) {
+    const ranges = approvedLeaveByEmp[empId]
+    if (!ranges || ranges.length === 0) return false
+    const d = bsToAd(col.bsYear, col.bsMonth, col.bsDay)
+    d.setHours(0, 0, 0, 0)
+    return ranges.some(r => d >= r.start && d <= r.end)
+  }
+
   // ── Assign or clear a shift across every cell in the current selection ────
   // A plain click is just a 1-cell selection, so this single path covers both.
   async function assignShiftBulk(cells, shiftTypeId) {
     if (!clientId || cells.length === 0) return
+
+    // Leave-conflict auto-block (with override): assigning a shift, not clearing one, onto a day
+    // an employee already has approved leave for gets a confirm rather than silently succeeding.
+    if (shiftTypeId !== null) {
+      const conflicts = cells.filter(c => isOnApprovedLeave(c.empId, { bsYear: c.year, bsMonth: c.month, bsDay: c.day }))
+      if (conflicts.length > 0) {
+        const names = [...new Set(conflicts.map(c => employees.find(e => e.id === c.empId)?.full_name).filter(Boolean))]
+        const proceed = window.confirm(
+          `${names.join(', ')} ${names.length === 1 ? 'has' : 'have'} approved leave on the selected day(s) — assign the shift anyway?`
+        )
+        if (!proceed) return
+      }
+    }
+
     const existingRows = cells
       .map(c => roster[rKey(c.year, c.month, c.day, c.empId)])
       .filter(Boolean)
@@ -476,6 +545,23 @@ export default function Roster() {
               </select>
             )}
 
+            {/* Publish — keyed by BS month, so only shown in Monthly view. Self-service
+                employees never see a draft roster until this has been clicked. */}
+            {viewMode === 'monthly' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {publishState ? (
+                  <Tip text={`Published ${new Date(publishState.published_at).toLocaleString('en-NP', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}. Further edits this month are not auto-republished.`}>
+                    <span className="badge-green" style={{ fontSize: 10 }}>✓ Published</span>
+                  </Tip>
+                ) : (
+                  <span className="badge-gray" style={{ fontSize: 10 }}>Draft</span>
+                )}
+                <button className="btn btn-ghost" style={{ fontSize: 12 }} disabled={publishing} onClick={publishRoster}>
+                  {publishing ? 'Publishing…' : publishState ? 'Re-Publish + Notify' : 'Publish + Notify Staff'}
+                </button>
+              </div>
+            )}
+
             {/* Legend + Print */}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginLeft: 'auto', alignItems: 'center' }}>
               {shiftTypes.filter(s => s.active !== false).map(s => {
@@ -493,6 +579,8 @@ export default function Roster() {
               </button>
             </div>
           </div>
+
+          <SwapRequestsPanel employees={employees} shiftMap={shiftMap} />
 
           <p className="no-print" style={{ fontSize: 11, color: 'var(--theme-text3)', margin: '0 0 10px' }}>
             Tip: click and drag across cells to assign the same shift to multiple days at once.
@@ -593,6 +681,7 @@ export default function Roster() {
                                 const inSel = selection?.chunkIdx === chunkIdx &&
                                               ri >= Math.min(selection.anchorR, selection.curR) && ri <= Math.max(selection.anchorR, selection.curR) &&
                                               ci >= Math.min(selection.anchorC, selection.curC) && ci <= Math.max(selection.anchorC, selection.curC)
+                                const onLeave = isOnApprovedLeave(emp.id, col)
 
                                 return (
                                   <td key={ci} style={{
@@ -602,9 +691,11 @@ export default function Roster() {
                                   }}>
                                     <button
                                       className={`roster-cell${shift ? ' filled' : ''}`}
-                                      title={shift
-                                        ? `${shift.name}${hrs != null ? ` · ${hrs}h` : ''}${shift.start_time ? ` · ${fmtTime(shift.start_time)}–${fmtTime(shift.end_time)}` : ''}`
-                                        : 'Assign shift — click and drag across cells to assign multiple at once'}
+                                      title={onLeave
+                                        ? `⚠ On approved leave${shift ? ` — but still scheduled for ${shift.name}` : ''}`
+                                        : shift
+                                          ? `${shift.name}${hrs != null ? ` · ${hrs}h` : ''}${shift.start_time ? ` · ${fmtTime(shift.start_time)}–${fmtTime(shift.end_time)}` : ''}`
+                                          : 'Assign shift — click and drag across cells to assign multiple at once'}
                                       onMouseDown={e => {
                                         e.preventDefault()
                                         const closingSameCell = pickerOpen && selection &&
@@ -625,8 +716,10 @@ export default function Roster() {
                                       style={{
                                         width: '100%',
                                         minHeight: viewMode === 'weekly' ? 56 : 30,
-                                        background: shift ? shift.color + '22' : 'transparent',
-                                        border:     shift ? `1px solid ${shift.color}55` : '1px dashed var(--theme-border)',
+                                        background: onLeave
+                                          ? 'repeating-linear-gradient(45deg, rgba(248,113,113,0.18), rgba(248,113,113,0.18) 4px, rgba(248,113,113,0.06) 4px, rgba(248,113,113,0.06) 8px)'
+                                          : shift ? shift.color + '22' : 'transparent',
+                                        border:     onLeave ? '1px solid rgba(248,113,113,0.55)' : shift ? `1px solid ${shift.color}55` : '1px dashed var(--theme-border)',
                                         borderRadius: 6, cursor: 'pointer',
                                         padding: viewMode === 'weekly' ? '6px 6px' : '2px',
                                         display: 'flex', flexDirection: 'column',

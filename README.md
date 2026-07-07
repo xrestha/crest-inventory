@@ -138,6 +138,18 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S307 — 2026-07-07 — Roster: Publish + Web Push, Mutual Shift Swap, Leave-Conflict Auto-Block
+
+Three Roster gaps confirmed missing from the roadmap. All three build on the S306 Self-Service PWA.
+
+**Publish + Web Push** — real OS-level push notifications, genuinely new infrastructure (nothing like it existed — the POS "guest chime" is a client-side audio tone, not the Push API). Generated a VAPID keypair; new `hr_roster_publish_state` table (one row per BS month once an admin clicks Publish) gates the existing `get_my_roster` RPC — self-service employees never see a draft roster, only what's been explicitly published. New generic `push_subscriptions` table (`profile_id = auth.uid()` RLS, no client_id/self-service gating needed since it's inherently "my own" data). New Edge Function `supabase/functions/hr-push` holds the VAPID private key and sends via `npm:web-push` — the private key can never live in the frontend bundle. `public/service-worker.js` gained `push`/`notificationclick` handlers (cache bumped to `crest-v16`). `src/utils/webPush.js` handles the subscribe flow; `SelfServiceHome.jsx` has a "🔔 Enable Notifications" button.
+
+**Mutual Shift Swap** — an employee requests a trade with a coworker's day; the coworker must Accept before it reaches the admin's new collapsible "Shift Swap Requests" panel on the Roster Board for final Approve/Reject. New `hr_shift_swap_requests` table (`pending_target → pending_admin → approved`, or rejected at either step) + narrow `SECURITY DEFINER` RPCs (`get_coworker_roster`, `request_shift_swap`, `respond_shift_swap`, `get_my_swap_requests`) following the same caller-must-match-own-`hr_employee_id` pattern as every other self-service RPC. Approval swaps `employee_id` on the two underlying `hr_roster` rows directly (safe — different `bs_day`s, so the unique constraint never collides mid-swap). New `src/modules/hr/roster/SwapRequestsPanel.jsx`.
+
+**Leave-Conflict Auto-Block** — no schema change, reads existing `hr_leave_requests`. `Roster.jsx` now fetches all approved leave once per client, flags any board cell where that employee has approved leave with a red-hatched background + tooltip, and — per the user's choice of "block with override" over a hard block — pops a confirm ("assign anyway?") before a drag-assign lands on a conflicting day, rather than silently double-booking or refusing outright.
+
+**Files:** `supabase/migrations/20260707270000_roster_publish_swap_leaveconflict_push.sql`, `supabase/functions/hr-push/index.ts`, `src/utils/webPush.js`, `src/modules/hr/roster/Roster.jsx`, `src/modules/hr/roster/SwapRequestsPanel.jsx`, `src/modules/hr/selfservice/SelfServiceHome.jsx`, `public/service-worker.js`, `src/shared/scopedDb.js`, `src/pages/Help.js`
+
 ### S306 — 2026-07-07 — HR: TADA Claims, Incentives/Bonus, Employee Self-Service PWA
 
 Three HR features confirmed as genuinely missing from the roadmap — no existing tables, no existing code for any of them.

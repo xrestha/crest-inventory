@@ -23,7 +23,7 @@ export const CLIENT_SCOPED_TABLES = [
   'hr_employees', 'hr_attendance', 'hr_advances', 'hr_advance_repayments',
   'hr_leave_requests', 'hr_leave_types', 'hr_holiday_calendar', 'hr_festival_allowances',
   'hr_overtime_entries', 'hr_payroll_runs', 'hr_payslips', 'hr_roster',
-  'hr_salary_components', 'hr_shift_types',
+  'hr_salary_components', 'hr_shift_types', 'hr_roster_publish_state', 'hr_shift_swap_requests',
   // POS
   'pos_orders', 'pos_order_items', 'pos_order_payments', 'pos_tables', 'pos_customers',
   'pos_credit_notes', 'pos_kot_log', 'pos_shifts', 'pos_payment_confirmations',
