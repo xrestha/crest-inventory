@@ -21,6 +21,7 @@ const PRO_KEYS = new Set([
   'menu_engineering', 'fifo_report', 'vendor_report',
   'price_tracker', 'overheads', 'theoretical_variance',
   'period_comparison', 'shrinkage_report', 'demand_forecast',
+  'guest_ordering',
 ])
 
 export function AuthProvider({ children }) {

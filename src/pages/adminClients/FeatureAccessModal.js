@@ -18,6 +18,7 @@ const DEFAULT_FLAGS = {
   menu_repricing: null,
   demand_forecast: null,
   combo_builder: null,
+  guest_ordering: null,
 }
 
 const FEATURE_GROUPS = [
@@ -67,6 +68,7 @@ const FEATURE_GROUPS = [
     { key: 'period_comparison',    label: 'Period Comparison' },
     { key: 'shrinkage_report',     label: 'Shrinkage Report' },
     { key: 'demand_forecast',      label: 'Demand Forecast' },
+    { key: 'guest_ordering',       label: 'Guest QR Self-Ordering' },
   ]},
 ]
 

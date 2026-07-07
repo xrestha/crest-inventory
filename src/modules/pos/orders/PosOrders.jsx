@@ -37,6 +37,9 @@ export default function PosOrders() {
   // table_id -> 'new' | 'in_progress' | 'ready' — least-advanced pos_kot_log status for that
   // table's open order, so wait staff can see Sent/Started/Ready without walking to the kitchen.
   const [kotStatusByTable, setKotStatusByTable] = useState({})
+  // table_id -> array of pending pos_guest_order_requests rows ({ id, items, guest_notes, created_at })
+  // awaiting staff Accept/Dismiss — see submit_guest_order (Guest QR self-ordering, Pro-tier feature).
+  const [pendingGuestOrders, setPendingGuestOrders] = useState({})
 
   /* ── covers modal ── */
   const [coversModal,      setCoversModal]      = useState(false)
@@ -192,6 +195,14 @@ export default function PosOrders() {
     const poll = setInterval(() => loadKotStatus(), 5000)
     return () => clearInterval(poll)
   }, [view, tableOrders]) // eslint-disable-line
+
+  // Keeps pending guest-order requests live both on the floor grid (badge) and while a table is
+  // open (Accept/Dismiss banner) — a guest can submit a new request at any point.
+  useEffect(() => {
+    if (view !== 'floor' && view !== 'order') return
+    const poll = setInterval(() => loadPendingGuestOrders(), 5000)
+    return () => clearInterval(poll)
+  }, [view]) // eslint-disable-line
 
   useEffect(() => {
     const up   = () => { setIsOnline(true);  flushRef.current?.() }
@@ -358,6 +369,66 @@ export default function PosOrders() {
     setPendingOrderIds(new Set(queue.map(q => q.order_id)))
     setFloorLoad(false)
     loadKotStatus(map)
+    loadPendingGuestOrders()
+  }
+
+  // Pending (not yet Accepted/Dismissed) guest self-order requests, grouped by table — see
+  // submit_guest_order/pos_guest_order_requests (Guest QR self-ordering, Pro-tier feature).
+  // Guest ordering only ever happens online, so (like loadKotStatus) this is skipped offline.
+  async function loadPendingGuestOrders() {
+    if (!navigator.onLine) return
+    const { data } = await scopedFrom('pos_guest_order_requests', 'id, table_id, items, guest_notes, created_at')
+      .eq('status', 'pending')
+    const map = {}
+    for (const r of (data || [])) {
+      if (!map[r.table_id]) map[r.table_id] = []
+      map[r.table_id].push(r)
+    }
+    setPendingGuestOrders(map)
+  }
+
+  // Merges one guest-requested item into the local cart, same dedup-by-recipe_id logic as
+  // addItem() — but at whatever qty the guest asked for (addItem always adds exactly 1), and
+  // without triggering the upsell suggestion engine (this isn't a staff menu tap).
+  function mergeGuestItem(it) {
+    setOrderItems(prev => {
+      const idx = prev.findIndex(i => i.recipe_id === it.recipe_id)
+      if (idx >= 0) {
+        return prev.map((item, n) => n === idx
+          ? {
+              ...item,
+              qty:         item.qty + it.qty,
+              sent_to_kot: false,
+              sent_qty:    item.sent_to_kot ? item.qty : (item.sent_qty || 0),
+            }
+          : item)
+      }
+      return [...prev, {
+        recipe_id:   it.recipe_id,
+        name:        it.name,
+        category:    it.category || 'Other',
+        qty:         it.qty,
+        unit_price:  parseFloat(it.unit_price) || 0,
+        vat_rate:    vatReg ? (parseFloat(it.vat_rate) || 0) : 0,
+        sent_to_kot: false,
+        sent_qty:    0,
+        notes:       it.note || '',
+      }]
+    })
+  }
+
+  // Accept merges the request's items into the staff's local cart (the same way tapping a menu
+  // tile does) — the actual pos_order_items write still only ever happens through the existing
+  // performSave(), never here. Dismiss makes no cart change. Either way the request is marked
+  // decided so it drops out of the pending list/badge.
+  async function decideGuestOrder(request, decision) {
+    if (decision === 'accepted') {
+      for (const it of (request.items || [])) mergeGuestItem(it)
+    }
+    await scopedUpdate('pos_guest_order_requests', {
+      status: decision, decided_at: new Date().toISOString(), decided_by: profile?.id || null,
+    }).eq('id', request.id)
+    loadPendingGuestOrders()
   }
 
   // Worst (least-advanced) pos_kot_log status per table, across all tickets sent for that
@@ -1392,6 +1463,28 @@ export default function PosOrders() {
         </div>
       </div>
 
+      {activeTable && (pendingGuestOrders[activeTable.id]?.length > 0) && (
+        <div style={{
+          flexShrink: 0, padding: '10px 16px', display: 'flex', flexDirection: 'column', gap: 8,
+          background: 'rgba(201,168,76,0.10)', borderBottom: '1px solid var(--theme-border)',
+        }}>
+          {pendingGuestOrders[activeTable.id].map(req => (
+            <div key={req.id} style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 13 }}>
+                🔔 Guest ordered: {(req.items || []).map(it => `${it.qty}× ${it.name}`).join(', ')}
+                {req.guest_notes && <span style={{ color: 'var(--theme-text3)' }}> — "{req.guest_notes}"</span>}
+              </span>
+              <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+                <button className="btn btn-primary" style={{ fontSize: 12, padding: '4px 12px' }}
+                  onClick={() => decideGuestOrder(req, 'accepted')}>Accept</button>
+                <button className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 12px' }}
+                  onClick={() => decideGuestOrder(req, 'dismissed')}>Dismiss</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* ── Two-panel body ── */}
       <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
 
@@ -2323,6 +2416,13 @@ export default function PosOrders() {
                       <Tip text="Kitchen/bar status of items sent for this order — Sent (not yet started) / Started (being prepared) / Ready (waiting to be served)">
                         <span className={KOT_STATUS_BADGE[kotStatusByTable[t.id]]} style={{ fontSize: 9 }}>
                           {KOT_STATUS_LABEL[kotStatusByTable[t.id]]}
+                        </span>
+                      </Tip>
+                    )}
+                    {pendingGuestOrders[t.id]?.length > 0 && (
+                      <Tip text="A guest submitted an order from the QR menu on this table — open it to Accept or Dismiss">
+                        <span className="badge-yellow" style={{ fontSize: 9 }}>
+                          🔔 Guest order{pendingGuestOrders[t.id].length > 1 ? ` (${pendingGuestOrders[t.id].length})` : ''}
                         </span>
                       </Tip>
                     )}

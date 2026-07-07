@@ -37,6 +37,7 @@ const DEFAULT_FLAGS = {
   menu_repricing: false,
   stock_report: false,
   demand_forecast: false,
+  guest_ordering: false,
   combo_builder: false,
 }
 
