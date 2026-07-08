@@ -71,7 +71,7 @@ export default function ShiftPicker({ shifts, anchorRef, onSelect, onClose, cell
           onMouseLeave={e => e.currentTarget.style.background = 'none'}
         >
           <span style={{ width: 12, height: 12, borderRadius: 3, border: '1px dashed var(--theme-text3)', flexShrink: 0 }} />
-          Clear (Day Off)
+          Clear (Unassign)
         </button>
       </div>
     </div>,

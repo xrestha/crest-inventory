@@ -24,6 +24,11 @@ const DEFAULT_SHIFTS = [
   { name: 'Night',     color: '#64748B', start_time: '21:00', end_time: '07:00', hours: 8,  sort_order: 4 },
   { name: 'Full Day',  color: '#10B981', start_time: '09:00', end_time: '18:00', hours: 9,  sort_order: 5 },
   { name: 'Split',     color: '#EC4899', start_time: null,    end_time: null,    hours: null, sort_order: 6 },
+  // Zero-hour, purely a visible marker — unlike "Clear (Unassign)" in the shift picker (which
+  // deletes the roster row entirely), assigning this actually writes a row, so the day shows up
+  // correctly on the board, in Attendance's Generate from Roster, and in the employee's own
+  // Self-Service roster instead of silently disappearing.
+  { name: 'Day Off',   color: '#6B7280', start_time: null,    end_time: null,    hours: 0, sort_order: 7 },
 ]
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']

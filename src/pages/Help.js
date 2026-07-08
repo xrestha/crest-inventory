@@ -265,6 +265,7 @@ const HR_FEATURES = [
       'Roster is for planning; Attendance is the official record that feeds payroll — use ⚡ Generate from Roster on the Attendance page to pull shift assignments across as a starting point instead of retyping them',
       'Click and drag across cells to assign the same shift to multiple days/staff at once, instead of one click per cell',
       'Each employee can only have one shift per day — assigning a new one replaces whatever was there before',
+      '"Clear (Unassign)" at the bottom of the shift picker removes the assignment entirely — the cell goes blank and that day disappears from the employee\'s own Self-Service roster (there\'s nothing to show). To actually mark someone off in a way that still shows up everywhere, assign a real shift type instead — e.g. the built-in "Day Off" (0h) — not Clear',
       'The Shifts tab lets you rename, recolour, and adjust the hours of any shift to match your venue\'s terminology',
       'Weekly Off Day (top of the Shifts tab) sets which day of the week defaults to Weekly Off in Attendance and is excluded from Leave working-day counts and Roster shading — default Saturday, changeable to any day',
       '🖨 Print shows the Company Name/Address, the period, and the shift legend above the board — no Excel export, print/Save-as-PDF only',
