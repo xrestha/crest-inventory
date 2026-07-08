@@ -141,6 +141,14 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S315 — 2026-07-08 — POS debug pass: co-occurrence suggestions were unreachable on exactly the tiers S304 built them for
+
+Same "debug the module" sweep as S314, over the post-audit POS commits (S303, S304, S310's device screen). One real defect found, in S304's suggestion-chip tiering: `computeSuggestions()` bailed out (`if (initial.length === 0) return`) when the *local* ranking came up empty — but on a Growth+IMS client with no manual pairing on the tapped item, or a Pro+IMS client who's never run Menu Engineering, every local score ties at zero, so the early return fired **before** the `get_cooccurrence` RPC was ever called. The co-occurrence layer — the very thing S304's tier table promises Growth+IMS — was dead code unless a manual pairing happened to exist for that same item. Fixed: set the (possibly empty) local ranking, then always proceed to the co-occurrence fetch when the tier allows it; the panel stays hidden on empty and fills when the RPC responds, which is the documented "re-ranks on arrival" behavior anyway.
+
+Verified clean: S303's `w.opener = null` print fix (correct, no XSS regression), S304's credit-note issuance-FY change (no consumer assumes a CN's `invoice_fy` matches the original bill's — all labels use the CN's own), S310's unactivated-device screen and iOS push detection, `posPlan` genuinely exported from AuthContext (a missing key would have silently made every client Starter), and the empty-suggestions render guard.
+
+**Files:** `src/modules/pos/orders/PosOrders.jsx`
+
 ### S314 — 2026-07-08 — HR debug pass: self-service RLS gap on 8 tables closed; Attendance summary now counts half-day leave
 
 A "debug the HR module" sweep over the S306–S313 work found two real defects.

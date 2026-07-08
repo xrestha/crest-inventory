@@ -841,10 +841,11 @@ export default function PosOrders() {
         .slice(0, 4)
     }
 
-    // Manual pairings + ME filter: immediate suggestions from local data
-    const initial = rank()
-    if (initial.length === 0) { setSuggestions([]); return }
-    setSuggestions(initial)
+    // Manual pairings + ME filter: immediate suggestions from local data. An empty initial must
+    // NOT return early here — on tiers where co-occurrence is the only scoring layer (Growth+IMS
+    // with no manual pairing on this item, or Pro+IMS before Menu Engineering has ever run),
+    // every local score ties at zero and the panel only fills once the RPC below responds.
+    setSuggestions(rank())
 
     // Co-occurrence (async — re-ranks on arrival)
     if (!allowCoOccurrence || !clientId) return
