@@ -80,7 +80,7 @@ export function AuthProvider({ children }) {
       if (data?.client_id) {
         const { data: client } = await supabase
           .from('clients')
-          .select('id, name, location, is_premium, plan, trial_ends_at, subscription_ends_at, ims_ends_at, hr_ends_at, pos_ends_at, ims_enabled, hr_enabled, hr_plan, pos_enabled, pos_plan, is_trial, trial_start_date, trial_expires_at, trial_purge_at, subscribe_requested')
+          .select('id, name, location, is_premium, plan, trial_ends_at, subscription_ends_at, ims_ends_at, hr_ends_at, pos_ends_at, ims_enabled, hr_enabled, hr_plan, pos_enabled, pos_plan, suite_plan, is_trial, trial_start_date, trial_expires_at, trial_purge_at, subscribe_requested')
           .eq('id', data.client_id)
           .single()
         if (mounted) data.clients = client
@@ -251,6 +251,9 @@ export function AuthProvider({ children }) {
       clientModules, // displayed client's actual subscription (nav + dashboard sections)
       hrPlan: isAdmin ? 'pro' : (profile?.clients?.hr_plan || null),
       posPlan: isAdmin ? 'pro' : (profile?.clients?.pos_plan || null),
+      // Suite bundle tier (IMS+HR+POS together) — an independent gating axis from the per-module
+      // plan/hrPlan/posPlan above. NULL means not subscribed to Suite at all; no default tier.
+      suitePlan: isAdmin ? 'pro' : (profile?.clients?.suite_plan || null),
       adminViewClientId, adminViewClientName, switchAdminClient,
     }}>
       {children}

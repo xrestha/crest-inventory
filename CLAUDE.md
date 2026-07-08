@@ -56,6 +56,8 @@ Every protected route uses both guards stacked:
 
 Plan ranks: `starter (0) < growth (1) < pro (2)`. Keys auto-unlocked by plan live in `STARTER_KEYS`, `GROWTH_KEYS`, `PRO_KEYS` sets in `AuthContext.js`. Admin can grant individual features above the plan tier via `feature_flags` table.
 
+**`SuiteGate`** (`src/components/SuiteGate.js`, added S317 for Owner Dashboard) is a third gate type on a genuinely separate axis: `clients.suite_plan` (the Crest Suite bundle tier — IMS+HR+POS together — nullable, with no free-default tier unlike `hr_plan`/`pos_plan`). It differs from `ModuleGate`/`PremiumGate` in one important way: **it never redirects on failure** — an ineligible viewer sees an inline upsell/explanation rendered in place, since the feature's nav entry must stay visible regardless of eligibility. Used as an in-page wrapper inside the gated component, not at the route level. Reach for this pattern only for a genuinely cross-module/bundle-tier feature; a single-module feature still wants `ModuleGate` + `PremiumGate`.
+
 ### Multi-tenant data isolation
 
 Every Supabase table is client-scoped. **Use the scoped data-access layer, not hand-written `.eq('client_id', ...)`:**

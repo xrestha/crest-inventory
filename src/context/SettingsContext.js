@@ -39,6 +39,7 @@ const DEFAULT_FLAGS = {
   demand_forecast: false,
   guest_ordering: false,
   combo_builder: false,
+  owner_dashboard: false,
 }
 
 export function SettingsProvider({ children }) {

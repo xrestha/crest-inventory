@@ -460,6 +460,11 @@ export default function Layout() {
         ))()}
 
         <nav className="sidebar-nav">
+          {/* Cross-module — renders regardless of which panel (ims/hr/pos/admin) is active,
+              unlike everything below. SuiteGate inside the page itself handles the
+              ineligible-viewer upsell, so this link is never hidden or gated here. */}
+          {(isAdmin || isOwner) && renderNavItem({ to: '/owner-dashboard', label: 'Owner Dashboard', icon: '◆' })}
+
           {panel === 'admin' && isAdmin && (
             <>
               {renderNavItem(NAV[0])}

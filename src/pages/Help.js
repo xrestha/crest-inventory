@@ -16,6 +16,11 @@ const IMS_FEATURE_TIERS = [
         tips: ['COGS and FC% are only accurate after closing stock is entered', 'If no open period exists, go to Periods and create one first', 'Dashboard figures always reflect the current open period', 'The "Daily Purchases vs Sales" chart overlays daily purchase spend (gold) with daily sales revenue (green). The green sales line only appears when you record sales day-by-day (Sales → pick a day); bulk monthly sales entry has no daily breakdown to plot. With 5+ days of daily sales in the current month, a dashed line projects revenue to month-end (trend estimate). Note: the gap between the lines is buying-vs-selling cash rhythm, not profit.']
       },
       {
+        icon: '◆', name: 'Owner Dashboard',
+        guide: 'A single cross-module view for owners — Revenue, Food Cost %, Labor Cost %, and True Net Margin % (Revenue − Food Cost − Labor Cost − Overhead), plus Wastage Value, Items Below Par, and Overdue Payables. All figures are Month-to-Date against the current open period, same scoping as Monthly Summary. Requires both Crest IMS and Crest HR enabled, plus a Crest Suite Growth subscription or above — a separate bundle tier from the individual module plans, set from the Billing tab in Manage Clients.',
+        tips: ['Labor Cost % is a prorated estimate (scaled to days elapsed this month) — it refines to the exact figure once Payroll Run is finalized for the month', 'Items Below Par is a live inventory position, not a monthly total', 'A locked padlock means Crest Suite needs upgrading — contact your consultant']
+      },
+      {
         icon: '◷', name: 'Periods',
         guide: 'Create one period per BS month. A period must be open before you can enter purchases, stock, or sales. Close a period at month end to lock the data. Closing stock auto-carries to next month opening. Periods older than 12 months are archived by default.',
         tips: ['Always create a new period before the month starts', 'Close the period only after entering closing stock', 'Use "Show Archived" in Periods to access old months']

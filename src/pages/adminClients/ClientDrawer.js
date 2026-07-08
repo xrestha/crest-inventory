@@ -9,7 +9,7 @@ import { getDateStatus } from '../../utils/subscription'
 import { validateEmvQr } from '../../utils/emvQr'
 import Tip from '../../components/Tip'
 import { adminOp } from './adminOp'
-import { MODULE_COLORS, IMS_TIERS, HR_PRICING, POS_PRICING } from '../../data/pricingPlans'
+import { MODULE_COLORS, IMS_TIERS, HR_PRICING, POS_PRICING, SUITE_BUNDLES } from '../../data/pricingPlans'
 
 const EMPTY_USER = { email: '', password: '', full_name: '' }
 
@@ -68,6 +68,10 @@ export default function ClientDrawer({ client, onClose, onClientUpdated }) {
   const [hrPlan,  setHrPlan]        = useState(client.hr_plan  || 'starter')
   const [posEnabled, setPosEnabled] = useState(!!client.pos_enabled)
   const [posPlan, setPosPlan]       = useState(client.pos_plan || 'starter')
+  // Suite bundle tier — a separate gating axis from the per-module plans above (gates
+  // Owner Dashboard). Unlike hrPlan/posPlan, null means "not subscribed to Suite at all",
+  // not a free default tier.
+  const [suitePlan, setSuitePlan]   = useState(client.suite_plan || null)
 
   // Billing tab state — per-module end dates; fall back to legacy subscription_ends_at for IMS
   const _legacyEnd = client.subscription_ends_at ? formatAd(new Date(client.subscription_ends_at)) : ''
@@ -307,6 +311,7 @@ export default function ClientDrawer({ client, onClose, onClientUpdated }) {
       plan:          currentPlan,
       hr_plan:       hrPlan,
       pos_plan:      posPlan,
+      suite_plan:    suitePlan,
       billing_cycle: billingCycle,
     }).eq('id', client.id)
     if (error) { setSubMsg('error:' + error.message) }
@@ -629,6 +634,34 @@ export default function ClientDrawer({ client, onClose, onClientUpdated }) {
                       </div>
                     </div>
                   ))}
+                </div>
+
+                {/* Suite Bundle — an independent gating axis from the per-module plans above;
+                    unlocks cross-module features like Owner Dashboard. Null = not subscribed. */}
+                <p style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 8px' }}>
+                  <Tip text="A separate bundle-tier subscription (IMS+HR+POS together) that unlocks cross-module features like Owner Dashboard — independent of each module's own plan tier above." width={300}>
+                    Suite Bundle
+                  </Tip>
+                </p>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
+                  {[{ key: null, label: 'Not Subscribed' }, ...SUITE_BUNDLES].map(opt => {
+                    const active = suitePlan === opt.key
+                    return (
+                      <button key={opt.key ?? 'none'} onClick={() => setSuitePlan(opt.key)} style={{
+                        padding: '8px 14px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 700, lineHeight: 1.4,
+                        border: active ? '1px solid var(--theme-accent)' : '1px solid var(--theme-border)',
+                        background: active ? 'rgba(201,168,76,0.1)' : 'none',
+                        color: active ? 'var(--theme-accent)' : 'var(--theme-text3)',
+                      }}>
+                        <div>{opt.label}</div>
+                        {opt.monthly != null && (
+                          <div style={{ fontSize: 10, fontWeight: 400, marginTop: 2, opacity: 0.85 }}>
+                            NPR {(billingCycle === 'annual' ? opt.annual : opt.monthly).toLocaleString('en-NP')}/mo
+                          </div>
+                        )}
+                      </button>
+                    )
+                  })}
                 </div>
 
                 {/* Billing cycle toggle */}
