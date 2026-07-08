@@ -179,7 +179,10 @@ export default function AttendanceSheet() {
   const days = Array.from({ length: dayCount }, (_, i) => i + 1)
 
   function summaryFor(emp) {
-    const counts = { present: 0, half_day: 0, absent: 0, paid_leave: 0, unpaid_leave: 0, weekly_off: 0, holiday: 0 }
+    const counts = {
+      present: 0, half_day: 0, absent: 0, paid_leave: 0, unpaid_leave: 0,
+      half_paid_leave: 0, half_unpaid_leave: 0, weekly_off: 0, holiday: 0,
+    }
     let otHours = 0, hoursWorked = 0
     days.forEach(d => {
       const rec = cellFor(emp.id, d)
@@ -202,8 +205,8 @@ export default function AttendanceSheet() {
       row['Present'] = s.counts.present
       row['Half'] = s.counts.half_day
       row['Absent'] = s.counts.absent
-      row['Paid Leave'] = s.counts.paid_leave
-      row['Unpaid Leave'] = s.counts.unpaid_leave
+      row['Paid Leave'] = s.counts.paid_leave + s.counts.half_paid_leave * 0.5
+      row['Unpaid Leave'] = s.counts.unpaid_leave + s.counts.half_unpaid_leave * 0.5
       row['OT Hours'] = s.otHours
       if (emp.pay_basis === 'hourly') row['Hours Worked'] = s.hoursWorked
       return row
@@ -381,7 +384,7 @@ export default function AttendanceSheet() {
                       </th>
                     ))}
                     <th style={{ textAlign: 'right', borderLeft: '2px solid #2a2f3d' }}>
-                      <Tip text="Present days for the month (half-days count as 0.5)." width={230}>P</Tip>
+                      <Tip text="Present days for the month — half-days and half-day paid leave count as 0.5, matching how Payroll counts present days." width={250}>P</Tip>
                     </th>
                     <th style={{ textAlign: 'right' }}>
                       <Tip text="Absent days for the month." width={180}>A</Tip>
@@ -409,7 +412,7 @@ export default function AttendanceSheet() {
                             </td>
                           )
                         })}
-                        <td style={{ textAlign: 'right', borderLeft: '2px solid #2a2f3d', color: '#34d399', fontWeight: 600 }}>{s.counts.present + s.counts.half_day * 0.5 || 0}</td>
+                        <td style={{ textAlign: 'right', borderLeft: '2px solid #2a2f3d', color: '#34d399', fontWeight: 600 }}>{s.counts.present + s.counts.half_day * 0.5 + s.counts.half_paid_leave * 0.5 || 0}</td>
                         <td style={{ textAlign: 'right', color: '#f87171' }}>{s.counts.absent || 0}</td>
                         <td style={{ textAlign: 'right', color: '#c9a84c', fontWeight: 600 }}>{s.otHours || 0}</td>
                       </tr>
