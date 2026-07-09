@@ -141,6 +141,12 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S331 — 2026-07-09 — Sales Entry: Import Excel button for Daily Entry (vendor POS export auto-fill)
+
+New `SalesImportButton.jsx` (sibling to `Sales.js`, same file-as-component pattern as `RecipeImportButton.jsx`) reads a vendor "Sales Report Item Wise" .xlsx export and auto-fills the Daily Entry qty column for the BS day already selected on screen. The vendor export isn't a clean table — it has a variable-length metadata block (company name, VAT no, date range) before a two-tier merged header — so the header row is located dynamically by scanning for a row containing both "Product Name" and "Product Code", and Sale/Return/Net(qty) columns are derived from that row's own text rather than fixed column letters. "Net" appears twice in the file (once under Quantity, once under Amount); the parser disambiguates by taking the first "Net" after the Sale/Return columns and ignores the Amount section entirely (`sales_entries` has no revenue column, only `qty_sold`). If the file's Net cell is blank, qty falls back to Sale − Return. Rows are matched to recipes by exact case-insensitive name; unmatched names are shown in a lightweight inline banner (no blocking modal, per the confirmed design), duplicate rows for the same recipe are summed, and a `TOTAL >>` row is correctly excluded from data. Import writes only into the existing `dailyForm` local React state — the same state the manual qty `<input>`s already use — so the existing Save Day button and `sales_entries` write path are completely unchanged; nothing is persisted until Save Day is clicked, making a bad import trivially undoable.
+
+**Files:** `src/modules/ims/sales/SalesImportButton.jsx` (new), `src/modules/ims/sales/Sales.js`, `src/pages/Help.js`
+
 ### S330 — 2026-07-09 — HR Dashboard: surfaces every staff-submission approval queue, not just Leave/OT
 
 Audited (via a research subagent, no code changes in that pass) every place a staff submission creates a row needing a manager decision. Leave and OT were already on `HrDashboard.jsx` and the sidebar rail badge (`useNavBadgeCounts.js`) — but **TADA Claims (`pending`) and Shift Swap requests (`pending_admin`) were completely invisible from every dashboard**, discoverable only by opening `/hr/tada` or `/hr/roster` directly.

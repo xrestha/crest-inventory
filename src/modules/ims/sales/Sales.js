@@ -5,6 +5,7 @@ import { supabase } from '../../../supabaseClient'
 import { getBsToday, daysInBsMonth } from '../../../utils/bsCalendar'
 import Tip from '../../../components/Tip'
 import BsCalendarPicker from '../../../components/BsCalendarPicker'
+import SalesImportButton from './SalesImportButton'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 
@@ -128,6 +129,16 @@ export default function Sales() {
     setDailySaved(true)
     setTimeout(() => setDailySaved(false), 2500)
     await Promise.all([loadDailySales(selectedPeriod.id, selectedDay), loadAllDaySums(selectedPeriod.id)])
+  }
+
+  // From SalesImportButton — writes only into dailyForm, the same local state the manual qty
+  // inputs below already use. Nothing is persisted until the user clicks Save Day.
+  function handleImportMatched(qtyMap) {
+    setDailyForm(f => {
+      const next = { ...f }
+      for (const [recipeId, qty] of qtyMap.entries()) next[recipeId] = String(qty)
+      return next
+    })
   }
 
   async function handlePeriodChange(periodId) {
@@ -441,7 +452,8 @@ export default function Sales() {
                       )
                     })()}
                   </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                    <SalesImportButton recipes={recipes} disabled={isLocked} onMatched={handleImportMatched} />
                     <button
                       className="btn btn-ghost"
                       disabled={isLocked}

@@ -63,7 +63,7 @@ const IMS_FEATURE_TIERS = [
       {
         icon: '↑', name: 'Sales Entry',
         guide: 'Record total qty sold per menu item for the period. Only items with a recipe appear here. Revenue is calculated automatically from selling price × qty sold. Use Bulk Entry for monthly POS totals.',
-        tips: ['Sales data is required for the Variance Report to calculate theoretical usage', 'Sub-recipes are excluded — only top-level recipes appear here', 'You can update sales entries any time while the period is open']
+        tips: ['Sales data is required for the Variance Report to calculate theoretical usage', 'Sub-recipes are excluded — only top-level recipes appear here', 'You can update sales entries any time while the period is open', 'Daily Entry: click ↑ Import Excel to auto-fill qty from a vendor/POS "Sales Report Item Wise" export (.xlsx) for the currently selected day — it matches by Product Name and reads the Net qty sold column; unmatched product names are listed in a small banner so you can fix names or enter them manually. Review the filled table, then click Save Day as usual']
       },
       {
         icon: '◎', name: 'Payment Summary',
