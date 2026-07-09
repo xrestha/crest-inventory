@@ -133,10 +133,10 @@ export default function FeatureAccessModal({ client, onClose }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 12, width: 'min(1120px, 96vw)', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.4)' }}>
+      <div style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 12, width: 'min(1120px, 96vw)', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.4)' }}>
 
         {/* Header */}
-        <div style={{ padding: '18px 24px 14px', borderBottom: '1px solid var(--theme-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ padding: '18px 24px 14px', borderBottom: '1px solid var(--theme-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div>
             <h3 style={{ margin: 0, fontSize: 15, color: 'var(--theme-text1)', fontFamily: 'Georgia, serif' }}>Feature Access · Crest {activeModule}</h3>
             <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--theme-text2)' }}>
@@ -147,6 +147,11 @@ export default function FeatureAccessModal({ client, onClose }) {
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--theme-text2)', fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: '2px 6px' }}>✕</button>
         </div>
+
+        {/* Scrollable body — the header/footer above/below stay put; everything in between
+            (the feature grid, now taller with the Crest Suite section) scrolls internally
+            instead of pushing the Save/Close buttons off-screen on a short viewport. */}
+        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto', minHeight: 0 }}>
 
         {/* No active module — feature grants would be inert */}
         {!imsEnabled && !posEnabled ? (
@@ -212,8 +217,13 @@ export default function FeatureAccessModal({ client, onClose }) {
           }
         </div>
         ) : (
-        /* IMS client (possibly also POS) — full feature grid */
-        <div style={{ padding: '16px 24px 8px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0 14px', alignItems: 'start' }}>
+        /* IMS client (possibly also POS) — full feature grid.
+           minmax(0, 1fr), not bare 1fr — a plain 1fr track's minimum width defaults to its
+           content's min-content size, so a long unwrapping label (e.g. "Guest QR
+           Self-Ordering") can force this grid (and the whole modal, since nothing above it
+           constrains width otherwise) wider than the viewport instead of letting columns
+           shrink. minmax(0, 1fr) lets each column actually shrink to fit. */
+        <div style={{ padding: '16px 24px 8px', display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '0 14px', alignItems: 'start' }}>
           {loading ? <p style={{ color: 'var(--theme-text2)', fontSize: 13, gridColumn: '1/-1' }}>Loading…</p> : FEATURE_GROUPS.map(group => {
             const planIncluded = isPlanIncluded(group.tier, clientPlan)
             return (
@@ -349,8 +359,10 @@ export default function FeatureAccessModal({ client, onClose }) {
           )
         })()}
 
+        </div>
+
         {/* Footer */}
-        <div style={{ padding: '12px 24px', borderTop: '1px solid var(--theme-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ padding: '12px 24px', borderTop: '1px solid var(--theme-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <span style={{ fontSize: 12, color: msg.startsWith('ok:') ? 'var(--theme-green)' : msg.startsWith('error:') ? 'var(--theme-red)' : 'transparent' }}>
             {msg.replace(/^(ok|error):/, '') || '·'}
           </span>
