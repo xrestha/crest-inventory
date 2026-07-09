@@ -10,7 +10,7 @@ import {
 } from 'recharts'
 import Tip from '../../components/Tip'
 import ChartCard from '../../components/ChartCard'
-import { getBsToday, BS_MONTHS, daysInBsMonth } from '../../utils/bsCalendar'
+import { getBsToday, BS_MONTHS, daysInBsMonth, bsToAd } from '../../utils/bsCalendar'
 import { getSubStatus } from '../../utils/subscription'
 const CHART_COLORS = ['#c9a84c', '#34d399', '#60a5fa', '#f87171', '#a78bfa', '#fb923c', '#22d3ee', '#f472b6']
 
@@ -32,6 +32,7 @@ export default function ClientDashboard() {
   const [reorderItems, setReorderItems]   = useState([])
   const [fcTrend, setFcTrend]             = useState([])
   const [hrStats, setHrStats]             = useState(null)
+  const [posStats, setPosStats]           = useState(null)
 
   useEffect(() => {
     if (authLoading) return
@@ -40,7 +41,8 @@ export default function ClientDashboard() {
     // AuthContext already resolves real-client vs admin "view as client").
     if (clientModules.ims) loadStats(); else setLoading(false)
     if (clientModules.hr) loadHrStats(); else setHrStats(null)
-  }, [authLoading, effectiveClientId, clientModules.ims, clientModules.hr, location.key]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (clientModules.pos) loadPosStats(); else setPosStats(null)
+  }, [authLoading, effectiveClientId, clientModules.ims, clientModules.hr, clientModules.pos, location.key]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const canSales    = hasFeature('sales_entry')
   const canVariance = hasFeature('variance_report')
@@ -315,6 +317,44 @@ export default function ClientDashboard() {
     setHrStats({ total, active, probation, payroll })
   }
 
+  // POS figures — Revenue/Covers/Avg Check for the current open BS period (matching the IMS
+  // section's "this period" cadence), plus a live Tables Occupied snapshot. pos_orders.paid_amount
+  // is already the final net amount (subEx − discount + VAT, per posBillingMath.js's
+  // computeOrderAmounts) computed and stored at close time, so this reads it directly rather than
+  // re-deriving VAT from pos_order_items — same shortcut Sales/Covers Report don't take only
+  // because they need a per-category/per-item breakdown; a dashboard tile doesn't.
+  async function loadPosStats() {
+    const { data: period } = await scopedFrom('monthly_periods')
+      .eq('status', 'open')
+      .order('bs_year', { ascending: false }).order('bs_month', { ascending: false })
+      .limit(1).single()
+
+    let orders = []
+    if (period) {
+      const fromTs = bsToAd(period.bs_year, period.bs_month, 1).toISOString()
+      const lastDay = daysInBsMonth(period.bs_year, period.bs_month)
+      const toDate = bsToAd(period.bs_year, period.bs_month, lastDay)
+      toDate.setHours(23, 59, 59, 999)
+      const { data } = await scopedFrom('pos_orders', 'id, covers, paid_amount, credit_note_id, close_type, closed_at')
+        .eq('close_type', 'paid')
+        .gte('closed_at', fromTs).lte('closed_at', toDate.toISOString())
+      // Same exclusion as Sales/Covers Report — a since-Credit-Noted bill's revenue correction
+      // posts on the day the Credit Note is issued, not retroactively here.
+      orders = (data || []).filter(o => !o.credit_note_id)
+    }
+
+    const revenueTotal = orders.reduce((s, o) => s + (parseFloat(o.paid_amount) || 0), 0)
+    const coversTotal   = orders.reduce((s, o) => s + (o.covers || 0), 0)
+    const billCount     = orders.length
+    const avgCheck      = billCount > 0 ? revenueTotal / billCount : 0
+
+    const { data: tables } = await scopedFrom('pos_tables', 'status').neq('status', 'inactive')
+    const tablesOccupied = (tables || []).filter(t => t.status === 'occupied').length
+    const tablesTotal    = (tables || []).length
+
+    setPosStats({ revenueTotal, coversTotal, billCount, avgCheck, tablesOccupied, tablesTotal })
+  }
+
   async function closeAndAdvancePeriod() {
     if (!activePeriod || !effectiveClientId) return
     const nextMonth = activePeriod.bs_month === 12 ? 1 : activePeriod.bs_month + 1
@@ -419,7 +459,10 @@ export default function ClientDashboard() {
     ? 'Admin Dashboard'
     : moduleCount > 1 ? 'Dashboard'
     : showIms ? 'Inventory Dashboard'
-    : showHr  ? 'HR Dashboard'
+    // Not 'HR Dashboard' — that's the title of the real, richer page at /hr/dashboard
+    // (HrDashboard.jsx: headcount, leave/OT queues, SSF, advances). This is a lighter summary
+    // on the universal route; an identical title on two different pages was confusing.
+    : showHr  ? 'HR Overview'
     : showPos ? 'POS Dashboard'
     : 'Dashboard'
   const showModuleHeaders = moduleCount >= 2
@@ -954,14 +997,41 @@ export default function ClientDashboard() {
         </div>
       )}
 
-      {/* ── POS (module slot — Crest POS not yet built) ── */}
+      {/* ── POS KPIs ── */}
       {showPos && (
         <div style={{ marginBottom: 20, marginTop: (showIms || showHr) ? 6 : 0 }}>
           {moduleHeader('Point of Sale')}
-          <div className="card" style={{ textAlign: 'center', padding: '28px 24px' }}>
-            <div style={{ fontSize: 26, marginBottom: 8 }}>🧾</div>
-            <p style={{ fontSize: 14, color: 'var(--theme-text1)', fontWeight: 600, margin: '0 0 4px' }}>Crest POS — coming soon</p>
-            <p style={{ fontSize: 12, color: 'var(--theme-text2)', margin: 0 }}>Your POS module is enabled. Live sales, table & billing dashboards will appear here once it launches.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
+            <div style={kpiCard(() => navigate('/pos/sales-report'))} onClick={() => navigate('/pos/sales-report')}>
+              <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Revenue</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--theme-green)', lineHeight: 1.1 }}>
+                {!posStats ? '—' : `NPR ${Math.round(posStats.revenueTotal).toLocaleString('en-NP')}`}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 5 }}>{periodLabel} · billed →</div>
+            </div>
+            <div style={kpiCard(() => navigate('/pos/covers-report'))} onClick={() => navigate('/pos/covers-report')}>
+              <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
+                <Tip text="Total covers (guests) served across all billed orders this period." width={220}>Covers Served</Tip>
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--theme-text1)', lineHeight: 1.1 }}>
+                {!posStats ? '—' : posStats.coversTotal}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 5 }}>{!posStats ? '' : `${posStats.billCount} bill${posStats.billCount === 1 ? '' : 's'}`} →</div>
+            </div>
+            <div style={kpiCard(null)}>
+              <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Avg Check</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--theme-text1)', lineHeight: 1.1 }}>
+                {!posStats ? '—' : `NPR ${Math.round(posStats.avgCheck).toLocaleString('en-NP')}`}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 5 }}>Revenue ÷ bills</div>
+            </div>
+            <div style={kpiCard(() => navigate('/pos/tables'))} onClick={() => navigate('/pos/tables')}>
+              <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Tables Occupied</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: posStats?.tablesOccupied > 0 ? 'var(--theme-accent)' : 'var(--theme-text1)', lineHeight: 1.1 }}>
+                {!posStats ? '—' : `${posStats.tablesOccupied} / ${posStats.tablesTotal}`}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 5 }}>Right now →</div>
+            </div>
           </div>
         </div>
       )}
