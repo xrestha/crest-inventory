@@ -301,10 +301,18 @@ export default function SelfServiceHome() {
         )}
 
         <div className="tab-bar" style={{ marginBottom: 20 }}>
-          <button className={`tab-btn${tab === 'payslip' ? ' tab-btn--active' : ''}`} onClick={() => setTab('payslip')}>Payslip</button>
-          <button className={`tab-btn${tab === 'leave' ? ' tab-btn--active' : ''}`} onClick={() => setTab('leave')}>Leave</button>
-          <button className={`tab-btn${tab === 'tada' ? ' tab-btn--active' : ''}`} onClick={() => setTab('tada')}>TADA</button>
-          <button className={`tab-btn${tab === 'roster' ? ' tab-btn--active' : ''}`} onClick={() => setTab('roster')}>Roster</button>
+          {[
+            ['roster', 'Roster'], ['tada', 'TADA'], ['leave', 'Leave'], ['payslip', 'Payslip'],
+          ].map(([val, label]) => (
+            <button
+              key={val}
+              className={`tab-btn${tab === val ? ' tab-btn--active' : ''}`}
+              onClick={() => setTab(val)}
+              style={{ fontSize: 13, padding: '8px 18px', textTransform: 'uppercase', letterSpacing: '0.04em' }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         {tab === 'payslip' && (
