@@ -152,7 +152,7 @@ export default function PayrollRun() {
         annualHealthInsurance: parseFloat(emp.health_insurance_premium) || 0,
       })
       const net = slip.net_pay - tds
-      return { run_id: runId, employee_id: emp.id, ...slip, tds, net_pay: net }
+      return { run_id: runId, employee_id: emp.id, ...slip, tds, tada_amount: 0, net_pay: net }
     })
   }
 
@@ -170,7 +170,7 @@ export default function PayrollRun() {
 
   async function regenerate() {
     if (!run || run.status === 'finalized') return
-    if (!window.confirm('Recompute all payslips from current salary, attendance & tax? Manual TDS overrides will be reset.')) return
+    if (!window.confirm('Recompute all payslips from current salary, attendance & tax? Manual TDS and TADA overrides will be reset.')) return
     setBusy(true); setMsg('')
     const ytdMap = await fetchYtdMap()
     await scopedDelete('hr_payslips').eq('run_id', run.id)
@@ -183,9 +183,19 @@ export default function PayrollRun() {
   async function updateTds(slip, value) {
     if (run?.status === 'finalized') return
     const tds = parseFloat(value) || 0
-    const net = slip.gross + slip.ot_amount - slip.absence_deduction - slip.ssf_employee - slip.other_deductions - (slip.advance_deduction || 0) - tds
+    const net = slip.gross + slip.ot_amount - slip.absence_deduction - slip.ssf_employee - slip.other_deductions - (slip.advance_deduction || 0) - tds + (slip.tada_amount || 0)
     setPayslips(ps => ps.map(s => s.id === slip.id ? { ...s, tds, net_pay: net } : s))
     await scopedUpdate('hr_payslips', { tds, net_pay: net }).eq('id', slip.id)
+  }
+
+  // TADA (travel/daily allowance) is a non-taxable reimbursement — added after TDS,
+  // not run through gross/tax computation like the rest of the payslip.
+  async function updateTada(slip, value) {
+    if (run?.status === 'finalized') return
+    const tada = parseFloat(value) || 0
+    const net = slip.gross + slip.ot_amount - slip.absence_deduction - slip.ssf_employee - slip.other_deductions - (slip.advance_deduction || 0) - slip.tds + tada
+    setPayslips(ps => ps.map(s => s.id === slip.id ? { ...s, tada_amount: tada, net_pay: net } : s))
+    await scopedUpdate('hr_payslips', { tada_amount: tada, net_pay: net }).eq('id', slip.id)
   }
 
   async function finalize() {
@@ -289,7 +299,7 @@ export default function PayrollRun() {
         'OT Hours': s.ot_hours, 'OT Amount': s.ot_amount,
         'Absence Ded': s.absence_deduction, 'SSF Employee': s.ssf_employee,
         'Other Ded': s.other_deductions, 'Advance Ded': s.advance_deduction || 0,
-        'TDS': s.tds, 'Net Pay': s.net_pay,
+        'TDS': s.tds, 'TADA': s.tada_amount || 0, 'Net Pay': s.net_pay,
         'SSF Employer': s.ssf_employer,
       }
     })
@@ -306,9 +316,10 @@ export default function PayrollRun() {
     a.gross  += s.gross; a.ot += s.ot_amount; a.ssfEmp += s.ssf_employee; a.ssfEmpr += s.ssf_employer
     a.advDed += s.advance_deduction || 0
     a.ded    += s.absence_deduction + s.other_deductions + s.tds
+    a.tada   += s.tada_amount || 0
     a.net    += s.net_pay
     return a
-  }, { gross: 0, ot: 0, ssfEmp: 0, ssfEmpr: 0, ded: 0, advDed: 0, net: 0 })
+  }, { gross: 0, ot: 0, ssfEmp: 0, ssfEmpr: 0, ded: 0, advDed: 0, tada: 0, net: 0 })
 
   return (
     <div>
@@ -378,6 +389,7 @@ export default function PayrollRun() {
                       <th style={{ textAlign: 'right' }}><Tip text="All configured deductions except SSF — CIT/PF, etc." width={250}>Other Ded</Tip></th>
                       <th style={{ textAlign: 'right' }}><Tip text="Advance or loan installment auto-recovered this period from active advances in the Advances & Loans ledger. Repayment rows are written on Finalize." width={290}>Advance</Tip></th>
                       <th style={{ textAlign: 'right' }}><Tip text="Income tax, computed automatically from FY tax slabs using year-to-date projection. Editable while draft if you need to override." width={270}>TDS</Tip></th>
+                      <th style={{ textAlign: 'right' }}><Tip text="Travel/Daily Allowance reimbursement — a non-taxable amount added after TDS, not part of the taxable gross. Editable while draft." width={290}>TADA</Tip></th>
                       <th style={{ textAlign: 'right', color: '#c9a84c' }}>Net Pay</th>
                       <th></th>
                     </tr>
@@ -418,6 +430,11 @@ export default function PayrollRun() {
                               ? <span style={{ color: s.tds > 0 ? '#f87171' : '#4b5563' }}>{s.tds > 0 ? `−${fmt(s.tds)}` : '—'}</span>
                               : <input type="number" min="0" defaultValue={s.tds || ''} onBlur={e => updateTds(s, e.target.value)} placeholder="0" style={{ ...inp, width: 80, textAlign: 'right' }} />}
                           </td>
+                          <td style={{ textAlign: 'right' }}>
+                            {finalized
+                              ? <span style={{ color: (s.tada_amount || 0) > 0 ? '#34d399' : '#4b5563' }}>{(s.tada_amount || 0) > 0 ? `+${fmt(s.tada_amount)}` : '—'}</span>
+                              : <input type="number" min="0" defaultValue={s.tada_amount || ''} onBlur={e => updateTada(s, e.target.value)} placeholder="0" style={{ ...inp, width: 80, textAlign: 'right' }} />}
+                          </td>
                           <td style={{ textAlign: 'right', color: '#c9a84c', fontWeight: 700, fontSize: 14 }}>{fmt(s.net_pay)}</td>
                           <td style={{ textAlign: 'right' }}>
                             <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => setViewSlip({ slip: s, emp })}>Payslip</button>
@@ -433,6 +450,7 @@ export default function PayrollRun() {
                       <td style={{ textAlign: 'right', color: '#34d399' }}>{totals.ot > 0 ? `+${fmt(totals.ot)}` : '—'}</td>
                       <td colSpan={4} style={{ textAlign: 'right', color: '#f87171' }}>−{fmt(totals.ded + totals.ssfEmp + totals.advDed)}</td>
                       <td></td>
+                      <td style={{ textAlign: 'right', color: totals.tada > 0 ? '#34d399' : '#4b5563' }}>{totals.tada > 0 ? `+${fmt(totals.tada)}` : '—'}</td>
                       <td style={{ textAlign: 'right', color: '#c9a84c', fontSize: 15 }}>{fmt(totals.net)}</td>
                       <td></td>
                     </tr>
@@ -441,7 +459,7 @@ export default function PayrollRun() {
               </div>
             </div>
             <div style={{ marginTop: 12, fontSize: 11, color: '#4b5563', lineHeight: 1.6 }}>
-              {finalized ? 'This payroll is finalized — payslips are locked as a permanent record.' : 'Draft — Regenerate to pull the latest salary, attendance & tax, then Finalize to lock. You can override any TDS value inline.'} SSF is applied only to employees with an SSF number. TDS is computed automatically from the fiscal-year tax slabs using year-to-date projection; finalize earlier months first so each month\'s tax builds on the last. Active advance installments are auto-deducted; repayment rows are written to Advances & Loans on Finalize.
+              {finalized ? 'This payroll is finalized — payslips are locked as a permanent record.' : 'Draft — Regenerate to pull the latest salary, attendance & tax, then Finalize to lock. You can override any TDS value inline.'} SSF is applied only to employees with an SSF number. TDS is computed automatically from the fiscal-year tax slabs using year-to-date projection; finalize earlier months first so each month\'s tax builds on the last. TADA (travel/daily allowance) can be entered per employee — it's added after TDS as a non-taxable reimbursement, not part of taxable gross. Active advance installments are auto-deducted; repayment rows are written to Advances & Loans on Finalize.
             </div>
           </>
         )}
@@ -517,6 +535,13 @@ function PayslipBody({ slip, emp, periodLabel, forPrint }) {
       {slip.tds > 0 && <Row label="TDS (income tax)" value={slip.tds} neg />}
       {(slip.absence_deduction + slip.ssf_employee + slip.other_deductions + (slip.advance_deduction || 0) + slip.tds) === 0 && (
         <div style={{ fontSize: 12, color: c1, padding: '5px 0' }}>None</div>
+      )}
+
+      {(slip.tada_amount || 0) > 0 && (
+        <>
+          <div style={{ fontSize: 10, color: c1, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '12px 0 4px' }}>Reimbursement</div>
+          <Row label="TADA (non-taxable)" value={slip.tada_amount} />
+        </>
       )}
 
       <div style={{ marginTop: 12, paddingTop: 12, borderTop: `2px solid ${forPrint ? '#000' : '#2a2f3d'}` }}>

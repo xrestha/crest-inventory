@@ -141,6 +141,16 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S323 — 2026-07-09 — Payroll: per-employee TADA amount, added after TDS
+
+Payroll Run had no way to pay out a travel/daily allowance through the payslip itself — TADA Claims (S321) is deliberately kept separate from Payroll since expense reimbursement isn't taxable income, but some clients still want the option to fold an ad hoc TADA amount into a specific employee's payslip for a given month. Added a new **TADA** column to the payroll register, positioned between TDS and Net Pay: a per-employee, inline-editable amount (same edit-while-draft/locked-once-finalized pattern as the existing TDS column) that's added to `net_pay` *after* TDS, SSF, and all other deductions — never run back through tax or SSF computation, so it stays a non-taxable add-on rather than part of taxable gross.
+
+`hr_payslips.tada_amount` defaults to 0 on Generate/Regenerate (reset on Regenerate, same as manual TDS overrides — the confirm dialog now says so). `updateTds`/`updateTada` each recompute `net_pay` from the full formula so editing one doesn't clobber the other's contribution. The on-screen/print payslip (`PayslipBody`) shows it as a new "Reimbursement" section, only rendered when non-zero, appearing after Deductions and before the Net Pay total. Excel export gained a `TADA` column.
+
+Migration: `supabase/migrations/20260709090000_payroll_tada_amount.sql` (adds `hr_payslips.tada_amount numeric(12,2) DEFAULT 0`).
+
+**Files:** `src/modules/hr/payroll/PayrollRun.jsx`, `src/pages/Help.js`
+
 ### S322 — 2026-07-08 — Calculate Transport Fare: dropped the sub-modal for inline Vehicle + Distance
 
 S321 shipped a separate "Calculate Transport Fare" modal (opened via a button on the Transport line). Live feedback in this same session went through two iterations before landing here: first the modal's plain-text Start/Stop/End labels were made to actually do something (a live Google Maps route preview, using the free-and-unlimited Maps Embed API — a genuinely different, uncosted SKU from the paid Distance Matrix/Routes APIs the original research correctly stayed away from) and the Rate/KM field inside it was locked to `isAdmin || isOwner` so a lower-authority submitter couldn't silently override the configured rate. Then: simpler is better — the whole sub-modal was dropped in favor of putting a Vehicle picker (2-Wheeler/4-Wheeler/EV) and a Distance (km) field directly inline on the Transport expense line itself, with Amount auto-computing live as Distance × that vehicle's configured Rate/KM (whenever both are known — a manually-typed Amount is never overwritten just because a rate isn't configured for that vehicle yet). Amount stays hand-editable afterward (e.g. to add a toll). `CalculateFareModal.js` and the Maps Embed integration were deleted entirely — confirmed zero remaining references before removal.
