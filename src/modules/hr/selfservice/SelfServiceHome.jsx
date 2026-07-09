@@ -7,7 +7,8 @@ import { getBsToday, BS_MONTHS, adToBs, formatAd } from '../../../utils/bsCalend
 import { workingDaysInRange, DAY_TYPES } from '../leave/leaveConstants'
 import { WEEKLY_OFF_WEEKDAY } from '../payrollConstants'
 import { subscribeToPush, isPushSubscribed } from '../../../utils/webPush'
-import { CATEGORIES, VEHICLE_TYPES, DEFAULT_PURPOSE_OPTIONS, OTHER_PURPOSE, EMPTY_TADA_ITEM, recomputeTadaAmount } from '../tada/tadaShared'
+import { CATEGORIES, VEHICLE_TYPES, DEFAULT_PURPOSE_OPTIONS, DEFAULT_START_POINTS, OTHER_PURPOSE, PURCHASE_PURPOSE, EMPTY_TADA_ITEM, recomputeTadaAmount } from '../tada/tadaShared'
+import SearchableSelect from '../../../components/SearchableSelect'
 
 const fmt = n => Math.round(n || 0).toLocaleString('en-NP')
 const fmtD = iso => {
@@ -24,7 +25,7 @@ const STATUS_BADGE = { pending: 'badge-amber', approved: 'badge-green', rejected
 const TADA_STATUS_BADGE = { pending: 'badge-amber', approved: 'badge-yellow', rejected: 'badge-red', paid: 'badge-green' }
 function emptyTadaForm() {
   const today = formatAd(new Date())
-  return { trip_purpose: '', destination: '', start_date: today, end_date: today, notes: '', items: [EMPTY_TADA_ITEM()] }
+  return { trip_purpose: '', destination: '', start_point: '', start_date: today, end_date: today, notes: '', items: [EMPTY_TADA_ITEM()] }
 }
 // Some clients create custom zero-hour shift types purely to mark a day off on the roster board
 // (e.g. "OFF", "Day Off", "Off Day", "LEAVE", "Public Holiday") — same convention as
@@ -66,9 +67,12 @@ export default function SelfServiceHome() {
   const [weeklyOffWeekday, setWeeklyOffWeekday] = useState(WEEKLY_OFF_WEEKDAY) // 0=Sun..6=Sat
 
   const [tadaClaims,    setTadaClaims]    = useState(null)
+  const [tadaVendors,   setTadaVendors]   = useState([])
   const [tadaForm,      setTadaForm]      = useState(emptyTadaForm)
   const [tadaPurposeMode, setTadaPurposeMode] = useState('preset') // 'preset' | 'custom'
+  const [tadaStartPointMode, setTadaStartPointMode] = useState('preset') // 'preset' | 'custom'
   const [tadaPurposeOptions, setTadaPurposeOptions] = useState(DEFAULT_PURPOSE_OPTIONS)
+  const [tadaStartPoints, setTadaStartPoints] = useState(DEFAULT_START_POINTS)
   const [tadaVehicleRates, setTadaVehicleRates] = useState({ '2w': null, '4w': null, ev: null })
   const [tadaSubmitting, setTadaSubmitting] = useState(false)
   const [tadaMsg,        setTadaMsg]        = useState('')
@@ -99,11 +103,12 @@ export default function SelfServiceHome() {
   // can read it directly rather than needing a dedicated RPC.
   useEffect(() => {
     if (!profile?.client_id) return
-    supabase.from('settings').select('weekly_off_weekday, tada_vehicle_rates, tada_purpose_options').eq('client_id', profile.client_id).maybeSingle()
+    supabase.from('settings').select('weekly_off_weekday, tada_vehicle_rates, tada_purpose_options, tada_start_points').eq('client_id', profile.client_id).maybeSingle()
       .then(({ data }) => {
         setWeeklyOffWeekday(data?.weekly_off_weekday ?? WEEKLY_OFF_WEEKDAY)
         setTadaVehicleRates({ '2w': null, '4w': null, ev: null, ...(data?.tada_vehicle_rates || {}) })
         setTadaPurposeOptions(data?.tada_purpose_options?.length ? data.tada_purpose_options : DEFAULT_PURPOSE_OPTIONS)
+        setTadaStartPoints(data?.tada_start_points?.length ? data.tada_start_points : DEFAULT_START_POINTS)
       })
   }, [profile?.client_id])
 
@@ -150,8 +155,12 @@ export default function SelfServiceHome() {
   }, [])
 
   const loadTada = useCallback(async () => {
-    const { data } = await supabase.rpc('get_my_tada_claims')
+    const [{ data }, { data: vends }] = await Promise.all([
+      supabase.rpc('get_my_tada_claims'),
+      supabase.rpc('get_my_client_vendors'),
+    ])
     setTadaClaims(data || [])
+    setTadaVendors(vends || [])
   }, [])
 
   useEffect(() => { if (profile?.hr_self_service && tab === 'payslip') loadPayslips() }, [profile, tab, loadPayslips])
@@ -248,10 +257,11 @@ export default function SelfServiceHome() {
       p_trip_purpose: tadaForm.trip_purpose, p_destination: tadaForm.destination,
       p_start_date: tadaForm.start_date, p_end_date: tadaForm.end_date, p_notes: tadaForm.notes,
       p_items: validItems.map(it => ({ category: it.category, description: it.description || null, amount: parseFloat(it.amount) })),
+      p_start_point: tadaForm.start_point,
     })
     setTadaSubmitting(false)
     if (error) { setTadaMsg('error:' + error.message); return }
-    setTadaForm(emptyTadaForm()); setTadaPurposeMode('preset'); setTadaMsg('ok:Claim submitted for approval.')
+    setTadaForm(emptyTadaForm()); setTadaPurposeMode('preset'); setTadaStartPointMode('preset'); setTadaMsg('ok:Claim submitted for approval.')
     loadTada()
   }
 
@@ -391,8 +401,22 @@ export default function SelfServiceHome() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <div style={{ flex: 1 }}>
-                    <label style={lbl}>Destination</label>
-                    <input style={inp} placeholder="e.g. Pokhara" value={tadaForm.destination} onChange={e => setTada('destination', e.target.value)} />
+                    <label style={lbl}>Start Point</label>
+                    <select
+                      className="form-select" style={{ width: '100%' }}
+                      value={tadaStartPointMode === 'custom' ? OTHER_PURPOSE : tadaForm.start_point}
+                      onChange={e => {
+                        if (e.target.value === OTHER_PURPOSE) { setTadaStartPointMode('custom'); setTada('start_point', '') }
+                        else { setTadaStartPointMode('preset'); setTada('start_point', e.target.value) }
+                      }}
+                    >
+                      <option value="">Select start point…</option>
+                      {tadaStartPoints.map(p => <option key={p} value={p}>{p}</option>)}
+                      <option value={OTHER_PURPOSE}>Other (type below)</option>
+                    </select>
+                    {tadaStartPointMode === 'custom' && (
+                      <input style={{ ...inp, marginTop: 6 }} placeholder="Where did the trip start?" value={tadaForm.start_point} onChange={e => setTada('start_point', e.target.value)} />
+                    )}
                   </div>
                   <div style={{ flex: 1 }}>
                     <label style={lbl}>Purpose</label>
@@ -412,6 +436,19 @@ export default function SelfServiceHome() {
                       <input style={{ ...inp, marginTop: 6 }} placeholder="Describe the purpose" value={tadaForm.trip_purpose} onChange={e => setTada('trip_purpose', e.target.value)} />
                     )}
                   </div>
+                </div>
+                <div>
+                  <label style={lbl}>Destination</label>
+                  <input style={inp} placeholder="e.g. Pokhara" value={tadaForm.destination} onChange={e => setTada('destination', e.target.value)} />
+                  {tadaForm.trip_purpose === PURCHASE_PURPOSE && (
+                    <div style={{ marginTop: 6 }}>
+                      <SearchableSelect
+                        options={tadaVendors.map(v => ({ value: v.id, label: v.name }))}
+                        value="" onChange={vId => { const v = tadaVendors.find(x => x.id === vId); if (v) setTada('destination', v.name) }}
+                        placeholder="🏬 Or pick a registered vendor…"
+                      />
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <div style={{ flex: 1 }}>
@@ -487,7 +524,7 @@ export default function SelfServiceHome() {
                         <div>
                           <div style={{ fontSize: 13, color: 'var(--theme-text1)' }}>{fmtD(c.start_date)} → {fmtD(c.end_date)} — NPR {fmt(c.total_amount)}</div>
                           <div style={{ fontSize: 11, color: 'var(--theme-text3)' }}>
-                            {[c.destination, c.trip_purpose].filter(Boolean).join(' · ') || '—'}
+                            {[c.start_point && c.destination ? `${c.start_point} → ${c.destination}` : c.destination, c.trip_purpose].filter(Boolean).join(' · ') || '—'}
                             {c.status === 'paid' && ` · Paid via ${c.paid_method}`}
                           </div>
                         </div>

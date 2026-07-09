@@ -141,6 +141,22 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S327 — 2026-07-09 — TADA Claims: Start Point dropdown + vendor picker for Purchase trips
+
+Live feedback on the new Self-Service TADA tab: a claim only had a single Destination field, with no origin, and staff going on the common "Purchase" run had to type the vendor's name from memory instead of picking it from the Vendor list Crest already has.
+
+**Start Point**: a second client-configurable preset dropdown, same shape as Purpose (`settings.tada_start_points` jsonb list, "Other (type below)" always available), added next to Purpose on both the manager New Claim form and the Self-Service TADA tab. New `hr_tada_claims.start_point` text column. Claim list rows and the detail panel now show `Start Point → Destination` when a start point is set, falling back to just Destination for older claims that don't have one.
+
+**Vendor picker for Purchase**: when Purpose = "Purchase," a `SearchableSelect` of the client's active vendors appears under Destination on both forms — picking one just writes that vendor's name into the existing Destination text field (a one-shot autofill, not a persistent selection or a foreign key). Asked which of two designs to build — a stored `vendor_id` link (enables future "visits per vendor" reporting) vs. this simpler text-fill — and went with text-fill for now, no schema/reporting commitment. Self-service can't read `vendors` directly (blocked by S316's `no_self_service_accounts` policy), so a new `get_my_client_vendors()` RPC exposes just `id, name` for active vendors, same reasoning as every other self-service RPC; the manager form already has normal `vendors` access via `scopedFrom`.
+
+Extracted `TadaSettingsModal.js`'s repeated add/remove chip-list UI (previously written once for Purpose Options) into a shared `OptionListEditor` sub-component, reused for the new Start Points section instead of duplicating the markup.
+
+`submit_my_tada_claim`'s signature was extended in place via `CREATE OR REPLACE FUNCTION` with a new `p_start_point text DEFAULT NULL` parameter appended at the end — safe against the already-deployed version from S326 since existing params/order are untouched.
+
+Migration: `supabase/migrations/20260709120000_tada_start_point_vendor.sql`.
+
+**Files:** `src/modules/hr/tada/TadaClaims.jsx`, `src/modules/hr/tada/TadaSettingsModal.js`, `src/modules/hr/tada/tadaShared.js`, `src/modules/hr/selfservice/SelfServiceHome.jsx`, `src/pages/Help.js`
+
 ### S326 — 2026-07-09 — Employee Self-Service: submit your own TADA claim
 
 Explained the current TADA Claims workflow (manager-entered only — Self-Service never got a submission channel when TADA Claims shipped, S306 called this out as a deliberate, explicit gap) and asked whether to close it. Confirmed: yes.

@@ -9,6 +9,11 @@ export const VEHICLE_TYPES = [
 ]
 export const DEFAULT_PURPOSE_OPTIONS = ['Vendor site visit', 'Purchase', 'Bank errand', 'Client meeting', 'Delivery', 'Site inspection', 'Training / Conference']
 export const OTHER_PURPOSE = '__other__'
+// No sensible generic default (varies too much per client, unlike Purpose) — starts empty;
+// a client adds their own via ⚙ Settings. "Other" is still always available regardless.
+export const DEFAULT_START_POINTS = []
+// Purpose value that triggers the vendor picker on the Destination field.
+export const PURCHASE_PURPOSE = 'Purchase'
 
 // vehicle/distanceKm are UI-only — they drive the auto-computed Amount but are never persisted
 // (hr_tada_claim_items only has category/description/amount).

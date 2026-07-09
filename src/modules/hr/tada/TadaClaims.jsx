@@ -7,7 +7,7 @@ import SearchableSelect from '../../../components/SearchableSelect'
 import BsCalendarPicker from '../../../components/BsCalendarPicker'
 import TadaSettingsModal from './TadaSettingsModal'
 import { adToBs, formatAd } from '../../../utils/bsCalendar'
-import { CATEGORIES, VEHICLE_TYPES, DEFAULT_PURPOSE_OPTIONS, OTHER_PURPOSE, EMPTY_TADA_ITEM, recomputeTadaAmount } from './tadaShared'
+import { CATEGORIES, VEHICLE_TYPES, DEFAULT_PURPOSE_OPTIONS, DEFAULT_START_POINTS, OTHER_PURPOSE, PURCHASE_PURPOSE, EMPTY_TADA_ITEM, recomputeTadaAmount } from './tadaShared'
 
 const fmt  = n => Math.round(n || 0).toLocaleString('en-NP')
 const fmtD = iso => {
@@ -26,7 +26,7 @@ const STATUS_BADGE = { pending: 'badge-amber', approved: 'badge-yellow', rejecte
 function emptyAddForm() {
   const today = formatAd(new Date())
   return {
-    employee_id: '', trip_purpose: '', destination: '', start_date: today, end_date: today, notes: '',
+    employee_id: '', trip_purpose: '', destination: '', start_point: '', start_date: today, end_date: today, notes: '',
     items: [EMPTY_TADA_ITEM()],
   }
 }
@@ -38,6 +38,7 @@ export default function TadaClaims() {
   const { scopedFrom, scopedInsert, scopedUpdate, scopedDelete } = useScopedDb()
 
   const [employees, setEmployees] = useState([])
+  const [vendors,   setVendors]   = useState([])
   const [claims,    setClaims]    = useState([])
   const [items,     setItems]     = useState([])
   const [loading,   setLoading]   = useState(true)
@@ -46,7 +47,8 @@ export default function TadaClaims() {
   const [selected,     setSelected]     = useState(null)
   const [showAdd,      setShowAdd]      = useState(false)
   const [addForm,      setAddForm]      = useState(emptyAddForm)
-  const [purposeMode,  setPurposeMode]  = useState('preset') // 'preset' | 'custom' — UI-only, doesn't affect what's submitted
+  const [purposeMode,    setPurposeMode]    = useState('preset') // 'preset' | 'custom' — UI-only, doesn't affect what's submitted
+  const [startPointMode, setStartPointMode] = useState('preset') // 'preset' | 'custom'
   const [saving,       setSaving]       = useState(false)
   const [error,        setError]        = useState('')
   const [payTarget,    setPayTarget]    = useState(null)
@@ -58,22 +60,26 @@ export default function TadaClaims() {
   // Managed from TadaSettingsModal (admin/owner-only), not inline here.
   const [vehicleRates,   setVehicleRates]   = useState({ '2w': null, '4w': null, ev: null })
   const [purposeOptions, setPurposeOptions] = useState(DEFAULT_PURPOSE_OPTIONS)
+  const [startPoints,    setStartPoints]    = useState(DEFAULT_START_POINTS)
   const [showSettings,   setShowSettings]   = useState(false)
 
   const load = useCallback(async () => {
     if (!clientId) return
     setLoading(true)
-    const [{ data: emps }, { data: cls }, { data: settingsRow }] = await Promise.all([
+    const [{ data: emps }, { data: vends }, { data: cls }, { data: settingsRow }] = await Promise.all([
       scopedFrom('hr_employees', 'id, full_name, employee_code, status').order('full_name'),
+      scopedFrom('vendors', 'id, name').eq('is_active', true).order('name'),
       scopedFrom('hr_tada_claims').order('created_at', { ascending: false }),
       // settings has a nullable client_id (no free-default tier for it, unlike most tables) —
       // stays on raw supabase.from() rather than scopedDb, same as every other settings read.
-      supabase.from('settings').select('tada_vehicle_rates, tada_purpose_options').eq('client_id', clientId).maybeSingle(),
+      supabase.from('settings').select('tada_vehicle_rates, tada_purpose_options, tada_start_points').eq('client_id', clientId).maybeSingle(),
     ])
     setEmployees(emps || [])
+    setVendors(vends || [])
     setClaims(cls || [])
     setVehicleRates({ '2w': null, '4w': null, ev: null, ...(settingsRow?.tada_vehicle_rates || {}) })
     setPurposeOptions(settingsRow?.tada_purpose_options?.length ? settingsRow.tada_purpose_options : DEFAULT_PURPOSE_OPTIONS)
+    setStartPoints(settingsRow?.tada_start_points?.length ? settingsRow.tada_start_points : DEFAULT_START_POINTS)
     const claimIds = (cls || []).map(c => c.id)
     if (claimIds.length > 0) {
       // hr_tada_claim_items has no client_id column of its own — scoped via claim_id against
@@ -88,9 +94,10 @@ export default function TadaClaims() {
 
   useEffect(() => { load() }, [load])
 
-  function handleSettingsSaved(nextRates, nextOptions) {
+  function handleSettingsSaved(nextRates, nextOptions, nextStartPoints) {
     setVehicleRates(nextRates)
     setPurposeOptions(nextOptions)
+    setStartPoints(nextStartPoints)
     setShowSettings(false)
   }
 
@@ -138,6 +145,7 @@ export default function TadaClaims() {
       employee_id:   addForm.employee_id,
       trip_purpose:  addForm.trip_purpose || null,
       destination:   addForm.destination || null,
+      start_point:   addForm.start_point || null,
       start_date:    addForm.start_date,
       end_date:      addForm.end_date,
       total_amount:  addTotal,
@@ -152,7 +160,7 @@ export default function TadaClaims() {
     })))
     setSaving(false)
     if (itemErr) { setError(itemErr.message); return }
-    setShowAdd(false); setAddForm(emptyAddForm()); setPurposeMode('preset'); load()
+    setShowAdd(false); setAddForm(emptyAddForm()); setPurposeMode('preset'); setStartPointMode('preset'); load()
   }
 
   async function handleApprove(claimId) {
@@ -208,7 +216,7 @@ export default function TadaClaims() {
               ⚙ Settings
             </button>
           )}
-          <button className="btn btn-primary" onClick={() => { setAddForm(emptyAddForm()); setPurposeMode('preset'); setError(''); setShowAdd(true) }}>
+          <button className="btn btn-primary" onClick={() => { setAddForm(emptyAddForm()); setPurposeMode('preset'); setStartPointMode('preset'); setError(''); setShowAdd(true) }}>
             + New Claim
           </button>
         </div>
@@ -259,7 +267,7 @@ export default function TadaClaims() {
                     {emp.employee_code && <div style={{ fontSize: 11, color: 'var(--theme-text3)' }}>{emp.employee_code}</div>}
                   </td>
                   <td style={{ color: 'var(--theme-text2)', fontSize: 13 }}>
-                    {c.destination || '—'}
+                    {c.start_point ? `${c.start_point} → ${c.destination || '—'}` : (c.destination || '—')}
                     {c.trip_purpose && <div style={{ fontSize: 11, color: 'var(--theme-text3)' }}>{c.trip_purpose}</div>}
                   </td>
                   <td style={{ color: 'var(--theme-text2)', fontSize: 12 }}>{fmtD(c.start_date)} → {fmtD(c.end_date)}</td>
@@ -278,7 +286,7 @@ export default function TadaClaims() {
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
             <div>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--theme-text1)' }}>
-                {empMap[selectedClaim.employee_id]?.full_name} — {selectedClaim.destination || 'Trip'}
+                {empMap[selectedClaim.employee_id]?.full_name} — {selectedClaim.start_point ? `${selectedClaim.start_point} → ${selectedClaim.destination || 'Trip'}` : (selectedClaim.destination || 'Trip')}
               </div>
               <div style={{ fontSize: 12, color: 'var(--theme-text3)', marginTop: 3 }}>
                 {fmtD(selectedClaim.start_date)} → {fmtD(selectedClaim.end_date)}
@@ -350,8 +358,25 @@ export default function TadaClaims() {
 
             <div style={{ display: 'flex', gap: 12 }}>
               <div style={{ flex: 1 }}>
-                <label style={lbl}>Destination</label>
-                <input style={inp} placeholder="e.g. Pokhara" value={addForm.destination} onChange={e => setAdd('destination', e.target.value)} />
+                <label style={lbl}>Start Point</label>
+                <select
+                  className="form-select" style={{ width: '100%' }}
+                  value={startPointMode === 'custom' ? OTHER_PURPOSE : addForm.start_point}
+                  onChange={e => {
+                    if (e.target.value === OTHER_PURPOSE) { setStartPointMode('custom'); setAdd('start_point', '') }
+                    else { setStartPointMode('preset'); setAdd('start_point', e.target.value) }
+                  }}
+                >
+                  <option value="">Select start point…</option>
+                  {startPoints.map(p => <option key={p} value={p}>{p}</option>)}
+                  <option value={OTHER_PURPOSE}>Other (type below)</option>
+                </select>
+                {startPointMode === 'custom' && (
+                  <input
+                    style={{ ...inp, marginTop: 6 }} placeholder="Where did the trip start?"
+                    value={addForm.start_point} onChange={e => setAdd('start_point', e.target.value)}
+                  />
+                )}
               </div>
               <div style={{ flex: 1 }}>
                 <label style={lbl}>Purpose</label>
@@ -374,6 +399,20 @@ export default function TadaClaims() {
                   />
                 )}
               </div>
+            </div>
+
+            <div>
+              <label style={lbl}>Destination</label>
+              <input style={inp} placeholder="e.g. Pokhara" value={addForm.destination} onChange={e => setAdd('destination', e.target.value)} />
+              {addForm.trip_purpose === PURCHASE_PURPOSE && (
+                <div style={{ marginTop: 6 }}>
+                  <SearchableSelect
+                    options={vendors.map(v => ({ value: v.id, label: v.name }))}
+                    value="" onChange={vId => { const v = vendors.find(x => x.id === vId); if (v) setAdd('destination', v.name) }}
+                    placeholder="🏬 Or pick a registered vendor…"
+                  />
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'flex', gap: 12 }}>
@@ -490,6 +529,7 @@ export default function TadaClaims() {
           clientId={clientId}
           vehicleRates={vehicleRates}
           purposeOptions={purposeOptions}
+          startPoints={startPoints}
           onSaved={handleSettingsSaved}
           onClose={() => setShowSettings(false)}
         />
