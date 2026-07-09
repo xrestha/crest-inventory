@@ -141,6 +141,12 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S333 — 2026-07-09 — fix(ims): Sales Import Excel header detection too strict for real files
+
+After S332's crash fix, the very same real report instead failed with "Could not find a Product Name / Product Code header row" — the header-row scan required an exact `startsWith('product name')`/`startsWith('product code')` match, which breaks the moment a real export wraps header text with a line break inside the cell (e.g. "Product\nName", common Alt+Enter wrapping in narrow columns) or uses a non-breaking space, and unnecessarily also required a "Product Code" column that isn't even read anywhere downstream. Relaxed detection to `cell.includes('product') && cell.includes('name')` (substring-based, so any whitespace variant between the two words still matches) and dropped the Product Code requirement entirely — the header row is now recognized by a Product Name-like cell plus at least one Sale/Return/Net quantity column in the same row, which is what the feature actually needs. Verified against three reconstructed cases: a line-wrapped header cell, a header with no Product Code column at all, and the original well-formed test file — all parse correctly.
+
+**Files:** `src/modules/ims/sales/SalesImportButton.jsx`
+
 ### S332 — 2026-07-09 — fix(ims): Sales Import Excel crashed on real-world files with blank cells
 
 S331's `SalesImportButton.jsx` crashed on the very first real report (`Cannot read properties of undefined (reading 'startsWith')`) because `XLSX.utils.sheet_to_json(ws, { header: 1 })` leaves a blank/merged cell as a genuine hole in the row array rather than `''`. `Array.prototype.map` (used to lowercase every cell) silently skips holes, but `findIndex` does not — it calls the callback with `undefined` for a hole, and `.startsWith` on `undefined` throws. Real vendor exports are full of blank cells (blank Product Code, blank hierarchy columns), so this reliably tripped on any real file even though the earlier hand-built test file (which happened to have no true holes) didn't reproduce it. Fixed by adding `defval: ''` to the `sheet_to_json` call so every cell is a real value. Verified against a reconstructed sparse test file matching the real report's shape (blank Product Code column, blank Net cell, blank hierarchy columns) — parses correctly now.

@@ -11,27 +11,31 @@ const toNum = v => {
 
 // Vendor "Sales Report Item Wise" exports have a variable-length metadata block (title, company
 // name, VAT no, date range, division) before the real header row, so the header can't be assumed
-// to sit at a fixed row/col — it's located by scanning for the row containing both "Product Name"
-// and "Product Code". Column order is then derived from that row's own text rather than fixed
-// letters, since "Net" appears twice (once under Quantity, once under Amount) and different report
-// runs could reorder columns.
+// to sit at a fixed row/col — it's located by scanning for a row containing a "Product Name"-like
+// cell alongside a Sale/Return/Net quantity column (the only columns this feature actually reads).
+// Matching is substring-based (c.includes(...), not startsWith an exact phrase) because real
+// exports commonly wrap header text with a line break inside the cell ("Product\nName") or use a
+// non-breaking space — .includes('product') && .includes('name') matches regardless of what
+// whitespace character sits between the two words.
 function parseSalesReport(aoa) {
   let headerRow = -1
   let nameCol = -1, saleCol = -1, returnCol = -1, netQtyCol = -1
   for (let r = 0; r < aoa.length; r++) {
     const row = aoa[r] || []
     const cells = row.map(lc)
-    const nc = cells.findIndex(c => c.startsWith('product name'))
-    const cc = cells.findIndex(c => c.startsWith('product code'))
-    if (nc !== -1 && cc !== -1) {
-      headerRow = r
-      nameCol = nc
-      saleCol = cells.findIndex(c => c === 'sale')
-      returnCol = cells.findIndex(c => c.startsWith('retur'))
-      const boundary = Math.max(saleCol, returnCol)
-      netQtyCol = cells.findIndex((c, i) => c === 'net' && i > boundary)
-      break
-    }
+    const nc = cells.findIndex(c => c.includes('product') && c.includes('name'))
+    if (nc === -1) continue
+    const sc = cells.findIndex(c => c.startsWith('sale'))
+    const rc = cells.findIndex(c => c.startsWith('retur'))
+    const hasQtyCol = sc !== -1 || rc !== -1 || cells.some(c => c.startsWith('net'))
+    if (!hasQtyCol) continue
+    headerRow = r
+    nameCol = nc
+    saleCol = sc
+    returnCol = rc
+    const boundary = Math.max(sc, rc)
+    netQtyCol = cells.findIndex((c, i) => c.startsWith('net') && i > boundary)
+    break
   }
   if (headerRow === -1) return { headerFound: false, rows: [] }
 
@@ -80,7 +84,7 @@ export default function SalesImportButton({ recipes, onMatched, disabled }) {
         const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false, defval: '' })
         const { headerFound, rows } = parseSalesReport(aoa)
         if (!headerFound) {
-          setImportError('Could not find a "Product Name" / "Product Code" header row in this file. Make sure this is a Sales Report Item Wise export.')
+          setImportError('Could not find a "Product Name" header row with a Sale/Return/Net quantity column in this file. Make sure this is a Sales Report Item Wise export.')
           return
         }
         if (rows.length === 0) {
