@@ -141,6 +141,26 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S321 — 2026-07-08 — TADA Claims: Calculate Transport Fare (distance × rate/km)
+
+Researched before building, per the pattern this project follows for anything touching an external rate or a third-party API. TADA Claims is deliberately actual-expense reimbursement, not a per-diem formula (kept out of Payroll Run since prompt reimbursement isn't taxable income) — so the calculator pre-fills the Amount field rather than replacing manual entry; the employee/manager can still see and adjust it before submitting.
+
+No authoritative Nepal government per-km rate exists to hardcode, so the rate is a new client-configurable `settings.tada_vehicle_rates` — a small keyed jsonb map (`{"2w": ..., "4w": ..., "ev": ...}`, each nullable, no free-default) rather than a single column, since a 2-wheeler, 4-wheeler, and EV genuinely cost different amounts per km. A live Google Maps/OSRM distance lookup was explicitly researched and deferred — it would commit Crest to either a recurring Google Cloud bill across every client or a self-hosted routing server, a separate decision from this feature's actual value (removing the km × rate mental math). This ships the free, zero-dependency v1 only: a **"⤷ Calculate"** button next to any Transport expense line opens `CalculateFareModal.js` — a Vehicle picker (2-Wheeler/4-Wheeler/EV) that re-fills Rate/KM from the matching configured rate (still freely editable after), plain-text Start/Stop/End labels (no geocoding), a typed Distance (km), and a computed Amount that writes back into the line (auto-filling the Description from the stop labels only if it's still empty, never overwriting a manual one).
+
+Rates and a second new setting — Purpose preset options (`settings.tada_purpose_options`, same client-editable-list shape as `pos_discount_reasons`) — are both managed from a new **⚙ Settings** button on `/hr/tada`, gated to `isAdmin || isOwner` (the same "owner-level action" check already used elsewhere, e.g. `imsVisible`/`hrVisible` in `Layout.js`) so regular staff never see the setup surface. The New Claim form's Purpose field is now a dropdown sourced from those presets, seeded with a sensible default list (Vendor site visit, Purchase, Bank errand, Client meeting, Delivery, Site inspection, Training/Conference) until a client configures their own — plus an always-available "Other (type below)" free-text fallback so an unlisted purpose never blocks submission. Start Date and End Date on the New Claim form now default to today (still editable) instead of opening blank.
+
+Migration: `supabase/migrations/20260708150000_tada_rate_per_km.sql` (adds both `tada_vehicle_rates` and `tada_purpose_options`).
+
+**Files:** `src/modules/hr/tada/TadaClaims.jsx`, `src/modules/hr/tada/CalculateFareModal.js`, `src/modules/hr/tada/TadaSettingsModal.js`, `src/pages/Help.js`
+
+### S320 — 2026-07-08 — Fixed a live crash: 3 of S306's HR tables were never added to the scopedDb allowlist
+
+Live testing (Incentives/Bonus, TADA Claims) surfaced `scopedDb: "hr_incentive_configs" is not in CLIENT_SCOPED_TABLES` / same for `hr_tada_claims`. S306 (2026-07-07) added `hr_tada_claims`, `hr_tada_claim_items`, `hr_incentive_configs`, and `hr_incentives` but never added the client-scoped three of them to `scopedDb.js`'s `CLIENT_SCOPED_TABLES` allowlist — every `scopedFrom`/`scopedInsert`/`scopedUpdate`/`scopedDelete` call against them has been throwing since the day they shipped. Added `hr_tada_claims`, `hr_incentive_configs`, `hr_incentives` to the allowlist (all three carry `client_id NOT NULL`, confirmed against their DDL).
+
+`hr_tada_claim_items` deliberately stays **off** the allowlist — it has no `client_id` column of its own, scoped instead via `claim_id → hr_tada_claims.id` (same parent-scoped pattern as `recipe_ingredients`). `TadaClaims.jsx`'s three call sites against it (`scopedFrom`/`scopedInsert`/`scopedDelete`) were switched to raw `supabase.from()` — adding it to the allowlist instead would have just traded the current crash for a `column "client_id" does not exist` one. RLS still enforces the same-client boundary correctly on this table via its `claim_id IN (SELECT id FROM hr_tada_claims)` policy, which itself resolves through `hr_tada_claims`'s own RLS — so this was always the real security boundary, not the JS-level filter.
+
+**Files:** `src/shared/scopedDb.js`, `src/modules/hr/tada/TadaClaims.jsx`
+
 ### S319 — 2026-07-08 — Sidebar rework: type-scale + motion tokens, command palette (Ctrl+K), pending-item rail badges, pinned favorites
 
 Following S318's audit (65 nav destinations across IMS/HR/POS, no search, one naming inconsistency), a research-backed rework of the sidebar in three shipped phases (a fourth — consolidating IMS's largest report groups into tabbed pages, the way `/pos/sales-report` already does — stays deliberately deferred as a separate, larger effort with real routing risk).

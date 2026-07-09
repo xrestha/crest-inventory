@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../../../context/AuthContext'
+import { supabase } from '../../../supabaseClient'
 import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
 import SearchableSelect from '../../../components/SearchableSelect'
 import BsCalendarPicker from '../../../components/BsCalendarPicker'
-import { adToBs } from '../../../utils/bsCalendar'
+import CalculateFareModal from './CalculateFareModal'
+import TadaSettingsModal from './TadaSettingsModal'
+import { adToBs, formatAd } from '../../../utils/bsCalendar'
 
 const fmt  = n => Math.round(n || 0).toLocaleString('en-NP')
 const fmtD = iso => {
@@ -22,14 +25,20 @@ const lbl = { fontSize: 11, color: 'var(--theme-text3)', marginBottom: 4, displa
 const CATEGORIES = ['Transport', 'Lodging', 'Daily Allowance', 'Other']
 const STATUS_BADGE = { pending: 'badge-amber', approved: 'badge-yellow', rejected: 'badge-red', paid: 'badge-green' }
 const EMPTY_ITEM = () => ({ category: 'Transport', description: '', amount: '' })
-const EMPTY_ADD = {
-  employee_id: '', trip_purpose: '', destination: '', start_date: '', end_date: '', notes: '',
-  items: [EMPTY_ITEM()],
+const DEFAULT_PURPOSE_OPTIONS = ['Vendor site visit', 'Purchase', 'Bank errand', 'Client meeting', 'Delivery', 'Site inspection', 'Training / Conference']
+const OTHER_PURPOSE = '__other__'
+function emptyAddForm() {
+  const today = formatAd(new Date())
+  return {
+    employee_id: '', trip_purpose: '', destination: '', start_date: today, end_date: today, notes: '',
+    items: [EMPTY_ITEM()],
+  }
 }
 const PAID_METHODS = ['Cash', 'Bank Transfer', 'Cheque']
 
 export default function TadaClaims() {
-  const { clientId, profile } = useAuth()
+  const { clientId, profile, isAdmin, isOwner } = useAuth()
+  const canManageSettings = isAdmin || isOwner
   const { scopedFrom, scopedInsert, scopedUpdate, scopedDelete } = useScopedDb()
 
   const [employees, setEmployees] = useState([])
@@ -40,25 +49,41 @@ export default function TadaClaims() {
   const [filterStatus, setFilterStatus] = useState('pending') // pending | approved | rejected | paid | all
   const [selected,     setSelected]     = useState(null)
   const [showAdd,      setShowAdd]      = useState(false)
-  const [addForm,      setAddForm]      = useState(EMPTY_ADD)
+  const [addForm,      setAddForm]      = useState(emptyAddForm)
+  const [purposeMode,  setPurposeMode]  = useState('preset') // 'preset' | 'custom' — UI-only, doesn't affect what's submitted
   const [saving,       setSaving]       = useState(false)
   const [error,        setError]        = useState('')
   const [payTarget,    setPayTarget]    = useState(null)
   const [payMethod,    setPayMethod]    = useState('Cash')
   const [rejectTarget, setRejectTarget] = useState(null)
+  // Vehicle-type rates (NPR/km) — a single rate wasn't enough since a 2-wheeler, 4-wheeler, and
+  // EV genuinely cost different amounts per km. Keyed object, not a fully-editable named list like
+  // settings.pos_delivery_partners — the three categories are fixed, only their rates vary.
+  // Managed from TadaSettingsModal (admin/owner-only), not inline here.
+  const [vehicleRates,   setVehicleRates]   = useState({ '2w': null, '4w': null, ev: null })
+  const [purposeOptions, setPurposeOptions] = useState(DEFAULT_PURPOSE_OPTIONS)
+  const [showSettings,   setShowSettings]   = useState(false)
+  const [calcModalFor,   setCalcModalFor]   = useState(null) // index into addForm.items, or null
 
   const load = useCallback(async () => {
     if (!clientId) return
     setLoading(true)
-    const [{ data: emps }, { data: cls }] = await Promise.all([
+    const [{ data: emps }, { data: cls }, { data: settingsRow }] = await Promise.all([
       scopedFrom('hr_employees', 'id, full_name, employee_code, status').order('full_name'),
       scopedFrom('hr_tada_claims').order('created_at', { ascending: false }),
+      // settings has a nullable client_id (no free-default tier for it, unlike most tables) —
+      // stays on raw supabase.from() rather than scopedDb, same as every other settings read.
+      supabase.from('settings').select('tada_vehicle_rates, tada_purpose_options').eq('client_id', clientId).maybeSingle(),
     ])
     setEmployees(emps || [])
     setClaims(cls || [])
+    setVehicleRates({ '2w': null, '4w': null, ev: null, ...(settingsRow?.tada_vehicle_rates || {}) })
+    setPurposeOptions(settingsRow?.tada_purpose_options?.length ? settingsRow.tada_purpose_options : DEFAULT_PURPOSE_OPTIONS)
     const claimIds = (cls || []).map(c => c.id)
     if (claimIds.length > 0) {
-      const { data: its } = await scopedFrom('hr_tada_claim_items').in('claim_id', claimIds)
+      // hr_tada_claim_items has no client_id column of its own — scoped via claim_id against
+      // this client's already-scoped claim ids, same parent-scoped pattern as recipe_ingredients.
+      const { data: its } = await supabase.from('hr_tada_claim_items').select('*').in('claim_id', claimIds)
       setItems(its || [])
     } else {
       setItems([])
@@ -67,6 +92,23 @@ export default function TadaClaims() {
   }, [clientId, scopedFrom])
 
   useEffect(() => { load() }, [load])
+
+  function handleSettingsSaved(nextRates, nextOptions) {
+    setVehicleRates(nextRates)
+    setPurposeOptions(nextOptions)
+    setShowSettings(false)
+  }
+
+  function openCalcModal(idx) { setCalcModalFor(idx) }
+  function handleCalcConfirm(amount, description) {
+    setAddForm(p => ({
+      ...p,
+      items: p.items.map((it, i) => i === calcModalFor
+        ? { ...it, amount: String(amount), description: it.description || description }
+        : it),
+    }))
+    setCalcModalFor(null)
+  }
 
   const empMap = Object.fromEntries(employees.map(e => [e.id, e]))
   const itemsByClaimId = {}
@@ -108,12 +150,12 @@ export default function TadaClaims() {
     }, { single: true })
     if (err) { setError(err.message); setSaving(false); return }
 
-    const { error: itemErr } = await scopedInsert('hr_tada_claim_items', validItems.map(it => ({
+    const { error: itemErr } = await supabase.from('hr_tada_claim_items').insert(validItems.map(it => ({
       claim_id: claim.id, category: it.category, description: it.description || null, amount: parseFloat(it.amount),
     })))
     setSaving(false)
     if (itemErr) { setError(itemErr.message); return }
-    setShowAdd(false); setAddForm(EMPTY_ADD); load()
+    setShowAdd(false); setAddForm(emptyAddForm()); setPurposeMode('preset'); load()
   }
 
   async function handleApprove(claimId) {
@@ -141,7 +183,7 @@ export default function TadaClaims() {
   }
 
   async function handleDelete(claimId) {
-    await scopedDelete('hr_tada_claim_items').eq('claim_id', claimId)
+    await supabase.from('hr_tada_claim_items').delete().eq('claim_id', claimId)
     await scopedDelete('hr_tada_claims').eq('id', claimId)
     if (selected === claimId) setSelected(null)
     load()
@@ -163,9 +205,16 @@ export default function TadaClaims() {
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--theme-text1)' }}>TADA Claims</h2>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--theme-text3)' }}>Travel &amp; Daily Allowance expense reimbursement</p>
         </div>
-        <button className="btn btn-primary" onClick={() => { setAddForm(EMPTY_ADD); setError(''); setShowAdd(true) }}>
-          + New Claim
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {canManageSettings && (
+            <button className="btn btn-ghost" onClick={() => setShowSettings(true)} title="Vehicle rates & purpose options">
+              ⚙ Settings
+            </button>
+          )}
+          <button className="btn btn-primary" onClick={() => { setAddForm(emptyAddForm()); setPurposeMode('preset'); setError(''); setShowAdd(true) }}>
+            + New Claim
+          </button>
+        </div>
       </div>
 
       {/* Summary cards */}
@@ -309,7 +358,24 @@ export default function TadaClaims() {
               </div>
               <div style={{ flex: 1 }}>
                 <label style={lbl}>Purpose</label>
-                <input style={inp} placeholder="e.g. Vendor site visit" value={addForm.trip_purpose} onChange={e => setAdd('trip_purpose', e.target.value)} />
+                <select
+                  className="form-select" style={{ width: '100%' }}
+                  value={purposeMode === 'custom' ? OTHER_PURPOSE : addForm.trip_purpose}
+                  onChange={e => {
+                    if (e.target.value === OTHER_PURPOSE) { setPurposeMode('custom'); setAdd('trip_purpose', '') }
+                    else { setPurposeMode('preset'); setAdd('trip_purpose', e.target.value) }
+                  }}
+                >
+                  <option value="">Select purpose…</option>
+                  {purposeOptions.map(p => <option key={p} value={p}>{p}</option>)}
+                  <option value={OTHER_PURPOSE}>Other (type below)</option>
+                </select>
+                {purposeMode === 'custom' && (
+                  <input
+                    style={{ ...inp, marginTop: 6 }} placeholder="Describe the purpose"
+                    value={addForm.trip_purpose} onChange={e => setAdd('trip_purpose', e.target.value)}
+                  />
+                )}
               </div>
             </div>
 
@@ -337,6 +403,15 @@ export default function TadaClaims() {
                     </select>
                     <input style={inp} placeholder="Description (optional)" value={it.description} onChange={e => setItem(idx, 'description', e.target.value)} />
                     <input style={{ ...inp, width: 110, flexShrink: 0 }} type="number" min="0" placeholder="Amount" value={it.amount} onChange={e => setItem(idx, 'amount', e.target.value)} />
+                    {it.category === 'Transport' && (
+                      <button
+                        style={{ background: 'none', border: '1px solid var(--theme-border)', borderRadius: 5, color: 'var(--theme-accent)', cursor: 'pointer', fontSize: 11, padding: '4px 8px', flexShrink: 0, whiteSpace: 'nowrap' }}
+                        onClick={() => openCalcModal(idx)}
+                        title="Calculate from distance × rate/km"
+                      >
+                        ⤷ Calculate
+                      </button>
+                    )}
                     {addForm.items.length > 1 && (
                       <button style={{ background: 'none', border: 'none', color: 'var(--theme-text3)', cursor: 'pointer', fontSize: 16, flexShrink: 0 }} onClick={() => removeItemRow(idx)}>✕</button>
                     )}
@@ -398,6 +473,24 @@ export default function TadaClaims() {
             </div>
           </div>
         </div>
+      )}
+
+      {calcModalFor !== null && (
+        <CalculateFareModal
+          vehicleRates={vehicleRates}
+          onConfirm={handleCalcConfirm}
+          onClose={() => setCalcModalFor(null)}
+        />
+      )}
+
+      {showSettings && canManageSettings && (
+        <TadaSettingsModal
+          clientId={clientId}
+          vehicleRates={vehicleRates}
+          purposeOptions={purposeOptions}
+          onSaved={handleSettingsSaved}
+          onClose={() => setShowSettings(false)}
+        />
       )}
     </div>
   )
