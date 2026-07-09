@@ -72,7 +72,12 @@ export default function SalesImportButton({ recipes, onMatched, disabled }) {
       try {
         const wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array' })
         const ws = wb.Sheets[wb.SheetNames[0]]
-        const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false })
+        // defval fills every blank cell with '' instead of leaving it as a hole in the row array —
+        // without it, Array.prototype.map (used to lowercase each cell below) silently skips holes
+        // while findIndex does not, so a callback hitting a hole gets `undefined` and crashes on
+        // `.startsWith`. Real vendor exports have plenty of blank/merged cells (blank Product Code,
+        // blank hierarchy columns), so this reliably tripped.
+        const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false, defval: '' })
         const { headerFound, rows } = parseSalesReport(aoa)
         if (!headerFound) {
           setImportError('Could not find a "Product Name" / "Product Code" header row in this file. Make sure this is a Sales Report Item Wise export.')
