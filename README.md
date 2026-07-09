@@ -141,6 +141,14 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S329 — 2026-07-09 — Fixed browser autofill bleeding a saved login into unrelated forms
+
+Reported from two places: the new POS Staff "HR Employee" `SearchableSelect` search box, and the trial-signup Email/Password fields on the Login page — both were getting the browser's saved login email (and, on the signup form, the saved login password) autofilled in, because none of the relevant inputs carried an explicit `autocomplete` hint. Without one, Chrome falls back to guessing from `type` + surrounding context, and a `type="password"` field anywhere on the page makes it treat the nearest preceding text field as a login username — including a search box that has nothing to do with logging in.
+
+Audited every real `type="password"` input in the app (3 files — POS Staff's Add/Reset PIN, the Enable Self-Service PIN modal on HR Employees, and Login.js's two forms; the PIN-pad login screens for POS/HR Self-Service use custom keypads, not text inputs, so they were never affected) and added the correct token to each: `new-password` for every PIN-creation field (POS Staff, Enable Self-Service, and the trial signup's Password) so Chrome treats them as a fresh credential rather than hunting for a saved one, and `username`/`current-password` on the actual Sign In form's Email/Password so it's still explicitly, correctly treated as a login (unchanged behavior there, just now explicit instead of guessed). `SearchableSelect.js`'s own search input also got `autocomplete="off"` — a global fix covering every dropdown built on this component, not just POS Staff's.
+
+**Files:** `src/pages/Login.js`, `src/modules/hr/employees/EmployeeList.jsx`, `src/modules/pos/staff/PosStaff.jsx`, `src/components/SearchableSelect.js`
+
 ### S328 — 2026-07-09 — POS Staff: link an existing HR employee instead of retyping their name
 
 For a client with both Crest HR and Crest POS, POS Staff's "+ Add Staff" and HR Employees had zero connection — the same person had to be entered twice under two different names/records, with no way to keep them in sync. Asked to "figure it out."

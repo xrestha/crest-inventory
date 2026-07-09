@@ -104,6 +104,7 @@ export default function SearchableSelect({ value, onChange, options, placeholder
             onChange={e => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder="Type to search…"
+            autoComplete="off"
             style={{
               width: '100%', boxSizing: 'border-box', background: '#0f1117', border: 'none',
               borderBottom: '1px solid #2a2f3d', padding: '9px 11px', fontSize: 13, color: '#e8e0d0',

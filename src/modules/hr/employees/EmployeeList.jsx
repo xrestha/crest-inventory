@@ -375,7 +375,7 @@ export default function EmployeeList() {
               <label style={{ fontSize: 11, color: 'var(--theme-text3)', marginBottom: 4, display: 'block' }}>PIN (4–6 digits)</label>
               <input
                 style={{ background: 'var(--theme-input-bg)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '7px 10px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none', width: '100%' }}
-                type="password" inputMode="numeric" maxLength={6} value={ssPin} onChange={e => setSsPin(e.target.value.replace(/\D/g, ''))}
+                type="password" autoComplete="new-password" inputMode="numeric" maxLength={6} value={ssPin} onChange={e => setSsPin(e.target.value.replace(/\D/g, ''))}
               />
             </div>
             {ssMsg && <div style={{ fontSize: 12, color: 'var(--theme-red)' }}>{ssMsg}</div>}

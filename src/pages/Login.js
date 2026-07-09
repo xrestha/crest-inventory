@@ -156,11 +156,11 @@ export default function Login() {
               <div className="login-2col">
                 <div className="login-field">
                   <label>Email *</label>
-                  <input type="email" value={tEmail} onChange={e => setTEmail(e.target.value)} placeholder="you@restaurant.com" />
+                  <input type="email" autoComplete="email" value={tEmail} onChange={e => setTEmail(e.target.value)} placeholder="you@restaurant.com" />
                 </div>
                 <div className="login-field">
                   <label>Password *</label>
-                  <input type={tShowPass ? 'text' : 'password'} value={tPass} onChange={e => setTPass(e.target.value)} placeholder="Min. 6 characters" />
+                  <input type={tShowPass ? 'text' : 'password'} autoComplete="new-password" value={tPass} onChange={e => setTPass(e.target.value)} placeholder="Min. 6 characters" />
                 </div>
               </div>
               <label className="login-show-pw">
@@ -186,12 +186,13 @@ export default function Login() {
           <form onSubmit={handleSignIn} className="login-form">
             <div className="login-field">
               <label>Email</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@restaurant.com" required autoFocus={!startOnTrial} />
+              <input type="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@restaurant.com" required autoFocus={!startOnTrial} />
             </div>
             <div className="login-field">
               <label>Password</label>
               <input
                 type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
                 value={password} onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••" required />
               <label className="login-show-pw">

@@ -501,6 +501,7 @@ export default function PosStaff() {
               <input
                 style={inputStyle}
                 type="password"
+                autoComplete="new-password"
                 inputMode="numeric"
                 maxLength={6}
                 placeholder="4–6 digit PIN"
@@ -553,6 +554,7 @@ export default function PosStaff() {
               <input
                 style={inputStyle}
                 type="password"
+                autoComplete="new-password"
                 inputMode="numeric"
                 maxLength={6}
                 placeholder="4–6 digit PIN"
