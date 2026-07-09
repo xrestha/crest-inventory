@@ -141,6 +141,34 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S326 — 2026-07-09 — Employee Self-Service: submit your own TADA claim
+
+Explained the current TADA Claims workflow (manager-entered only — Self-Service never got a submission channel when TADA Claims shipped, S306 called this out as a deliberate, explicit gap) and asked whether to close it. Confirmed: yes.
+
+Added a new **TADA** tab to `SelfServiceHome.jsx`, alongside the existing Payslip/Leave/Roster tabs, mirroring `submit_my_leave_request`'s exact shape — three new SECURITY DEFINER RPCs (`get_my_tada_claims`, `get_my_tada_claim_items`, `submit_my_tada_claim`) that resolve the caller's own `hr_employee_id` and read/write only their own rows, bypassing the base `client_own` RLS policy on `hr_tada_claims` (which already excludes `is_hr_self_service()` by design) the same way every other self-service RPC does. A submitted claim inserts as `status = 'pending'` into the exact same table the manager-entry form (`TadaClaims.jsx`) writes to — approval, rejection, mark-paid, and the ⚙ Settings vehicle-rate/purpose-option management all stay manager/admin/owner-only, completely unchanged.
+
+The expense-line UI (category picker, Transport line's Vehicle + Distance auto-fill against `settings.tada_vehicle_rates`, Purpose preset dropdown with an "Other" free-text fallback) is identical to the manager form's — rather than duplicating that logic, extracted the shared constants/helpers (`CATEGORIES`, `VEHICLE_TYPES`, `DEFAULT_PURPOSE_OPTIONS`, `OTHER_PURPOSE`, `EMPTY_TADA_ITEM`, `recomputeTadaAmount`) into a new `src/modules/hr/tada/tadaShared.js`, imported by both `TadaClaims.jsx` and `SelfServiceHome.jsx`. Self-service reads `tada_vehicle_rates`/`tada_purpose_options` straight off the `settings` table (folded into the existing `weekly_off_weekday` read) since self-service already keeps SELECT-only access there (S316) — no new RPC needed for that part.
+
+Migration: `supabase/migrations/20260709110000_selfservice_tada_claims.sql`.
+
+**Files:** `src/modules/hr/selfservice/SelfServiceHome.jsx`, `src/modules/hr/tada/TadaClaims.jsx`, `src/modules/hr/tada/tadaShared.js` (new), `src/pages/Help.js`
+
+### S325 — 2026-07-09 — Recipe Costing: ⚡ Auto-fill nutrition no longer silently calls the live USDA API
+
+Investigating why a Grilled Chicken Sandwich recipe showed Fish as an allergen (allergens roll up from each ingredient's `items.nutrition.allergens` text field — surfaced the mechanism, but couldn't inspect the specific client's data directly since this sandbox has no route to the Postgres pooler for an ad hoc read-only query) led into a related, explicitly-requested change: the user wants control over which nutrition library supplies an ingredient's data, not USDA landing there by default.
+
+Asked which of two flows this should target — the per-ingredient Nutrition editor (`NutritionEditorModal.jsx`) already lets you choose a source from several side-by-side matches via "⚡ Suggest from library," so nothing needed there — vs. the bulk "⚡ Auto-fill nutrition" button (`Recipes.js`'s `autoFillNutrition()`), which used to silently call the live USDA FoodData Central API for any ingredient with no local match, bundled into one all-or-nothing confirm dialog. User picked the bulk flow.
+
+Split it into two explicit steps: Auto-fill now only matches against the local `NUTRITION_SEED` library (DFTQC Nepal / IFCT 2017 / USDA rows already baked into the static file — the SOURCE_ORDER ranking there, DFTQC first, is unchanged) and never touches the network. Ingredients with no local match are collected into `usdaCandidates` state and surfaced as a dismissible banner ("N ingredient(s) not in the regional library: …") with its own "🔍 Try USDA FoodData Central" button — a live API call now only happens on that explicit second click, with its own confirm dialog listing exactly which ingredients. Extracted the shared save-and-reflect-into-state logic (`saveNutritionTargets`) so both paths write through one function instead of duplicating the `items` update + local-cache-sync code.
+
+**Files:** `src/modules/ims/recipes/Recipes.js`, `src/pages/Help.js`
+
+### S324 — 2026-07-09 — Payroll payslip: hide the Employer SSF line for non-SSF-enrolled employees
+
+Live testing surfaced the printed/on-screen payslip always showing "Employer SSF (20%, paid by company): NPR 0" even for an employee not enrolled in SSF — every other zero-value line on the payslip (absence, other deductions, advance recovery, TDS) is already conditionally hidden via the "None" fallback pattern in `PayslipBody`, but this one line was unconditional. Gated it behind `slip.ssf_employer > 0`, consistent with the rest of the payslip; enrolled employees are unaffected since `computePayslip` always yields `ssf_employer > 0` for them whenever they have a nonzero basic salary.
+
+**Files:** `src/modules/hr/payroll/PayrollRun.jsx`
+
 ### S323 — 2026-07-09 — Payroll: per-employee TADA amount, auto-filled from Approved claims, added after TDS
 
 Payroll Run had no way to pay out a travel/daily allowance through the payslip itself — TADA Claims (S321) is deliberately kept separate from Payroll since expense reimbursement isn't taxable income. Added a new **TADA** column to the payroll register, between TDS and Net Pay: a per-employee, inline-editable amount (same edit-while-draft/locked-once-finalized pattern as TDS) added to `net_pay` *after* TDS/SSF/other deductions — never run back through tax, so it stays a non-taxable add-on rather than taxable gross.

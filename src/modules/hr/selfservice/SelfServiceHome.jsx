@@ -3,18 +3,29 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { supabase } from '../../../supabaseClient'
 import BsCalendarPicker from '../../../components/BsCalendarPicker'
-import { getBsToday, BS_MONTHS } from '../../../utils/bsCalendar'
+import { getBsToday, BS_MONTHS, adToBs, formatAd } from '../../../utils/bsCalendar'
 import { workingDaysInRange, DAY_TYPES } from '../leave/leaveConstants'
 import { WEEKLY_OFF_WEEKDAY } from '../payrollConstants'
 import { subscribeToPush, isPushSubscribed } from '../../../utils/webPush'
+import { CATEGORIES, VEHICLE_TYPES, DEFAULT_PURPOSE_OPTIONS, OTHER_PURPOSE, EMPTY_TADA_ITEM, recomputeTadaAmount } from '../tada/tadaShared'
 
 const fmt = n => Math.round(n || 0).toLocaleString('en-NP')
+const fmtD = iso => {
+  if (!iso) return '—'
+  const bs = adToBs(new Date(iso + 'T00:00:00'))
+  return `${bs.year}-${String(bs.month).padStart(2, '0')}-${String(bs.day).padStart(2, '0')}`
+}
 const inp = {
   background: 'var(--theme-input-bg)', border: '1px solid var(--theme-border)', borderRadius: 6,
   padding: '7px 10px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none', width: '100%', fontFamily: 'inherit',
 }
 const lbl = { fontSize: 11, color: 'var(--theme-text3)', marginBottom: 4, display: 'block' }
 const STATUS_BADGE = { pending: 'badge-amber', approved: 'badge-green', rejected: 'badge-red', cancelled: 'badge-gray' }
+const TADA_STATUS_BADGE = { pending: 'badge-amber', approved: 'badge-yellow', rejected: 'badge-red', paid: 'badge-green' }
+function emptyTadaForm() {
+  const today = formatAd(new Date())
+  return { trip_purpose: '', destination: '', start_date: today, end_date: today, notes: '', items: [EMPTY_TADA_ITEM()] }
+}
 // Some clients create custom zero-hour shift types purely to mark a day off on the roster board
 // (e.g. "OFF", "Day Off", "Off Day", "LEAVE", "Public Holiday") — same convention as
 // attendanceFromRoster.js. Matched as a substring, not an exact name, since clients phrase these
@@ -36,7 +47,7 @@ export default function SelfServiceHome() {
   const navigate = useNavigate()
   const today = getBsToday()
 
-  const [tab, setTab] = useState('payslip') // payslip | leave | roster
+  const [tab, setTab] = useState('payslip') // payslip | leave | tada | roster
   const [payslips, setPayslips] = useState(null)
   const [leaveTypes, setLeaveTypes] = useState([])
   const [leaveRequests, setLeaveRequests] = useState(null)
@@ -53,6 +64,14 @@ export default function SelfServiceHome() {
   const [submitting, setSubmitting] = useState(false)
   const [msg, setMsg] = useState('')
   const [weeklyOffWeekday, setWeeklyOffWeekday] = useState(WEEKLY_OFF_WEEKDAY) // 0=Sun..6=Sat
+
+  const [tadaClaims,    setTadaClaims]    = useState(null)
+  const [tadaForm,      setTadaForm]      = useState(emptyTadaForm)
+  const [tadaPurposeMode, setTadaPurposeMode] = useState('preset') // 'preset' | 'custom'
+  const [tadaPurposeOptions, setTadaPurposeOptions] = useState(DEFAULT_PURPOSE_OPTIONS)
+  const [tadaVehicleRates, setTadaVehicleRates] = useState({ '2w': null, '4w': null, ev: null })
+  const [tadaSubmitting, setTadaSubmitting] = useState(false)
+  const [tadaMsg,        setTadaMsg]        = useState('')
 
   const [pushEnabled, setPushEnabled] = useState(false)
   const [pushBusy, setPushBusy] = useState(false)
@@ -80,8 +99,12 @@ export default function SelfServiceHome() {
   // can read it directly rather than needing a dedicated RPC.
   useEffect(() => {
     if (!profile?.client_id) return
-    supabase.from('settings').select('weekly_off_weekday').eq('client_id', profile.client_id).maybeSingle()
-      .then(({ data }) => setWeeklyOffWeekday(data?.weekly_off_weekday ?? WEEKLY_OFF_WEEKDAY))
+    supabase.from('settings').select('weekly_off_weekday, tada_vehicle_rates, tada_purpose_options').eq('client_id', profile.client_id).maybeSingle()
+      .then(({ data }) => {
+        setWeeklyOffWeekday(data?.weekly_off_weekday ?? WEEKLY_OFF_WEEKDAY)
+        setTadaVehicleRates({ '2w': null, '4w': null, ev: null, ...(data?.tada_vehicle_rates || {}) })
+        setTadaPurposeOptions(data?.tada_purpose_options?.length ? data.tada_purpose_options : DEFAULT_PURPOSE_OPTIONS)
+      })
   }, [profile?.client_id])
 
   async function enableNotifications() {
@@ -126,8 +149,14 @@ export default function SelfServiceHome() {
     setSwapRequests(data || [])
   }, [])
 
+  const loadTada = useCallback(async () => {
+    const { data } = await supabase.rpc('get_my_tada_claims')
+    setTadaClaims(data || [])
+  }, [])
+
   useEffect(() => { if (profile?.hr_self_service && tab === 'payslip') loadPayslips() }, [profile, tab, loadPayslips])
   useEffect(() => { if (profile?.hr_self_service && tab === 'leave') loadLeave() }, [profile, tab, loadLeave])
+  useEffect(() => { if (profile?.hr_self_service && tab === 'tada') loadTada() }, [profile, tab, loadTada])
   useEffect(() => { if (profile?.hr_self_service && tab === 'roster') { loadRoster(); loadSwapRequests() } }, [profile, tab, loadRoster, loadSwapRequests])
 
   function openSwapRequest(bsDay) {
@@ -190,6 +219,42 @@ export default function SelfServiceHome() {
     loadLeave()
   }
 
+  function setTada(f, v) { setTadaForm(p => ({ ...p, [f]: v })) }
+  function setTadaItem(idx, f, v) {
+    setTadaForm(p => ({ ...p, items: p.items.map((it, i) => i === idx ? { ...it, [f]: v } : it) }))
+  }
+  function addTadaItemRow() { setTadaForm(p => ({ ...p, items: [...p.items, EMPTY_TADA_ITEM()] })) }
+  function removeTadaItemRow(idx) { setTadaForm(p => ({ ...p, items: p.items.filter((_, i) => i !== idx) })) }
+  function setTadaItemDistance(idx, v) {
+    setTadaForm(p => ({
+      ...p,
+      items: p.items.map((it, i) => i === idx ? { ...it, distanceKm: v, amount: recomputeTadaAmount(it, v, it.vehicle, tadaVehicleRates) } : it),
+    }))
+  }
+  function setTadaItemVehicle(idx, v) {
+    setTadaForm(p => ({
+      ...p,
+      items: p.items.map((it, i) => i === idx ? { ...it, vehicle: v, amount: recomputeTadaAmount(it, it.distanceKm, v, tadaVehicleRates) } : it),
+    }))
+  }
+  const tadaTotal = tadaForm.items.reduce((s, it) => s + (parseFloat(it.amount) || 0), 0)
+
+  async function submitTada() {
+    if (!tadaForm.start_date || !tadaForm.end_date) { setTadaMsg('error:Set the trip dates.'); return }
+    const validItems = tadaForm.items.filter(it => parseFloat(it.amount) > 0)
+    if (validItems.length === 0) { setTadaMsg('error:Add at least one expense line with an amount.'); return }
+    setTadaSubmitting(true); setTadaMsg('')
+    const { error } = await supabase.rpc('submit_my_tada_claim', {
+      p_trip_purpose: tadaForm.trip_purpose, p_destination: tadaForm.destination,
+      p_start_date: tadaForm.start_date, p_end_date: tadaForm.end_date, p_notes: tadaForm.notes,
+      p_items: validItems.map(it => ({ category: it.category, description: it.description || null, amount: parseFloat(it.amount) })),
+    })
+    setTadaSubmitting(false)
+    if (error) { setTadaMsg('error:' + error.message); return }
+    setTadaForm(emptyTadaForm()); setTadaPurposeMode('preset'); setTadaMsg('ok:Claim submitted for approval.')
+    loadTada()
+  }
+
   async function signOut() {
     await supabase.auth.signOut()
     navigate('/login', { replace: true })
@@ -228,6 +293,7 @@ export default function SelfServiceHome() {
         <div className="tab-bar" style={{ marginBottom: 20 }}>
           <button className={`tab-btn${tab === 'payslip' ? ' tab-btn--active' : ''}`} onClick={() => setTab('payslip')}>Payslip</button>
           <button className={`tab-btn${tab === 'leave' ? ' tab-btn--active' : ''}`} onClick={() => setTab('leave')}>Leave</button>
+          <button className={`tab-btn${tab === 'tada' ? ' tab-btn--active' : ''}`} onClick={() => setTab('tada')}>TADA</button>
           <button className={`tab-btn${tab === 'roster' ? ' tab-btn--active' : ''}`} onClick={() => setTab('roster')}>Roster</button>
         </div>
 
@@ -310,6 +376,122 @@ export default function SelfServiceHome() {
                           {r.reason && <div style={{ fontSize: 11, color: 'var(--theme-text3)' }}>{r.reason}</div>}
                         </div>
                         <span className={STATUS_BADGE[r.status]} style={{ textTransform: 'capitalize', fontSize: 10 }}>{r.status}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+            </div>
+          </div>
+        )}
+
+        {tab === 'tada' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div className="card" style={{ padding: 16 }}>
+              <h3 style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--theme-text1)' }}>Submit TADA Claim</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={lbl}>Destination</label>
+                    <input style={inp} placeholder="e.g. Pokhara" value={tadaForm.destination} onChange={e => setTada('destination', e.target.value)} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={lbl}>Purpose</label>
+                    <select
+                      className="form-select" style={{ width: '100%' }}
+                      value={tadaPurposeMode === 'custom' ? OTHER_PURPOSE : tadaForm.trip_purpose}
+                      onChange={e => {
+                        if (e.target.value === OTHER_PURPOSE) { setTadaPurposeMode('custom'); setTada('trip_purpose', '') }
+                        else { setTadaPurposeMode('preset'); setTada('trip_purpose', e.target.value) }
+                      }}
+                    >
+                      <option value="">Select purpose…</option>
+                      {tadaPurposeOptions.map(p => <option key={p} value={p}>{p}</option>)}
+                      <option value={OTHER_PURPOSE}>Other (type below)</option>
+                    </select>
+                    {tadaPurposeMode === 'custom' && (
+                      <input style={{ ...inp, marginTop: 6 }} placeholder="Describe the purpose" value={tadaForm.trip_purpose} onChange={e => setTada('trip_purpose', e.target.value)} />
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={lbl}>Start (BS)</label>
+                    <BsCalendarPicker value={tadaForm.start_date} onChange={v => setTada('start_date', v)} placeholder="Select date" clearable />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={lbl}>End (BS)</label>
+                    <BsCalendarPicker value={tadaForm.end_date} onChange={v => setTada('end_date', v)} placeholder="Select date" clearable />
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <label style={{ ...lbl, marginBottom: 0 }}>Expenses</label>
+                    <button className="btn btn-ghost" style={{ fontSize: 11, padding: '3px 10px' }} onClick={addTadaItemRow}>+ Add line</button>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {tadaForm.items.map((it, idx) => (
+                      <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <select className="form-select" style={{ width: 130, flexShrink: 0 }} value={it.category} onChange={e => setTadaItem(idx, 'category', e.target.value)}>
+                            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                          <input style={inp} placeholder="Description (optional)" value={it.description} onChange={e => setTadaItem(idx, 'description', e.target.value)} />
+                          <input style={{ ...inp, width: 100, flexShrink: 0 }} type="number" min="0" placeholder="Amount" value={it.amount} onChange={e => setTadaItem(idx, 'amount', e.target.value)} />
+                          {tadaForm.items.length > 1 && (
+                            <button style={{ background: 'none', border: 'none', color: 'var(--theme-text3)', cursor: 'pointer', fontSize: 16, flexShrink: 0 }} onClick={() => removeTadaItemRow(idx)}>✕</button>
+                          )}
+                        </div>
+                        {it.category === 'Transport' && (
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center', paddingLeft: 2, flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 12, flexShrink: 0 }}>🧮</span>
+                            <select className="form-select" style={{ width: 100, flexShrink: 0, fontSize: 12 }} value={it.vehicle} onChange={e => setTadaItemVehicle(idx, e.target.value)}>
+                              {VEHICLE_TYPES.map(v => <option key={v.key} value={v.key}>{v.label}</option>)}
+                            </select>
+                            <input style={{ ...inp, width: 90, flexShrink: 0 }} type="number" min="0" step="0.1" placeholder="Distance (km)" value={it.distanceKm} onChange={e => setTadaItemDistance(idx, e.target.value)} />
+                            {tadaVehicleRates[it.vehicle] == null ? (
+                              <span style={{ fontSize: 11, color: 'var(--theme-amber)' }}>No rate set — enter Amount manually</span>
+                            ) : (
+                              <span style={{ fontSize: 11, color: 'var(--theme-text3)' }}>× NPR {tadaVehicleRates[it.vehicle]}/km</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ textAlign: 'right', marginTop: 8, fontSize: 13, fontWeight: 700, color: 'var(--theme-accent)' }}>
+                    Total: NPR {fmt(tadaTotal)}
+                  </div>
+                </div>
+
+                <div>
+                  <label style={lbl}>Notes</label>
+                  <textarea style={{ ...inp, height: 50, resize: 'vertical' }} placeholder="Optional" value={tadaForm.notes} onChange={e => setTada('notes', e.target.value)} />
+                </div>
+
+                {tadaMsg && <div style={{ fontSize: 12, color: tadaMsg.startsWith('ok') ? 'var(--theme-green)' : 'var(--theme-red)' }}>{tadaMsg.replace(/^(ok|error):/, '')}</div>}
+                <button className="btn btn-primary" onClick={submitTada} disabled={tadaSubmitting} style={{ alignSelf: 'flex-end' }}>
+                  {tadaSubmitting ? 'Submitting…' : 'Submit Claim'}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <h3 style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--theme-text1)' }}>My Claims</h3>
+              {tadaClaims === null ? <p style={{ color: 'var(--theme-text3)' }}>Loading…</p>
+                : tadaClaims.length === 0 ? <p style={{ color: 'var(--theme-text3)', fontSize: 13 }}>No claims yet.</p>
+                : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {tadaClaims.map(c => (
+                      <div key={c.id} className="card" style={{ padding: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontSize: 13, color: 'var(--theme-text1)' }}>{fmtD(c.start_date)} → {fmtD(c.end_date)} — NPR {fmt(c.total_amount)}</div>
+                          <div style={{ fontSize: 11, color: 'var(--theme-text3)' }}>
+                            {[c.destination, c.trip_purpose].filter(Boolean).join(' · ') || '—'}
+                            {c.status === 'paid' && ` · Paid via ${c.paid_method}`}
+                          </div>
+                        </div>
+                        <span className={TADA_STATUS_BADGE[c.status]} style={{ textTransform: 'capitalize', fontSize: 10 }}>{c.status}</span>
                       </div>
                     ))}
                   </div>

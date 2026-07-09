@@ -7,6 +7,7 @@ import SearchableSelect from '../../../components/SearchableSelect'
 import BsCalendarPicker from '../../../components/BsCalendarPicker'
 import TadaSettingsModal from './TadaSettingsModal'
 import { adToBs, formatAd } from '../../../utils/bsCalendar'
+import { CATEGORIES, VEHICLE_TYPES, DEFAULT_PURPOSE_OPTIONS, OTHER_PURPOSE, EMPTY_TADA_ITEM, recomputeTadaAmount } from './tadaShared'
 
 const fmt  = n => Math.round(n || 0).toLocaleString('en-NP')
 const fmtD = iso => {
@@ -21,23 +22,12 @@ const inp = {
 }
 const lbl = { fontSize: 11, color: 'var(--theme-text3)', marginBottom: 4, display: 'block' }
 
-const CATEGORIES = ['Transport', 'Lodging', 'Daily Allowance', 'Other']
-const VEHICLE_TYPES = [
-  { key: '2w', label: '2-Wheeler' },
-  { key: '4w', label: '4-Wheeler' },
-  { key: 'ev', label: 'EV' },
-]
 const STATUS_BADGE = { pending: 'badge-amber', approved: 'badge-yellow', rejected: 'badge-red', paid: 'badge-green' }
-// vehicle/distanceKm are UI-only — they drive the auto-computed Amount but are never sent to
-// hr_tada_claim_items (which only has category/description/amount; see handleAdd's insert).
-const EMPTY_ITEM = () => ({ category: 'Transport', description: '', amount: '', vehicle: '2w', distanceKm: '' })
-const DEFAULT_PURPOSE_OPTIONS = ['Vendor site visit', 'Purchase', 'Bank errand', 'Client meeting', 'Delivery', 'Site inspection', 'Training / Conference']
-const OTHER_PURPOSE = '__other__'
 function emptyAddForm() {
   const today = formatAd(new Date())
   return {
     employee_id: '', trip_purpose: '', destination: '', start_date: today, end_date: today, notes: '',
-    items: [EMPTY_ITEM()],
+    items: [EMPTY_TADA_ITEM()],
   }
 }
 const PAID_METHODS = ['Cash', 'Bank Transfer', 'Cheque']
@@ -104,24 +94,16 @@ export default function TadaClaims() {
     setShowSettings(false)
   }
 
-  // Live-recompute Amount whenever Distance or Vehicle changes on a Transport line — only
-  // overwrites Amount when both a distance and a configured rate exist, so it never clobbers a
-  // manually-typed Amount just because the rate isn't set up yet for that vehicle.
-  function recomputeAmount(it, distanceKm, vehicle) {
-    const dist = parseFloat(distanceKm) || 0
-    const rate = vehicleRates[vehicle]
-    return (dist > 0 && rate != null) ? String(Math.round(dist * rate)) : it.amount
-  }
   function setItemDistance(idx, v) {
     setAddForm(p => ({
       ...p,
-      items: p.items.map((it, i) => i === idx ? { ...it, distanceKm: v, amount: recomputeAmount(it, v, it.vehicle) } : it),
+      items: p.items.map((it, i) => i === idx ? { ...it, distanceKm: v, amount: recomputeTadaAmount(it, v, it.vehicle, vehicleRates) } : it),
     }))
   }
   function setItemVehicle(idx, v) {
     setAddForm(p => ({
       ...p,
-      items: p.items.map((it, i) => i === idx ? { ...it, vehicle: v, amount: recomputeAmount(it, it.distanceKm, v) } : it),
+      items: p.items.map((it, i) => i === idx ? { ...it, vehicle: v, amount: recomputeTadaAmount(it, it.distanceKm, v, vehicleRates) } : it),
     }))
   }
 
@@ -140,7 +122,7 @@ export default function TadaClaims() {
   function setItem(idx, f, v) {
     setAddForm(p => ({ ...p, items: p.items.map((it, i) => i === idx ? { ...it, [f]: v } : it) }))
   }
-  function addItemRow() { setAddForm(p => ({ ...p, items: [...p.items, EMPTY_ITEM()] })) }
+  function addItemRow() { setAddForm(p => ({ ...p, items: [...p.items, EMPTY_TADA_ITEM()] })) }
   function removeItemRow(idx) { setAddForm(p => ({ ...p, items: p.items.filter((_, i) => i !== idx) })) }
   const addTotal = addForm.items.reduce((s, it) => s + (parseFloat(it.amount) || 0), 0)
 
