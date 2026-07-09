@@ -141,6 +141,16 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S330 — 2026-07-09 — HR Dashboard: surfaces every staff-submission approval queue, not just Leave/OT
+
+Audited (via a research subagent, no code changes in that pass) every place a staff submission creates a row needing a manager decision. Leave and OT were already on `HrDashboard.jsx` and the sidebar rail badge (`useNavBadgeCounts.js`) — but **TADA Claims (`pending`) and Shift Swap requests (`pending_admin`) were completely invisible from every dashboard**, discoverable only by opening `/hr/tada` or `/hr/roster` directly.
+
+Added both to `HrDashboard.jsx`: pulled Leave/OT out of the "Headcount" KPI row into a new dedicated **Approvals** row (Leave Pending / OT Pending / TADA Pending / Swap Pending, all amber + clickable when non-zero, with a total count in the row header), and added matching Pending TADA Claims / Pending Shift Swaps queue tables alongside the existing Leave/OT ones (now a 2×2 grid). Swap Pending deliberately counts only `status = 'pending_admin'` — a swap still awaiting the coworker's own accept (`pending_target`) isn't yet a manager action. Extended `useNavBadgeCounts.js`'s `hrPending` sidebar rail count with the same two sources so the rail dot matches what the dashboard shows.
+
+Separately, asked to analyze whether multi-module clients should get one unified dashboard instead of several — reported findings (not implemented, pending a decision): `/dashboard` (`ClientDashboard.jsx`) already merges IMS+HR+POS into one page when 2+ modules are enabled, `/hr/dashboard` is a deliberately separate, richer *operational* console (approval queues, SSF, advances), and `/owner-dashboard` is a deliberately separate, higher-altitude *strategic* cross-module view (margin%, labor cost%) gated to Growth+ Suite plan. Recommended keeping the three apart (different altitudes of information + different plan gates) rather than merging, with cross-links as the lower-risk way to reduce navigation friction.
+
+**Files:** `src/modules/hr/dashboard/HrDashboard.jsx`, `src/shared/hooks/useNavBadgeCounts.js`, `src/pages/Help.js`
+
 ### S329 — 2026-07-09 — Fixed browser autofill bleeding a saved login into unrelated forms
 
 Reported from two places: the new POS Staff "HR Employee" `SearchableSelect` search box, and the trial-signup Email/Password fields on the Login page — both were getting the browser's saved login email (and, on the signup form, the saved login password) autofilled in, because none of the relevant inputs carried an explicit `autocomplete` hint. Without one, Chrome falls back to guessing from `type` + surrounding context, and a `type="password"` field anywhere on the page makes it treat the nearest preceding text field as a login username — including a search box that has nothing to do with logging in.

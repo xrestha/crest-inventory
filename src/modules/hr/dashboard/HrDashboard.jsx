@@ -43,6 +43,8 @@ export default function HrDashboard() {
   const [empStats,    setEmpStats]    = useState(null)
   const [leaveList,   setLeaveList]   = useState([])
   const [otList,      setOtList]      = useState([])
+  const [tadaList,    setTadaList]    = useState([])
+  const [swapList,    setSwapList]    = useState([])
   const [payInfo,     setPayInfo]     = useState(null)
   const [advOutstanding, setAdvOutstanding] = useState(0)
   const [empMap,      setEmpMap]      = useState({})
@@ -61,6 +63,8 @@ export default function HrDashboard() {
       { data: ltypes },
       { data: leaves },
       { data: otPending },
+      { data: tadaPending },
+      { data: swapPending },
       { data: runs },
       { data: advs },
       { data: reps },
@@ -72,6 +76,14 @@ export default function HrDashboard() {
         .order('created_at', { ascending: false }).limit(8),
       scopedFrom('hr_overtime_entries', 'id, employee_id, bs_year, bs_month, bs_day, ot_hours, ot_type, created_at')
         .eq('status', 'pending')
+        .order('created_at', { ascending: false }).limit(8),
+      scopedFrom('hr_tada_claims', 'id, employee_id, trip_purpose, destination, total_amount, start_date, end_date, created_at')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false }).limit(8),
+      // Only pending_admin needs a manager action — pending_target is still waiting on the
+      // coworker's own accept/decline, same filter SwapRequestsPanel.jsx uses.
+      scopedFrom('hr_shift_swap_requests', 'id, requester_employee_id, target_employee_id, bs_year, bs_month, requester_bs_day, target_bs_day, created_at')
+        .eq('status', 'pending_admin')
         .order('created_at', { ascending: false }).limit(8),
       scopedFrom('hr_payroll_runs', 'id, monthly_periods(bs_year, bs_month)')
         .eq('status', 'finalized')
@@ -105,9 +117,11 @@ export default function HrDashboard() {
     setEmpMap(eMap)
     setTypeMap(tMap)
 
-    // ── Leave + OT queues ──────────────────────────────────────────────────────
+    // ── Leave + OT + TADA + Swap queues ────────────────────────────────────────
     setLeaveList(leaves || [])
     setOtList(otPending || [])
+    setTadaList(tadaPending || [])
+    setSwapList(swapPending || [])
 
     // ── Advances outstanding ───────────────────────────────────────────────────
     const repMap = {}
@@ -139,33 +153,22 @@ export default function HrDashboard() {
 
   const pendingLeave = leaveList.length
   const pendingOt    = otList.length
+  const pendingTada  = tadaList.length
+  const pendingSwap  = swapList.length
+  const pendingTotal = pendingLeave + pendingOt + pendingTada + pendingSwap
 
   return (
     <div className="page-container">
       <div style={{ marginBottom: 20 }}>
         <h1 className="page-title">HR Dashboard</h1>
-        <p className="page-subtitle">Headcount · Payroll · Leave & OT queues · SSF · Advances at a glance</p>
+        <p className="page-subtitle">Headcount · Payroll · Approval queues · SSF · Advances at a glance</p>
       </div>
 
-      {/* ── KPI Row 1 — Headcount ───────────────────────────────────────────── */}
-      <div style={{ fontSize: 11, color: 'var(--theme-text3)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Headcount</div>
+      {/* ── KPI Row 1 — Approvals (everything a staff submission needs a manager to act on) ── */}
+      <div style={{ fontSize: 11, color: 'var(--theme-text3)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+        Approvals {pendingTotal > 0 && <span style={{ color: '#c9a84c' }}>({pendingTotal} pending)</span>}
+      </div>
       <div className="stat-grid" style={{ marginBottom: 20 }}>
-        <KCard
-          label="Active Staff"
-          value={empStats?.active ?? '—'}
-          sub={empStats?.probation > 0 ? `+ ${empStats.probation} on probation` : 'no probation'}
-          color="var(--theme-green)"
-          tip="Active employees only. Probation shown separately — both are included in payroll."
-          onClick={() => navigate('/hr/employees')}
-        />
-        <KCard
-          label="Basic Payroll / Month"
-          value={`NPR ${fmt(empStats?.payrollBase)}`}
-          sub="active + probation, basic only"
-          color="var(--theme-accent)"
-          tip="Sum of basic salary for active and probation employees. Full payroll (allowances, SSF, TDS) is computed during the payroll run."
-          onClick={() => navigate('/hr/payroll')}
-        />
         <KCard
           label="Leave Pending"
           value={pendingLeave}
@@ -183,6 +186,45 @@ export default function HrDashboard() {
           tip="Overtime entries not yet approved. Only approved OT feeds into payroll — approve before running payroll."
           onClick={() => navigate('/hr/overtime')}
           alert={pendingOt > 0}
+        />
+        <KCard
+          label="TADA Pending"
+          value={pendingTada}
+          sub={pendingTada > 0 ? 'awaiting approval' : 'all clear'}
+          color={pendingTada > 0 ? '#c9a84c' : 'var(--theme-green)'}
+          tip="TADA (travel/daily allowance) claims with status Pending, whether entered by a manager or submitted by the employee themselves via Self-Service — click to go to TADA Claims and approve or reject."
+          onClick={() => navigate('/hr/tada')}
+          alert={pendingTada > 0}
+        />
+        <KCard
+          label="Swap Pending"
+          value={pendingSwap}
+          sub={pendingSwap > 0 ? 'awaiting your approval' : 'all clear'}
+          color={pendingSwap > 0 ? '#c9a84c' : 'var(--theme-green)'}
+          tip="Shift swap requests where the coworker has already accepted and it's now waiting on manager approval (requests still waiting on the coworker aren't shown here — nothing for a manager to do yet)."
+          onClick={() => navigate('/hr/roster')}
+          alert={pendingSwap > 0}
+        />
+      </div>
+
+      {/* ── KPI Row 2 — Headcount ───────────────────────────────────────────── */}
+      <div style={{ fontSize: 11, color: 'var(--theme-text3)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Headcount</div>
+      <div className="stat-grid" style={{ marginBottom: 20 }}>
+        <KCard
+          label="Active Staff"
+          value={empStats?.active ?? '—'}
+          sub={empStats?.probation > 0 ? `+ ${empStats.probation} on probation` : 'no probation'}
+          color="var(--theme-green)"
+          tip="Active employees only. Probation shown separately — both are included in payroll."
+          onClick={() => navigate('/hr/employees')}
+        />
+        <KCard
+          label="Basic Payroll / Month"
+          value={`NPR ${fmt(empStats?.payrollBase)}`}
+          sub="active + probation, basic only"
+          color="var(--theme-accent)"
+          tip="Sum of basic salary for active and probation employees. Full payroll (allowances, SSF, TDS) is computed during the payroll run."
+          onClick={() => navigate('/hr/payroll')}
         />
         <KCard
           label="Advances Outstanding"
@@ -329,6 +371,82 @@ export default function HrDashboard() {
           {pendingOt > 0 && (
             <button className="btn btn-ghost" style={{ fontSize: 11, marginTop: 8 }} onClick={() => navigate('/hr/overtime')}>
               Go to Overtime → approve / reject
+            </button>
+          )}
+        </div>
+
+        {/* TADA queue */}
+        <div>
+          <div style={{ fontSize: 11, color: 'var(--theme-text3)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+            Pending TADA Claims {pendingTada > 0 && <span style={{ color: '#c9a84c' }}>({pendingTada})</span>}
+          </div>
+          <div className="card" style={{ padding: 0 }}>
+            {tadaList.length === 0 ? (
+              <div style={{ padding: '18px 16px', fontSize: 13, color: 'var(--theme-text3)' }}>No pending TADA claims ✓</div>
+            ) : (
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Trip</th>
+                    <th style={{ textAlign: 'right' }}>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tadaList.map(c => (
+                    <tr key={c.id} style={{ cursor: 'pointer' }} onClick={() => navigate('/hr/tada')}>
+                      <td style={{ fontWeight: 600, fontSize: 12, color: 'var(--theme-text1)' }}>{empMap[c.employee_id] || '—'}</td>
+                      <td style={{ fontSize: 12, color: 'var(--theme-text2)' }}>{c.destination || c.trip_purpose || '—'}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 600, fontSize: 12, color: 'var(--theme-text1)' }}>{fmt(c.total_amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+          {pendingTada > 0 && (
+            <button className="btn btn-ghost" style={{ fontSize: 11, marginTop: 8 }} onClick={() => navigate('/hr/tada')}>
+              Go to TADA Claims → approve / reject
+            </button>
+          )}
+        </div>
+
+        {/* Shift swap queue */}
+        <div>
+          <div style={{ fontSize: 11, color: 'var(--theme-text3)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+            Pending Shift Swaps {pendingSwap > 0 && <span style={{ color: '#c9a84c' }}>({pendingSwap})</span>}
+          </div>
+          <div className="card" style={{ padding: 0 }}>
+            {swapList.length === 0 ? (
+              <div style={{ padding: '18px 16px', fontSize: 13, color: 'var(--theme-text3)' }}>No pending shift swaps ✓</div>
+            ) : (
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Requester ⇄ Target</th>
+                    <th style={{ textAlign: 'center' }}>Days</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {swapList.map(s => (
+                    <tr key={s.id} style={{ cursor: 'pointer' }} onClick={() => navigate('/hr/roster')}>
+                      <td style={{ fontSize: 12, color: 'var(--theme-text2)' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{empMap[s.requester_employee_id] || '—'}</span>
+                        {' ⇄ '}
+                        <span style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{empMap[s.target_employee_id] || '—'}</span>
+                      </td>
+                      <td style={{ textAlign: 'center', fontSize: 12, color: 'var(--theme-text3)' }}>
+                        {BS_MONTHS[s.bs_month - 1]} {s.requester_bs_day} ⇄ {s.target_bs_day}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+          {pendingSwap > 0 && (
+            <button className="btn btn-ghost" style={{ fontSize: 11, marginTop: 8 }} onClick={() => navigate('/hr/roster')}>
+              Go to Roster → approve / reject
             </button>
           )}
         </div>

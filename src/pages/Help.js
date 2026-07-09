@@ -238,11 +238,12 @@ const IMS_FEATURE_TIERS = [
 const HR_FEATURES = [
   {
     icon: '▦', name: 'HR Dashboard',
-    guide: 'The HR command centre. Shows live headcount (active + probation), estimated basic payroll per month, pending leave requests, pending OT entries, advances outstanding, and employees retiring within 180 days. The payroll section summarises the last finalized run: net payable, employee SSF (11%), employer SSF (20%), and the total SSF challan amount to deposit — with the deposit deadline (15th of the following month). Pending leave requests and pending OT entries are listed below so you can click through to approve or reject without navigating away.',
+    guide: 'The HR command centre. An Approvals row up top covers every staff submission waiting on you — pending Leave requests, pending OT entries, pending TADA claims (manager-entered or Self-Service-submitted), and shift swaps that have cleared the coworker\'s accept and now need your sign-off. Below that: live headcount (active + probation), estimated basic payroll per month, advances outstanding, and employees retiring within 180 days. The payroll section summarises the last finalized run: net payable, employee SSF (11%), employer SSF (20%), and the total SSF challan amount to deposit — with the deposit deadline (15th of the following month). All four approval queues are listed further down so you can click through to approve or reject without navigating away.',
     tips: [
       'All KPI cards are clickable — click any card to jump directly to the relevant page',
       'SSF challan total = employee 11% + employer 20% from the last finalized payroll run; deposit with SSF by the 15th of the following BS month',
-      'Pending Leave and Pending OT count cards turn amber when items are waiting — clear them before running payroll so approved entries are included',
+      'The four Approvals cards (Leave, OT, TADA, Swap) turn amber when items are waiting — clear Leave/OT before running payroll so approved entries are included',
+      'Swap Pending only counts requests the coworker has already accepted (status pending_admin) — one still waiting on the coworker isn\'t something you can act on yet, so it\'s left off this count',
       'The Basic Payroll / Month figure is basic salary only; full payroll (allowances, SSF, TDS, OT) appears in the Last Finalized Payroll section after the first payroll run',
       '"Retiring Soon" counts active/probation employees whose retirement date (DOB + 60 years, from the Employee record) falls within 180 days — click to see them in the Employees list',
     ]

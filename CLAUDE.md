@@ -58,6 +58,14 @@ Plan ranks: `starter (0) < growth (1) < pro (2)`. Keys auto-unlocked by plan liv
 
 **`SuiteGate`** (`src/components/SuiteGate.js`, added S317 for Owner Dashboard) is a third gate type on a genuinely separate axis: `clients.suite_plan` (the Crest Suite bundle tier — IMS+HR+POS together — nullable, with no free-default tier unlike `hr_plan`/`pos_plan`). It differs from `ModuleGate`/`PremiumGate` in one important way: **it never redirects on failure** — an ineligible viewer sees an inline upsell/explanation rendered in place, since the feature's nav entry must stay visible regardless of eligibility. Used as an in-page wrapper inside the gated component, not at the route level. Reach for this pattern only for a genuinely cross-module/bundle-tier feature; a single-module feature still wants `ModuleGate` + `PremiumGate`.
 
+### Three dashboards, deliberately not one (as of S330 analysis)
+
+A client with 2+ modules sees three separate dashboard destinations, each a different altitude and gate — don't merge them without re-reading this:
+
+- **`/dashboard`** (`ClientDashboard.jsx`, universal, no plan gate) — the "quick glance" one. Already merges IMS/HR/POS sections onto a single page when `clientModules.{ims,hr,pos}` says 2+ are enabled (a `moduleHeader()` per section), but each module's slice here is deliberately light (HR is just 3 cards: Total Employees / Active / Basic Payroll).
+- **`/hr/dashboard`** (`HrDashboard.jsx`, `ModuleGate` only) — the operational HR console: an **Approvals** row (Leave/OT/TADA/Swap pending counts, S330) plus queue tables you act on directly, SSF breakdown, advances. This is a working tool, not a glance.
+- **`/owner-dashboard`** (`OwnerDashboard.jsx`, `SuiteGate` at Growth+) — the strategic cross-module view: margin%, labor cost% (needs HR wage data + IMS revenue together, computed nowhere else). IMS+HR only so far; POS integration is an explicit Phase 2.
+
 ### Multi-tenant data isolation
 
 Every Supabase table is client-scoped. **Use the scoped data-access layer, not hand-written `.eq('client_id', ...)`:**

@@ -17,11 +17,14 @@ export function useNavBadgeCounts(hrVisible, posVisible) {
     if (!clientId || !hrVisible) { setHrPending(0); return }
     let cancelled = false
     async function load() {
-      const [{ count: leaveCount }, { count: otCount }] = await Promise.all([
+      const [{ count: leaveCount }, { count: otCount }, { count: tadaCount }, { count: swapCount }] = await Promise.all([
         scopedFrom('hr_leave_requests', 'id', { count: 'exact', head: true }).eq('status', 'pending'),
         scopedFrom('hr_overtime_entries', 'id', { count: 'exact', head: true }).eq('status', 'pending'),
+        scopedFrom('hr_tada_claims', 'id', { count: 'exact', head: true }).eq('status', 'pending'),
+        // pending_admin only — pending_target is still waiting on the coworker, not a manager action
+        scopedFrom('hr_shift_swap_requests', 'id', { count: 'exact', head: true }).eq('status', 'pending_admin'),
       ])
-      if (!cancelled) setHrPending((leaveCount || 0) + (otCount || 0))
+      if (!cancelled) setHrPending((leaveCount || 0) + (otCount || 0) + (tadaCount || 0) + (swapCount || 0))
     }
     load()
     const id = setInterval(load, POLL_MS)
