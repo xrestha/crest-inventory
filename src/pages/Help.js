@@ -1167,6 +1167,7 @@ export default function Help() {
                     'Staff role = waiters who take orders only. They cannot access Table Management or reports',
                     'Supervisor role is ideal for head waiters and floor captains who need to set table status and manage the floor',
                     'Users with no role assigned cannot see any POS screens — the POS section is hidden from their sidebar',
+                    'If Crest HR is also enabled, + Add Staff defaults to picking an existing HR Employee instead of typing a fresh name — the POS login is linked to that employee record (shown with a 🔗 HR tag) so the name never drifts out of sync. Switch to POS-only Staff for someone who isn\'t in HR (e.g. a casual/part-time role).',
                   ],
                 },
               ].map(feat => (

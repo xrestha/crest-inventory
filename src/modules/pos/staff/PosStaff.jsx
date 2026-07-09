@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
+import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
+import SearchableSelect from '../../../components/SearchableSelect'
 
 const PERMISSION_LEVELS = [
   { value: 'staff',      label: 'Staff',      desc: 'Take orders, view floor' },
@@ -15,14 +17,16 @@ const DEFAULT_ROLES = [
   { label: 'Manager',    level: 'manager' },
 ]
 const LEVEL_BADGE = { staff: 'badge-green', supervisor: 'badge-amber', manager: 'badge-gold' }
-const EMPTY_ADD   = { full_name: '', pin: '', job_title: '' }
+const EMPTY_ADD   = { full_name: '', pin: '', job_title: '', employee_id: '' }
 const EMPTY_ROLE  = { label: '', level: 'staff' }
 
 function pinValid(pin) { return /^\d{4,6}$/.test(pin) }
 
 export default function PosStaff() {
-  const { clientId, hasPosAccess } = useAuth()
+  const { clientId, hasPosAccess, hrEnabled } = useAuth()
+  const { scopedFrom } = useScopedDb()
   const [staff,       setStaff]       = useState([])
+  const [employees,   setEmployees]   = useState([]) // hr_employees, only fetched when hrEnabled
   const [loading,     setLoading]     = useState(true)
   const [saving,      setSaving]      = useState({})
   const [msg,         setMsg]         = useState('')
@@ -37,6 +41,7 @@ export default function PosStaff() {
   // Add staff modal
   const [addModal,    setAddModal]    = useState(false)
   const [addForm,     setAddForm]     = useState(EMPTY_ADD)
+  const [addMode,     setAddMode]     = useState('hr') // 'hr' | 'manual' — only relevant when hrEnabled
   const [adding,      setAdding]      = useState(false)
   const [addMsg,      setAddMsg]      = useState('')
 
@@ -47,19 +52,25 @@ export default function PosStaff() {
   const [pinMsg,      setPinMsg]      = useState('')
 
   const effectiveRoles = customRoles.length > 0 ? customRoles : DEFAULT_ROLES
+  const linkedEmployeeIds = new Set(staff.map(p => p.hr_employee_id).filter(Boolean))
+  const unlinkedEmployees = employees.filter(e => !linkedEmployeeIds.has(e.id))
 
   useEffect(() => { if (clientId) init() }, [clientId]) // eslint-disable-line
 
   async function init() {
     setLoading(true)
-    const [{ data: staffData }, { data: settingsData }] = await Promise.all([
+    const [{ data: staffData }, { data: settingsData }, { data: empData }] = await Promise.all([
       supabase.rpc('get_pos_staff_list', { p_client_id: clientId }),
       supabase.from('settings').select('pos_custom_roles').eq('client_id', clientId).single(),
+      hrEnabled
+        ? scopedFrom('hr_employees', 'id, full_name, employee_code, status').in('status', ['active', 'probation']).order('full_name')
+        : Promise.resolve({ data: [] }),
     ])
     const roles = settingsData?.pos_custom_roles?.length ? settingsData.pos_custom_roles : DEFAULT_ROLES
     if (settingsData?.pos_custom_roles?.length) setCustomRoles(settingsData.pos_custom_roles)
     const staffList = staffData || []
     setStaff(staffList)
+    setEmployees(empData || [])
     setLoading(false)
 
     // Silently fix any pos_role values that don't match the job title's configured level
@@ -129,11 +140,14 @@ export default function PosStaff() {
   // ── Add staff ──────────────────────────────────────────────────────────────
   function openAdd() {
     setAddForm({ ...EMPTY_ADD, job_title: effectiveRoles[0]?.label || '' })
+    setAddMode(hrEnabled && unlinkedEmployees.length > 0 ? 'hr' : 'manual')
     setAddMsg(''); setAddModal(true)
   }
 
   async function addStaff() {
-    if (!addForm.full_name.trim()) { setAddMsg('Name is required.'); return }
+    if (addMode === 'hr') {
+      if (!addForm.employee_id) { setAddMsg('Select an employee.'); return }
+    } else if (!addForm.full_name.trim()) { setAddMsg('Name is required.'); return }
     if (!pinValid(addForm.pin))    { setAddMsg('PIN must be 4–6 digits.'); return }
     const role = effectiveRoles.find(r => r.label === addForm.job_title)
     if (!role) { setAddMsg('Select a role.'); return }
@@ -142,7 +156,7 @@ export default function PosStaff() {
       body: {
         action:        'create_pos_staff',
         client_id:     clientId,
-        full_name:     addForm.full_name.trim(),
+        ...(addMode === 'hr' ? { employee_id: addForm.employee_id } : { full_name: addForm.full_name.trim() }),
         pin:           addForm.pin,
         pos_role:      role.level,
         pos_job_title: addForm.job_title,
@@ -277,7 +291,14 @@ export default function PosStaff() {
                 const displayTitle = p.pos_job_title || effectiveRoles.find(r => r.level === p.pos_role)?.label || ''
                 return (
                   <tr key={p.id}>
-                    <td style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{p.full_name || '—'}</td>
+                    <td>
+                      <div style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{p.full_name || '—'}</div>
+                      {p.hr_employee_id && (
+                        <Tip text="This POS login is linked to an HR employee record — name stays in sync with HR.">
+                          <span style={{ fontSize: 10, color: 'var(--theme-text3)' }}>🔗 HR{p.employee_code ? ` · ${p.employee_code}` : ''}</span>
+                        </Tip>
+                      )}
+                    </td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <select
@@ -434,18 +455,44 @@ export default function PosStaff() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
           onClick={e => { if (e.target === e.currentTarget && !adding) setAddModal(false) }}>
           <div className="card" style={{ width: 380, padding: 28 }}>
-            <h3 style={{ margin: '0 0 20px', fontSize: 16, color: 'var(--theme-text1)' }}>Add Staff Member</h3>
+            <h3 style={{ margin: '0 0 6px', fontSize: 16, color: 'var(--theme-text1)' }}>Add Staff Member</h3>
 
-            <div style={{ marginBottom: 14 }}>
-              <label style={labelStyle}>Full Name</label>
-              <input
-                style={inputStyle}
-                placeholder="e.g. Ram Bahadur"
-                value={addForm.full_name}
-                onChange={e => setAddForm(f => ({ ...f, full_name: e.target.value }))}
-                autoFocus
-              />
-            </div>
+            {hrEnabled && (
+              <div className="tab-bar" style={{ marginBottom: 16 }}>
+                <button className={`tab-btn${addMode === 'hr' ? ' tab-btn--active' : ''}`} onClick={() => setAddMode('hr')}>HR Employee</button>
+                <button className={`tab-btn${addMode === 'manual' ? ' tab-btn--active' : ''}`} onClick={() => setAddMode('manual')}>POS-only Staff</button>
+              </div>
+            )}
+
+            {addMode === 'hr' ? (
+              <div style={{ marginBottom: 14 }}>
+                <label style={labelStyle}>
+                  <Tip text="Links this POS login to an existing HR employee record — their name stays in sync with HR, and payroll/attendance can be matched to the same person.">HR Employee</Tip>
+                </label>
+                {unlinkedEmployees.length === 0 ? (
+                  <p style={{ fontSize: 12, color: 'var(--theme-text3)', margin: 0 }}>
+                    Every active HR employee already has POS access — add one in HR → Employees first, or switch to POS-only Staff.
+                  </p>
+                ) : (
+                  <SearchableSelect
+                    options={unlinkedEmployees.map(e => ({ value: e.id, label: `${e.full_name}${e.employee_code ? ` (${e.employee_code})` : ''}` }))}
+                    value={addForm.employee_id} onChange={v => setAddForm(f => ({ ...f, employee_id: v }))}
+                    placeholder="Select employee…"
+                  />
+                )}
+              </div>
+            ) : (
+              <div style={{ marginBottom: 14 }}>
+                <label style={labelStyle}>Full Name</label>
+                <input
+                  style={inputStyle}
+                  placeholder="e.g. Ram Bahadur"
+                  value={addForm.full_name}
+                  onChange={e => setAddForm(f => ({ ...f, full_name: e.target.value }))}
+                  autoFocus
+                />
+              </div>
+            )}
 
             <div style={{ marginBottom: 14 }}>
               <label style={labelStyle}>

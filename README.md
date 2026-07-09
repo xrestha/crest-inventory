@@ -141,6 +141,18 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S328 — 2026-07-09 — POS Staff: link an existing HR employee instead of retyping their name
+
+For a client with both Crest HR and Crest POS, POS Staff's "+ Add Staff" and HR Employees had zero connection — the same person had to be entered twice under two different names/records, with no way to keep them in sync. Asked to "figure it out."
+
+`profiles.hr_employee_id` (present since baseline, previously only consumed by HR Self-Service) is now also written by `create_pos_staff` when an `employee_id` param is passed. The Add Staff modal gains an "HR Employee / POS-only Staff" toggle (only shown when `hrEnabled`, defaulting to HR Employee whenever an unlinked one exists): HR mode replaces the free-text Full Name field with a `SearchableSelect` of HR employees who don't already have a POS account (`employee.full_name` is used server-side, not retyped); POS-only mode is the unchanged original flow, for staff who aren't in HR. The staff table now shows a "🔗 HR · <employee_code>" tag under the name for linked accounts.
+
+`get_pos_staff_list` now also returns `hr_employee_id`/`employee_code` via a left join, and a new partial unique index (`profiles_hr_employee_pos_unique` on `hr_employee_id WHERE pos_email IS NOT NULL`) plus an Edge Function-side check both stop the same HR employee from ending up with two POS accounts.
+
+Migration: `supabase/migrations/20260709130000_pos_staff_hr_link.sql`. The `admin-user-ops` Edge Function's `create_pos_staff` action was also updated and deployed (`supabase functions deploy admin-user-ops`) — the first Edge Function redeploy this session, done directly rather than through the SQL-Editor-paste routine used for schema migrations.
+
+**Files:** `src/modules/pos/staff/PosStaff.jsx`, `supabase/functions/admin-user-ops/index.ts`, `src/pages/Help.js`
+
 ### S327 — 2026-07-09 — TADA Claims: Start Point dropdown + vendor picker for Purchase trips
 
 Live feedback on the new Self-Service TADA tab: a claim only had a single Destination field, with no origin, and staff going on the common "Purchase" run had to type the vendor's name from memory instead of picking it from the Vendor list Crest already has.

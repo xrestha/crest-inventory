@@ -114,16 +114,33 @@ Deno.serve(async (req) => {
     }
 
     // ── Create a POS staff member — name + PIN, auto-generated email ──────────
+    // Optional employee_id links the new POS account to an existing hr_employees record
+    // (client has both HR + POS) — full_name is then taken from that employee, not retyped.
     if (action === 'create_pos_staff') {
       const targetClientId = isCallerAdmin ? params.client_id : profile?.client_id
       if (!targetClientId) return json({ error: 'client_id required' }, 400)
 
-      const { full_name, pin, pos_role, pos_job_title } = params
-      if (!full_name || !pin) return json({ error: 'full_name and pin are required' }, 400)
+      const { pin, pos_role, pos_job_title, employee_id } = params
+      let { full_name } = params
+      if (!pin) return json({ error: 'pin is required' }, 400)
       if (!/^\d{4,6}$/.test(pin)) return json({ error: 'PIN must be 4–6 digits' }, 400)
 
       const validRoles = ['staff', 'supervisor', 'manager']
       if (pos_role && !validRoles.includes(pos_role)) return json({ error: 'Invalid pos_role' }, 400)
+
+      if (employee_id) {
+        const { data: employee } = await admin
+          .from('hr_employees').select('id, full_name, client_id')
+          .eq('id', employee_id).eq('client_id', targetClientId).single()
+        if (!employee) return json({ error: 'Employee not found' }, 400)
+
+        const { data: existingLink } = await admin
+          .from('profiles').select('id').eq('hr_employee_id', employee_id).not('pos_email', 'is', null).maybeSingle()
+        if (existingLink) return json({ error: 'This employee already has a POS staff account' }, 400)
+
+        full_name = employee.full_name
+      }
+      if (!full_name) return json({ error: 'full_name is required' }, 400)
 
       // Generate a stable internal email — staff never see or type this
       const slug   = full_name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12)
@@ -148,6 +165,7 @@ Deno.serve(async (req) => {
         pos_role:      pos_role || null,
         pos_job_title: pos_job_title || null,
         pos_email:     email,
+        hr_employee_id: employee_id || null,
       }, { onConflict: 'id' })
 
       if (profileErr) {
