@@ -663,6 +663,7 @@ export default function Layout() {
                 </span>
               </NavLink>
               {renderNavItem({ to: '/periods', label: 'Periods', icon: '◷' })}
+              {renderNavItem({ to: '/admin/guest-menu', label: 'Guest Menu', icon: '📱' })}
               {renderNavItem({ to: '/admin/audit', label: 'Audit Log', icon: '◈' })}
               {renderNavItem({ to: '/settings', label: 'Settings', icon: '⚙' })}
             </>

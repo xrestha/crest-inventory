@@ -1189,6 +1189,15 @@ export default function Help() {
               </div>
               {[
                 {
+                  icon: '📱', name: 'Guest Menu Preview',
+                  guide: 'Preview the currently-viewed client\'s guest QR menu without needing a printed QR code or asking the client for one. Pick a client in the sidebar switcher first, then pick one of that client\'s tables — the page embeds the exact live page a guest sees after scanning that table\'s QR (GuestMenu.jsx), including guest ordering if the client has that Pro-tier feature enabled.',
+                  tips: [
+                    'This is the real, live guest page, not a mockup — if guest ordering is on and you place an order, it creates a genuine pending order the client\'s own staff will see in POS Orders',
+                    'Copy Link or Open in New Tab if you want to test on an actual phone instead of the embedded preview',
+                    'If the client has no tables set up yet, add one in Tables first',
+                  ],
+                },
+                {
                   icon: '◷', name: 'Audit Log',
                   guide: 'A full event log of every significant action in the system — creates, updates, deletes, period opens/closes, payroll runs, and admin operations. Each row shows the timestamp, client, user, action type, module area, and a plain-English summary of what changed. Filter by area (IMS, HR, POS, Admin) or search by user. Useful for investigating data discrepancies or tracking who changed what.',
                   tips: [

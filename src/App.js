@@ -26,6 +26,7 @@ import SupplierPriceTracker from './modules/ims/purchases/SupplierPriceTracker'
 import MenuEngineering from './modules/ims/recipes/MenuEngineering'
 import AdminClients from './pages/AdminClients'
 import AuditLog from './pages/AuditLog'
+import AdminGuestMenu from './pages/AdminGuestMenu'
 import PremiumGate from './components/PremiumGate'
 import ModuleGate from './components/ModuleGate'
 import Overheads from './modules/ims/reports/Overheads'
@@ -224,6 +225,8 @@ export default function App() {
                 element={<ProtectedRoute adminOnly><AdminClients /></ProtectedRoute>} />
               <Route path="/admin/audit"
                 element={<ProtectedRoute adminOnly><AuditLog /></ProtectedRoute>} />
+              <Route path="/admin/guest-menu"
+                element={<ProtectedRoute adminOnly><AdminGuestMenu /></ProtectedRoute>} />
             </Route>
           </Routes>
         </BrowserRouter>
