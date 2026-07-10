@@ -141,6 +141,26 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S342 — 2026-07-10 — feat: Dashboard KPI cards shrunk to reduce page length
+
+`ClientDashboard.jsx` (the same file backs both "Admin Dashboard" and the real-client dashboard — there's no separate admin-only file) stacks up to 4 KPI-card grid sections (IMS Row 1: 5 cards, IMS Row 2: 6 cards, HR: 3, POS: 4) plus 4 chart/table blocks, making the page long enough to require scrolling. After discussing three options (shrink cards / convert secondary cards to a slim chip strip / make sections collapsible), the user chose to shrink the cards only.
+
+Card padding `14px 16px → 10px 14px`, grid `gap 14 → 10`, grid `minmax(160px) → minmax(140px)` (the bigger lever — eliminates whole wrapped rows at common widths, e.g. IMS Row 2's 6 cards now fit one row instead of wrapping 5+1 around ~1280px), label/subtext `11px → 10px`, hero-tier values `28px → 22px`, secondary-tier values `22px → 18px` — the two-tier hero/secondary hierarchy is preserved, not flattened. Section `marginBottom` unified to `14` everywhere (previously an inconsistent 14/20 split). Extracted `kpiLabelStyle`/`kpiSubtextStyle`/`kpiValueStyle(size, weight)` next to the existing `kpiCard()` factory (the label/value/subtext style shape was already drifting into 3 slightly different variants across the file before this pass, not a clean single pattern) so any future re-tune is a few-line edit instead of a 15+-site sweep. `OwnerDashboard.jsx` has its own independently-duplicated `kpiCard` and is deliberately not touched by this pass.
+
+**Files:** `src/pages/dashboard/ClientDashboard.jsx`
+
+### S341 — 2026-07-10 — chore(ims): Finance Reports sidebar — moved Purchase 1L+ Report to the bottom
+
+Pure reorder in `Layout.js`'s `REPORTS` array — Purchase 1L+ Report now sits below Outstanding Payables in the Finance Reports sidebar group instead of 2nd. No behavior change.
+
+**Files:** `src/components/Layout.js`
+
+### S340 — 2026-07-10 — fix(ims): Purchases bill entry — Qty field no longer shifts when a unit appears
+
+`PurchaseBillModal.jsx`'s Qty cell only rendered its unit label (`GM`/`ML`/etc.) below the input once an item was selected, conditionally — so the input visibly shifted up a few pixels the moment an item got picked, since the cell had less content before that. Removed that below-line entirely and instead changed the input's placeholder from a generic `0` to the item's actual unit (e.g. `GM`) once known — the unit now shows inside the field itself (visible whenever it's empty) rather than as a separate line underneath, so there's nothing left to appear/disappear and the input's position never shifts. The separate purchase-unit conversion line (`= 500 GM`, shown only for items whose purchase unit differs from their storage unit) is unrelated and unchanged.
+
+**Files:** `src/modules/ims/purchases/PurchaseBillModal.jsx`
+
 ### S339 — 2026-07-10 — feat(admin): Guest Menu Preview — see any client's live guest QR menu from the Admin panel
 
 New Admin-only page (`/admin/guest-menu`, "Guest Menu" in the Admin sidebar group) that previews the currently-viewed client's guest QR menu (`GuestMenu.jsx`, the public `/pos/menu/:tableId` page a guest sees after scanning a table's QR code) without needing a printed QR code or the client's help. Picks up whichever client is selected via the sidebar's admin client switcher, lists that client's active tables, and embeds the real live guest page in an iframe for the selected one — deliberately the exact same component a guest loads (via `iframe src`), not a separate mockup, so it's always in sync and includes guest ordering if that client has the Pro-tier `guest_ordering` flag on. A warning banner makes clear this is the real page — placing a test order through it creates a genuine pending row in `pos_guest_order_requests` that the client's own staff will see in POS Orders.
