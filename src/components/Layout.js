@@ -45,10 +45,10 @@ const REPORTS = [
   { to: '/shrinkage',            label: 'Shrinkage Report',     icon: '⚠', featureKey: 'shrinkage_report',     cat: 'stock', minPlan: 'pro' },
   // Money & tax
   { to: '/vat-report',           label: 'VAT Report',           icon: '₨', featureKey: 'vat_report',           cat: 'money' },
-  { to: '/purchase-one-lakh-report', label: 'Purchase 1L+ Report', icon: '⚑', featureKey: 'vat_report',       cat: 'money' },
   { to: '/non-vat-report',      label: 'Non-VAT Report',       icon: '₨', featureKey: 'non_vat_report',       cat: 'money' },
   { to: '/payments',             label: 'Payment Summary',      icon: '⊕', featureKey: 'payment_summary',      cat: 'money', minPlan: 'starter' },
   { to: '/payables',             label: 'Outstanding Payables', icon: '₨', featureKey: 'outstanding_payables', cat: 'money', minPlan: 'growth' },
+  { to: '/purchase-one-lakh-report', label: 'Purchase 1L+ Report', icon: '⚑', featureKey: 'vat_report',       cat: 'money' },
   // Menu & vendors
   { to: '/best-sellers',         label: 'Best & Worst Sellers', icon: '▲', featureKey: 'best_sellers',   cat: 'menu', minPlan: 'growth' },
   { to: '/recipe-margin',        label: 'Recipe Margin',        icon: '◈', featureKey: 'recipe_margin',  cat: 'menu', minPlan: 'growth' },
