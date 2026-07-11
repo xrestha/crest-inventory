@@ -141,6 +141,14 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S357 — 2026-07-11 — fix: Attendance Start/End flagged existing saved times as invalid ("08:00:00")
+
+Regression from S353: existing `hr_attendance` rows loaded fine, but their Start/End showed red "invalid" as soon as the sheet loaded — Postgres's `time` column reads back through Supabase as `"08:00:00"` (with seconds), and the new colon-format validator only accepted an exact `HH:MM` with no trailing `:SS`, so every pre-existing saved time failed validation the moment it appeared on screen.
+
+Two-part fix in `AttendanceSheet.jsx`: `parseTimeInput()`'s colon regex now accepts an optional trailing `:SS` (dropped, not stored); and `loadAttendance()` now runs `start_time`/`end_time` through `parseTimeInput()` immediately on load rather than waiting for the admin to focus/blur each cell, so the display is clean (`8:00`, not `08:00:00`) right away instead of only after being touched. Full HR suite (37 tests) passes; build compiles clean.
+
+**Files:** `src/modules/hr/attendance/AttendanceSheet.jsx`
+
 ### S356 — 2026-07-11 — feat(hr): Attendance gets a default-break bulk-fill (Apply Break to Day / to Month)
 
 Follow-up to S355 — typing 45 into every single Break cell by hand defeated the point of a default. Added an editable "Default break" number (starts at 45 min) next to the bulk-action buttons on both tabs, feeding two new buttons: Apply Break to Day (Mark Attendance — fills every already-marked employee's blank Break for the selected day) and Apply Break to Month (By Employee — same, across that employee's whole month).

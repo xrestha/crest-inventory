@@ -25,11 +25,13 @@ function weekdayOf(period, day) {
 // Start/End are punched in as plain text (24-hour HH:MM), not a native time-picker widget. Also
 // accepts colon-free digits — "0800"/"800"/"08" — same shorthand a time-clock calculator takes,
 // so the admin doesn't have to type the colon by hand; normalized to canonical "H:MM" on blur.
+// Also accepts a trailing ":SS" (Postgres's `time` column reads back as "08:00:00") so existing
+// saved records don't come back flagged invalid — the seconds are simply dropped.
 // Returns the canonical string, '' for blank, or null if genuinely unparseable.
 function parseTimeInput(raw) {
   const s = (raw || '').trim()
   if (!s) return ''
-  const colon = s.match(/^([01]?\d|2[0-3]):([0-5]\d)$/)
+  const colon = s.match(/^([01]?\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?$/)
   if (colon) return `${parseInt(colon[1], 10)}:${colon[2]}`
   if (/^\d{1,4}$/.test(s)) {
     let hour, minute
@@ -108,7 +110,15 @@ export default function AttendanceSheet() {
   const loadAttendance = useCallback(async (periodId) => {
     const { data } = await scopedFrom('hr_attendance').eq('period_id', periodId)
     const map = {}
-    ;(data || []).forEach(r => { map[`${r.employee_id}:${r.bs_day}`] = r })
+    // Postgres's `time` column reads back as "08:00:00" — normalize to the display convention
+    // ("8:00") on load rather than waiting for the admin to focus/blur each cell once.
+    ;(data || []).forEach(r => {
+      map[`${r.employee_id}:${r.bs_day}`] = {
+        ...r,
+        start_time: parseTimeInput(r.start_time) || r.start_time,
+        end_time:   parseTimeInput(r.end_time)   || r.end_time,
+      }
+    })
     setRecords(map)
   }, [scopedFrom])
 
