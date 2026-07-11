@@ -141,6 +141,14 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S354 — 2026-07-11 — feat(hr): Attendance flags shortfall hours against the roster (no auto-deduction)
+
+User asked what should happen when an employee's clocked hours fall short of their Roster-assigned shift. Researched Nepal's Labour Act 2074 / Rules 2075: Section 47 restricts salary deductions to a fixed list of grounds, and the "absence" deduction it does define is a full-day daily-rate deduction — nothing in the Act prescribes a per-hour/partial-day formula, and deducting outside the Act's grounds risks the labour office ordering double repayment. Checked `payrollCompute.js` too: for `monthly`/`daily` pay-basis employees, a day marked Present already pays a full day regardless of actual `hours_worked` — a shortfall currently pays out silently, unflagged. (`hourly`-basis staff are unaffected — their pay is computed directly from hours worked.)
+
+Given the law leaves this to employer policy rather than mandating a formula, added a visual-only nudge instead of an automatic deduction: when a Present day's clocked hours fall ≥0.5h short of that day's roster-assigned shift, an amber "⚠ X.Xh short" hint appears next to OT Hours (both Mark Attendance and By Employee tabs), with a tooltip explaining nothing is auto-deducted and that Half Day is the existing lawful category to reclassify into if warranted. New `shortfallFor()` helper in `AttendanceSheet.jsx`. Full HR suite (37 tests) passes; build compiles clean.
+
+**Files:** `src/modules/hr/attendance/AttendanceSheet.jsx`, `src/pages/Help.js`
+
 ### S353 — 2026-07-11 — feat(hr): Attendance Start/End time — accept plain-digit shorthand ("0800"), no colon required
 
 User compared the Start/End time cells to a time-card calculator tool's input style and asked whether typing could skip the colon. Rather than a live-masked input (colon auto-inserted as you type) or a purely cosmetic restyle, went with the option the user picked: accept bare digits — `0800`, `800`, or just `8` — parsed the same way a time-clock calculator reads them (1-2 digits = hour only, 3 digits = H:MM, 4 digits = HH:MM), normalized to canonical `H:MM` the moment the field loses focus. Typing `08:00` still works exactly as before.

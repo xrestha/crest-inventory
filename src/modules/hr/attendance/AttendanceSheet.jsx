@@ -90,6 +90,19 @@ export default function AttendanceSheet() {
     const shiftTypeId = rosterByKey[`${empId}:${day}`]
     return shiftTypeId ? shiftHours(shiftTypesById[shiftTypeId]) : STANDARD_HOURS_PER_DAY
   }
+  // A meaningful shortfall against the roster-assigned shift is surfaced as a visual nudge, not
+  // an automatic pay deduction — Nepal's Labour Act only defines a full-day absence deduction
+  // (Section 47 + Rules), nothing per-hour, so prorating pay here would be inventing a rule the
+  // Act doesn't authorize. Left for the admin to notice and decide (e.g. reclassify as Half Day).
+  const SHORTFALL_FLAG_HOURS = 0.5
+  function shortfallFor(rec, empId, day) {
+    if (!rec || rec.status !== 'present' || !rec.start_time || !rec.end_time) return 0
+    if (!isValidTimeStr(rec.start_time) || !isValidTimeStr(rec.end_time)) return 0
+    const worked = parseFloat(rec.hours_worked)
+    if (!Number.isFinite(worked)) return 0
+    const gap = parseFloat((assignedHoursFor(empId, day) - worked).toFixed(1))
+    return gap >= SHORTFALL_FLAG_HOURS ? gap : 0
+  }
 
   const loadAttendance = useCallback(async (periodId) => {
     const { data } = await scopedFrom('hr_attendance').eq('period_id', periodId)
@@ -597,6 +610,11 @@ export default function AttendanceSheet() {
                         <td style={{ textAlign: 'right' }}>
                           <input type="number" min="0" step="0.5" style={{ ...inp, width: 80, textAlign: 'right' }}
                             value={rec?.ot_hours ?? ''} onChange={e => setCell(emp.id, selectedDay, 'ot_hours', e.target.value)} placeholder="0" />
+                          {shortfallFor(rec, emp.id, selectedDay) > 0 && (
+                            <Tip text={`Clocked ${rec.hours_worked}h against a ${assignedHoursFor(emp.id, selectedDay)}h roster shift — ${shortfallFor(rec, emp.id, selectedDay)}h short. Not auto-deducted; reclassify as Half Day if warranted.`} width={230}>
+                              <div style={{ fontSize: 11, color: 'var(--theme-amber)', marginTop: 2 }}>⚠ {shortfallFor(rec, emp.id, selectedDay)}h short</div>
+                            </Tip>
+                          )}
                         </td>
                         <td>
                           <input style={{ ...inp, width: '100%' }} value={rec?.note ?? ''} onChange={e => setCell(emp.id, selectedDay, 'note', e.target.value)} placeholder="—" />
@@ -727,6 +745,11 @@ export default function AttendanceSheet() {
                           <td style={{ textAlign: 'right' }}>
                             <input type="number" min="0" step="0.5" style={{ ...inp, width: 80, textAlign: 'right' }}
                               value={rec?.ot_hours ?? ''} onChange={e => setCell(selectedEmployeeId, d, 'ot_hours', e.target.value)} placeholder="0" />
+                            {shortfallFor(rec, selectedEmployeeId, d) > 0 && (
+                              <Tip text={`Clocked ${rec.hours_worked}h against a ${assignedHoursFor(selectedEmployeeId, d)}h roster shift — ${shortfallFor(rec, selectedEmployeeId, d)}h short. Not auto-deducted; reclassify as Half Day if warranted.`} width={230}>
+                                <div style={{ fontSize: 11, color: 'var(--theme-amber)', marginTop: 2 }}>⚠ {shortfallFor(rec, selectedEmployeeId, d)}h short</div>
+                              </Tip>
+                            )}
                           </td>
                           <td>
                             <input style={{ ...inp, width: '100%' }} value={rec?.note ?? ''} onChange={e => setCell(selectedEmployeeId, d, 'note', e.target.value)} placeholder="—" />
