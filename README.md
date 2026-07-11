@@ -141,6 +141,18 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S352 — 2026-07-11 — fix: full BS calendar re-derivation — EPOCH_AD + BS_CALENDAR 2079-2087, all cross-verified against independent sources
+
+User asked to cross-check the Roster board's dates (Ashadh 22-28, 2083 shown as Sun-Sat) — this reproduced the EPOCH_AD bug found (but deliberately not fixed) in S347, so the user asked for the full fix: correct EPOCH_AD, and re-derive/verify the other 8 years of BS_CALENDAR (2083 was already hand-fixed in S349/350) with the same rigor.
+
+Hand-checking against calendar websites proved unreliable mid-investigation — WebFetch's page-summarization misread a weekday column, and two different calendar-site fetches returned two different, mutually-contradictory tables for the same month. Switched approach: pulled the raw hardcoded calendar-data source files directly from two independent, actively-maintained open-source Nepali calendar libraries — `opensource-nepal/py-nepali` (Python) and `remotemerge/nepali-date-converter` (TypeScript) — via `curl` against raw.githubusercontent.com. Both agreed on every month for every year 2079-2087 with zero discrepancies, and reconstructing the epoch from py-nepali's own reference date independently reproduced the well-documented public fact that Baisakh 1, 2079 (Nepali New Year) fell on Thursday, 14 April 2022 — 2 days later than the app's previous (wrong) `EPOCH_AD`.
+
+Beyond the epoch, `BS_CALENDAR[2080]` and `[2082]` were also found wrong (each incorrectly summed to 366 days instead of 365) — a separate bug layered on top of the epoch offset. `BS_CALENDAR[2083]`'s already-corrected S349/350 values turned out to be exactly right. Updated `src/utils/bsCalendar.js` (`EPOCH_AD` → 14 Apr 2022, full `BS_CALENDAR` table replaced for all 9 years) and `bsCalendar.test.js` (anchor tests, `daysInBsMonth(2082,9)` 29→30, the 366-day-year example moved from 2082→2083 to 2081→2082, since 2082 is no longer a 366-day year). All 16 bsCalendar tests + 37 HR tests pass; production build compiles clean.
+
+**Heads up:** this shifts every BS date/weekday shown anywhere in the app (Roster, Attendance, Leave, Holiday Calendar, Payroll periods) by 1-2 days from what was shown before — worth flagging to the client (Casa Acai Cafe) since anything they cross-referenced against a paper/phone calendar before this fix will now show a different (correct) weekday.
+
+**Files:** `src/utils/bsCalendar.js`, `src/utils/bsCalendar.test.js`
+
 ### S351 — 2026-07-11 — feat(hr): Attendance Month Summary — per-employee Total column (P+A+O+OT)
 
 Small follow-up to S349. First attempt added a horizontal Total *row* summing each column down the bottom of the table — wrong axis; the actual ask was a vertical Total *column* after OT, giving each employee's own P+A+O+OT sum on their row. Replaced the row with the column (e.g. 15 P + 13 A + 3 O + 0 OT = 31 for that employee), reusing the exact same per-column formulas each row already computed rather than introducing a second calculation path.

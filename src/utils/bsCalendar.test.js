@@ -6,7 +6,7 @@ describe('daysInBsMonth', () => {
   test('reads the real month-length table, not a fixed 30/31', () => {
     expect(daysInBsMonth(2082, 1)).toBe(31)
     expect(daysInBsMonth(2082, 3)).toBe(32)
-    expect(daysInBsMonth(2082, 9)).toBe(29)
+    expect(daysInBsMonth(2082, 9)).toBe(30)
   })
 
   // Corrected S349 (2026-07-11) — verified month-by-month against Hamro Patro. Jestha/Ashadh/
@@ -33,15 +33,19 @@ describe('daysInBsMonth', () => {
 })
 
 describe('bsToAd / adToBs — anchor and round trip', () => {
-  test('the documented anchor holds: BS 2079/01/01 = AD 12 Apr 2022', () => {
+  // Corrected S352 (2026-07-11): the anchor was 2 days off (12 Apr instead of 14 Apr) — see the
+  // note above BS_CALENDAR in bsCalendar.js. 14 April 2022 is the well-documented date Nepali New
+  // Year 2079 actually fell on (a Thursday), reproduced independently via two open-source
+  // calendar libraries' data.
+  test('the documented anchor holds: BS 2079/01/01 = AD 14 Apr 2022', () => {
     const ad = bsToAd(2079, 1, 1)
     expect(ad.getFullYear()).toBe(2022)
     expect(ad.getMonth()).toBe(3) // 0-indexed: April
-    expect(ad.getDate()).toBe(12)
+    expect(ad.getDate()).toBe(14)
   })
 
   test('the anchor converts back to itself', () => {
-    expect(adToBs(new Date(2022, 3, 12))).toEqual({ year: 2079, month: 1, day: 1 })
+    expect(adToBs(new Date(2022, 3, 14))).toEqual({ year: 2079, month: 1, day: 1 })
   })
 
   test('round-trips through several BS dates, including a leap-length month', () => {
@@ -97,8 +101,8 @@ describe('bsDiffDays', () => {
   })
 
   test('counts a full BS year using the real (variable) year length, not a fixed 365', () => {
-    // BS 2082's twelve month-lengths sum to 366, not 365
-    expect(bsDiffDays(2082, 1, 1, 2083, 1, 1)).toBe(366)
+    // BS 2081's twelve month-lengths sum to 366, not 365
+    expect(bsDiffDays(2081, 1, 1, 2082, 1, 1)).toBe(366)
   })
 
   test('is negative when the second date is earlier', () => {

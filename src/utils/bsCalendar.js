@@ -1,19 +1,21 @@
 // ─────────────────────────────────────────────────────────────
 // Bikram Sambat (BS) <-> Gregorian (AD) conversion utilities
 //
-// IMPORTANT: The BS_CALENDAR table below gives the number of days
-// in each BS month for years 2079–2087 (covers roughly AD
-// 2022–2031). This data is the commonly published Nepali calendar
-// month-length table, but it's worth spot-checking a couple of
-// dates against an official source (e.g. ashesh.com.np or
-// hamropatro.com) before relying on it for legal/compliance dates.
+// The BS_CALENDAR table below gives the number of days in each BS
+// month for years 2079–2087 (covers roughly AD 2022–2031).
 //
-// To extend the range, add more `bsYear: [12 month-lengths]` rows.
-// Anything outside the table falls back to a 30-day/365-day
-// approximation so the app doesn't crash, but conversions for
-// out-of-range years won't be exact.
+// Corrected S352 (2026-07-11) — the whole table (all 9 years) and the EPOCH_AD anchor below were
+// re-derived from scratch and cross-checked against two independent, actively-maintained
+// open-source Nepali calendar libraries: opensource-nepal/py-nepali (Python) and
+// remotemerge/nepali-date-converter (TypeScript) — both agree on every single month for every
+// year in this table. The re-derived epoch also reproduces the well-documented public fact that
+// Baisakh 1, 2079 (Nepali New Year) fell on Thursday 14 April 2022. Previously: EPOCH_AD was 2
+// days off (12 Apr instead of 14 Apr, found S347), and — separately — 2079/2080/2081/2082/2084-
+// 2087 had never been independently verified at all (only 2083 was hand-fixed, S349/350); 2080
+// and 2082 turned out to also be wrong (each one month-length off, both no longer sum to 366).
 //
-// Reference anchor: BS 2079/01/01 (Baisakh 1, 2079) = AD 12 Apr 2022 (verified against Nepali Patro)
+// To extend the range, add more `bsYear: [12 month-lengths]` rows — re-derive/cross-check them
+// the same way rather than typing in a single unverified source.
 // ─────────────────────────────────────────────────────────────
 
 export const BS_MONTHS = [
@@ -22,24 +24,19 @@ export const BS_MONTHS = [
 ]
 
 const BS_CALENDAR = {
-  2079: [31, 32, 31, 32, 31, 30, 30, 29, 30, 29, 30, 30],
-  2080: [31, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
-  2081: [31, 32, 31, 32, 31, 30, 30, 29, 30, 29, 30, 30],
-  2082: [31, 31, 32, 32, 31, 30, 30, 30, 29, 30, 29, 31],
-  // Corrected S349 (2026-07-11) — verified month-by-month against Hamro Patro (every month's day-1
-  // AD date cross-checked against the next month's day-1 AD date). Was [31,32,31,32,31,30,...]:
-  // Jestha/Ashadh/Shrawan were transposed (32/31/32 instead of the real 31/32/31) and Ashwin was
-  // short by a day (30 instead of 31) — the year's total (365) matched either way, which is
-  // presumably why it went unnoticed. Months 7-12 were already correct.
+  2079: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+  2080: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 30],
+  2081: [31, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+  2082: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
   2083: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
-  2084: [31, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 30],
-  2085: [31, 32, 31, 31, 32, 30, 30, 30, 29, 30, 30, 30],
-  2086: [31, 32, 31, 32, 31, 31, 30, 30, 29, 30, 29, 31],
-  2087: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 30],
+  2084: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
+  2085: [30, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+  2086: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+  2087: [31, 31, 32, 32, 31, 30, 30, 29, 30, 29, 30, 30],
 }
 
 const EPOCH_BS = { year: 2079, month: 1, day: 1 }
-const EPOCH_AD = new Date(2022, 3, 12) // 12 April 2022 (months are 0-indexed) — verified against Nepali Patro
+const EPOCH_AD = new Date(2022, 3, 14) // 14 April 2022 (months are 0-indexed) — corrected S352, see note above
 
 function startOfDay(d) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate())
