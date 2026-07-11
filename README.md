@@ -141,6 +141,12 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S358 — 2026-07-11 — feat(hr): By Employee tab gets a Total OT Hours footer row
+
+Small addition to the By Employee tab's day-by-day table: a footer row under the last day of the month summing that employee's OT Hours across every day, so the monthly OT total is visible without switching to the Month Summary tab. Also fixed a stale `colSpan={8}` on the "Pick an employee above" placeholder row — the Break column added in S355 made the table 9 columns wide, not 8. Full HR suite (37 tests) passes; build compiles clean.
+
+**Files:** `src/modules/hr/attendance/AttendanceSheet.jsx`
+
 ### S357 — 2026-07-11 — fix: Attendance Start/End flagged existing saved times as invalid ("08:00:00")
 
 Regression from S353: existing `hr_attendance` rows loaded fine, but their Start/End showed red "invalid" as soon as the sheet loaded — Postgres's `time` column reads back through Supabase as `"08:00:00"` (with seconds), and the new colon-format validator only accepted an exact `HH:MM` with no trailing `:SS`, so every pre-existing saved time failed validation the moment it appeared on screen.

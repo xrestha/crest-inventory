@@ -823,7 +823,7 @@ export default function AttendanceSheet() {
                 </thead>
                 <tbody>
                   {!selectedEmployeeId ? (
-                    <tr><td colSpan={8} style={{ textAlign: 'center', color: 'var(--theme-text2)', padding: 24 }}>Pick an employee above</td></tr>
+                    <tr><td colSpan={9} style={{ textAlign: 'center', color: 'var(--theme-text2)', padding: 24 }}>Pick an employee above</td></tr>
                   ) : (() => {
                     const emp = employees.find(e => e.id === selectedEmployeeId)
                     return days.map(d => {
@@ -895,6 +895,17 @@ export default function AttendanceSheet() {
                     })
                   })()}
                 </tbody>
+                {selectedEmployeeId && (
+                  <tfoot>
+                    <tr>
+                      <td colSpan={6} style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-text1)' }}>Total OT Hours</td>
+                      <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-accent)' }}>
+                        {days.reduce((sum, d) => sum + (parseFloat(cellFor(selectedEmployeeId, d)?.ot_hours) || 0), 0).toFixed(1)}
+                      </td>
+                      <td colSpan={2} />
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             </div>
           </div>
