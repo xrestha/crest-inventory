@@ -93,6 +93,7 @@ export function computePayslip(employee, components, attendanceRows, period, tds
       allowances: 0, gross: earned, absence_deduction: 0, other_deductions: 0,
       ot_amount: otAmount, ssf_employee: ssfEmp, ssf_employer: ssfEmpr,
       net_pay: earned + otAmount - ssfEmp - tdsVal - advDed,
+      breakdown: { basis, monthDays, tally: t, dailyRate: basic, workedDays, hourlyRate: basic / STANDARD_HOURS_PER_DAY, otAttendanceHrs: t.sumOt, otAttendanceAmt: otAmount },
     }
   } else if (basis === 'hourly') {
     // Paid-leave days credit a standard working day of hours for hourly staff.
@@ -106,6 +107,7 @@ export function computePayslip(employee, components, attendanceRows, period, tds
       allowances: 0, gross: earned, absence_deduction: 0, other_deductions: 0,
       ot_amount: otAmount, ssf_employee: ssfEmp, ssf_employer: ssfEmpr,
       net_pay: earned + otAmount - ssfEmp - tdsVal - advDed,
+      breakdown: { basis, monthDays, tally: t, hourlyRate: basic, paidHours, otAttendanceHrs: t.sumOt, otAttendanceAmt: otAmount },
     }
   } else {
     // monthly
@@ -135,11 +137,15 @@ export function computePayslip(employee, components, attendanceRows, period, tds
       ssf_employee:      ssfEmp,
       ssf_employer:      ssfEmpr,
       net_pay: gross + otAmount - absenceDed - ssfEmp - otherDed - tdsVal - advDed,
+      breakdown: { basis, monthDays, tally: t, hourlyRate: hr, gross, unpaidDays, perDay, paidFraction, ssfBase, otAttendanceHrs: t.sumOt, otAttendanceAmt: otAmount },
     }
   }
 
-  // Add OT from approved overtime entries on top of attendance OT.
+  // Add OT from approved overtime entries on top of attendance OT — surfaced in `breakdown` so
+  // the Calculation page can show attendance OT and approved-entry OT as two distinct amounts
+  // (the ⚠ OT ×2? risk in PayrollRun.jsx is exactly these two sources overlapping).
   const { extraHrs, extraAmt } = entryOt(approvedOtEntries, hr)
+  result.breakdown = { ...result.breakdown, otApprovedHrs: extraHrs, otApprovedAmt: extraAmt, otDoubleCountRisk: t.sumOt > 0 && extraHrs > 0 }
   if (extraHrs > 0) {
     result = {
       ...result,

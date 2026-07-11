@@ -71,11 +71,14 @@ export function applySlabs(taxable, slabs, isSsfContributor) {
   return tax
 }
 
-// Current month's TDS via YTD cumulative projection.
+// Current month's TDS via YTD cumulative projection, PLUS every intermediate value along the
+// way — used by the Calculation/Review page to show its work. `computeMonthlyTds` below is a
+// thin wrapper returning just the final number, so there's exactly one implementation and the
+// two can never drift apart.
 // ytd* = sums from PRIOR finalized payslips this fiscal year (months before this one).
 // isMarried: use married tax schedule (only effective for FY 2082/83 and earlier).
 // festivalBonus: one-time bonus included in this month's annual income projection.
-export function computeMonthlyTds({
+export function computeMonthlyTdsBreakdown({
   period, monthlyGross, monthlySsf, ytdGross = 0, ytdSsf = 0, ytdWithheld = 0,
   isSsf = false, annualLifeInsurance = 0, annualHealthInsurance = 0,
   isMarried = false, festivalBonus = 0,
@@ -93,7 +96,17 @@ export function computeMonthlyTds({
 
   const annualTax     = applySlabs(annualTaxable, slabs, isSsf)
   const cumulativeDue = (annualTax / 12) * monthInFy
-  return Math.max(0, Math.round(cumulativeDue - ytdWithheld))
+  const tds = Math.max(0, Math.round(cumulativeDue - ytdWithheld))
+
+  return {
+    tds, fyStart, monthInFy, monthsAtCurrent, slabs, isSsf,
+    ytdGross, ytdSsf, ytdWithheld, annualGross, annualSsf,
+    ssfDeduction, insuranceDeduction, annualTaxable, annualTax, cumulativeDue,
+  }
+}
+
+export function computeMonthlyTds(args) {
+  return computeMonthlyTdsBreakdown(args).tds
 }
 
 // TDS on a one-time lump-sum payment (festival bonus, gratuity, settlement).

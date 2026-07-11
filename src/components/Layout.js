@@ -109,6 +109,7 @@ const HR_GROUPS = [
     { to: '/hr/overtime',   label: 'Overtime',         icon: '⏱'  },
   ]},
   { key: 'hr-payroll', label: 'Payroll', items: [
+    { to: '/hr/calculation', label: 'Calculation',       icon: '🧮' },
     { to: '/hr/payroll',    label: 'Payroll',            icon: '💵' },
     { to: '/hr/festival',   label: 'Festival Allowance', icon: '🎉' },
     { to: '/hr/incentives', label: 'Incentives / Bonus', icon: '🎁' },

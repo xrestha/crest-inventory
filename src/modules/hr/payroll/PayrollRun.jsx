@@ -3,9 +3,10 @@ import { useAuth } from '../../../context/AuthContext'
 import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
 import * as XLSX from 'xlsx'
-import { BS_MONTHS, bsToAd, daysInBsMonth, formatAd } from '../../../utils/bsCalendar'
+import { BS_MONTHS } from '../../../utils/bsCalendar'
 import { computePayslip } from './payrollCompute'
-import { computeMonthlyTds, fiscalYearOf } from './tds'
+import { computeMonthlyTds } from './tds'
+import { fetchYtdMap, fetchApprovedTadaMap, buildAdvanceMap } from './payrollData'
 import { printWithTitle } from '../../../utils/printTitle'
 
 const fmt = n => Math.round(n || 0).toLocaleString('en-NP')
@@ -86,75 +87,15 @@ export default function PayrollRun() {
     await loadAll(id, p.bs_year, p.bs_month); setLoading(false)
   }
 
-  // Year-to-date taxable per employee: sum of (gross − SSF) and tds from PRIOR
-  // finalized payslips in the same fiscal year (months before the current one).
-  async function fetchYtdMap() {
-    const cur = fiscalYearOf(period.bs_year, period.bs_month)
-    const { data } = await scopedFrom('hr_payslips', 'employee_id, gross, ssf_employee, tds, hr_payroll_runs!inner(status, monthly_periods!inner(bs_year, bs_month))')
-      .eq('hr_payroll_runs.status', 'finalized')
-    const map = {}
-    ;(data || []).forEach(r => {
-      if (r.hr_payroll_runs?.status !== 'finalized') return
-      const mp = r.hr_payroll_runs?.monthly_periods
-      if (!mp) return
-      const fy = fiscalYearOf(mp.bs_year, mp.bs_month)
-      if (fy.fyStart !== cur.fyStart || fy.monthInFy >= cur.monthInFy) return
-      const e = map[r.employee_id] || { gross: 0, ssf: 0, withheld: 0 }
-      e.gross += r.gross || 0
-      e.ssf   += r.ssf_employee || 0
-      e.withheld += r.tds || 0
-      map[r.employee_id] = e
-    })
-    return map
-  }
-
-  // Approved TADA claims (from the TADA Claims ledger) whose trip dates fall inside this BS
-  // period, per employee. Feeds the TADA column's auto-fill — Finalize marks these claims Paid
-  // so the same trip is never reimbursed both through TADA Claims and through payroll.
-  async function fetchApprovedTadaMap() {
-    const periodStart = formatAd(bsToAd(period.bs_year, period.bs_month, 1))
-    const periodEnd   = formatAd(bsToAd(period.bs_year, period.bs_month, daysInBsMonth(period.bs_year, period.bs_month)))
-    const { data } = await scopedFrom('hr_tada_claims', 'id, employee_id, total_amount, start_date, end_date')
-      .eq('status', 'approved')
-    const map = {}
-    ;(data || []).forEach(c => {
-      if (c.start_date > periodEnd || c.end_date < periodStart) return
-      const e = map[c.employee_id] || { total: 0, ids: [] }
-      e.total += parseFloat(c.total_amount) || 0
-      e.ids.push(c.id)
-      map[c.employee_id] = e
-    })
-    return map
-  }
-
-  // Per-employee scheduled advance deduction for this period.
-  // For each active advance: deduct min(installment, outstanding).
-  // If no installment set, deduct full outstanding (treated as one-time advance).
-  function buildAdvanceMap() {
-    const repaidMap = {}
-    repayments.forEach(r => {
-      repaidMap[r.advance_id] = (repaidMap[r.advance_id] || 0) + (parseFloat(r.amount) || 0)
-    })
-    const advMap = {}
-    advances.filter(a => a.status === 'active').forEach(adv => {
-      const repaid = repaidMap[adv.id] || 0
-      const outstanding = Math.max(0, parseFloat(adv.amount) - repaid)
-      if (outstanding <= 0) return
-      const installment = parseFloat(adv.installment_amount) || outstanding
-      const deduction = Math.min(installment, outstanding)
-      advMap[adv.employee_id] = (advMap[adv.employee_id] || 0) + deduction
-    })
-    return advMap
-  }
-
   function buildRows(runId, ytdMap, tadaMap) {
-    const advMap = buildAdvanceMap()
+    const advMap = buildAdvanceMap(advances, repayments)
     return employees.map(emp => {
       const comps        = components.filter(c => c.employee_id === emp.id)
       const att          = attendance.filter(a => a.employee_id === emp.id)
       const empOtEntries = otEntries.filter(e => e.employee_id === emp.id)
       const advDed       = Math.round(advMap[emp.id] || 0)
-      const slip         = computePayslip(emp, comps, att, period, 0, empOtEntries, advDed)
+      // `breakdown` is Calculation-page-only (not a hr_payslips column) — dropped before insert.
+      const { breakdown, ...slip } = computePayslip(emp, comps, att, period, 0, empOtEntries, advDed)
       const isSsf    = !!(emp.ssf_enrolled)
       const isMarried = emp.marital_status === 'married'
       const ytd   = ytdMap[emp.id] || { gross: 0, ssf: 0, withheld: 0 }
@@ -180,8 +121,8 @@ export default function PayrollRun() {
   async function generate() {
     if (!period || employees.length === 0) return
     setBusy(true); setMsg('')
-    const ytdMap = await fetchYtdMap()
-    const tadaMap = await fetchApprovedTadaMap()
+    const ytdMap = await fetchYtdMap(scopedFrom, period)
+    const tadaMap = await fetchApprovedTadaMap(scopedFrom, period)
     const { data: runRow, error: rErr } = await scopedInsert('hr_payroll_runs', { period_id: period.id, status: 'draft' }, { single: true })
     if (rErr) { setMsg('error:' + rErr.message); setBusy(false); return }
     const { error: pErr } = await scopedInsert('hr_payslips', buildRows(runRow.id, ytdMap, tadaMap))
@@ -194,8 +135,8 @@ export default function PayrollRun() {
     if (!run || run.status === 'finalized') return
     if (!window.confirm('Recompute all payslips from current salary, attendance & tax? Manual TDS and TADA overrides will be reset (TADA re-fills from currently Approved claims for this period).')) return
     setBusy(true); setMsg('')
-    const ytdMap = await fetchYtdMap()
-    const tadaMap = await fetchApprovedTadaMap()
+    const ytdMap = await fetchYtdMap(scopedFrom, period)
+    const tadaMap = await fetchApprovedTadaMap(scopedFrom, period)
     await scopedDelete('hr_payslips').eq('run_id', run.id)
     const { error } = await scopedInsert('hr_payslips', buildRows(run.id, ytdMap, tadaMap))
     if (error) { setMsg('error:' + error.message); setBusy(false); return }
