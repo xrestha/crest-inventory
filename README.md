@@ -141,6 +141,14 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S356 — 2026-07-11 — feat(hr): Attendance gets a default-break bulk-fill (Apply Break to Day / to Month)
+
+Follow-up to S355 — typing 45 into every single Break cell by hand defeated the point of a default. Added an editable "Default break" number (starts at 45 min) next to the bulk-action buttons on both tabs, feeding two new buttons: Apply Break to Day (Mark Attendance — fills every already-marked employee's blank Break for the selected day) and Apply Break to Month (By Employee — same, across that employee's whole month).
+
+Deliberately narrow on what counts as "already-marked": both `applyBreakToDay()`/`applyBreakToEmployeeMonth()` skip any row that has no record yet at all, and skip any row whose Break is already set to something — they only fill genuine gaps on rows the admin has already touched. Doing otherwise (creating a record for an untouched employee/day just to stamp a break onto it) would have quietly reintroduced the exact bug S348 fixed this session — an employee nobody actually marked ending up saved as Present because *some* field on their row got touched. Full HR suite (37 tests) passes; build compiles clean.
+
+**Files:** `src/modules/hr/attendance/AttendanceSheet.jsx`, `src/pages/Help.js`
+
 ### S355 — 2026-07-11 — feat(hr): Attendance gets an unpaid Break (minutes) field
 
 User pointed at calculatorsoup.com's Hours Calculator and asked what was worth adopting. Its core feature not already covered by Crest: subtracting an unpaid lunch/break deduction from the raw Start-to-End span before it becomes a paid hours total (its rounding-to-nearest-5/15/6-minutes and multi-break options were judged not worth the added complexity — Hours/OT are already directly editable if a precise adjustment is needed, and the app's Month Summary already covers the "weekly hours calculator" use case at BS-month grain). Without it, a clocked-out lunch break was inflating both Hours Worked and OT Hours for anyone whose Start/End span included one.

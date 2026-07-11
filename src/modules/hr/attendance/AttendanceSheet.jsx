@@ -62,6 +62,7 @@ export default function AttendanceSheet() {
   const [selectedDay, setSelectedDay] = useState(getBsToday().day)
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('') // By Employee tab
   const [activeTimeKey, setActiveTimeKey] = useState('') // `${empId}:${day}:${field}` currently focused — suppresses the invalid-red flash while mid-typing a digit shorthand
+  const [defaultBreakMin, setDefaultBreakMin] = useState(45) // editable default fed to both "Apply Break" bulk buttons
   const [saving,    setSaving]    = useState(false)
   const [savedMsg,  setSavedMsg]  = useState('')
   const [generating, setGenerating] = useState(false)
@@ -267,6 +268,55 @@ export default function AttendanceSheet() {
       days.forEach(d => {
         const key = `${empId}:${d}`
         next[key] = { ...(next[key] || { employee_id: empId, bs_day: d }), status }
+      })
+      return next
+    })
+  }
+  // Fills in the default break length wherever it's still blank — only on rows that already have
+  // a record (i.e. the admin has already marked something for that cell). Deliberately never
+  // touches an otherwise-untouched employee/day, matching the "only writes what you've actually
+  // touched" rule Save Day/Save Month rely on (S348) — this must not be how a cell gets its first
+  // touch, or an employee nobody marked would silently end up saved as Present.
+  function applyBreakToDay() {
+    setRecords(m => {
+      const next = { ...m }
+      employees.forEach(emp => {
+        const key = `${emp.id}:${selectedDay}`
+        const prev = next[key]
+        if (!prev || (prev.break_minutes != null && prev.break_minutes !== '')) return
+        const rec = { ...prev, break_minutes: defaultBreakMin }
+        const startNorm = parseTimeInput(rec.start_time)
+        const endNorm = parseTimeInput(rec.end_time)
+        if (startNorm && endNorm) {
+          const worked = computeWorked(startNorm, endNorm, defaultBreakMin)
+          if (worked != null) {
+            rec.hours_worked = worked
+            rec.ot_hours = Math.max(0, parseFloat((worked - assignedHoursFor(emp.id, selectedDay)).toFixed(1)))
+          }
+        }
+        next[key] = rec
+      })
+      return next
+    })
+  }
+  function applyBreakToEmployeeMonth(empId) {
+    setRecords(m => {
+      const next = { ...m }
+      days.forEach(d => {
+        const key = `${empId}:${d}`
+        const prev = next[key]
+        if (!prev || (prev.break_minutes != null && prev.break_minutes !== '')) return
+        const rec = { ...prev, break_minutes: defaultBreakMin }
+        const startNorm = parseTimeInput(rec.start_time)
+        const endNorm = parseTimeInput(rec.end_time)
+        if (startNorm && endNorm) {
+          const worked = computeWorked(startNorm, endNorm, defaultBreakMin)
+          if (worked != null) {
+            rec.hours_worked = worked
+            rec.ot_hours = Math.max(0, parseFloat((worked - assignedHoursFor(empId, d)).toFixed(1)))
+          }
+        }
+        next[key] = rec
       })
       return next
     })
@@ -547,6 +597,17 @@ export default function AttendanceSheet() {
             <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={generateFromRoster} disabled={generating}>
               {generating ? 'Generating…' : '⚡ Generate from Roster'}
             </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Tip text="Feeds both 'Apply Break' buttons on this page — change it once to use a different default." width={220}>
+                <span style={{ fontSize: 12, color: 'var(--theme-text2)' }}>Default break</span>
+              </Tip>
+              <input type="number" min="0" step="5" style={{ ...inp, width: 60, textAlign: 'right' }}
+                value={defaultBreakMin} onChange={e => setDefaultBreakMin(parseInt(e.target.value, 10) || 0)} />
+              <span style={{ fontSize: 12, color: 'var(--theme-text2)' }}>min</span>
+              <Tip text="Fills the default break into every already-marked employee's blank Break cell for this day. Never overwrites a Break value already entered, and never marks an untouched employee." width={260}>
+                <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={applyBreakToDay}>Apply Break to Day</button>
+              </Tip>
+            </div>
             <Tip text="Deletes every employee's saved record for this day — reverts the whole day back to genuinely blank. Can't be undone.">
               <button className="btn btn-ghost" style={{ fontSize: 11, color: 'var(--theme-red)' }} onClick={clearDay} disabled={saving}>
                 🗑 Clear Day
@@ -693,6 +754,17 @@ export default function AttendanceSheet() {
             <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => generateFromRosterForEmployee(selectedEmployeeId)} disabled={generating}>
               {generating ? 'Generating…' : '⚡ Generate from Roster'}
             </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Tip text="Feeds both 'Apply Break' buttons on this page — change it once to use a different default." width={220}>
+                <span style={{ fontSize: 12, color: 'var(--theme-text2)' }}>Default break</span>
+              </Tip>
+              <input type="number" min="0" step="5" style={{ ...inp, width: 60, textAlign: 'right' }}
+                value={defaultBreakMin} onChange={e => setDefaultBreakMin(parseInt(e.target.value, 10) || 0)} />
+              <span style={{ fontSize: 12, color: 'var(--theme-text2)' }}>min</span>
+              <Tip text="Fills the default break into every already-marked day's blank Break cell for this employee. Never overwrites a Break value already entered, and never marks an untouched day." width={260}>
+                <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => applyBreakToEmployeeMonth(selectedEmployeeId)}>Apply Break to Month</button>
+              </Tip>
+            </div>
             <Tip text="Deletes every saved record for this employee, this whole month — reverts it back to genuinely blank. Can't be undone.">
               <button className="btn btn-ghost" style={{ fontSize: 11, color: 'var(--theme-red)' }} onClick={() => clearEmployeeMonth(selectedEmployeeId)} disabled={saving}>
                 🗑 Clear Month
