@@ -7,12 +7,12 @@ import { WEEKLY_OFF_WEEKDAY } from '../payrollConstants'
 // have none). annual_quota 0 = uncapped (e.g. unpaid). Maternity/paternity are
 // per-event statutory entitlements, not annually recurring — shown for tracking.
 export const DEFAULT_LEAVE_TYPES = [
-  { code: 'home',        name: 'Home / Annual Leave',  paid: true,  annual_quota: 18, carry_forward: true,  color: '#34d399', sort_order: 1 },
+  { code: 'home',        name: 'Home / Annual Leave',  paid: true,  annual_quota: 18, carry_forward: true,  color: 'var(--theme-green)', sort_order: 1 },
   { code: 'sick',        name: 'Sick Leave',           paid: true,  annual_quota: 12, carry_forward: true,  color: '#60a5fa', sort_order: 2 },
   { code: 'bereavement', name: 'Bereavement (Kiriya)', paid: true,  annual_quota: 13, carry_forward: false, color: '#a78bfa', sort_order: 3 },
   { code: 'maternity',   name: 'Maternity Leave',      paid: true,  annual_quota: 98, carry_forward: false, color: '#f472b6', sort_order: 4 },
   { code: 'paternity',   name: 'Paternity Leave',      paid: true,  annual_quota: 15, carry_forward: false, color: '#22d3ee', sort_order: 5 },
-  { code: 'unpaid',      name: 'Unpaid Leave',         paid: false, annual_quota: 0,  carry_forward: false, color: '#9ca3af', sort_order: 6 },
+  { code: 'unpaid',      name: 'Unpaid Leave',         paid: false, annual_quota: 0,  carry_forward: false, color: 'var(--theme-text3)', sort_order: 6 },
 ]
 
 // Half-day only applies to a single-day request (start_date === end_date) — enforced in the UI.
@@ -25,10 +25,10 @@ export const DAY_TYPES = [
 ]
 
 export const LEAVE_STATUSES = {
-  pending:   { label: 'Pending',   color: '#c9a84c' },
-  approved:  { label: 'Approved',  color: '#34d399' },
-  rejected:  { label: 'Rejected',  color: '#f87171' },
-  cancelled: { label: 'Cancelled', color: '#6b7280' },
+  pending:   { label: 'Pending',   color: 'var(--theme-accent)' },
+  approved:  { label: 'Approved',  color: 'var(--theme-green)' },
+  rejected:  { label: 'Rejected',  color: 'var(--theme-red)' },
+  cancelled: { label: 'Cancelled', color: 'var(--theme-text2)' },
 }
 
 // Working days in an inclusive AD date range, excluding the weekly off day. Returns

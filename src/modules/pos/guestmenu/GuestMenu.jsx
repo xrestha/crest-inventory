@@ -398,15 +398,17 @@ function OrderStatusCard({ requestStatus, kotStatus, items, covers, onOrderAgain
 }
 
 function Stepper({ qty, onChange }) {
+  // Matches posOrdersConstants.js's btnSm sizing — same widget, same touch-target standard,
+  // and here on the guest's own phone there's no cramped side panel forcing a smaller size.
   const btn = {
-    width: 26, height: 26, borderRadius: 4, border: '1px solid var(--theme-border)',
+    width: 40, height: 40, borderRadius: 8, border: '1px solid var(--theme-border)',
     background: 'var(--theme-input-bg)', color: 'var(--theme-text1)', cursor: 'pointer',
-    fontSize: 15, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: 18, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
   }
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       <button type="button" style={btn} onClick={() => onChange(qty - 1)}>−</button>
-      <span style={{ minWidth: 18, textAlign: 'center', fontSize: 13 }}>{qty}</span>
+      <span style={{ minWidth: 20, textAlign: 'center', fontSize: 14 }}>{qty}</span>
       <button type="button" style={btn} onClick={() => onChange(qty + 1)}>+</button>
     </div>
   )

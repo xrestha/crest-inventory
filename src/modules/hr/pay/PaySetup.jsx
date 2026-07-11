@@ -7,11 +7,11 @@ import { SSF_CAP, SSF_EMPLOYEE_PCT, SSF_EMPLOYER_PCT, PAY_BASES } from '../payro
 import PayForm from './PayForm'
 
 const STATUS_COLORS = {
-  active:     { color: '#34d399', bg: 'rgba(52,211,153,0.1)',  border: 'rgba(52,211,153,0.2)'  },
-  probation:  { color: '#c9a84c', bg: 'rgba(201,168,76,0.1)', border: 'rgba(201,168,76,0.2)'  },
-  inactive:   { color: '#6b7280', bg: 'rgba(107,114,128,0.1)', border: 'rgba(107,114,128,0.2)' },
-  resigned:   { color: '#f87171', bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.2)' },
-  terminated: { color: '#f87171', bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.2)' },
+  active:     { color: 'var(--theme-green)', bg: 'rgba(52,211,153,0.1)',  border: 'rgba(52,211,153,0.2)'  },
+  probation:  { color: 'var(--theme-accent)', bg: 'rgba(201,168,76,0.1)', border: 'rgba(201,168,76,0.2)'  },
+  inactive:   { color: 'var(--theme-text2)', bg: 'rgba(107,114,128,0.1)', border: 'rgba(107,114,128,0.2)' },
+  resigned:   { color: 'var(--theme-red)', bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.2)' },
+  terminated: { color: 'var(--theme-red)', bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.2)' },
 }
 
 const fmt = n => Math.round(n || 0).toLocaleString('en-NP')
@@ -127,17 +127,17 @@ export default function PaySetup() {
       {/* Stat cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
         {[
-          { label: 'Total Gross Payroll', value: fmt(totals.gross),        color: '#c9a84c', tip: 'Sum of gross earnings (basic + allowances) across all monthly employees. Daily/hourly workers are excluded — their pay is computed at payroll.' },
-          { label: 'SSF — Employee',       value: fmt(totals.ssf_emp),      color: '#f87171', tip: 'Total 11% SSF deducted from employees this month, computed on basic salary (capped at NPR 100,000 each).' },
-          { label: 'SSF — Employer',       value: fmt(totals.ssf_employer), color: '#6b7280', tip: 'Total 20% SSF the company pays on top of salaries — not deducted from employee net pay.' },
-          { label: 'Net Payroll',          value: fmt(totals.net),          color: '#34d399', tip: 'Total take-home pay (gross − SSF employee − other deductions) across all monthly employees.' },
+          { label: 'Total Gross Payroll', value: fmt(totals.gross),        color: 'var(--theme-accent)', tip: 'Sum of gross earnings (basic + allowances) across all monthly employees. Daily/hourly workers are excluded — their pay is computed at payroll.' },
+          { label: 'SSF — Employee',       value: fmt(totals.ssf_emp),      color: 'var(--theme-red)', tip: 'Total 11% SSF deducted from employees this month, computed on basic salary (capped at NPR 100,000 each).' },
+          { label: 'SSF — Employer',       value: fmt(totals.ssf_employer), color: 'var(--theme-text2)', tip: 'Total 20% SSF the company pays on top of salaries — not deducted from employee net pay.' },
+          { label: 'Net Payroll',          value: fmt(totals.net),          color: 'var(--theme-green)', tip: 'Total take-home pay (gross − SSF employee − other deductions) across all monthly employees.' },
         ].map(s => (
           <div key={s.label} className="card" style={{ padding: '16px 18px' }}>
-            <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
               <Tip text={s.tip} width={260}>{s.label}</Tip>
             </div>
             <div style={{ fontSize: 18, fontWeight: 700, color: s.color }}>NPR {s.value}</div>
-            <div style={{ fontSize: 10, color: '#4b5563', marginTop: 3 }}>{totals.count} monthly employees</div>
+            <div style={{ fontSize: 10, color: 'var(--theme-text2)', marginTop: 3 }}>{totals.count} monthly employees</div>
           </div>
         ))}
       </div>
@@ -156,9 +156,9 @@ export default function PaySetup() {
 
       <div className="card" style={{ padding: 0 }}>
         {loading ? (
-          <div style={{ padding: 32, textAlign: 'center', color: '#6b7280' }}>Loading…</div>
+          <div style={{ padding: 32, textAlign: 'center', color: 'var(--theme-text2)' }}>Loading…</div>
         ) : filtered.length === 0 ? (
-          <div style={{ padding: 32, textAlign: 'center', color: '#6b7280' }}>No employees found. Add employees first in HR → Employees.</div>
+          <div style={{ padding: 32, textAlign: 'center', color: 'var(--theme-text2)' }}>No employees found. Add employees first in HR → Employees.</div>
         ) : (
           <div className="table-wrap">
             <table className="data-table">
@@ -178,10 +178,10 @@ export default function PaySetup() {
                   <th style={{ textAlign: 'right' }}>
                     <Tip text="SSF Employee (11% of basic) plus any other deductions configured for the employee." width={250}>Deductions</Tip>
                   </th>
-                  <th style={{ textAlign: 'right', color: '#c9a84c' }}>
+                  <th style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>
                     <Tip text="Take-home pay = gross − deductions. What the employee actually receives." width={230}>Net Salary</Tip>
                   </th>
-                  <th style={{ textAlign: 'right', color: '#6b7280' }}>
+                  <th style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>
                     <Tip text="20% SSF the company pays on top — not deducted from the employee's net salary." width={240}>SSF Employer</Tip>
                   </th>
                   <th>
@@ -197,55 +197,55 @@ export default function PaySetup() {
                   return (
                     <tr key={emp.id} style={{ cursor: 'pointer' }} onClick={() => setEditing(emp)} title="Click to edit pay & bank details">
                       <td>
-                        <div style={{ fontWeight: 600, color: '#e8e0d0', fontSize: 13 }}>{emp.full_name}</div>
+                        <div style={{ fontWeight: 600, color: 'var(--theme-text1)', fontSize: 13 }}>{emp.full_name}</div>
                         <div style={{ display: 'flex', gap: 6, marginTop: 3, alignItems: 'center' }}>
-                          {emp.employee_code && <span style={{ fontSize: 10, color: '#6b7280' }}>{emp.employee_code}</span>}
+                          {emp.employee_code && <span style={{ fontSize: 10, color: 'var(--theme-text2)' }}>{emp.employee_code}</span>}
                           <span style={{ fontSize: 10, fontWeight: 700, color: st.color, background: st.bg, border: `1px solid ${st.border}`, borderRadius: 8, padding: '1px 6px' }}>{emp.status}</span>
                           {!s.monthly && (
                             <span style={{ fontSize: 10, fontWeight: 700, color: '#60a5fa', background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.2)', borderRadius: 8, padding: '1px 6px' }}>per {s.unit}</span>
                           )}
                         </div>
                       </td>
-                      <td style={{ color: '#6b7280', fontSize: 12 }}>
-                        {emp.department || '—'}{emp.designation ? <><br/><span style={{ fontSize: 11, color: '#4b5563' }}>{emp.designation}</span></> : null}
+                      <td style={{ color: 'var(--theme-text2)', fontSize: 12 }}>
+                        {emp.department || '—'}{emp.designation ? <><br/><span style={{ fontSize: 11, color: 'var(--theme-text2)' }}>{emp.designation}</span></> : null}
                       </td>
                       {s.monthly ? (
                         <>
-                          <td style={{ textAlign: 'right', color: '#9ca3af', fontSize: 13 }}>{fmt(s.basic)}</td>
-                          <td style={{ textAlign: 'right', color: s.totalAllowances > 0 ? '#34d399' : '#4b5563', fontSize: 13 }}>{s.totalAllowances > 0 ? `+${fmt(s.totalAllowances)}` : '—'}</td>
-                          <td style={{ textAlign: 'right', color: '#e8e0d0', fontSize: 13, fontWeight: 500 }}>{fmt(s.gross)}</td>
-                          <td style={{ textAlign: 'right', color: '#f87171', fontSize: 13 }}>−{fmt(s.totalDed)}</td>
-                          <td style={{ textAlign: 'right', color: '#c9a84c', fontSize: 14, fontWeight: 700 }}>{fmt(s.net)}</td>
-                          <td style={{ textAlign: 'right', color: '#6b7280', fontSize: 12 }}>{fmt(s.ssf_employer)}</td>
+                          <td style={{ textAlign: 'right', color: 'var(--theme-text3)', fontSize: 13 }}>{fmt(s.basic)}</td>
+                          <td style={{ textAlign: 'right', color: s.totalAllowances > 0 ? 'var(--theme-green)' : 'var(--theme-text2)', fontSize: 13 }}>{s.totalAllowances > 0 ? `+${fmt(s.totalAllowances)}` : '—'}</td>
+                          <td style={{ textAlign: 'right', color: 'var(--theme-text1)', fontSize: 13, fontWeight: 500 }}>{fmt(s.gross)}</td>
+                          <td style={{ textAlign: 'right', color: 'var(--theme-red)', fontSize: 13 }}>−{fmt(s.totalDed)}</td>
+                          <td style={{ textAlign: 'right', color: 'var(--theme-accent)', fontSize: 14, fontWeight: 700 }}>{fmt(s.net)}</td>
+                          <td style={{ textAlign: 'right', color: 'var(--theme-text2)', fontSize: 12 }}>{fmt(s.ssf_employer)}</td>
                         </>
                       ) : (
                         <>
-                          <td colSpan={4} style={{ color: '#6b7280', fontSize: 12 }}>
+                          <td colSpan={4} style={{ color: 'var(--theme-text2)', fontSize: 12 }}>
                             NPR {fmt(s.rate)} / {s.unit}
                           </td>
                           <td style={{ textAlign: 'right', fontSize: 12 }}>
-                            <span style={{ color: '#c9a84c', fontWeight: 600 }}>~{fmt(s.estMonthly)}</span>
-                            <span style={{ color: '#4b5563', fontSize: 10, marginLeft: 4 }}>est/mo</span>
+                            <span style={{ color: 'var(--theme-accent)', fontWeight: 600 }}>~{fmt(s.estMonthly)}</span>
+                            <span style={{ color: 'var(--theme-text2)', fontSize: 10, marginLeft: 4 }}>est/mo</span>
                           </td>
-                          <td colSpan={2} style={{ color: '#4b5563', fontSize: 11, fontStyle: 'italic' }}>from attendance</td>
+                          <td colSpan={2} style={{ color: 'var(--theme-text2)', fontSize: 11, fontStyle: 'italic' }}>from attendance</td>
                         </>
                       )}
                       <td style={{ fontSize: 12 }}>
-                        {hasBank ? <span style={{ color: '#9ca3af' }}>{emp.bank_name}</span> : <span style={{ color: '#c9a84c' }}>⚠ not set</span>}
+                        {hasBank ? <span style={{ color: 'var(--theme-text3)' }}>{emp.bank_name}</span> : <span style={{ color: 'var(--theme-accent)' }}>⚠ not set</span>}
                       </td>
                     </tr>
                   )
                 })}
               </tbody>
               <tfoot>
-                <tr style={{ fontWeight: 700, borderTop: '2px solid #2a2f3d' }}>
-                  <td colSpan={2} style={{ color: '#6b7280', fontSize: 12 }}>Total — {totals.count} monthly employees</td>
+                <tr style={{ fontWeight: 700, borderTop: '2px solid var(--theme-border)' }}>
+                  <td colSpan={2} style={{ color: 'var(--theme-text2)', fontSize: 12 }}>Total — {totals.count} monthly employees</td>
                   <td />
                   <td />
-                  <td style={{ textAlign: 'right', color: '#e8e0d0' }}>{fmt(totals.gross)}</td>
-                  <td style={{ textAlign: 'right', color: '#f87171' }}>−{fmt(totals.deductions)}</td>
-                  <td style={{ textAlign: 'right', color: '#c9a84c', fontSize: 15 }}>{fmt(totals.net)}</td>
-                  <td style={{ textAlign: 'right', color: '#6b7280' }}>{fmt(totals.ssf_employer)}</td>
+                  <td style={{ textAlign: 'right', color: 'var(--theme-text1)' }}>{fmt(totals.gross)}</td>
+                  <td style={{ textAlign: 'right', color: 'var(--theme-red)' }}>−{fmt(totals.deductions)}</td>
+                  <td style={{ textAlign: 'right', color: 'var(--theme-accent)', fontSize: 15 }}>{fmt(totals.net)}</td>
+                  <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>{fmt(totals.ssf_employer)}</td>
                   <td />
                 </tr>
               </tfoot>
@@ -254,7 +254,7 @@ export default function PaySetup() {
         )}
       </div>
 
-      <div style={{ marginTop: 12, fontSize: 11, color: '#4b5563', lineHeight: 1.6 }}>
+      <div style={{ marginTop: 12, fontSize: 11, color: 'var(--theme-text2)', lineHeight: 1.6 }}>
         Deductions = SSF Employee (11% of basic, capped at NPR 100,000 basic) + any additional deductions configured per employee. Employer SSF (20%) is paid by the company and not deducted from net salary.
         Daily/hourly workers show their rate only — their pay is computed each period from attendance in Payroll and is excluded from the monthly payroll totals above.
       </div>

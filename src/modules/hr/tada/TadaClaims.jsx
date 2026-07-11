@@ -297,24 +297,24 @@ export default function TadaClaims() {
             <div style={{ display: 'flex', gap: 8 }}>
               {selectedClaim.status === 'pending' && (
                 <>
-                  <button className="btn btn-ghost" style={{ fontSize: 12, color: '#34d399' }} onClick={() => handleApprove(selectedClaim.id)}>✓ Approve</button>
-                  <button className="btn btn-ghost" style={{ fontSize: 12, color: '#f87171' }} onClick={() => setRejectTarget(selectedClaim)}>✕ Reject</button>
+                  <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--theme-green)' }} onClick={() => handleApprove(selectedClaim.id)}>✓ Approve</button>
+                  <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--theme-red)' }} onClick={() => setRejectTarget(selectedClaim)}>✕ Reject</button>
                 </>
               )}
               {selectedClaim.status === 'approved' && (
-                <button className="btn btn-ghost" style={{ fontSize: 12, color: '#34d399' }}
+                <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--theme-green)' }}
                   onClick={() => { setPayMethod('Cash'); setPayTarget(selectedClaim) }}>
                   💵 Mark Paid
                 </button>
               )}
               {selectedClaim.status === 'pending' && (
-                <button className="btn btn-ghost" style={{ fontSize: 12, color: '#f87171' }} onClick={() => handleDelete(selectedClaim.id)}>Delete</button>
+                <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--theme-red)' }} onClick={() => handleDelete(selectedClaim.id)}>Delete</button>
               )}
             </div>
           </div>
 
           {selectedClaim.status === 'paid' && (
-            <div style={{ fontSize: 12, color: '#34d399', marginBottom: 12 }}>
+            <div style={{ fontSize: 12, color: 'var(--theme-green)', marginBottom: 12 }}>
               Paid via {selectedClaim.paid_method} on {fmtD(selectedClaim.paid_at?.slice(0, 10))}
             </div>
           )}
@@ -477,7 +477,7 @@ export default function TadaClaims() {
               <textarea style={{ ...inp, height: 50, resize: 'vertical' }} placeholder="Optional" value={addForm.notes} onChange={e => setAdd('notes', e.target.value)} />
             </div>
 
-            {error && <div style={{ fontSize: 12, color: '#f87171' }}>{error}</div>}
+            {error && <div style={{ fontSize: 12, color: 'var(--theme-red)' }}>{error}</div>}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button className="btn btn-ghost" onClick={() => { setShowAdd(false); setError('') }}>Cancel</button>
               <button className="btn btn-primary" onClick={handleAdd} disabled={saving}>{saving ? 'Submitting…' : 'Submit Claim'}</button>

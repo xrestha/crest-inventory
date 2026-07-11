@@ -10,11 +10,11 @@ import EmployeeJoiningForm from './EmployeeJoiningForm'
 function pinValid(pin) { return /^\d{4,6}$/.test(pin) }
 
 const STATUS_COLORS = {
-  active:      { color: '#34d399', bg: 'rgba(52,211,153,0.1)',  border: 'rgba(52,211,153,0.2)'  },
-  probation:   { color: '#c9a84c', bg: 'rgba(201,168,76,0.1)', border: 'rgba(201,168,76,0.2)'  },
-  resigned:    { color: '#f87171', bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.2)' },
-  terminated:  { color: '#f87171', bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.2)' },
-  inactive:    { color: '#6b7280', bg: 'rgba(107,114,128,0.1)', border: 'rgba(107,114,128,0.2)' },
+  active:      { color: 'var(--theme-green)', bg: 'rgba(52,211,153,0.1)',  border: 'rgba(52,211,153,0.2)'  },
+  probation:   { color: 'var(--theme-accent)', bg: 'rgba(201,168,76,0.1)', border: 'rgba(201,168,76,0.2)'  },
+  resigned:    { color: 'var(--theme-red)', bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.2)' },
+  terminated:  { color: 'var(--theme-red)', bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.2)' },
+  inactive:    { color: 'var(--theme-text2)', bg: 'rgba(107,114,128,0.1)', border: 'rgba(107,114,128,0.2)' },
 }
 
 const EMP_TYPES = {
@@ -32,8 +32,8 @@ function retireInfo(dateStr) {
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const d = new Date(dateStr); d.setHours(0, 0, 0, 0)
   const days = Math.round((d - today) / 86400000)
-  if (days < 0)               return { retired: true, label: 'Retired',       color: '#f87171', bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.2)' }
-  if (days <= RETIRE_SOON_DAYS) return { soon: true,  label: 'Retiring soon', color: '#c9a84c', bg: 'rgba(201,168,76,0.1)', border: 'rgba(201,168,76,0.2)', days }
+  if (days < 0)               return { retired: true, label: 'Retired',       color: 'var(--theme-red)', bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.2)' }
+  if (days <= RETIRE_SOON_DAYS) return { soon: true,  label: 'Retiring soon', color: 'var(--theme-accent)', bg: 'rgba(201,168,76,0.1)', border: 'rgba(201,168,76,0.2)', days }
   return { future: true, days }
 }
 
@@ -167,8 +167,8 @@ export default function EmployeeList() {
         </div>
         <div className="stat-card">
           <div className="stat-label">Active</div>
-          <div className="stat-value" style={{ color: '#34d399' }}>{active}</div>
-          {probation > 0 && <div className="stat-sub" style={{ color: '#c9a84c' }}>{probation} on probation</div>}
+          <div className="stat-value" style={{ color: 'var(--theme-green)' }}>{active}</div>
+          {probation > 0 && <div className="stat-sub" style={{ color: 'var(--theme-accent)' }}>{probation} on probation</div>}
         </div>
         <div className="stat-card">
           <div className="stat-label">
@@ -187,7 +187,7 @@ export default function EmployeeList() {
               Retiring Soon
             </Tip>
           </div>
-          <div className="stat-value" style={{ color: retiringSoon > 0 ? '#c9a84c' : '#34d399' }}>{retiringSoon}</div>
+          <div className="stat-value" style={{ color: retiringSoon > 0 ? 'var(--theme-accent)' : 'var(--theme-green)' }}>{retiringSoon}</div>
           <div className="stat-sub">within 180 days</div>
         </div>
       </div>
@@ -196,8 +196,8 @@ export default function EmployeeList() {
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
         <input
           style={{
-            background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 6,
-            padding: '8px 12px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: 260
+            background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6,
+            padding: '8px 12px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none', width: 260
           }}
           placeholder="Search name, code, department…"
           value={search}

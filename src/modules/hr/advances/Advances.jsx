@@ -244,8 +244,8 @@ export default function Advances() {
                   <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>
                     {a.installment_amount ? fmt(a.installment_amount) : <span style={{ color: 'var(--theme-text3)' }}>—</span>}
                   </td>
-                  <td style={{ textAlign: 'right', color: '#34d399' }}>{fmt(repaid)}</td>
-                  <td style={{ textAlign: 'right', fontWeight: 600, color: outstanding > 0 ? '#f87171' : '#34d399' }}>
+                  <td style={{ textAlign: 'right', color: 'var(--theme-green)' }}>{fmt(repaid)}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 600, color: outstanding > 0 ? 'var(--theme-red)' : 'var(--theme-green)' }}>
                     {fmt(outstanding)}
                   </td>
                   <td style={{ color: 'var(--theme-text3)', fontSize: 12, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -284,14 +284,14 @@ export default function Advances() {
                     onClick={() => { setRepayForm({ ...EMPTY_REPAY, amount: selectedAdv.installment_amount || '' }); setError(''); setShowRepay(true) }}>
                     + Record Repayment
                   </button>
-                  <button className="btn btn-ghost" style={{ fontSize: 12, color: '#34d399' }}
+                  <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--theme-green)' }}
                     onClick={() => setSettleTarget(selectedAdv)}>
                     ✓ Settle
                   </button>
                 </>
               )}
               {(repayMap[selectedAdv.id]?.rows || []).length === 0 && (
-                <button className="btn btn-ghost" style={{ fontSize: 12, color: '#f87171' }}
+                <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--theme-red)' }}
                   onClick={() => handleDelete(selectedAdv.id)}>
                   Delete
                 </button>
@@ -309,7 +309,7 @@ export default function Advances() {
               <div style={{
                 height: '100%', borderRadius: 3,
                 width: `${Math.min(100, (selectedRepaid / parseFloat(selectedAdv.amount)) * 100)}%`,
-                background: selectedOutstanding === 0 ? '#34d399' : 'var(--theme-accent)',
+                background: selectedOutstanding === 0 ? 'var(--theme-green)' : 'var(--theme-accent)',
                 transition: 'width 0.3s',
               }} />
             </div>
@@ -331,7 +331,7 @@ export default function Advances() {
                 {selectedReps.map(r => (
                   <tr key={r.id}>
                     <td>{fmtD(r.repaid_date)}</td>
-                    <td style={{ textAlign: 'right', color: '#34d399', fontWeight: 600 }}>NPR {fmt(r.amount)}</td>
+                    <td style={{ textAlign: 'right', color: 'var(--theme-green)', fontWeight: 600 }}>NPR {fmt(r.amount)}</td>
                     <td style={{ color: 'var(--theme-text3)' }}>{r.notes || '—'}</td>
                   </tr>
                 ))}
@@ -392,7 +392,7 @@ export default function Advances() {
               <textarea style={{ ...inp, height: 60, resize: 'vertical' }} placeholder="Optional internal notes" value={addForm.notes} onChange={e => setAdd('notes', e.target.value)} />
             </div>
 
-            {error && <div style={{ fontSize: 12, color: '#f87171' }}>{error}</div>}
+            {error && <div style={{ fontSize: 12, color: 'var(--theme-red)' }}>{error}</div>}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button className="btn btn-ghost" onClick={() => { setShowAdd(false); setError('') }}>Cancel</button>
               <button className="btn btn-primary" onClick={handleAdd} disabled={saving}>{saving ? 'Saving…' : 'Issue'}</button>
@@ -425,7 +425,7 @@ export default function Advances() {
               <input style={inp} placeholder="e.g. Deducted from Shrawan payslip" value={repayForm.notes} onChange={e => setRepay('notes', e.target.value)} />
             </div>
 
-            {error && <div style={{ fontSize: 12, color: '#f87171' }}>{error}</div>}
+            {error && <div style={{ fontSize: 12, color: 'var(--theme-red)' }}>{error}</div>}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button className="btn btn-ghost" onClick={() => { setShowRepay(false); setError('') }}>Cancel</button>
               <button className="btn btn-primary" onClick={handleRepay} disabled={saving}>{saving ? 'Saving…' : 'Record'}</button>
@@ -442,7 +442,7 @@ export default function Advances() {
             {(() => {
               const outstanding = Math.max(0, parseFloat(settleTarget.amount) - (repayMap[settleTarget.id]?.total || 0))
               return outstanding > 0
-                ? <p style={{ margin: 0, fontSize: 13, color: '#f87171' }}>NPR {fmt(outstanding)} is still outstanding. Mark as settled anyway?</p>
+                ? <p style={{ margin: 0, fontSize: 13, color: 'var(--theme-red)' }}>NPR {fmt(outstanding)} is still outstanding. Mark as settled anyway?</p>
                 : <p style={{ margin: 0, fontSize: 13, color: 'var(--theme-text2)' }}>Fully repaid. Mark as settled?</p>
             })()}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>

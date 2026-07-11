@@ -119,11 +119,11 @@ export default function KitchenDisplay() {
             return (
               <div key={col.status}>
                 <h3 style={{
-                  fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em',
+                  fontSize: 14, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em',
                   color: 'var(--theme-text2)', margin: '0 0 10px',
-                  display: 'flex', alignItems: 'center', gap: 7,
+                  display: 'flex', alignItems: 'center', gap: 8,
                 }}>
-                  <span style={{ width: 9, height: 9, borderRadius: '50%', background: STATUS_COLOR[col.status], flexShrink: 0 }} />
+                  <span style={{ width: 11, height: 11, borderRadius: '50%', background: STATUS_COLOR[col.status], flexShrink: 0 }} />
                   {col.label} <span style={{ color: 'var(--theme-text3)', fontWeight: 400 }}>({colTickets.length})</span>
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -152,25 +152,25 @@ function TicketCard({ ticket, now, onAdvance, action, next, advancing }) {
   const stageColor = STATUS_COLOR[ticket.status] || 'var(--theme-border)'
 
   return (
-    <div className="card" style={{ padding: 14, borderColor, borderWidth: isLate || isWarn ? 2 : 1, overflow: 'hidden' }}>
-      <div style={{ margin: '-14px -14px 10px', height: 6, background: stageColor }} />
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-        <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--theme-text1)' }}>{ticket.table_name || 'Takeaway'}</span>
-        <span style={{ fontSize: 11, color: 'var(--theme-text3)' }}>#{ticket.order_no}</span>
+    <div className="card" style={{ padding: 16, borderColor, borderWidth: isLate || isWarn ? 2 : 1, overflow: 'hidden' }}>
+      <div style={{ margin: '-16px -16px 12px', height: 7, background: stageColor }} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+        <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--theme-text1)' }}>{ticket.table_name || 'Takeaway'}</span>
+        <span style={{ fontSize: 12, color: 'var(--theme-text3)' }}>#{ticket.order_no}</span>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 10 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 12 }}>
         {(ticket.items || []).map((i, idx) => (
-          <div key={idx} style={{ fontSize: 13, color: 'var(--theme-text2)' }}>{i.qty} × {i.name}</div>
+          <div key={idx} style={{ fontSize: 16, color: 'var(--theme-text2)' }}>{i.qty} × {i.name}</div>
         ))}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Tip text="Time since this ticket was sent">
-          <span style={{ fontSize: 11, color: isLate ? 'var(--theme-red)' : isWarn ? 'var(--theme-amber)' : 'var(--theme-text3)', fontWeight: isLate || isWarn ? 700 : 400 }}>
+          <span style={{ fontSize: 13, color: isLate ? 'var(--theme-red)' : isWarn ? 'var(--theme-amber)' : 'var(--theme-text3)', fontWeight: isLate || isWarn ? 700 : 400 }}>
             {elapsedMin} min ago
           </span>
         </Tip>
         {action && (
-          <button className="btn btn-primary" style={{ fontSize: 12, padding: '5px 12px' }} disabled={advancing} onClick={() => onAdvance(ticket, next)}>
+          <button className="btn btn-primary" style={{ fontSize: 14, padding: '8px 16px' }} disabled={advancing} onClick={() => onAdvance(ticket, next)}>
             {advancing ? '…' : action}
           </button>
         )}

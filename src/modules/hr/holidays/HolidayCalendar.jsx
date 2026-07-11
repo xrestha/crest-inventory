@@ -35,13 +35,13 @@ function fyYearsFrom(holidays) {
 const BLANK = { name: '', bs_month: 6, bs_day: 3, holiday_type: 'public' }
 
 const lbl = {
-  fontSize: 11, color: '#9ca3af', fontWeight: 600,
+  fontSize: 11, color: 'var(--theme-text3)', fontWeight: 600,
   letterSpacing: '0.04em', textTransform: 'uppercase',
   display: 'block', marginBottom: 4,
 }
 const inp = {
-  background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 6,
-  padding: '8px 10px', fontSize: 13, color: '#e8e0d0', outline: 'none',
+  background: 'var(--theme-input-bg)', border: '1px solid var(--theme-border)', borderRadius: 6,
+  padding: '8px 10px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none',
   fontFamily: 'inherit', width: '100%', boxSizing: 'border-box',
 }
 
@@ -142,7 +142,7 @@ export default function HolidayCalendar() {
           <p className="page-subtitle">Nepal public and optional holidays per fiscal year — used for OT rate and attendance reference</p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          {msg && <span style={{ fontSize: 12, color: msg.startsWith('ok') ? '#34d399' : '#f87171' }}>{msg.split(':').slice(1).join(':')}</span>}
+          {msg && <span style={{ fontSize: 12, color: msg.startsWith('ok') ? 'var(--theme-green)' : 'var(--theme-red)' }}>{msg.split(':').slice(1).join(':')}</span>}
           <select
             className="form-select"
             value={fyYear}
@@ -169,7 +169,7 @@ export default function HolidayCalendar() {
               Public Holidays
             </Tip>
           </div>
-          <div className="stat-value" style={{ color: '#c9a84c' }}>{publicCount}</div>
+          <div className="stat-value" style={{ color: 'var(--theme-accent)' }}>{publicCount}</div>
           <div className="stat-sub">{fyLabel(fyYear)}</div>
         </div>
         <div className="stat-card">
@@ -238,7 +238,7 @@ export default function HolidayCalendar() {
                     <td style={{ textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                         <button className="btn btn-ghost" style={{ fontSize: 11, padding: '3px 10px' }} onClick={() => openEdit(h)}>Edit</button>
-                        <button className="btn btn-ghost" style={{ fontSize: 11, padding: '3px 10px', color: '#f87171' }} onClick={() => del(h.id)}>Delete</button>
+                        <button className="btn btn-ghost" style={{ fontSize: 11, padding: '3px 10px', color: 'var(--theme-red)' }} onClick={() => del(h.id)}>Delete</button>
                       </div>
                     </td>
                   </tr>
@@ -249,8 +249,8 @@ export default function HolidayCalendar() {
         </div>
       )}
 
-      <div style={{ marginTop: 12, fontSize: 11, color: '#4b5563', lineHeight: 1.7 }}>
-        <strong style={{ color: '#6b7280' }}>Nepal Labour Act — holiday OT:</strong> working on a gazetted public holiday entitles the employee to 2× the regular hourly rate. Optional holidays follow company policy.
+      <div style={{ marginTop: 12, fontSize: 11, color: 'var(--theme-text2)', lineHeight: 1.7 }}>
+        <strong style={{ color: 'var(--theme-text2)' }}>Nepal Labour Act — holiday OT:</strong> working on a gazetted public holiday entitles the employee to 2× the regular hourly rate. Optional holidays follow company policy.
         <br />Movable holidays (Dashain, Tihar, Holi, Buddha Jayanti, Teej, etc.) must be added manually each fiscal year from the Nepal government gazette.
       </div>
 
@@ -258,8 +258,8 @@ export default function HolidayCalendar() {
       {form.open && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', overflowY: 'auto', padding: '40px 16px' }}>
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)' }} onClick={closeForm} />
-          <div style={{ position: 'relative', width: 460, maxWidth: '100%', background: '#141820', border: '1px solid #2a2f3d', borderRadius: 12, padding: 24 }}>
-            <h2 style={{ margin: '0 0 18px', fontSize: 15, color: '#e8e0d0' }}>
+          <div style={{ position: 'relative', width: 460, maxWidth: '100%', background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 12, padding: 24 }}>
+            <h2 style={{ margin: '0 0 18px', fontSize: 15, color: 'var(--theme-text1)' }}>
               {form.editing ? 'Edit Holiday' : `Add Holiday — ${fyLabel(fyYear)}`}
             </h2>
 
@@ -292,7 +292,7 @@ export default function HolidayCalendar() {
                     <option key={i + 1} value={i + 1}>{i + 1} — {name}</option>
                   ))}
                 </select>
-                <div style={{ fontSize: 10, color: '#6b7280', marginTop: 4 }}>
+                <div style={{ fontSize: 10, color: 'var(--theme-text2)', marginTop: 4 }}>
                   stored as BS year {bs_year_form}
                 </div>
               </div>
@@ -306,7 +306,7 @@ export default function HolidayCalendar() {
                   max={maxDay}
                   onChange={e => setForm(f => ({ ...f, bs_day: e.target.value }))}
                 />
-                <div style={{ fontSize: 10, color: '#6b7280', marginTop: 4, textAlign: 'center' }}>
+                <div style={{ fontSize: 10, color: 'var(--theme-text2)', marginTop: 4, textAlign: 'center' }}>
                   max {maxDay}
                 </div>
               </div>
@@ -321,7 +321,7 @@ export default function HolidayCalendar() {
               </label>
               <div style={{ display: 'flex', gap: 20, marginTop: 6 }}>
                 {[{ key: 'public', label: 'Public (Gazetted)' }, { key: 'optional', label: 'Optional / Floating' }].map(t => (
-                  <label key={t.key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer', color: '#e8e0d0' }}>
+                  <label key={t.key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer', color: 'var(--theme-text1)' }}>
                     <input
                       type="radio"
                       name="htype"
@@ -336,7 +336,7 @@ export default function HolidayCalendar() {
             </div>
 
             {msg && (
-              <div style={{ marginTop: 12, fontSize: 12, color: msg.startsWith('ok') ? '#34d399' : '#f87171' }}>
+              <div style={{ marginTop: 12, fontSize: 12, color: msg.startsWith('ok') ? 'var(--theme-green)' : 'var(--theme-red)' }}>
                 {msg.split(':').slice(1).join(':')}
               </div>
             )}

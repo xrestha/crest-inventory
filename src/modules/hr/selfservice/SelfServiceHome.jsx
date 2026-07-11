@@ -472,7 +472,7 @@ export default function SelfServiceHome() {
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <label style={{ ...lbl, marginBottom: 0 }}>Expenses</label>
-                    <button className="btn btn-ghost" style={{ fontSize: 11, padding: '3px 10px' }} onClick={addTadaItemRow}>+ Add line</button>
+                    <button className="btn btn-ghost" style={{ fontSize: 12, padding: '8px 14px' }} onClick={addTadaItemRow}>+ Add line</button>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {tadaForm.items.map((it, idx) => (
@@ -484,7 +484,7 @@ export default function SelfServiceHome() {
                           <input style={inp} placeholder="Description (optional)" value={it.description} onChange={e => setTadaItem(idx, 'description', e.target.value)} />
                           <input style={{ ...inp, width: 100, flexShrink: 0 }} type="number" min="0" placeholder="Amount" value={it.amount} onChange={e => setTadaItem(idx, 'amount', e.target.value)} />
                           {tadaForm.items.length > 1 && (
-                            <button style={{ background: 'none', border: 'none', color: 'var(--theme-text3)', cursor: 'pointer', fontSize: 16, flexShrink: 0 }} onClick={() => removeTadaItemRow(idx)}>✕</button>
+                            <button style={{ background: 'none', border: 'none', color: 'var(--theme-text3)', cursor: 'pointer', fontSize: 16, flexShrink: 0, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => removeTadaItemRow(idx)}>✕</button>
                           )}
                         </div>
                         {it.category === 'Transport' && (
@@ -570,7 +570,7 @@ export default function SelfServiceHome() {
                           <span style={{ fontSize: 13, color: off ? 'var(--theme-text3)' : 'var(--theme-text2)', fontWeight: off ? 600 : 400 }}>
                             {r.shift_type_name || '—'}{r.shift_start && ` (${r.shift_start}–${r.shift_end})`}
                           </span>
-                          <button className="btn btn-ghost" style={{ fontSize: 10, padding: '3px 8px' }} onClick={() => openSwapRequest(r.bs_day)}>
+                          <button className="btn btn-ghost" style={{ fontSize: 12, padding: '8px 14px' }} onClick={() => openSwapRequest(r.bs_day)}>
                             Request Swap
                           </button>
                         </div>

@@ -23,6 +23,10 @@ export const QR_PAY_METHODS = ['eSewa', 'Khalti', 'FonePay']
 
 export const STATUS_BADGE = { available: 'badge-green', occupied: 'badge-red', reserved: 'badge-amber', inactive: 'badge-gray' }
 export const STATUS_LABEL = { available: 'Available', occupied: 'Occupied', reserved: 'Reserved', inactive: 'Inactive' }
+// Same stage-color-strip treatment as KitchenDisplay.jsx's TicketCard, applied to a floor-plan
+// tile — a small badge chip alone doesn't read from across a room; a full-width color band does.
+// The badge stays too, so status is never conveyed by color alone.
+export const STATUS_COLOR = { available: 'var(--theme-green)', occupied: 'var(--theme-red)', reserved: 'var(--theme-amber)', inactive: 'var(--theme-border)' }
 
 // Kitchen/bar status pulled from pos_kot_log for the floor-view table badge — same 3 stages as
 // KitchenDisplay.jsx's board, worded from the wait staff's point of view rather than the kitchen's
@@ -46,12 +50,15 @@ export const COMP_REASONS    = ['Walkout / unpaid', 'Customer goodwill', 'Custom
 export const DEFAULT_DISCOUNT_REASONS = ['Loyalty customer', 'Promo / coupon code', 'Manager goodwill', 'Bulk / corporate order', 'Price match', 'Other']
 export const COPY_LABEL = n => n <= 1 ? 'ORIGINAL-COPY' : n === 2 ? 'SECOND-COPY' : n === 3 ? 'THIRD-COPY' : `REPRINT #${n}`
 
+// 40x40 rather than the 44px touch-target ideal — the largest that comfortably fits the 320px
+// cart column and 52px top bar without reflowing either layout; still a large jump from the
+// 26x26 it replaced, on the single most-tapped control on the busiest screen in the app.
 export const btnSm = {
-  width: 26, height: 26, borderRadius: 4,
+  width: 40, height: 40, borderRadius: 8,
   border: '1px solid var(--theme-border)',
   background: 'var(--theme-input-bg)',
   color: 'var(--theme-text1)',
-  cursor: 'pointer', fontSize: 16, lineHeight: 1,
+  cursor: 'pointer', fontSize: 18, lineHeight: 1,
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   flexShrink: 0,
 }

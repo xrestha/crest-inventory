@@ -11,8 +11,8 @@ import { WEEKLY_OFF_WEEKDAY } from '../payrollConstants'
 
 const fmt = n => Math.round((n || 0) * 10) / 10
 const inp = {
-  background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 6,
-  padding: '7px 10px', fontSize: 13, color: '#e8e0d0', outline: 'none', fontFamily: 'inherit',
+  background: 'var(--theme-input-bg)', border: '1px solid var(--theme-border)', borderRadius: 6,
+  padding: '7px 10px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none', fontFamily: 'inherit',
 }
 
 // "12 Baisakh 2082" from an ISO/AD date string.
@@ -202,7 +202,7 @@ export default function LeaveManagement() {
           <p className="page-subtitle">Leave entitlements, requests, and balances — BS {bsYear}</p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          {msg && <span style={{ fontSize: 12, color: msg.startsWith('ok') ? '#34d399' : '#f87171', maxWidth: 360 }}>{msg.split(':').slice(1).join(':')}</span>}
+          {msg && <span style={{ fontSize: 12, color: msg.startsWith('ok') ? 'var(--theme-green)' : 'var(--theme-red)', maxWidth: 360 }}>{msg.split(':').slice(1).join(':')}</span>}
           <select className="form-select" value={bsYear} onChange={e => setBsYear(parseInt(e.target.value, 10))}>
             {years.map(y => <option key={y} value={y}>BS {y}</option>)}
           </select>
@@ -216,14 +216,14 @@ export default function LeaveManagement() {
       </div>
 
       {loading ? (
-        <div className="card" style={{ padding: 32, textAlign: 'center', color: '#6b7280' }}>Loading…</div>
+        <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--theme-text2)' }}>Loading…</div>
       ) : employees.length === 0 ? (
-        <div className="card" style={{ padding: 32, textAlign: 'center', color: '#6b7280' }}>No active employees. Add employees in HR → Employees first.</div>
+        <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--theme-text2)' }}>No active employees. Add employees in HR → Employees first.</div>
       ) : tab === 'requests' ? (
         /* ── REQUESTS ── */
         <div>
           <div className="card" style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 12, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>New Request</div>
+            <div style={{ fontSize: 12, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>New Request</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, alignItems: 'start' }}>
               <div>
                 <label style={lbl}>Employee</label>
@@ -261,7 +261,7 @@ export default function LeaveManagement() {
               </div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, flexWrap: 'wrap', gap: 8 }}>
-              <span style={{ fontSize: 12, color: '#9ca3af' }}>
+              <span style={{ fontSize: 12, color: 'var(--theme-text3)' }}>
                 <Tip text="The weekly off day is not counted against leave. The balance is reduced by working days only." width={260}>
                   {fStart && fEnd ? `${fmt(previewDaysCount)} working day${previewDaysCount === 1 ? '' : 's'}` : 'Pick a date range'}
                 </Tip>
@@ -290,7 +290,7 @@ export default function LeaveManagement() {
                 </thead>
                 <tbody>
                   {filteredRequests.length === 0 ? (
-                    <tr><td colSpan={7} style={{ textAlign: 'center', color: '#6b7280', padding: 28 }}>No requests for BS {bsYear} yet.</td></tr>
+                    <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--theme-text2)', padding: 28 }}>No requests for BS {bsYear} yet.</td></tr>
                   ) : filteredRequests.map(req => {
                     const e = empMap[req.employee_id] || {}
                     const t = typeMap[req.leave_type_id]
@@ -300,33 +300,33 @@ export default function LeaveManagement() {
                     return (
                       <tr key={req.id}>
                         <td>
-                          <div style={{ fontWeight: 600, color: '#e8e0d0', fontSize: 13 }}>{e.full_name || '—'}</div>
-                          {e.employee_code && <div style={{ fontSize: 10, color: '#6b7280' }}>{e.employee_code}</div>}
+                          <div style={{ fontWeight: 600, color: 'var(--theme-text1)', fontSize: 13 }}>{e.full_name || '—'}</div>
+                          {e.employee_code && <div style={{ fontSize: 10, color: 'var(--theme-text2)' }}>{e.employee_code}</div>}
                         </td>
                         <td>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: t?.color || '#9ca3af', background: `${t?.color || '#9ca3af'}1a`, border: `1px solid ${t?.color || '#9ca3af'}33`, borderRadius: 8, padding: '2px 8px' }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: t?.color || 'var(--theme-text3)', background: `${t?.color || '#9ca3af'}1a`, border: `1px solid ${t?.color || '#9ca3af'}33`, borderRadius: 8, padding: '2px 8px' }}>
                             {t?.name || 'Unknown'}{t && !t.paid ? ' · unpaid' : ''}
                           </span>
                         </td>
-                        <td style={{ fontSize: 12, color: '#9ca3af', whiteSpace: 'nowrap' }}>
+                        <td style={{ fontSize: 12, color: 'var(--theme-text3)', whiteSpace: 'nowrap' }}>
                           {bsLabel(req.start_date)} → {bsLabel(req.end_date)}
                         </td>
-                        <td style={{ textAlign: 'right', color: '#e8e0d0', fontWeight: 600 }}>{fmt(req.days)}</td>
-                        <td style={{ textAlign: 'right', color: remaining == null ? '#4b5563' : remaining < 0 ? '#f87171' : '#9ca3af' }}>
+                        <td style={{ textAlign: 'right', color: 'var(--theme-text1)', fontWeight: 600 }}>{fmt(req.days)}</td>
+                        <td style={{ textAlign: 'right', color: remaining == null ? 'var(--theme-text2)' : remaining < 0 ? 'var(--theme-red)' : 'var(--theme-text3)' }}>
                           {remaining == null ? '—' : `${fmt(remaining)} / ${fmt(quota)}`}
                         </td>
                         <td><span style={{ fontSize: 11, fontWeight: 700, color: sc.color }}>{sc.label}</span></td>
                         <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                           {req.status === 'pending' && (
                             <>
-                              <button className="btn btn-ghost" style={{ fontSize: 11, color: '#34d399' }} onClick={() => approveRequest(req)} disabled={busy}>Approve</button>
-                              <button className="btn btn-ghost" style={{ fontSize: 11, color: '#f87171' }} onClick={() => decideRequest(req, 'rejected')} disabled={busy}>Reject</button>
+                              <button className="btn btn-ghost" style={{ fontSize: 11, color: 'var(--theme-green)' }} onClick={() => approveRequest(req)} disabled={busy}>Approve</button>
+                              <button className="btn btn-ghost" style={{ fontSize: 11, color: 'var(--theme-red)' }} onClick={() => decideRequest(req, 'rejected')} disabled={busy}>Reject</button>
                             </>
                           )}
                           {(req.status === 'pending' || req.status === 'approved') && (
                             <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => decideRequest(req, 'cancelled')} disabled={busy}>Cancel</button>
                           )}
-                          {(req.status === 'rejected' || req.status === 'cancelled') && <span style={{ fontSize: 11, color: '#4b5563' }}>—</span>}
+                          {(req.status === 'rejected' || req.status === 'cancelled') && <span style={{ fontSize: 11, color: 'var(--theme-text2)' }}>—</span>}
                         </td>
                       </tr>
                     )
@@ -335,7 +335,7 @@ export default function LeaveManagement() {
               </table>
             </div>
           </div>
-          <div style={{ marginTop: 12, fontSize: 11, color: '#4b5563', lineHeight: 1.6 }}>
+          <div style={{ marginTop: 12, fontSize: 11, color: 'var(--theme-text2)', lineHeight: 1.6 }}>
             Approving a request marks those days in Attendance (paid or unpaid leave) for the matching month — so Payroll deducts unpaid leave automatically. Rejecting or cancelling an approved request reverts those attendance days to Present. Saturdays are never counted.
           </div>
         </div>
@@ -350,7 +350,7 @@ export default function LeaveManagement() {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th style={{ position: 'sticky', left: 0, background: '#141820', zIndex: 1 }}>Employee</th>
+                    <th style={{ position: 'sticky', left: 0, background: 'var(--theme-card)', zIndex: 1 }}>Employee</th>
                     {activeTypes.map(t => (
                       <th key={t.id} style={{ textAlign: 'right', color: t.color }}>
                         <Tip text={`${t.name}: ${t.annual_quota > 0 ? t.annual_quota + ' days/year' : 'uncapped'}${t.paid ? '' : ', unpaid'}. Shows used / quota.`} width={240}>{t.name}</Tip>
@@ -361,15 +361,15 @@ export default function LeaveManagement() {
                 <tbody>
                   {employees.map(e => (
                     <tr key={e.id}>
-                      <td style={{ position: 'sticky', left: 0, background: '#141820', zIndex: 1, fontWeight: 600, color: '#e8e0d0', whiteSpace: 'nowrap' }}>{e.full_name}</td>
+                      <td style={{ position: 'sticky', left: 0, background: 'var(--theme-card)', zIndex: 1, fontWeight: 600, color: 'var(--theme-text1)', whiteSpace: 'nowrap' }}>{e.full_name}</td>
                       {activeTypes.map(t => {
                         const used = usedFor(e.id, t.id)
                         const remaining = t.annual_quota - used
                         const over = t.annual_quota > 0 && remaining < 0
                         return (
-                          <td key={t.id} style={{ textAlign: 'right', color: over ? '#f87171' : used > 0 ? '#e8e0d0' : '#4b5563' }}>
+                          <td key={t.id} style={{ textAlign: 'right', color: over ? 'var(--theme-red)' : used > 0 ? 'var(--theme-text1)' : 'var(--theme-text2)' }}>
                             {t.annual_quota > 0
-                              ? <span><b>{fmt(used)}</b> <span style={{ color: '#6b7280' }}>/ {fmt(t.annual_quota)}</span></span>
+                              ? <span><b>{fmt(used)}</b> <span style={{ color: 'var(--theme-text2)' }}>/ {fmt(t.annual_quota)}</span></span>
                               : (used > 0 ? <b>{fmt(used)}</b> : '—')}
                           </td>
                         )
@@ -380,7 +380,7 @@ export default function LeaveManagement() {
               </table>
             </div>
           </div>
-          <div style={{ marginTop: 12, fontSize: 11, color: '#4b5563', lineHeight: 1.6 }}>
+          <div style={{ marginTop: 12, fontSize: 11, color: 'var(--theme-text2)', lineHeight: 1.6 }}>
             Each cell shows approved leave days used against the annual quota for BS {bsYear}. Uncapped types (e.g. Unpaid) show only the days taken. Quotas are flat annual figures — accrual and carry-forward roll-over are not yet automatic.
           </div>
         </div>
@@ -437,7 +437,7 @@ export default function LeaveManagement() {
               </table>
             </div>
           </div>
-          <div style={{ marginTop: 12, fontSize: 11, color: '#4b5563', lineHeight: 1.6 }}>
+          <div style={{ marginTop: 12, fontSize: 11, color: 'var(--theme-text2)', lineHeight: 1.6 }}>
             Defaults follow Nepal's Labour Act 2074. Maternity (98) and Paternity (15) are per-event statutory entitlements rather than annually recurring. Edits save automatically.
           </div>
         </div>
@@ -446,4 +446,4 @@ export default function LeaveManagement() {
   )
 }
 
-const lbl = { display: 'block', fontSize: 11, color: '#6b7280', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }
+const lbl = { display: 'block', fontSize: 11, color: 'var(--theme-text2)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }

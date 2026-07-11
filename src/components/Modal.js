@@ -18,7 +18,7 @@ export default function Modal({ onClose, title, children, maxWidth = 960 }) {
         style={{ width: '100%', maxWidth, margin: 'auto' }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ margin: '0 0 16px', fontSize: 15, color: '#e8e0d0' }}>{title}</h3>
+          <h3 style={{ margin: '0 0 16px', fontSize: 15, color: 'var(--theme-text1)' }}>{title}</h3>
           <button
             className="btn btn-ghost"
             style={{ fontSize: 18, lineHeight: 1, padding: '2px 10px', marginTop: -4 }}

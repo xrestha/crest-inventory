@@ -141,6 +141,34 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S345 — 2026-07-11 — fix(hr): module-wide hardcoded-hex theming bug — HR silently ignored a client's chosen theme
+
+Ran the `ui-ux-pro-max` design-review skill against the HR module (24 admin/manager pages + the 2 employee Self-Service pages) as a follow-up to S344's POS pass. The codebase-mapping sub-agent surfaced something much bigger than a one-off bug: unlike POS/IMS, almost the entire HR module was built with literal hex colors matching only the default dark theme's exact values instead of the app's `var(--theme-*)` CSS variable system — confirmed ~500+ occurrences across 20 files (`e8e0d0`/`9ca3af`/`6b7280`/`4b5563`/`c9a84c`/`34d399`/`f87171`/`0f1117`/`2a2f3d`/`141820`/`181c27`). Practical effect: a client on any of the app's other 8 theme presets got an HR module frozen in the default dark/gold look while every other module (nav, POS, IMS) correctly re-themed — the same class of bug as S344's `Modal.js` finding, just module-wide instead of one component.
+
+Fixed by mapping each exact hex match to its corresponding token (`text1/text2/text3/accent/green/red/input-bg/border/card`) and sweeping every affected file. One landmine caught before the sweep: `LeaveManagement.jsx` used a leave-type color as a fallback *inside* a `` `${t?.color || '#9ca3af'}1a` `` alpha-suffix template literal — blindly swapping that to `var(--theme-text3)` would have produced invalid CSS (`var(...)1a` isn't a color). Fixed that file by hand, preserving the two alpha-suffix spots as literal hex. Deliberately left untouched: `leaveConstants.js`/`payrollConstants.js`'s categorical tag-color palettes (leave-type tags, attendance-status colors — a real fixed/user-facing palette, not theme chrome) and `Roster.jsx`'s default value for its user-editable shift-color `<input type="color">` (can't take a CSS variable anyway).
+
+Also, in the same pass: bumped undersized touch targets on `SelfServiceHome.jsx` (Request Swap, +Add expense line, TADA remove ✕ — all on the phone-only employee self-service page) up to the same standard set in S344, and fixed a stale `CLAUDE.md` reference to a `BsDatePicker` component that doesn't exist (the real, actively-used component is `BsCalendarPicker`).
+
+Backlog, not attempted this pass (bigger/riskier changes deferred, same triage logic as S344): 13 HR files hand-roll their own modal overlay instead of the shared `Modal` component; `Roster.jsx`'s drag-to-select scheduling grid is mouse-only with no touch handling; 5 files reinvent pending/approved/rejected status-chip styling instead of `badge-*`; an orphaned dead file `src/modules/hr/Hr.js` (unrouted "coming soon" stub).
+
+**Files:** `src/modules/hr/Hr.js`, `advances/Advances.jsx`, `attendance/AttendanceSheet.jsx`, `dashboard/HrDashboard.jsx`, `employees/EmployeeForm.jsx`, `employees/EmployeeList.jsx`, `festival/FestivalAllowance.jsx`, `gratuity/GratuityTracker.jsx`, `holidays/HolidayCalendar.jsx`, `leave/LeaveManagement.jsx`, `leave/leaveConstants.js`, `overtime/Overtime.jsx`, `pay/PayForm.jsx`, `pay/PaySetup.jsx`, `payroll/PayrollRun.jsx`, `payrollConstants.js`, `reports/HrReports.jsx`, `settlement/FinalSettlement.jsx`, `tada/TadaClaims.jsx`, `selfservice/SelfServiceHome.jsx` (all under `src/modules/hr/`), plus `CLAUDE.md`
+
+### S344 — 2026-07-11 — feat: POS module UI/UX pass (`ui-ux-pro-max` design-review skill)
+
+Ran the `ui-ux-pro-max` design-review skill against the full POS module (14 screens — order-taking, table floor plan, Kitchen Display, guest QR menu, staff/reports pages) and implemented the highest-confidence, lowest-risk fixes it surfaced:
+
+Undersized touch targets on the busiest screen in the app — the qty +/- stepper (`btnSm` in `posOrdersConstants.js`, used for both the cart-line quantity and the covers count in `PosOrders.jsx`) was 26×26px, well under the ~44px touch-target guideline, on a tablet screen used rapidly during live service. Bumped to 40×40 (the largest that fits the existing 320px cart column / 52px top bar without reflowing either), and matched the same fix in `GuestMenu.jsx`'s identical stepper on the customer's own phone.
+
+A real theming bug in the shared `Modal.js`: its title was hardcoded `#e8e0d0` instead of `var(--theme-text1)` — invisible on the default theme (identical value) but wrong on every other preset, affecting every POS modal built on the shared component (this is what led to auditing HR's colors too, in S345).
+
+Kitchen Display glanceability: ticket item text (13→16px), elapsed-timer label (11→13px), and the advance-stage button (12→14px + bigger padding) were sized for a desk screen, not a board glanced at from a few feet above a hot line.
+
+Floor-plan status at a glance: table tiles showed status only via a small badge chip; added a full-width color strip (reusing the exact pattern already proven in Kitchen Display's ticket cards) so Available/Occupied/Reserved reads across a room, in both the live floor view (`PosOrders.jsx`) and the table-setup grid (`PosTableManagement.jsx`) — the badge stays too, so status is never color-only.
+
+Backlog, deliberately not attempted this pass: most POS modals hand-roll their own overlay instead of reusing `Modal.js`; no loading-skeleton component exists anywhere in POS; `SearchableSelect` is under-used; `GOLD`/`MUTED` hex chart-tick constants are duplicated across two report files.
+
+**Files:** `src/modules/pos/orders/posOrdersConstants.js`, `src/modules/pos/orders/PosOrders.jsx`, `src/modules/pos/guestmenu/GuestMenu.jsx`, `src/components/Modal.js`, `src/modules/pos/kds/KitchenDisplay.jsx`, `src/modules/pos/tables/PosTableManagement.jsx`
+
 ### S343 — 2026-07-10 — docs(ims): "On POS" tooltip now mentions it doubles as the 86 toggle
 
 Explored building a separate "86 list" feature (mark a menu item unavailable when out of stock, blocking it on the POS order screen and Guest QR menu) — research confirmed the existing "On POS" toggle (`recipes.pos_enabled`, `MenuPricing.js`) already produces the exact same outcome, since both `PosOrders.jsx`'s menu query and the `get_guest_menu`/`submit_guest_order` guest-ordering RPCs already filter on `pos_enabled`. Rather than build a parallel `is_86` flag/column/UI duplicating a mechanism that already works, updated both of `MenuPricing.js`'s existing "On POS" column tooltips (the file has two view branches) to mention it doubles as the 86 mechanism — uncheck when you run out, recheck once restocked. No schema/logic change.

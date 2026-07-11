@@ -12,6 +12,10 @@ import { escapeHtml as esc } from '../../../utils/escapeHtml'
 const STATUS_CYCLE = ['available', 'reserved', 'occupied', 'inactive']
 const STATUS_BADGE = { available: 'badge-green', occupied: 'badge-red', reserved: 'badge-amber', inactive: 'badge-gray' }
 const STATUS_LABEL = { available: 'Available', occupied: 'Occupied', reserved: 'Reserved', inactive: 'Inactive' }
+// Same stage-color-strip treatment as the live floor view (PosOrders.jsx) and Kitchen Display —
+// a small badge chip alone doesn't read at a glance; the badge stays too, so color is never the
+// only signal.
+const STATUS_COLOR = { available: 'var(--theme-green)', occupied: 'var(--theme-red)', reserved: 'var(--theme-amber)', inactive: 'var(--theme-border)' }
 
 const QS_EMPTY  = { prefix: 'Table', start: 1, count: 10, section: '', capacity: 4 }
 const ADD_EMPTY = { name: '', section: '', capacity: 4 }
@@ -971,8 +975,9 @@ export default function PosTableManagement() {
                   key={t.id}
                   className="card"
                   onClick={() => openEdit(t)}
-                  style={{ padding: '16px 18px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 8 }}
+                  style={{ padding: '16px 18px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 8, overflow: 'hidden' }}
                 >
+                  <div style={{ margin: '-16px -18px 2px', height: 6, background: STATUS_COLOR[t.status] || 'var(--theme-border)', flexShrink: 0 }} />
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6 }}>
                     <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--theme-text1)', lineHeight: 1.2 }}>{t.name}</span>
                     <Tip text="Click to cycle: Available → Reserved → Occupied → Inactive.">

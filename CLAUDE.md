@@ -162,7 +162,7 @@ All colors must use CSS variables, not hardcoded hex. The full token set:
 | `SearchableSelect` | `src/components/SearchableSelect.js` | Drop-in for long `<select>` lists. `position:fixed` dropdown never clips inside modals. Flips above the trigger near the bottom of the viewport. |
 | `Fab` | `src/components/Fab.js` | Fixed bottom-right `+ Add` button |
 | `Modal` | `src/components/Modal.js` | Centered overlay with backdrop-click close |
-| `BsDatePicker` | `src/components/BsDatePicker.js` | BS year/month/day pickers |
+| `BsCalendarPicker` | `src/components/BsCalendarPicker.js` | BS year/month/day picker, calendar-grid UI |
 | `ModuleGate` | `src/components/ModuleGate.js` | Module-level route guard |
 | `PremiumGate` | `src/components/PremiumGate.js` | Plan/feature-level route guard |
 

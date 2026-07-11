@@ -69,11 +69,11 @@ const MARITAL    = ['single', 'married', 'divorced', 'widowed']
 const NOMINEE_RELATIONS = ['Spouse', 'Father', 'Mother', 'Son', 'Daughter', 'Brother', 'Sister', 'Other']
 
 const inp = {
-  background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 6,
-  padding: '8px 12px', fontSize: 13, color: '#e8e0d0', outline: 'none', width: '100%',
+  background: 'var(--theme-input-bg)', border: '1px solid var(--theme-border)', borderRadius: 6,
+  padding: '8px 12px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none', width: '100%',
   fontFamily: 'inherit',
 }
-const lbl = { fontSize: 11, color: '#6b7280', marginBottom: 4, display: 'block', letterSpacing: '0.02em' }
+const lbl = { fontSize: 11, color: 'var(--theme-text2)', marginBottom: 4, display: 'block', letterSpacing: '0.02em' }
 const row = { display: 'flex', gap: 12 }
 const col = { flex: 1, display: 'flex', flexDirection: 'column' }
 
@@ -165,18 +165,18 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)' }} onClick={onClose} />
       <div style={{
         position: 'relative', width: 560, maxWidth: '100%', maxHeight: '90vh',
-        background: '#141820', border: '1px solid #2a2f3d', borderRadius: 12,
+        background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 12,
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
         boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
       }}>
 
         {/* Header */}
-        <div style={{ padding: '20px 24px 0', borderBottom: '1px solid #2a2f3d', flexShrink: 0 }}>
+        <div style={{ padding: '20px 24px 0', borderBottom: '1px solid var(--theme-border)', flexShrink: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h2 style={{ margin: 0, fontSize: 16, color: '#e8e0d0' }}>
+            <h2 style={{ margin: 0, fontSize: 16, color: 'var(--theme-text1)' }}>
               {isEdit ? `Edit — ${employee.full_name}` : 'Add Employee'}
             </h2>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: 18, cursor: 'pointer' }}>✕</button>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--theme-text2)', fontSize: 18, cursor: 'pointer' }}>✕</button>
           </div>
           <div className="tab-bar" style={{ marginBottom: 0 }}>
             {TABS.map(t => (
@@ -199,7 +199,7 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
               <input style={inp} placeholder="EMP-001 (optional)" value={form.employee_code} onChange={e => set('employee_code', e.target.value)} />
             </div>
             <div style={col}>
-              <label style={lbl}>Full Name <span style={{ color: '#f87171' }}>*</span></label>
+              <label style={lbl}>Full Name <span style={{ color: 'var(--theme-red)' }}>*</span></label>
               <input style={inp} placeholder="As per citizenship / PAN" value={form.full_name} onChange={e => set('full_name', e.target.value)} />
             </div>
             <div style={row}>
@@ -276,7 +276,7 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
             </div>
             <div style={row}>
               <div style={col}>
-                <label style={lbl}>Join Date <span style={{ color: '#f87171' }}>*</span></label>
+                <label style={lbl}>Join Date <span style={{ color: 'var(--theme-red)' }}>*</span></label>
                 <BsCalendarPicker value={form.join_date} onChange={v => set('join_date', v)} placeholder="Pick join date" />
               </div>
               {(form.employment_type === 'contract' || form.employment_type === 'part_time') && (
@@ -320,7 +320,7 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
                   onClick={calcRetirement}
                   disabled={!form.date_of_birth}
                   title={form.date_of_birth ? 'Set to date of birth + 60 years' : 'Enter Date of Birth first (Personal tab)'}
-                  style={{ background: 'none', border: '1px solid #2a2f3d', borderRadius: 5, color: form.date_of_birth ? '#9ca3af' : '#4b5563', fontSize: 11, padding: '8px 10px', cursor: form.date_of_birth ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap' }}>
+                  style={{ background: 'none', border: '1px solid var(--theme-border)', borderRadius: 5, color: form.date_of_birth ? 'var(--theme-text3)' : 'var(--theme-text2)', fontSize: 11, padding: '8px 10px', cursor: form.date_of_birth ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap' }}>
                   ↻ Age 60
                 </button>
               </div>
@@ -340,11 +340,11 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
           {/* ── ADDRESS ── */}
           {tab === 'address' && <>
             {isEdit && form.address && (
-              <div style={{ fontSize: 11, color: '#6b7280', background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 6, padding: '8px 12px' }}>
-                On file (legacy): <span style={{ color: '#9ca3af' }}>{form.address}</span>
+              <div style={{ fontSize: 11, color: 'var(--theme-text2)', background: 'var(--theme-input-bg)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '8px 12px' }}>
+                On file (legacy): <span style={{ color: 'var(--theme-text3)' }}>{form.address}</span>
               </div>
             )}
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '4px 0 0' }}>Permanent Address</p>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--theme-text3)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '4px 0 0' }}>Permanent Address</p>
             <div style={row}>
               <div style={col}>
                 <label style={lbl}>Province</label>
@@ -379,7 +379,7 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
             </label>
 
             {!form.same_as_permanent && <>
-              <p style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '8px 0 0' }}>Current Address</p>
+              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--theme-text3)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '8px 0 0' }}>Current Address</p>
               <div style={row}>
                 <div style={col}>
                   <label style={lbl}>Province</label>
@@ -448,8 +448,8 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
               <input style={inp} placeholder="Grandfather's full name" value={form.grandfather_name} onChange={e => set('grandfather_name', e.target.value)} />
             </div>
 
-            <div style={{ borderTop: '1px solid #2a2f3d', paddingTop: 14, marginTop: 6 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: '#c9a84c', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px' }}>
+            <div style={{ borderTop: '1px solid var(--theme-border)', paddingTop: 14, marginTop: 6 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--theme-accent)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px' }}>
                 <Tip text="The person who receives this employee's SSF / gratuity / final settlement in the event of death. Keep this current." width={300}>Nominee</Tip>
               </p>
               <div style={col}>
@@ -475,21 +475,21 @@ export default function EmployeeForm({ clientId, employee, onSave, onClose }) {
         </div>
 
         {/* Footer */}
-        <div style={{ padding: '16px 24px', borderTop: '1px solid #2a2f3d', display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <div style={{ padding: '16px 24px', borderTop: '1px solid var(--theme-border)', display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div style={{ display: 'flex', gap: 8 }}>
             {isEdit && employee.status === 'active' && (
-              <button className="btn btn-ghost" style={{ fontSize: 12, color: '#f87171', borderColor: 'rgba(248,113,113,0.25)' }} onClick={handleDeactivate}>
+              <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--theme-red)', borderColor: 'rgba(248,113,113,0.25)' }} onClick={handleDeactivate}>
                 Deactivate
               </button>
             )}
             {isEdit && (
-              <button className="btn btn-ghost" style={{ fontSize: 12, color: '#f87171', borderColor: 'rgba(248,113,113,0.25)' }} onClick={handleDelete}>
+              <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--theme-red)', borderColor: 'rgba(248,113,113,0.25)' }} onClick={handleDelete}>
                 Delete
               </button>
             )}
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {error && <span style={{ fontSize: 12, color: '#f87171' }}>{error}</span>}
+            {error && <span style={{ fontSize: 12, color: 'var(--theme-red)' }}>{error}</span>}
             <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
             <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
               {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Employee'}

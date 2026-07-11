@@ -16,7 +16,7 @@ import {
 } from '../../../utils/offlineQueue'
 import { buildKotBotHtml, buildBillHtml, buildTenderSlipHtml, buildCompSlipHtml } from './posOrderPrintHtml'
 import {
-  vatOf, fmtNpr, toItemPayload, QR_PAY_METHODS, STATUS_BADGE, STATUS_LABEL,
+  vatOf, fmtNpr, toItemPayload, QR_PAY_METHODS, STATUS_BADGE, STATUS_LABEL, STATUS_COLOR,
   KOT_STATUS_BADGE, KOT_STATUS_LABEL, KOT_STATUS_RANK,
   PAYMENT_METHODS, VOID_REASONS, COMP_REASONS, DEFAULT_DISCOUNT_REASONS, COPY_LABEL,
   btnSm, billInput,
@@ -2603,9 +2603,12 @@ export default function PosOrders() {
                   cursor: inactive ? 'default' : 'pointer',
                   opacity: inactive ? 0.4 : 1,
                   display: 'flex', flexDirection: 'column', gap: 8,
+                  overflow: 'hidden',
                   ...(ord ? { borderColor: 'var(--theme-accent)' } : {}),
                 }}
               >
+                {/* Glanceable status strip — readable across the room, unlike the small badge chip alone */}
+                <div style={{ margin: '-16px -18px 2px', height: 6, background: STATUS_COLOR[t.status] || 'var(--theme-border)', flexShrink: 0 }} />
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6 }}>
                   <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--theme-text1)' }}>{t.name}</span>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>

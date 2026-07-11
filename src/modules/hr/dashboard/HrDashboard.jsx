@@ -29,7 +29,7 @@ function KCard({ label, value, sub, color = 'var(--theme-text1)', tip, onClick, 
       <div className="stat-value" style={{ color, fontSize: typeof value === 'string' && value.length > 8 ? 16 : undefined }}>
         {value}
       </div>
-      {sub && <div className="stat-sub" style={alert ? { color: '#f87171' } : undefined}>{sub}</div>}
+      {sub && <div className="stat-sub" style={alert ? { color: 'var(--theme-red)' } : undefined}>{sub}</div>}
     </div>
   )
 }
@@ -166,14 +166,14 @@ export default function HrDashboard() {
 
       {/* ── KPI Row 1 — Approvals (everything a staff submission needs a manager to act on) ── */}
       <div style={{ fontSize: 11, color: 'var(--theme-text3)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
-        Approvals {pendingTotal > 0 && <span style={{ color: '#c9a84c' }}>({pendingTotal} pending)</span>}
+        Approvals {pendingTotal > 0 && <span style={{ color: 'var(--theme-accent)' }}>({pendingTotal} pending)</span>}
       </div>
       <div className="stat-grid" style={{ marginBottom: 20 }}>
         <KCard
           label="Leave Pending"
           value={pendingLeave}
           sub={pendingLeave > 0 ? 'awaiting approval' : 'all clear'}
-          color={pendingLeave > 0 ? '#c9a84c' : 'var(--theme-green)'}
+          color={pendingLeave > 0 ? 'var(--theme-accent)' : 'var(--theme-green)'}
           tip="Leave requests with status Pending — click to go to the Leave page and approve or reject."
           onClick={() => navigate('/hr/leave')}
           alert={pendingLeave > 0}
@@ -182,7 +182,7 @@ export default function HrDashboard() {
           label="OT Pending"
           value={pendingOt}
           sub={pendingOt > 0 ? 'awaiting approval' : 'all clear'}
-          color={pendingOt > 0 ? '#c9a84c' : 'var(--theme-green)'}
+          color={pendingOt > 0 ? 'var(--theme-accent)' : 'var(--theme-green)'}
           tip="Overtime entries not yet approved. Only approved OT feeds into payroll — approve before running payroll."
           onClick={() => navigate('/hr/overtime')}
           alert={pendingOt > 0}
@@ -191,7 +191,7 @@ export default function HrDashboard() {
           label="TADA Pending"
           value={pendingTada}
           sub={pendingTada > 0 ? 'awaiting approval' : 'all clear'}
-          color={pendingTada > 0 ? '#c9a84c' : 'var(--theme-green)'}
+          color={pendingTada > 0 ? 'var(--theme-accent)' : 'var(--theme-green)'}
           tip="TADA (travel/daily allowance) claims with status Pending, whether entered by a manager or submitted by the employee themselves via Self-Service — click to go to TADA Claims and approve or reject."
           onClick={() => navigate('/hr/tada')}
           alert={pendingTada > 0}
@@ -200,7 +200,7 @@ export default function HrDashboard() {
           label="Swap Pending"
           value={pendingSwap}
           sub={pendingSwap > 0 ? 'awaiting your approval' : 'all clear'}
-          color={pendingSwap > 0 ? '#c9a84c' : 'var(--theme-green)'}
+          color={pendingSwap > 0 ? 'var(--theme-accent)' : 'var(--theme-green)'}
           tip="Shift swap requests where the coworker has already accepted and it's now waiting on manager approval (requests still waiting on the coworker aren't shown here — nothing for a manager to do yet)."
           onClick={() => navigate('/hr/roster')}
           alert={pendingSwap > 0}
@@ -237,7 +237,7 @@ export default function HrDashboard() {
           label="Retiring Soon"
           value={empStats?.retiringSoon ?? 0}
           sub="within 180 days"
-          color={empStats?.retiringSoon > 0 ? '#c9a84c' : 'var(--theme-green)'}
+          color={empStats?.retiringSoon > 0 ? 'var(--theme-accent)' : 'var(--theme-green)'}
           tip="Active or probation employees whose retirement date (DOB + 60 years) falls within the next 180 days."
           onClick={() => navigate('/hr/employees')}
           alert={empStats?.retiringSoon > 0}
@@ -275,7 +275,7 @@ export default function HrDashboard() {
               label="SSF Total to Deposit"
               value={`NPR ${fmt(payInfo.ssfEmployee + payInfo.ssfEmployer)}`}
               sub={`Deposit by ${nextMonthLabel(payInfo.bsYear, payInfo.bsMonth)}`}
-              color="#c9a84c"
+              color="var(--theme-accent)"
               tip={`SSF challan (employee 11% + employer 20%) for ${payInfo.periodLabel}. Deposit with SSF by the 15th of the following month. Go to HR Reports → SSF Challan for the per-employee breakdown.`}
               onClick={() => navigate('/hr/reports')}
               alert
@@ -296,7 +296,7 @@ export default function HrDashboard() {
         {/* Leave queue */}
         <div>
           <div style={{ fontSize: 11, color: 'var(--theme-text3)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
-            Pending Leave Requests {pendingLeave > 0 && <span style={{ color: '#c9a84c' }}>({pendingLeave})</span>}
+            Pending Leave Requests {pendingLeave > 0 && <span style={{ color: 'var(--theme-accent)' }}>({pendingLeave})</span>}
           </div>
           <div className="card" style={{ padding: 0 }}>
             {leaveList.length === 0 ? (
@@ -334,7 +334,7 @@ export default function HrDashboard() {
         {/* OT queue */}
         <div>
           <div style={{ fontSize: 11, color: 'var(--theme-text3)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
-            Pending OT Entries {pendingOt > 0 && <span style={{ color: '#c9a84c' }}>({pendingOt})</span>}
+            Pending OT Entries {pendingOt > 0 && <span style={{ color: 'var(--theme-accent)' }}>({pendingOt})</span>}
           </div>
           <div className="card" style={{ padding: 0 }}>
             {otList.length === 0 ? (
@@ -356,7 +356,7 @@ export default function HrDashboard() {
                       <td style={{ textAlign: 'center', fontSize: 12, color: 'var(--theme-text3)' }}>
                         {BS_MONTHS[e.bs_month - 1]} {e.bs_day}
                       </td>
-                      <td style={{ textAlign: 'center', fontWeight: 600, color: '#34d399', fontSize: 12 }}>{e.ot_hours}h</td>
+                      <td style={{ textAlign: 'center', fontWeight: 600, color: 'var(--theme-green)', fontSize: 12 }}>{e.ot_hours}h</td>
                       <td>
                         <span className={e.ot_type === 'holiday' ? 'badge-amber' : 'badge-gray'} style={{ fontSize: 10 }}>
                           {e.ot_type === 'holiday' ? 'Holiday 2×' : 'Weekday 1.5×'}
@@ -378,7 +378,7 @@ export default function HrDashboard() {
         {/* TADA queue */}
         <div>
           <div style={{ fontSize: 11, color: 'var(--theme-text3)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
-            Pending TADA Claims {pendingTada > 0 && <span style={{ color: '#c9a84c' }}>({pendingTada})</span>}
+            Pending TADA Claims {pendingTada > 0 && <span style={{ color: 'var(--theme-accent)' }}>({pendingTada})</span>}
           </div>
           <div className="card" style={{ padding: 0 }}>
             {tadaList.length === 0 ? (
@@ -414,7 +414,7 @@ export default function HrDashboard() {
         {/* Shift swap queue */}
         <div>
           <div style={{ fontSize: 11, color: 'var(--theme-text3)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
-            Pending Shift Swaps {pendingSwap > 0 && <span style={{ color: '#c9a84c' }}>({pendingSwap})</span>}
+            Pending Shift Swaps {pendingSwap > 0 && <span style={{ color: 'var(--theme-accent)' }}>({pendingSwap})</span>}
           </div>
           <div className="card" style={{ padding: 0 }}>
             {swapList.length === 0 ? (

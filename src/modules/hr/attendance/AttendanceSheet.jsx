@@ -12,8 +12,8 @@ const STATUS_MAP = Object.fromEntries(ATTENDANCE_STATUSES.map(s => [s.key, s]))
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 const inp = {
-  background: '#0f1117', border: '1px solid #2a2f3d', borderRadius: 6,
-  padding: '7px 10px', fontSize: 13, color: '#e8e0d0', outline: 'none',
+  background: 'var(--theme-input-bg)', border: '1px solid var(--theme-border)', borderRadius: 6,
+  padding: '7px 10px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none',
   fontFamily: 'inherit',
 }
 
@@ -248,13 +248,13 @@ export default function AttendanceSheet() {
       </div>
 
       {loading ? (
-        <div className="card" style={{ padding: 32, textAlign: 'center', color: '#6b7280' }}>Loading…</div>
+        <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--theme-text2)' }}>Loading…</div>
       ) : employees.length === 0 ? (
-        <div className="card" style={{ padding: 32, textAlign: 'center', color: '#6b7280' }}>
+        <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--theme-text2)' }}>
           No active employees. Add employees in HR → Employees first.
         </div>
       ) : !period ? (
-        <div className="card" style={{ padding: 32, textAlign: 'center', color: '#6b7280' }}>
+        <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--theme-text2)' }}>
           No period found. Create a period in Periods first.
         </div>
       ) : tab === 'mark' ? (
@@ -263,7 +263,7 @@ export default function AttendanceSheet() {
           {/* Day selector + bulk actions */}
           <div className="card" style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 12, color: '#6b7280' }}>Day</span>
+              <span style={{ fontSize: 12, color: 'var(--theme-text2)' }}>Day</span>
               <select style={inp} value={selectedDay} onChange={e => setSelectedDay(parseInt(e.target.value, 10))}>
                 {days.map(d => <option key={d} value={d}>{d} · {weekdayOf(period, d)}{isSaturday(period, d) ? ' (off)' : ''}</option>)}
               </select>
@@ -278,7 +278,7 @@ export default function AttendanceSheet() {
             </button>
             <div style={{ flex: 1 }} />
             {savedMsg && (
-              <span style={{ fontSize: 12, color: savedMsg.startsWith('ok') ? '#34d399' : '#f87171' }}>
+              <span style={{ fontSize: 12, color: savedMsg.startsWith('ok') ? 'var(--theme-green)' : 'var(--theme-red)' }}>
                 {savedMsg.split(':').slice(1).join(':')}
               </span>
             )}
@@ -288,12 +288,12 @@ export default function AttendanceSheet() {
           </div>
 
           {dayIsSaturday && (
-            <div style={{ marginBottom: 14, padding: '10px 14px', background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.25)', borderRadius: 8, fontSize: 12, color: '#c9a84c' }}>
+            <div style={{ marginBottom: 14, padding: '10px 14px', background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.25)', borderRadius: 8, fontSize: 12, color: 'var(--theme-accent)' }}>
               ⚠ Day {selectedDay} is a Saturday — defaulted to Weekly Off. Adjust any staff who worked.
             </div>
           )}
 
-          <div style={{ marginBottom: 14, fontSize: 11, color: '#6b7280', lineHeight: 1.6 }}>
+          <div style={{ marginBottom: 14, fontSize: 11, color: 'var(--theme-text2)', lineHeight: 1.6 }}>
             <Tip text="Fills blank days across the whole month from Staff Roster shift assignments — marked Present, with hours from the shift — and defaults unrostered Saturdays to Weekly Off. A roster shift with no hours (e.g. a custom 'LEAVE' or 'Day Off' entry) is marked Holiday rather than Present. Never overwrites a day that already has an entry, so a formal approved Leave Request or manual correction still takes precedence if entered afterward." width={320}>
               ⚡ Generate from Roster
             </Tip>{' '}pre-fills this month from Staff Roster shift assignments; it never overwrites a day you've already marked.
@@ -323,25 +323,25 @@ export default function AttendanceSheet() {
                     return (
                       <tr key={emp.id}>
                         <td>
-                          <div style={{ fontWeight: 600, color: '#e8e0d0', fontSize: 13 }}>{emp.full_name}</div>
-                          <div style={{ fontSize: 10, color: '#6b7280' }}>
+                          <div style={{ fontWeight: 600, color: 'var(--theme-text1)', fontSize: 13 }}>{emp.full_name}</div>
+                          <div style={{ fontSize: 10, color: 'var(--theme-text2)' }}>
                             {emp.employee_code || ''}{emp.pay_basis && emp.pay_basis !== 'monthly' ? ` · ${emp.pay_basis}` : ''}
                           </div>
                         </td>
                         <td>
                           <select
-                            style={{ ...inp, color: sc?.color || '#e8e0d0', fontWeight: 600, width: '100%' }}
+                            style={{ ...inp, color: sc?.color || 'var(--theme-text1)', fontWeight: 600, width: '100%' }}
                             value={status}
                             onChange={e => setCell(emp.id, 'status', e.target.value)}
                           >
-                            {ATTENDANCE_STATUSES.map(s => <option key={s.key} value={s.key} style={{ color: '#e8e0d0' }}>{s.label}</option>)}
+                            {ATTENDANCE_STATUSES.map(s => <option key={s.key} value={s.key} style={{ color: 'var(--theme-text1)' }}>{s.label}</option>)}
                           </select>
                         </td>
                         <td style={{ textAlign: 'right' }}>
                           {emp.pay_basis === 'hourly' ? (
                             <input type="number" min="0" step="0.5" style={{ ...inp, width: 90, textAlign: 'right' }}
                               value={rec?.hours_worked ?? ''} onChange={e => setCell(emp.id, 'hours_worked', e.target.value)} placeholder="0" />
-                          ) : <span style={{ color: '#4b5563' }}>—</span>}
+                          ) : <span style={{ color: 'var(--theme-text2)' }}>—</span>}
                         </td>
                         <td style={{ textAlign: 'right' }}>
                           <input type="number" min="0" step="0.5" style={{ ...inp, width: 90, textAlign: 'right' }}
@@ -363,9 +363,9 @@ export default function AttendanceSheet() {
         <div>
           {/* Legend */}
           <div className="card" style={{ marginBottom: 14, display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
-            <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Legend</span>
+            <span style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Legend</span>
             {ATTENDANCE_STATUSES.map(s => (
-              <span key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#9ca3af' }}>
+              <span key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--theme-text3)' }}>
                 <span style={{ width: 18, height: 18, borderRadius: 4, background: `${s.color}22`, border: `1px solid ${s.color}55`, color: s.color, fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{s.short}</span>
                 {s.label}
               </span>
@@ -377,13 +377,13 @@ export default function AttendanceSheet() {
               <table className="data-table" style={{ fontSize: 12 }}>
                 <thead>
                   <tr>
-                    <th style={{ position: 'sticky', left: 0, background: '#141820', zIndex: 1 }}>Employee</th>
+                    <th style={{ position: 'sticky', left: 0, background: 'var(--theme-card)', zIndex: 1 }}>Employee</th>
                     {days.map(d => (
-                      <th key={d} style={{ textAlign: 'center', padding: '8px 4px', background: isSaturday(period, d) ? 'rgba(75,85,99,0.18)' : undefined, color: isSaturday(period, d) ? '#9ca3af' : undefined }}>
+                      <th key={d} style={{ textAlign: 'center', padding: '8px 4px', background: isSaturday(period, d) ? 'rgba(75,85,99,0.18)' : undefined, color: isSaturday(period, d) ? 'var(--theme-text3)' : undefined }}>
                         {d}
                       </th>
                     ))}
-                    <th style={{ textAlign: 'right', borderLeft: '2px solid #2a2f3d' }}>
+                    <th style={{ textAlign: 'right', borderLeft: '2px solid var(--theme-border)' }}>
                       <Tip text="Present days for the month — half-days and half-day paid leave count as 0.5, matching how Payroll counts present days." width={250}>P</Tip>
                     </th>
                     <th style={{ textAlign: 'right' }}>
@@ -399,7 +399,7 @@ export default function AttendanceSheet() {
                     const s = summaryFor(emp)
                     return (
                       <tr key={emp.id}>
-                        <td style={{ position: 'sticky', left: 0, background: '#141820', zIndex: 1, fontWeight: 600, color: '#e8e0d0', whiteSpace: 'nowrap' }}>
+                        <td style={{ position: 'sticky', left: 0, background: 'var(--theme-card)', zIndex: 1, fontWeight: 600, color: 'var(--theme-text1)', whiteSpace: 'nowrap' }}>
                           {emp.full_name}
                         </td>
                         {days.map(d => {
@@ -408,13 +408,13 @@ export default function AttendanceSheet() {
                           const sat = isSaturday(period, d)
                           return (
                             <td key={d} style={{ textAlign: 'center', padding: '6px 4px', background: sat ? 'rgba(75,85,99,0.12)' : undefined }}>
-                              {sc ? <span style={{ color: sc.color, fontWeight: 700 }}>{sc.short}</span> : <span style={{ color: '#2a2f3d' }}>·</span>}
+                              {sc ? <span style={{ color: sc.color, fontWeight: 700 }}>{sc.short}</span> : <span style={{ color: 'var(--theme-border)' }}>·</span>}
                             </td>
                           )
                         })}
-                        <td style={{ textAlign: 'right', borderLeft: '2px solid #2a2f3d', color: '#34d399', fontWeight: 600 }}>{s.counts.present + s.counts.half_day * 0.5 + s.counts.half_paid_leave * 0.5 || 0}</td>
-                        <td style={{ textAlign: 'right', color: '#f87171' }}>{s.counts.absent || 0}</td>
-                        <td style={{ textAlign: 'right', color: '#c9a84c', fontWeight: 600 }}>{s.otHours || 0}</td>
+                        <td style={{ textAlign: 'right', borderLeft: '2px solid var(--theme-border)', color: 'var(--theme-green)', fontWeight: 600 }}>{s.counts.present + s.counts.half_day * 0.5 + s.counts.half_paid_leave * 0.5 || 0}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--theme-red)' }}>{s.counts.absent || 0}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--theme-accent)', fontWeight: 600 }}>{s.otHours || 0}</td>
                       </tr>
                     )
                   })}
@@ -422,7 +422,7 @@ export default function AttendanceSheet() {
               </table>
             </div>
           </div>
-          <div style={{ marginTop: 12, fontSize: 11, color: '#4b5563', lineHeight: 1.6 }}>
+          <div style={{ marginTop: 12, fontSize: 11, color: 'var(--theme-text2)', lineHeight: 1.6 }}>
             P column counts present days (half-days as 0.5). Saturdays are shaded and default to Weekly Off. Hours and overtime feed the future Payroll module, which computes actual pay for daily/hourly staff.
           </div>
         </div>

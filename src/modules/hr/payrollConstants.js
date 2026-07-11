@@ -42,16 +42,16 @@ export const OT_HOLIDAY_MULTIPLIER  = 2.0   // overtime on a gazetted public hol
 export const WEEKLY_OFF_WEEKDAY     = 6
 
 export const ATTENDANCE_STATUSES = [
-  { key: 'present',           label: 'Present',             short: 'P',   color: '#34d399' },
-  { key: 'half_day',          label: 'Half-day',            short: '½',   color: '#c9a84c' },
-  { key: 'absent',            label: 'Absent',               short: 'A',   color: '#f87171' },
+  { key: 'present',           label: 'Present',             short: 'P',   color: 'var(--theme-green)' },
+  { key: 'half_day',          label: 'Half-day',            short: '½',   color: 'var(--theme-accent)' },
+  { key: 'absent',            label: 'Absent',               short: 'A',   color: 'var(--theme-red)' },
   { key: 'paid_leave',        label: 'Paid Leave',          short: 'PL',  color: '#60a5fa' },
-  { key: 'unpaid_leave',      label: 'Unpaid Leave',        short: 'UL',  color: '#9ca3af' },
+  { key: 'unpaid_leave',      label: 'Unpaid Leave',        short: 'UL',  color: 'var(--theme-text3)' },
   // Half-day leave — distinct from the generic 'half_day' status above so payroll can respect
   // the underlying leave type's paid/unpaid flag instead of always deducting 0.5 day's pay.
   { key: 'half_paid_leave',   label: 'Half-day Paid Leave',   short: '½PL', color: '#60a5fa' },
-  { key: 'half_unpaid_leave', label: 'Half-day Unpaid Leave', short: '½UL', color: '#9ca3af' },
-  { key: 'weekly_off',        label: 'Weekly Off',          short: 'W',   color: '#4b5563' },
+  { key: 'half_unpaid_leave', label: 'Half-day Unpaid Leave', short: '½UL', color: 'var(--theme-text3)' },
+  { key: 'weekly_off',        label: 'Weekly Off',          short: 'W',   color: 'var(--theme-text2)' },
   { key: 'holiday',           label: 'Holiday',             short: 'H',   color: '#818cf8' },
 ]
 
