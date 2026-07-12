@@ -141,6 +141,18 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S374 — 2026-07-13 — Admin Dashboard: editable Plan Pricing + fixed MRR overcounting a disabled module
+
+User (viewing the Admin Dashboard on mobile via Remote Control) flagged that the Starter/Growth/Pro plan prices driving the dashboard's Monthly Value/MRR/ARR figures were hardcoded in source rather than editable, and asked to also verify the revenue figures were correct.
+
+**Editable pricing.** Plan prices (`PLAN_MRR` in `AdminDashboardOverview.jsx`) were a `{ starter: 5000, growth: 8000, pro: 12000 }` constant baked into the component — changing a price meant a code deploy. Moved to a new `settings.plan_prices` jsonb column (migration `20260713021028_settings_plan_prices.sql`) on the same `client_id IS NULL` global-defaults row that already holds `app_name`/`app_tagline` — no new table, reuses the existing admin-settings pattern (`SettingsContext.js`'s `loadSettings`/`saveSettings` already resolve that row when `isAdmin && !clientId`, which is exactly the condition under which `AdminDashboardOverview` itself renders). New admin-only **Settings → Plan Pricing** tab (`Settings.js`) with the three tier inputs, explicitly added to both `ADMIN_TABS` and `CLIENT_HIDDEN` — a tab only listed in the former still leaks to client users, since the two sets are independently checked, not mirrors of each other (confirmed by re-reading how the existing `Theme` tab deliberately sits in `ADMIN_TABS` alone precisely because it's meant to stay visible to clients too — this omission would have been the same class of bug).
+
+**Real bug found and fixed while verifying revenue accuracy.** `clientMRR()`'s three module branches (IMS/HR/POS) counted a module's price whenever its `*_ends_at` date was in the future — never checking whether the module was actually *enabled*. Traced a live discrepancy in the user's own screenshot to confirm this: a client showing only HR + POS module pills (no IMS) still had a Monthly Value of NPR 29,000, which only reconciles as Pro(12,000) + HR Starter(5,000) + POS Pro(12,000) — meaning IMS's price was being counted despite IMS being off for that client, almost certainly from a stale `ims_ends_at`/`subscription_ends_at` left over from before the module was toggled off. Fixed by gating each branch on `ims_enabled`/`hr_enabled`/`pos_enabled` too, matching how the Modules-pill column already gates display. Overstated every affected client's MRR/ARR and per-row Monthly Value; understated nothing (a client could never be undercounted by this bug, only overcounted).
+
+Build clean, 91/91 tests pass (`App.test.js`'s pre-existing unrelated `react-router-dom` resolution failure aside).
+
+**Files:** `src/pages/dashboard/AdminDashboardOverview.jsx`, `src/pages/Settings.js`, `src/context/SettingsContext.js`, `supabase/migrations/20260713021028_settings_plan_prices.sql`
+
 ### S373 — 2026-07-13 — POS audit follow-up: 5 medium-severity bugs fixed (tender=0, QR poll thrash, silent table-management errors, guest-order rate limit, KDS optimistic UI)
 
 Fixed the remaining 6 findings deferred from S372's POS audit, after re-verifying one of them (the hardcoded "VAT 13%" print label) wasn't actually a bug — `Recipes.js` already has a per-recipe VAT Rate toggle (13%/0% only), Nepal has one flat standard rate, and the bill's Taxable/Nontaxable split already handles mixed-rate orders correctly, so the label is accurate in every configuration the app can produce. Five real fixes:

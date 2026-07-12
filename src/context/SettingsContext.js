@@ -16,7 +16,12 @@ const DEFAULT_SETTINGS = {
   sub_recipe_code_prefix: 'SRC',
   contact_phone: '',
   contact_email: '',
-  contact_website: ''
+  contact_website: '',
+  // Per-tier monthly price (NPR), shared across IMS/HR/POS (each module bills at the same tier
+  // price today — see AdminDashboardOverview.jsx's clientMRR). Admin-editable via Settings >
+  // Plan Pricing; this object is just the fallback for a client_id-null settings row that
+  // predates that tab or never had it touched.
+  plan_prices: { starter: 5000, growth: 8000, pro: 12000 },
 }
 
 export const DEFAULT_RECIPE_CATS = ['Food', 'Beverage', 'Dessert', 'Snack', 'Other']

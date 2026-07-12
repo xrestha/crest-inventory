@@ -6,7 +6,8 @@ import { useScopedDb } from '../shared/hooks/useScopedDb'
 import { useTheme, PRESETS } from '../context/ThemeContext'
 import Tip from '../components/Tip'
 
-const ALL_TABS = ['Branding', 'Property', 'Thresholds', 'Item Codes', 'Vendor Codes', 'Sub-Recipe Codes', 'Recipe Categories', 'Contact', 'Data', 'Theme']
+const ALL_TABS = ['Branding', 'Property', 'Thresholds', 'Item Codes', 'Vendor Codes', 'Sub-Recipe Codes', 'Recipe Categories', 'Contact', 'Plan Pricing', 'Data', 'Theme']
+const DEFAULT_PLAN_PRICES = { starter: 5000, growth: 8000, pro: 12000 }
 
 // Derives a short invoice-number prefix from the property/business name, e.g. "Casa Acai Cafe" -> "CAC"
 function deriveInvoicePrefix(name) {
@@ -19,8 +20,8 @@ export default function Settings() {
   const { clientId, isAdmin, hasFeature } = useAuth()
   const { scopedFrom, scopedUpdate } = useScopedDb()
   const { themeKey, colors, switchPreset, updateColor } = useTheme()
-  const ADMIN_TABS = new Set(['Branding', 'Property', 'Contact', 'Theme', 'Data'])
-  const CLIENT_HIDDEN = new Set(['Contact', 'Branding', 'Property', 'Data'])
+  const ADMIN_TABS = new Set(['Branding', 'Property', 'Contact', 'Plan Pricing', 'Theme', 'Data'])
+  const CLIENT_HIDDEN = new Set(['Contact', 'Branding', 'Property', 'Data', 'Plan Pricing'])
   const TABS = ALL_TABS.filter(t => {
     if (isAdmin) return ADMIN_TABS.has(t)
     if (CLIENT_HIDDEN.has(t)) return false
@@ -579,6 +580,34 @@ export default function Settings() {
           </div>
           <div style={{ marginTop: 20, padding: '14px 18px', background: 'var(--theme-bg)', borderRadius: 8, border: '1px solid var(--theme-border)', fontSize: 12, color: 'var(--theme-text2)' }}>
             💡 Leave all fields blank to show a generic "Contact your Crest consultant" message instead.
+          </div>
+        </div>
+      )}
+
+      {/* PLAN PRICING */}
+      {activeTab === 'Plan Pricing' && (
+        <div className="card">
+          <h3 style={{ margin: '0 0 8px', fontSize: 14, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Monthly Plan Prices (NPR)</h3>
+          <p style={{ fontSize: 13, color: 'var(--theme-text2)', margin: '0 0 24px' }}>
+            One shared price per tier across IMS, HR, and POS — a client's Monthly Value on the Admin Dashboard
+            is the sum of these prices for each module they have active. Changing a price here takes effect
+            immediately on the Admin Dashboard's MRR/ARR figures; it does not retroactively bill or notify clients.
+          </p>
+          <div className="form-grid form-grid-2">
+            {['starter', 'growth', 'pro'].map(tier => (
+              <div className="form-field" key={tier}>
+                <label style={{ textTransform: 'capitalize' }}>{tier}</label>
+                <input
+                  type="number" min="0" step="100"
+                  value={(form.plan_prices || DEFAULT_PLAN_PRICES)[tier] ?? ''}
+                  onChange={e => update('plan_prices', {
+                    ...(form.plan_prices || DEFAULT_PLAN_PRICES),
+                    [tier]: e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value) || 0),
+                  })}
+                  placeholder={String(DEFAULT_PLAN_PRICES[tier])}
+                />
+              </div>
+            ))}
           </div>
         </div>
       )}

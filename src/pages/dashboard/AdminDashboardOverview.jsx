@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { useSettings } from '../../context/SettingsContext'
 import { supabase } from '../../supabaseClient'
 import Tip from '../../components/Tip'
 import { BS_MONTHS, adToBs } from '../../utils/bsCalendar'
@@ -11,6 +12,7 @@ import { getSubStatus } from '../../utils/subscription'
 // no single client to scope to). Rendered only when Dashboard.js resolves showAdminDash === true.
 export default function AdminDashboardOverview() {
   const { switchAdminClient } = useAuth()
+  const { settings } = useSettings()
   const navigate = useNavigate()
 
   const [adminClients, setAdminClients]   = useState([])
@@ -72,14 +74,19 @@ export default function AdminDashboardOverview() {
   const wantToSub    = trialSignups.filter(c => c.subscribe_requested)
   const activeClientIds = new Set(activeTodayClients.map(c => c.id))
 
-  // MRR: IMS + HR + POS combined (same plan price table for all three modules)
-  const PLAN_MRR = { starter: 5000, growth: 8000, pro: 12000 }
+  // MRR: IMS + HR + POS combined (same plan price table for all three modules, editable in
+  // Settings > Plan Pricing — admin-only global row, falls back to these defaults if unset).
+  const PLAN_MRR = { starter: 5000, growth: 8000, pro: 12000, ...(settings.plan_prices || {}) }
   function clientMRR(c) {
     let val = 0
+    // Each branch now also checks the module is actually enabled, not just that an end-date
+    // happens to be set in the future — a client who had IMS (or HR/POS) once, then had it
+    // toggled off without the corresponding *_ends_at ever being cleared, was still being
+    // counted as paying for that module here, overstating MRR/ARR and the per-row Monthly Value.
     const imsEnd = c.ims_ends_at || c.subscription_ends_at
-    if (imsEnd && Math.ceil((new Date(imsEnd) - Date.now()) / 86400000) > 0) val += PLAN_MRR[c.plan] || 0
-    if (c.hr_ends_at && Math.ceil((new Date(c.hr_ends_at) - Date.now()) / 86400000) > 0) val += PLAN_MRR[c.hr_plan] || 0
-    if (c.pos_ends_at && Math.ceil((new Date(c.pos_ends_at) - Date.now()) / 86400000) > 0) val += PLAN_MRR[c.pos_plan] || 0
+    if (c.ims_enabled !== false && imsEnd && Math.ceil((new Date(imsEnd) - Date.now()) / 86400000) > 0) val += PLAN_MRR[c.plan] || 0
+    if (c.hr_enabled && c.hr_ends_at && Math.ceil((new Date(c.hr_ends_at) - Date.now()) / 86400000) > 0) val += PLAN_MRR[c.hr_plan] || 0
+    if (c.pos_enabled && c.pos_ends_at && Math.ceil((new Date(c.pos_ends_at) - Date.now()) / 86400000) > 0) val += PLAN_MRR[c.pos_plan] || 0
     return val
   }
   const estMRR = active.reduce((sum, c) => sum + clientMRR(c), 0)
