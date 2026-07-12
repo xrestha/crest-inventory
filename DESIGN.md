@@ -1,5 +1,5 @@
 ---
-name: Crest Inventory
+name: Crest Suite
 description: Cost intelligence and HR for Nepal's F&B operators, in one instrument
 colors:
   aged-brass: "#c9a84c"
@@ -64,13 +64,13 @@ components:
     padding: "{spacing.lg}"
 ---
 
-# Design System: Crest Inventory
+# Design System: Crest Suite
 
 ## 1. Overview
 
 **Creative North Star: "The Back-of-House Command Center"**
 
-Crest Inventory is operated, not visited. An owner is checking margin between service rushes; an accountant is reconciling TDS figures before a filing deadline. Neither has time for the interface to perform. The system is built around **legibility under pressure**: dense tables that stay scannable, a single restrained accent, and status communicated through color and position rather than decoration.
+Crest Suite is operated, not visited. An owner is checking margin between service rushes; an accountant is reconciling TDS figures before a filing deadline. Neither has time for the interface to perform. The system is built around **legibility under pressure**: dense tables that stay scannable, a single restrained accent, and status communicated through color and position rather than decoration.
 
 This deliberately rejects two things named in PRODUCT.md: the dated, hierarchy-less density of legacy Nepali ERP software, and the templated purple-gradient look of generic AI-generated SaaS. The system solves density the same problem legacy ERPs were trying to solve, but with real typographic hierarchy, a single accent used sparingly, and consistent spacing instead of cramming.
 

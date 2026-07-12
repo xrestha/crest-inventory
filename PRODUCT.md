@@ -16,7 +16,7 @@ Secondary: accountants and bookkeepers doing reconciliation and compliance, veri
 
 ## Product Purpose
 
-Crest Inventory is a SaaS platform for the Nepal F&B market, covering inventory and costing (purchasing, recipes, variance, stock counts), HR (payroll, attendance, roster, leave, TADA), and POS (ordering, billing) in one product. Success looks like an owner trusting the margin and labor-cost numbers enough to act on them, and an accountant trusting the same numbers enough to file on them.
+Crest Suite is a SaaS platform for the Nepal F&B market, covering inventory and costing (purchasing, recipes, variance, stock counts), HR (payroll, attendance, roster, leave, TADA), and POS (ordering, billing) in one product. Success looks like an owner trusting the margin and labor-cost numbers enough to act on them, and an accountant trusting the same numbers enough to file on them.
 
 ## Positioning
 

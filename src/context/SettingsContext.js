@@ -5,7 +5,7 @@ import { useAuth } from './AuthContext'
 const SettingsContext = createContext({})
 
 const DEFAULT_SETTINGS = {
-  app_name: 'Crest Inventory',
+  app_name: 'Crest Suite',
   app_tagline: 'Hospitality cost control, built for Nepal.',
   fc_warning_pct: 35,
   fc_critical_pct: 45,

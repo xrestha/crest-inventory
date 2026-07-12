@@ -1,4 +1,4 @@
-# Crest Inventory — Project README
+# Crest Suite — Project README
 
 **Client:** Aashish Shrestha | **Business:** Crest Hospitality | **Pilot:** Casa Acai Cafe, Kathmandu  
 **Stack:** React (CRA) · Supabase (PostgreSQL + Auth) · Vercel · SheetJS · Recharts  

@@ -1,5 +1,5 @@
 // The browser's "Save as PDF" dialog suggests document.title as the default filename — the
-// app's <title> is a static "Crest Inventory" (public/index.html), so every print button
+// app's <title> is a static "Crest Suite" (public/index.html), so every print button
 // across IMS/HR/POS defaulted to that instead of something useful. Call this instead of
 // window.print() directly: it sets a descriptive title just before printing and restores the
 // original on the `afterprint` event rather than the line right after print() — in Chrome/Edge,

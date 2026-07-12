@@ -266,7 +266,7 @@ export default function Settings() {
               <input
                 value={form.app_name || ''}
                 onChange={e => update('app_name', e.target.value)}
-                placeholder={isAdmin ? 'Crest Inventory' : 'e.g. Casa Acai Cafe'}
+                placeholder={isAdmin ? 'Crest Suite' : 'e.g. Casa Acai Cafe'}
               />
             </div>
             <div className="form-field">

@@ -109,7 +109,7 @@ export default function Login() {
           <div className="login-brand" style={{ justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
               <span style={{ fontSize: 30, color: 'var(--theme-accent)', lineHeight: 1 }}>⬢</span>
-              <span className="login-brand-name">{settings?.app_name || 'Crest Inventory'}</span>
+              <span className="login-brand-name">{settings?.app_name || 'Crest Suite'}</span>
             </div>
             <button
               onClick={() => navigate('/pricing')}

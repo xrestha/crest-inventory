@@ -1,5 +1,5 @@
 -- ============================================================
--- Crest Inventory — RLS Audit
+-- Crest Suite — RLS Audit
 -- Run in Supabase Dashboard → SQL Editor
 -- ============================================================
 

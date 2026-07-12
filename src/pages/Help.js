@@ -47,7 +47,7 @@ const IMS_FEATURE_TIERS = [
       },
       {
         icon: '◉', name: 'Mobile App',
-        guide: 'Crest Inventory can be installed on any smartphone — no app store required. On Android, open in Chrome and tap "Add to Home Screen". On iPhone, open in Safari, tap Share, and choose "Add to Home Screen". The app works offline: visit Stock Count once connected to cache all items, then count stock in the storeroom with no signal. Entries sync automatically when you reconnect.',
+        guide: 'Crest Suite can be installed on any smartphone — no app store required. On Android, open in Chrome and tap "Add to Home Screen". On iPhone, open in Safari, tap Share, and choose "Add to Home Screen". The app works offline: visit Stock Count once connected to cache all items, then count stock in the storeroom with no signal. Entries sync automatically when you reconnect.',
         tips: ['Open the app online at the start of each shift to refresh the cache', 'An amber "Offline" banner appears at the top when you have no connection', 'Cards with a dashed amber border are waiting to sync', 'Reinstall the app after a major update to ensure the latest version is cached']
       },
     ]
@@ -623,7 +623,7 @@ export default function Help() {
               <span style={{ fontSize: 32, lineHeight: 1, flexShrink: 0 }}>⬢</span>
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <h3 style={{ margin: 0, fontSize: 15, color: 'var(--theme-text1)' }}>Welcome to Crest Inventory</h3>
+                  <h3 style={{ margin: 0, fontSize: 15, color: 'var(--theme-text1)' }}>Welcome to Crest Suite</h3>
                   <span style={{ color: 'var(--theme-text3)', fontSize: 13 }}>{gsOpen('ims') ? '▲' : '▼'}</span>
                 </div>
                 {!gsOpen('ims') && (

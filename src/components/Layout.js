@@ -455,7 +455,7 @@ export default function Layout() {
             </div>
             <div className="sidebar-brand-text">
               <div className="sidebar-brand-name">{settings?.app_name || 'Crest'}</div>
-              <div className="sidebar-brand-sub">{PANEL_TITLES[panel] || 'Crest Inventory'}</div>
+              <div className="sidebar-brand-sub">{PANEL_TITLES[panel] || 'Crest Suite'}</div>
             </div>
             <button className="sidebar-search-btn" onClick={() => setPaletteOpen(true)} title="Search pages (Ctrl+K)">
               <span style={{ fontSize: 13 }}>⌕</span>
