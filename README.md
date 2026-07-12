@@ -141,6 +141,12 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S364 — 2026-07-11 — fix: Payroll Calculation print output was flush against the page's left edge
+
+`@media print` zeroes `.main-content`'s padding (`Layout.css`) so every page can control its own print margins precisely — a convention the new Calculation page's `print-only` block hadn't picked up yet, since it inherited the app's normal on-screen padding instead of setting its own. Added explicit `28px 36px` padding directly on that block, matching the pattern other printable views in the app already use (their own margin, not the app chrome's).
+
+**Files:** `src/modules/hr/payroll/PayrollCalculation.jsx`
+
 ### S363 — 2026-07-11 — fix: raw OT-hour sums displaying long floating-point tails ("3.6999999999999997h")
 
 User caught it on the new Calculation page's Overtime section. Root cause: `t.sumOt`/`t.sumHours` in `tallyAttendance()` accumulate via repeated `+= parseFloat(...)` — standard JS float addition, so a sequence like `0.2 + 1.3 + 2.2` doesn't land on a clean `3.7`. Every other hours display already ran the result through `.toFixed(n)` before rendering except a handful that displayed the raw sum directly in a template string.

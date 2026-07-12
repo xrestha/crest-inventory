@@ -406,7 +406,10 @@ export default function PayrollCalculation() {
       </div>
 
       {printRow && (
-        <div className="print-only">
+        // Explicit padding here, not relying on the app's normal page padding — @media print
+        // zeroes .main-content's padding (Layout.css) so other pages can control their own
+        // print margins precisely, which otherwise leaves print-only content flush to the edge.
+        <div className="print-only" style={{ padding: '28px 36px' }}>
           <h1 style={{ fontSize: 20, marginBottom: 2 }}>Payroll Calculation</h1>
           <div style={{ fontSize: 13, marginBottom: 2 }}>{printRow.emp.full_name}{printRow.emp.employee_code ? ` (${printRow.emp.employee_code})` : ''}</div>
           <div style={{ fontSize: 12, color: '#555', marginBottom: 14 }}>{periodLabel} — generated {new Date().toLocaleDateString('en-NP')}</div>
