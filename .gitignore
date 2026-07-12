@@ -21,3 +21,12 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Claude Code / impeccable — personal permissions and ephemeral runtime state, not shared project
+# config. .claude/skills/, PRODUCT.md, DESIGN.md, .impeccable/design.json, .impeccable/live/,
+# and .impeccable/critique/ ARE tracked — this only excludes the local-only files.
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+.impeccable/hook.cache.json
+__pycache__/
+*.pyc
