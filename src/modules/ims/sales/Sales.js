@@ -421,9 +421,10 @@ export default function Sales() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                             <button
                               className="btn btn-ghost"
+                              aria-label="Previous day"
                               disabled={selectedDay <= 1}
                               onClick={() => setSelectedDay(d => Math.max(1, d - 1))}
-                              style={{ padding: '4px 10px', fontSize: 14 }}
+                              style={{ padding: '8px 12px', fontSize: 14 }}
                             >‹</button>
                             <div style={{ width: 150 }}>
                               <BsCalendarPicker
@@ -436,9 +437,10 @@ export default function Sales() {
                             </div>
                             <button
                               className="btn btn-ghost"
+                              aria-label="Next day"
                               disabled={selectedDay >= dayCount}
                               onClick={() => setSelectedDay(d => Math.min(dayCount, d + 1))}
-                              style={{ padding: '4px 10px', fontSize: 14 }}
+                              style={{ padding: '8px 12px', fontSize: 14 }}
                             >›</button>
                           </div>
                           {isCurrentMonth && selectedDay !== today.day && (

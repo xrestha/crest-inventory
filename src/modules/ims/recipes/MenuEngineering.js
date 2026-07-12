@@ -12,8 +12,8 @@ import {
 
 const QUADRANTS = {
   Star:      { color: 'var(--theme-green)', bg: 'rgba(52,211,153,0.10)', border: 'rgba(52,211,153,0.30)', icon: '★', desc: 'High profit · High popularity' },
-  Plowhouse: { color: '#60a5fa', bg: 'rgba(96,165,250,0.10)', border: 'rgba(96,165,250,0.30)', icon: '⬛', desc: 'High profit · Low popularity' },
-  Puzzle:    { color: '#f59e0b', bg: 'rgba(245,158,11,0.10)',  border: 'rgba(245,158,11,0.30)',  icon: '?', desc: 'Low profit · High popularity' },
+  Plowhouse: { color: 'var(--theme-purple)', bg: 'color-mix(in srgb, var(--theme-purple) 10%, transparent)', border: 'color-mix(in srgb, var(--theme-purple) 30%, transparent)', icon: '⬛', desc: 'High profit · Low popularity' },
+  Puzzle:    { color: 'var(--theme-amber)', bg: 'color-mix(in srgb, var(--theme-amber) 10%, transparent)',  border: 'color-mix(in srgb, var(--theme-amber) 30%, transparent)',  icon: '?', desc: 'Low profit · High popularity' },
   Dog:       { color: 'var(--theme-red)', bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.30)', icon: '✕', desc: 'Low profit · Low popularity' },
 }
 
@@ -34,13 +34,13 @@ function ScatterTooltipContent({ active, payload }) {
   const q = QUADRANTS[d.quadrant]
   return (
     <div style={{
-      background: '#1e2130', border: `1px solid ${q.border}`,
+      background: 'var(--theme-card)', border: `1px solid ${q.border}`,
       borderRadius: 8, padding: '10px 14px', fontSize: 12, minWidth: 160
     }}>
-      <div style={{ fontWeight: 700, color: Q_HEX[d.quadrant], marginBottom: 6 }}>{q.icon} {d.name}</div>
-      <div style={{ color: '#9ca3af' }}>FC%: <span style={{ fontWeight: 600, color: d.fcPct > FC_CUTOFF ? '#f87171' : '#34d399' }}>{d.sellingPrice > 0 ? d.fcPct.toFixed(1) + '%' : '—'}</span></div>
-      <div style={{ color: '#9ca3af' }}>Qty Sold: <span style={{ fontWeight: 600, color: '#e5e7eb' }}>{d.qtySold}</span></div>
-      <div style={{ color: '#9ca3af' }}>Revenue: <span style={{ fontWeight: 600, color: '#e5e7eb' }}>NPR {d.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span></div>
+      <div style={{ fontWeight: 700, color: q.color, marginBottom: 6 }}>{q.icon} {d.name}</div>
+      <div style={{ color: 'var(--theme-text2)' }}>FC%: <span style={{ fontWeight: 600, color: d.fcPct > FC_CUTOFF ? 'var(--theme-red)' : 'var(--theme-green)' }}>{d.sellingPrice > 0 ? d.fcPct.toFixed(1) + '%' : '—'}</span></div>
+      <div style={{ color: 'var(--theme-text2)' }}>Qty Sold: <span style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{d.qtySold}</span></div>
+      <div style={{ color: 'var(--theme-text2)' }}>Revenue: <span style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>NPR {d.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span></div>
     </div>
   )
 }
@@ -48,9 +48,9 @@ function ScatterTooltipContent({ active, payload }) {
 function BarTooltipContent({ active, payload, label }) {
   if (!active || !payload?.length) return null
   return (
-    <div style={{ background: '#1e2130', border: '1px solid #374151', borderRadius: 8, padding: '8px 12px', fontSize: 12 }}>
-      <div style={{ fontWeight: 600, color: '#e5e7eb', marginBottom: 4 }}>{label}</div>
-      <div style={{ color: '#9ca3af' }}>Revenue: <span style={{ fontWeight: 600, color: '#c9a84c' }}>NPR {(payload[0]?.value || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span></div>
+    <div style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 8, padding: '8px 12px', fontSize: 12 }}>
+      <div style={{ fontWeight: 600, color: 'var(--theme-text1)', marginBottom: 4 }}>{label}</div>
+      <div style={{ color: 'var(--theme-text2)' }}>Revenue: <span style={{ fontWeight: 600, color: 'var(--theme-accent)' }}>NPR {(payload[0]?.value || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span></div>
     </div>
   )
 }
@@ -318,7 +318,7 @@ export default function MenuEngineering() {
             legend={
               <div style={{ display: 'flex', gap: 16 }}>
                 {Object.entries(Q_HEX).map(([name, hex]) => (
-                  <span key={name} style={{ fontSize: 11, color: '#9ca3af', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span key={name} style={{ fontSize: 11, color: 'var(--theme-text2)', display: 'flex', alignItems: 'center', gap: 4 }}>
                     <span style={{ width: 8, height: 8, borderRadius: '50%', background: hex, display: 'inline-block' }} />
                     {name}
                   </span>
@@ -333,10 +333,10 @@ export default function MenuEngineering() {
                   { q: 'Puzzle',    pos: 'right + bottom (high qty, high FC%)', hint: 'Popular — review recipe cost' },
                   { q: 'Dog',       pos: 'left + bottom (low qty, high FC%)',   hint: 'Consider redesign or removal' },
                 ].map(({ q, pos, hint }) => (
-                  <div key={q} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '8px 10px', borderLeft: `3px solid ${Q_HEX[q]}` }}>
+                  <div key={q} style={{ background: 'var(--theme-table-hover)', borderRadius: 6, padding: '8px 10px', borderLeft: `3px solid ${Q_HEX[q]}` }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: Q_HEX[q] }}>{QUADRANTS[q].icon} {q}</div>
-                    <div style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>{pos}</div>
-                    <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>{hint}</div>
+                    <div style={{ fontSize: 10, color: 'var(--theme-text3)', marginTop: 2 }}>{pos}</div>
+                    <div style={{ fontSize: 10, color: 'var(--theme-text2)', marginTop: 2 }}>{hint}</div>
                   </div>
                 ))}
               </div>
@@ -396,35 +396,35 @@ export default function MenuEngineering() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                   <thead>
                     <tr>
-                      <th style={{ textAlign: 'left', color: '#6b7280', fontWeight: 600, padding: '4px 8px 8px 0', borderBottom: '1px solid #2d3240' }}>Category</th>
+                      <th style={{ textAlign: 'left', color: 'var(--theme-text3)', fontWeight: 600, padding: '4px 8px 8px 0', borderBottom: '1px solid var(--theme-border)' }}>Category</th>
                       {Object.entries(Q_HEX).map(([name, hex]) => (
-                        <th key={name} style={{ textAlign: 'center', color: hex, fontWeight: 700, padding: '4px 6px 8px', borderBottom: '1px solid #2d3240', fontSize: 11 }}>
+                        <th key={name} style={{ textAlign: 'center', color: hex, fontWeight: 700, padding: '4px 6px 8px', borderBottom: '1px solid var(--theme-border)', fontSize: 11 }}>
                           {QUADRANTS[name].icon}<br />{name}
                         </th>
                       ))}
-                      <th style={{ textAlign: 'right', color: '#6b7280', fontWeight: 600, padding: '4px 0 8px 6px', borderBottom: '1px solid #2d3240' }}>Total</th>
+                      <th style={{ textAlign: 'right', color: 'var(--theme-text3)', fontWeight: 600, padding: '4px 0 8px 6px', borderBottom: '1px solid var(--theme-border)' }}>Total</th>
                     </tr>
                   </thead>
                   <tbody>
                     {categoryPivot.map(([cat, counts]) => (
-                      <tr key={cat} style={{ borderBottom: '1px solid #1e2130' }}>
-                        <td style={{ padding: '7px 8px 7px 0', color: '#e5e7eb', fontWeight: 500 }}>{cat}</td>
+                      <tr key={cat} style={{ borderBottom: '1px solid var(--theme-border-lt)' }}>
+                        <td style={{ padding: '7px 8px 7px 0', color: 'var(--theme-text1)', fontWeight: 500 }}>{cat}</td>
                         {Object.keys(Q_HEX).map(q => (
-                          <td key={q} style={{ textAlign: 'center', padding: '7px 6px', color: counts[q] > 0 ? Q_HEX[q] : '#374151', fontWeight: counts[q] > 0 ? 700 : 400 }}>
+                          <td key={q} style={{ textAlign: 'center', padding: '7px 6px', color: counts[q] > 0 ? Q_HEX[q] : 'var(--theme-text3)', fontWeight: counts[q] > 0 ? 700 : 400 }}>
                             {counts[q] > 0 ? counts[q] : '—'}
                           </td>
                         ))}
-                        <td style={{ textAlign: 'right', padding: '7px 0 7px 6px', color: '#9ca3af' }}>{counts.total}</td>
+                        <td style={{ textAlign: 'right', padding: '7px 0 7px 6px', color: 'var(--theme-text2)' }}>{counts.total}</td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
-                    <tr style={{ borderTop: '2px solid #2d3240' }}>
-                      <td style={{ padding: '8px 8px 4px 0', color: '#6b7280', fontWeight: 600, fontSize: 11 }}>TOTAL</td>
+                    <tr style={{ borderTop: '2px solid var(--theme-border)' }}>
+                      <td style={{ padding: '8px 8px 4px 0', color: 'var(--theme-text3)', fontWeight: 600, fontSize: 11 }}>TOTAL</td>
                       {Object.keys(Q_HEX).map(q => (
                         <td key={q} style={{ textAlign: 'center', padding: '8px 6px 4px', fontWeight: 700, color: Q_HEX[q] }}>{summary[q]}</td>
                       ))}
-                      <td style={{ textAlign: 'right', padding: '8px 0 4px 6px', color: '#9ca3af', fontWeight: 600 }}>{items.length}</td>
+                      <td style={{ textAlign: 'right', padding: '8px 0 4px 6px', color: 'var(--theme-text2)', fontWeight: 600 }}>{items.length}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -462,7 +462,7 @@ export default function MenuEngineering() {
                       <td style={{ textAlign: 'right' }}>{r.ingredientCost.toFixed(2)}</td>
                       <td style={{ textAlign: 'right' }}>
                         <span style={{
-                          color: r.fcPct <= 30 ? 'var(--theme-green)' : r.fcPct <= 38 ? '#f59e0b' : 'var(--theme-red)',
+                          color: r.fcPct <= 30 ? 'var(--theme-green)' : r.fcPct <= 38 ? 'var(--theme-amber)' : 'var(--theme-red)',
                           fontWeight: 600
                         }}>
                           {r.sellingPrice > 0 ? r.fcPct.toFixed(1) + '%' : '—'}
@@ -531,7 +531,7 @@ export default function MenuEngineering() {
                     <div style={{ textAlign: 'right' }}>
                       <div style={{
                         fontSize: 12, fontWeight: 700,
-                        color: r.fcPct <= 30 ? 'var(--theme-green)' : r.fcPct <= 38 ? '#f59e0b' : 'var(--theme-red)'
+                        color: r.fcPct <= 30 ? 'var(--theme-green)' : r.fcPct <= 38 ? 'var(--theme-amber)' : 'var(--theme-red)'
                       }}>
                         {r.sellingPrice > 0 ? r.fcPct.toFixed(1) + '%' : '—'} FC
                       </div>

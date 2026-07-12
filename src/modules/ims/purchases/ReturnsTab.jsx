@@ -191,7 +191,7 @@ export default function ReturnsTab({ period, purchases, returns, isLocked, effec
           {returnError && <p style={{ color: 'var(--theme-red)', fontSize: 13, margin: '10px 0 0' }}>{returnError}</p>}
           <div className="form-actions">
             <button className="btn btn-ghost" onClick={() => { setShowReturnForm(false); setEditingReturnId(null) }}>Cancel</button>
-            <button className="btn btn-primary" style={{ background: '#7f1d1d', borderColor: 'var(--theme-red)' }} onClick={saveReturn} disabled={returnSaving}>
+            <button className="btn btn-primary" style={{ background: 'var(--theme-red)', borderColor: 'var(--theme-red)' }} onClick={saveReturn} disabled={returnSaving}>
               {returnSaving ? 'Saving…' : editingReturnId ? 'Update Return' : 'Record Return'}
             </button>
           </div>

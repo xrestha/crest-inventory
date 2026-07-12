@@ -366,7 +366,8 @@ export default function Requisitions() {
                         <td>
                           <button
                             onClick={() => removeFormLine(line._key)}
-                            style={{ background: 'none', border: 'none', color: 'var(--theme-red)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '2px 4px' }}
+                            aria-label="Remove line"
+                            style={{ background: 'none', border: 'none', color: 'var(--theme-red)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '10px' }}
                           >×</button>
                         </td>
                       </tr>
@@ -641,12 +642,14 @@ export default function Requisitions() {
           )}
 
           {filteredReqs.length === 0 ? (
-            <div className="card" style={{ textAlign: 'center', padding: 48 }}>
-              <div style={{ fontSize: 32, marginBottom: 12 }}>📋</div>
-              <div style={{ color: 'var(--theme-text2)', fontSize: 14 }}>No requisitions for {periodLabel}.</div>
-              {!periodClosed && (
-                <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={startNew}>+ New Requisition</button>
-              )}
+            <div className="card">
+              <div className="empty-state">
+                <div className="empty-state-icon">▤</div>
+                <p className="empty-state-text">No requisitions for {periodLabel}.</p>
+                {!periodClosed && (
+                  <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={startNew}>+ New Requisition</button>
+                )}
+              </div>
             </div>
           ) : (
             <div className="card">

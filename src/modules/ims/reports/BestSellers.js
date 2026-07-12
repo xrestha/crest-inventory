@@ -8,10 +8,16 @@ import ChartCard from '../../../components/ChartCard'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 
-const GOLD   = '#c9a84c'
-const GREEN  = '#34d399'
-const RED    = '#f87171'
-const MUTED  = '#6b7280'
+// Recharts SVG props (fill, tick) don't resolve CSS vars — these fixed hexes back only
+// the two chart call sites below; everything else uses the theme-token constants beneath.
+const GOLD_HEX  = '#c9a84c'
+const GREEN_HEX = '#34d399'
+const MUTED_HEX = '#6b7280'
+
+const GOLD  = 'var(--theme-accent)'
+const GREEN = 'var(--theme-green)'
+const RED   = 'var(--theme-red)'
+const MUTED = 'var(--theme-text2)'
 
 export default function BestSellers() {
   const { clientId, profile } = useAuth()
@@ -129,22 +135,22 @@ export default function BestSellers() {
           {/* Bar chart — top 10 */}
           <ChartCard
             title={`Top 10 — ${sortBy === 'qty' ? 'Units Sold' : sortBy === 'margin' ? 'Gross Margin %' : 'Revenue (NPR)'}`}
-            titleStyle={{ fontSize: 14, fontWeight: 700, color: '#e8e0d0' }}
+            titleStyle={{ fontSize: 14, fontWeight: 700, color: 'var(--theme-text1)' }}
             cardStyle={{ marginBottom: 24 }}
             smallHeight={220}
             renderChart={h => (
               <ResponsiveContainer width="100%" height={h}>
                 <BarChart data={chartData} margin={{ top: 0, right: 10, left: 0, bottom: h > 200 ? 60 : 40 }}>
-                  <XAxis dataKey="name" tick={{ fill: MUTED, fontSize: 11 }} angle={-30} textAnchor="end" interval={0} />
-                  <YAxis tick={{ fill: MUTED, fontSize: 11 }} tickFormatter={v => sortBy === 'revenue' ? `${Math.round(v/1000)}k` : v} />
+                  <XAxis dataKey="name" tick={{ fill: MUTED_HEX, fontSize: 11 }} angle={-30} textAnchor="end" interval={0} />
+                  <YAxis tick={{ fill: MUTED_HEX, fontSize: 11 }} tickFormatter={v => sortBy === 'revenue' ? `${Math.round(v/1000)}k` : v} />
                   <Tooltip
-                    contentStyle={{ background: '#181c27', border: '1px solid #2a2f3d', borderRadius: 8, fontSize: 12, color: '#e8e0d0' }}
-                    labelStyle={{ color: '#e8e0d0' }}
-                    itemStyle={{ color: '#e8e0d0' }}
+                    contentStyle={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 8, fontSize: 12, color: 'var(--theme-text1)' }}
+                    labelStyle={{ color: 'var(--theme-text1)' }}
+                    itemStyle={{ color: 'var(--theme-text1)' }}
                     formatter={(v) => [sortBy === 'revenue' ? fmt(v) : sortBy === 'margin' ? `${v}%` : v, sortBy === 'revenue' ? 'Revenue' : sortBy === 'qty' ? 'Qty Sold' : 'Margin']}
                   />
                   <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                    {chartData.map((_, i) => <Cell key={i} fill={i < 3 ? GOLD : GREEN} />)}
+                    {chartData.map((_, i) => <Cell key={i} fill={i < 3 ? GOLD_HEX : GREEN_HEX} />)}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -170,12 +176,12 @@ export default function BestSellers() {
                     {top10.map((r, i) => (
                       <tr key={r.name}>
                         <td style={{ color: i < 3 ? GOLD : MUTED, fontWeight: i < 3 ? 700 : 400, width: 28 }}>{i + 1}</td>
-                        <td style={{ fontWeight: 600, color: '#e8e0d0' }}>
+                        <td style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>
                           {r.name}
                           <div style={{ fontSize: 11, color: MUTED, fontWeight: 400 }}>{r.category}</div>
                         </td>
                         <td style={{ textAlign: 'right', color: MUTED }}>{Math.round(r.qty).toLocaleString()}</td>
-                        <td style={{ textAlign: 'right', color: '#e8e0d0' }}>{fmt(r.revenue)}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--theme-text1)' }}>{fmt(r.revenue)}</td>
                         <td style={{ textAlign: 'right', fontWeight: 600, color: r.margin >= 60 ? GREEN : r.margin >= 40 ? GOLD : RED }}>
                           {r.margin.toFixed(1)}%
                         </td>
@@ -204,12 +210,12 @@ export default function BestSellers() {
                     {bot10.map((r, i) => (
                       <tr key={r.name}>
                         <td style={{ color: MUTED, width: 28 }}>{i + 1}</td>
-                        <td style={{ fontWeight: 600, color: '#e8e0d0' }}>
+                        <td style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>
                           {r.name}
                           <div style={{ fontSize: 11, color: MUTED, fontWeight: 400 }}>{r.category}</div>
                         </td>
                         <td style={{ textAlign: 'right', color: MUTED }}>{Math.round(r.qty).toLocaleString()}</td>
-                        <td style={{ textAlign: 'right', color: '#e8e0d0' }}>{fmt(r.revenue)}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--theme-text1)' }}>{fmt(r.revenue)}</td>
                         <td style={{ textAlign: 'right', fontWeight: 600, color: r.margin >= 60 ? GREEN : r.margin >= 40 ? GOLD : RED }}>
                           {r.margin.toFixed(1)}%
                         </td>

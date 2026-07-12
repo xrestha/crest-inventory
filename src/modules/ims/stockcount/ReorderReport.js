@@ -337,7 +337,7 @@ export default function ReorderReport() {
                           ) : (
                             <Tip text="Click to set the par level — minimum stock quantity before reorder is triggered." width={230}>
                               <span onClick={() => startEditPar(row.item.id, row.par)}
-                                style={{ cursor: 'pointer', color: row.par > 0 ? 'var(--theme-text1)' : 'var(--theme-text3)', borderBottom: '1px dashed #3d4251', paddingBottom: 1, fontWeight: row.par > 0 ? 600 : 400 }}>
+                                style={{ cursor: 'pointer', color: row.par > 0 ? 'var(--theme-text1)' : 'var(--theme-text3)', borderBottom: '1px dashed var(--theme-border)', paddingBottom: 1, fontWeight: row.par > 0 ? 600 : 400 }}>
                                 {isSaving ? '…' : row.par > 0 ? row.par.toLocaleString() : 'Set par'}
                               </span>
                             </Tip>

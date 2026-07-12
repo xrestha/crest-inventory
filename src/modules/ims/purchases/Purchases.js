@@ -471,8 +471,8 @@ export default function Purchases() {
                                   {first.payment_method || 'Cash'}
                                 </span>
                                 {!isLocked && <>
-                                  <button className="btn btn-ghost" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => openEditGroup(gid)}>Edit</button>
-                                  <button className="btn btn-danger" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => deleteGroup(gid)}>Del</button>
+                                  <button className="btn btn-ghost" style={{ fontSize: 11, padding: '7px 11px' }} onClick={() => openEditGroup(gid)}>Edit</button>
+                                  <button className="btn btn-danger" style={{ fontSize: 11, padding: '7px 11px' }} onClick={() => deleteGroup(gid)}>Del</button>
                                 </>}
                               </div>
                             </td>
@@ -481,7 +481,7 @@ export default function Purchases() {
                           ...groupEntries.map(entry => (
                             <tr key={entry.id} style={{ background: 'rgba(0,0,0,0.12)', borderBottom: '1px solid var(--theme-card)' }}>
                               <td></td>
-                              <td style={{ fontWeight: 500, color: '#b8b0a0', paddingLeft: 20, fontSize: 13 }}>{entry.items?.name}</td>
+                              <td style={{ fontWeight: 500, color: 'var(--theme-text2)', paddingLeft: 20, fontSize: 13 }}>{entry.items?.name}</td>
                               <td>{entry.items?.categories?.name ? <span className="badge badge-yellow">{entry.items.categories.name}</span> : <span style={{ color: 'var(--theme-text3)' }}>—</span>}</td>
                               <td></td>
                               {(() => {
@@ -617,11 +617,11 @@ export default function Purchases() {
             </div>
             {purchases.length === 0 ? (
               <div className="empty-state" style={{ padding: '40px 0' }}>
-                <div className="empty-state-icon">📋</div>
+                <div className="empty-state-icon">▤</div>
                 <p className="empty-state-text">No purchases recorded this period.</p>
               </div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
+              <div className="table-wrap">
                 <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
                   <thead>
                     <tr>

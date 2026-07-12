@@ -148,9 +148,11 @@ All colors must use CSS variables, not hardcoded hex. The full token set:
 ```text
 --theme-bg          --theme-card        --theme-border      --theme-border-lt
 --theme-text1       --theme-text2       --theme-text3
---theme-accent      --theme-green       --theme-red         --theme-amber
+--theme-accent      --theme-green       --theme-red         --theme-amber       --theme-purple
 --theme-sidebar     --theme-input-bg    --theme-table-hover --theme-focus-ring
 ```
+
+`--theme-purple` (added during the UI/UX audit pass) is for a genuine 4th/5th categorical color — e.g. Staff Meals in Stock.js/MonthlySummary.js, the sub-recipe tab underline in Recipes.js — that several files had previously hardcoded independently as the same violet hex with no shared source of truth. It is not a general-purpose semantic color like green/red/amber; reach for it only when a page already needs a distinct categorical hue beyond what accent/green/red/amber cover.
 
 **Exception:** Recharts SVG props (`fill`, `stroke`, `tick`) must stay as literal hex — CSS `var()` does not resolve inside SVG presentation attributes.
 

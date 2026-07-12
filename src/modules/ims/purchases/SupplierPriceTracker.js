@@ -357,6 +357,15 @@ export default function SupplierPriceTracker() {
                       key={`row-${key}`}
                       style={{ background: trend === 'up' ? 'rgba(248,113,113,0.03)' : 'transparent', cursor: 'pointer' }}
                       onClick={() => setExpandedItems(prev => ({ ...prev, [key]: !prev[key] }))}
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={isExpanded}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          setExpandedItems(prev => ({ ...prev, [key]: !prev[key] }))
+                        }
+                      }}
                     >
                       <td style={{ textAlign: 'center', color: 'var(--theme-text2)', fontSize: 12, userSelect: 'none' }}>
                         {isExpanded ? '▾' : '▸'}
@@ -393,11 +402,12 @@ export default function SupplierPriceTracker() {
                                 color: 'var(--theme-text1)', outline: 'none'
                               }}
                             />
-                            <button className="btn btn-primary" style={{ fontSize: 11, padding: '4px 8px' }}
-                              onClick={() => savePrice(item)} disabled={isSaving}>
+                            <button className="btn btn-primary" style={{ fontSize: 11, padding: '7px 11px' }}
+                              aria-label="Save price" onClick={() => savePrice(item)} disabled={isSaving}>
                               {isSaving ? '…' : '✓'}
                             </button>
-                            <button className="btn btn-ghost" style={{ fontSize: 11, padding: '4px 8px' }}
+                            <button className="btn btn-ghost" style={{ fontSize: 11, padding: '7px 11px' }}
+                              aria-label="Cancel edit"
                               onClick={() => setEditingPrice(p => { const n = { ...p }; delete n[item.id]; return n })}>
                               ✕
                             </button>
@@ -409,7 +419,7 @@ export default function SupplierPriceTracker() {
                           </button>
                         )}
                       </td>
-                      <td style={{ textAlign: 'right', color: trend === 'up' ? 'var(--theme-red)' : trend === 'down' ? 'var(--theme-green)' : '#d1d5db' }}>
+                      <td style={{ textAlign: 'right', color: trend === 'up' ? 'var(--theme-red)' : trend === 'down' ? 'var(--theme-green)' : 'var(--theme-text3)' }}>
                         {lastEntry ? lastEntry.perUomRate.toFixed(4) : '—'}
                       </td>
                       <td style={{ color: 'var(--theme-text2)', fontSize: 12 }}>{lastEntry?.period_label || '—'}</td>

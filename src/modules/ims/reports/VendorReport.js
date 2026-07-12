@@ -7,6 +7,11 @@ import Tip from '../../../components/Tip'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 
+// Vendor split needs up to 8 distinct hues for an arbitrary vendor count — reuses theme tokens
+// where available (accent/green/red/purple) and falls back to fixed hex for the rest, same
+// reasoning as a chart legend needing more distinct colors than the semantic token set provides.
+const VENDOR_SPLIT_COLORS = ['var(--theme-accent)','var(--theme-green)','#60a5fa','var(--theme-red)','var(--theme-purple)','#fb923c','#22d3ee','#f472b6']
+
 export default function VendorReport() {
   const { clientId, profile, loading: authLoading } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
@@ -275,7 +280,7 @@ export default function VendorReport() {
           <div style={{ display: 'flex', height: 18, borderRadius: 6, overflow: 'hidden', gap: 2 }}>
             {vendorSummary.map((r, i) => {
               const pct = (r.net / grandNet) * 100
-              const colors = ['var(--theme-accent)','var(--theme-green)','#60a5fa','var(--theme-red)','#a78bfa','#fb923c','#22d3ee','#f472b6']
+              const colors = VENDOR_SPLIT_COLORS
               return (
                 <div key={r.vendor.id} style={{ width: `${pct}%`, background: colors[i % colors.length], minWidth: 2 }} />
               )
@@ -284,7 +289,7 @@ export default function VendorReport() {
           <div style={{ display: 'flex', gap: 12, marginTop: 10, flexWrap: 'wrap' }}>
             {vendorSummary.map((r, i) => {
               const pct = (r.net / grandNet) * 100
-              const colors = ['var(--theme-accent)','var(--theme-green)','#60a5fa','var(--theme-red)','#a78bfa','#fb923c','#22d3ee','#f472b6']
+              const colors = VENDOR_SPLIT_COLORS
               return (
                 <div key={r.vendor.id} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                   <div style={{ width: 10, height: 10, borderRadius: 2, background: colors[i % colors.length], flexShrink: 0 }} />
@@ -312,7 +317,7 @@ export default function VendorReport() {
             }}
           />
           {vendorSearch ? (
-            <button onClick={() => { setVendorSearch(''); setShowVendorDrop(false) }} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-text3)', fontSize: 14, lineHeight: 1, padding: 2 }}>×</button>
+            <button onClick={() => { setVendorSearch(''); setShowVendorDrop(false) }} aria-label="Clear vendor search" style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-text3)', fontSize: 14, lineHeight: 1, padding: 8 }}>×</button>
           ) : (
             <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--theme-text3)', fontSize: 10, pointerEvents: 'none' }}>▼</span>
           )}
@@ -416,7 +421,7 @@ export default function VendorReport() {
                       </td>
                       <td style={{ textAlign: 'right', color: r.cash > 0 ? 'var(--theme-green)' : 'var(--theme-text3)' }}>{fmt(r.cash)}</td>
                       <td style={{ textAlign: 'right', color: r.credit > 0 ? 'var(--theme-red)' : 'var(--theme-text3)' }}>{fmt(r.credit)}</td>
-                      <td style={{ textAlign: 'right', color: r.fonepay > 0 ? '#60a5fa' : 'var(--theme-text3)' }}>{fmt(r.fonepay)}</td>
+                      <td style={{ textAlign: 'right', color: r.fonepay > 0 ? 'var(--theme-purple)' : 'var(--theme-text3)' }}>{fmt(r.fonepay)}</td>
                     </tr>
                   )
                 })}

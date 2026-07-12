@@ -114,8 +114,11 @@ export default function PurchaseOneLakhAboveReport() {
       {loading ? (
         <p style={{ color: 'var(--theme-text3)', fontSize: 13 }}>Loading…</p>
       ) : rows.length === 0 ? (
-        <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--theme-text3)', fontSize: 13 }}>
-          No VAT purchases in FY {selectedFy}.
+        <div className="card">
+          <div className="empty-state">
+            <div className="empty-state-icon">₨</div>
+            <p className="empty-state-text">No VAT purchases in FY {selectedFy}.</p>
+          </div>
         </div>
       ) : (
         <div className="table-wrap">
@@ -123,9 +126,21 @@ export default function PurchaseOneLakhAboveReport() {
             <thead>
               <tr>
                 <th>Vendor</th><th>PAN/VAT No.</th><th style={{ textAlign: 'right' }}>Bills</th>
-                <th style={{ textAlign: 'right' }}>Gross</th><th style={{ textAlign: 'right' }}>Discount</th>
-                <th style={{ textAlign: 'right' }}>Taxable</th><th style={{ textAlign: 'right' }}>Returned</th>
-                <th style={{ textAlign: 'right' }}>Net</th>
+                <th style={{ textAlign: 'right' }}>
+                  <Tip text="Total billed amount before any discount, VAT, or returns." width={220}>Gross</Tip>
+                </th>
+                <th style={{ textAlign: 'right' }}>
+                  <Tip text="Trade/promo discount deducted from the gross bill amount." width={220}>Discount</Tip>
+                </th>
+                <th style={{ textAlign: 'right' }}>
+                  <Tip text="Gross minus discount — the base amount VAT is actually levied on." width={240}>Taxable</Tip>
+                </th>
+                <th style={{ textAlign: 'right' }}>
+                  <Tip text="Value of vendor returns for this fiscal year, netted out of the total." width={240}>Returned</Tip>
+                </th>
+                <th style={{ textAlign: 'right' }}>
+                  <Tip text="Taxable amount minus returns — the figure checked against the NPR 1,00,000 Annexure 13 threshold." width={280}>Net</Tip>
+                </th>
                 <th>
                   <Tip text="Rows above NPR 1,00,000 must be disclosed in Annexure 13 of the VAT return. A missing PAN on a flagged row means the vendor's name alone was recorded." width={280}>Flag</Tip>
                 </th>

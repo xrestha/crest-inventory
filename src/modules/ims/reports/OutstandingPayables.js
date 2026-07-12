@@ -20,7 +20,7 @@ const INPUT = {
 function aging(days) {
   if (days <= 30) return { label: 'Current',    color: 'var(--theme-green)' }
   if (days <= 60) return { label: '31–60 days', color: 'var(--theme-accent)' }
-  if (days <= 90) return { label: '61–90 days', color: '#f97316' }
+  if (days <= 90) return { label: '61–90 days', color: 'var(--theme-amber)' }
   return                 { label: '90+ days',   color: 'var(--theme-red)' }
 }
 
@@ -209,7 +209,7 @@ export default function OutstandingPayables() {
           </div>
           <div className="stat-card">
             <div className="stat-label"><Tip text="Bills with a remaining balance older than 60 days." width={230}>Overdue Bills</Tip></div>
-            <div className="stat-value" style={{ color: overdueBills > 0 ? '#f97316' : 'var(--theme-text2)' }}>{overdueBills}</div>
+            <div className="stat-value" style={{ color: overdueBills > 0 ? 'var(--theme-amber)' : 'var(--theme-text2)' }}>{overdueBills}</div>
             <div className="stat-sub">&gt;60 days outstanding</div>
           </div>
           <div className="stat-card">
@@ -312,8 +312,8 @@ export default function OutstandingPayables() {
                                 <td style={{ textAlign: 'right', fontWeight: 700, color: b.aging.color }}>{b.daysOld}</td>
                                 <td>
                                   {b.isPartial
-                                    ? <span style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', background: 'rgba(129,140,248,0.1)', border: '1px solid rgba(129,140,248,0.3)', borderRadius: 4, padding: '2px 8px', whiteSpace: 'nowrap' }}>Partial</span>
-                                    : <span style={{ fontSize: 11, fontWeight: 700, color: b.aging.color, background: `${b.aging.color}18`, border: `1px solid ${b.aging.color}40`, borderRadius: 4, padding: '2px 8px', whiteSpace: 'nowrap' }}>{b.aging.label}</span>
+                                    ? <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--theme-purple)', background: 'color-mix(in srgb, var(--theme-purple) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--theme-purple) 40%, transparent)', borderRadius: 4, padding: '2px 8px', whiteSpace: 'nowrap' }}>Partial</span>
+                                    : <span style={{ fontSize: 11, fontWeight: 700, color: b.aging.color, background: `color-mix(in srgb, ${b.aging.color} 12%, transparent)`, border: `1px solid color-mix(in srgb, ${b.aging.color} 40%, transparent)`, borderRadius: 4, padding: '2px 8px', whiteSpace: 'nowrap' }}>{b.aging.label}</span>
                                   }
                                 </td>
                                 <td style={{ color: 'var(--theme-accent)', fontSize: 12, whiteSpace: 'nowrap' }}>{isExpanded ? '▲ Close' : '＋ Pay Bill'}</td>

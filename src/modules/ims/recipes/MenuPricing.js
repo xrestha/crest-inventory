@@ -385,7 +385,7 @@ export default function MenuPricing() {
                     <button key={opt.val} onClick={() => setAddForm(f => ({ ...f, vatRate: opt.val }))} style={{
                       flex: 1, padding: '7px 0', borderRadius: 6, fontSize: 13, cursor: 'pointer',
                       background: addForm.vatRate === opt.val ? 'var(--theme-accent)' : 'var(--theme-input-bg)',
-                      color: addForm.vatRate === opt.val ? 'var(--theme-accent-text, #000)' : 'var(--theme-text2)',
+                      color: addForm.vatRate === opt.val ? 'var(--theme-accent-text)' : 'var(--theme-text2)',
                       border: `1px solid ${addForm.vatRate === opt.val ? 'var(--theme-accent)' : 'var(--theme-border)'}`,
                       fontWeight: addForm.vatRate === opt.val ? 700 : 400,
                     }}>{opt.label}</button>
@@ -701,7 +701,7 @@ export default function MenuPricing() {
                       style={{
                         flex: 1, padding: '7px 0', borderRadius: 6, fontSize: 13, cursor: 'pointer',
                         background: addForm.vatRate === opt.val ? 'var(--theme-accent)' : 'var(--theme-input-bg)',
-                        color: addForm.vatRate === opt.val ? 'var(--theme-accent-text, #000)' : 'var(--theme-text2)',
+                        color: addForm.vatRate === opt.val ? 'var(--theme-accent-text)' : 'var(--theme-text2)',
                         border: `1px solid ${addForm.vatRate === opt.val ? 'var(--theme-accent)' : 'var(--theme-border)'}`,
                         fontWeight: addForm.vatRate === opt.val ? 700 : 400,
                       }}>{opt.label}</button>

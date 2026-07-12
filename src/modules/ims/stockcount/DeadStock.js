@@ -217,7 +217,10 @@ export default function DeadStock() {
       ) : rows.length === 0 ? (
         <div className="empty-state">No dead or slow-moving stock this period.</div>
       ) : filtered.length === 0 ? (
-        <div className="empty-state">No items match the selected filters.</div>
+        <div className="empty-state">
+          <div className="empty-state-icon">◈</div>
+          <p className="empty-state-text">No items match the selected filters.</p>
+        </div>
       ) : (
         <div className="table-wrap">
           <table className="data-table">
@@ -226,13 +229,21 @@ export default function DeadStock() {
                 <th>Item</th>
                 <th>Category</th>
                 <th>UOM</th>
-                <th style={{ textAlign: 'right' }}>Opening</th>
+                <th style={{ textAlign: 'right' }}>
+                  <Tip text="Physical stock counted at the start of this period." width={200}>Opening</Tip>
+                </th>
                 <th style={{ textAlign: 'right' }}>
                   <Tip text="Net purchases this period (purchases minus vendor returns)." width={220}>Net Purchased</Tip>
                 </th>
-                <th style={{ textAlign: 'right' }}>Wasted</th>
-                <th style={{ textAlign: 'right' }}>Used</th>
-                <th style={{ textAlign: 'right' }}>Closing</th>
+                <th style={{ textAlign: 'right' }}>
+                  <Tip text="Quantity recorded as wastage this period." width={200}>Wasted</Tip>
+                </th>
+                <th style={{ textAlign: 'right' }}>
+                  <Tip text="Opening + Net Purchased − Wasted − Closing. The quantity actually consumed this period." width={260}>Used</Tip>
+                </th>
+                <th style={{ textAlign: 'right' }}>
+                  <Tip text="Physical stock counted at the end of this period." width={200}>Closing</Tip>
+                </th>
                 <th style={{ textAlign: 'right' }}>
                   <Tip text="Closing stock × per-unit rate. NPR value currently sitting idle in inventory." width={240}>Value at Risk</Tip>
                 </th>

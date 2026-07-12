@@ -168,16 +168,18 @@ export default function PurchaseBillModal({ period, items, itemOptions, vendors,
           {(() => {
             const allVat  = billLines.every(l => l.vat_inclusive)
             const someVat = billLines.some(l => l.vat_inclusive)
+            const knobBg = allVat ? 'var(--theme-amber)' : someVat ? 'var(--theme-amber)' : 'var(--theme-border)'
+            const knobOpacity = someVat && !allVat ? 0.6 : 1
             return (
               <button
                 type="button"
                 onClick={() => setBillLines(ls => ls.map(l => ({ ...l, vat_inclusive: !allVat })))}
                 style={{ cursor: 'pointer', background: 'none', border: 'none', padding: '8px 4px', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
               >
-                <div style={{ width: 34, height: 18, borderRadius: 9, background: allVat ? '#f59e0b' : someVat ? '#b45309' : 'var(--theme-border)', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
+                <div style={{ width: 34, height: 18, borderRadius: 9, background: knobBg, opacity: knobOpacity, position: 'relative', transition: 'background 0.2s, opacity 0.2s', flexShrink: 0 }}>
                   <div style={{ position: 'absolute', top: 3, left: allVat ? 17 : someVat ? 11 : 3, width: 12, height: 12, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
                 </div>
-                <span style={{ fontSize: 13, fontWeight: someVat ? 700 : 400, color: allVat ? '#f59e0b' : someVat ? '#b45309' : 'var(--theme-text3)', letterSpacing: '0.04em' }}>
+                <span style={{ fontSize: 13, fontWeight: someVat ? 700 : 400, color: knobBg, opacity: knobOpacity, letterSpacing: '0.04em' }}>
                   {allVat ? 'VAT 13%' : someVat ? 'VAT Mixed' : 'No VAT'}
                 </span>
               </button>
@@ -267,9 +269,9 @@ export default function PurchaseBillModal({ period, items, itemOptions, vendors,
                         type="checkbox"
                         checked={line.vat_inclusive}
                         onChange={() => updateBillLine(line._key, 'vat_inclusive', !line.vat_inclusive)}
-                        style={{ cursor: 'pointer', width: 15, height: 15, accentColor: '#f59e0b' }}
+                        style={{ cursor: 'pointer', width: 15, height: 15, accentColor: 'var(--theme-amber)' }}
                       />
-                      {line.vat_inclusive && <div style={{ fontSize: 9, color: '#f59e0b', marginTop: 2, fontWeight: 700 }}>13%</div>}
+                      {line.vat_inclusive && <div style={{ fontSize: 9, color: 'var(--theme-amber)', marginTop: 2, fontWeight: 700 }}>13%</div>}
                     </td>
                     <td style={{ padding: '6px 8px 4px', verticalAlign: 'middle' }}>
                       <input
@@ -306,8 +308,8 @@ export default function PurchaseBillModal({ period, items, itemOptions, vendors,
                         style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 5, padding: '7px 8px', fontSize: 12, color: 'var(--theme-text2)', outline: 'none', width: '100%', textAlign: 'right' }} />
                     </td>
                     <td style={{ padding: '6px 0 6px', verticalAlign: 'middle', textAlign: 'right' }}>
-                      <button onClick={() => removeBillLine(line._key)}
-                        style={{ background: 'none', border: 'none', color: 'var(--theme-text2)', cursor: 'pointer', fontSize: 18, padding: '4px', lineHeight: 1 }}>×</button>
+                      <button onClick={() => removeBillLine(line._key)} aria-label="Remove line"
+                        style={{ background: 'none', border: 'none', color: 'var(--theme-text2)', cursor: 'pointer', fontSize: 18, padding: '10px', lineHeight: 1 }}>×</button>
                     </td>
                   </tr>
               )

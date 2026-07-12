@@ -561,7 +561,7 @@ export default function Stock() {
                               <td style={tdStyle('var(--theme-accent)')}>{s.purchases > 0 ? fmt(s.purchases) : '—'}</td>
                               <td style={tdStyle('var(--theme-green)')}>{s.closing > 0 ? fmt(s.closing) : '—'}</td>
                               <td style={tdStyle('var(--theme-red)')}>{s.wastage > 0 ? fmt(s.wastage) : '—'}</td>
-                              <td style={tdStyle('#a78bfa')}>{(s.staffMeals || 0) > 0 ? fmt(s.staffMeals) : '—'}</td>
+                              <td style={tdStyle('var(--theme-purple)')}>{(s.staffMeals || 0) > 0 ? fmt(s.staffMeals) : '—'}</td>
                               <td style={{ textAlign: 'right', fontWeight: 600, color: s.cogs < 0 ? 'var(--theme-red)' : 'var(--theme-text1)', whiteSpace: 'nowrap' }}>{fmt(s.cogs)}</td>
                             </tr>
                           )
@@ -575,7 +575,7 @@ export default function Stock() {
                           <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-accent)', whiteSpace: 'nowrap' }}>{fmt(totals.purchases)}</td>
                           <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-green)', whiteSpace: 'nowrap' }}>{fmt(totals.closing)}</td>
                           <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-red)', whiteSpace: 'nowrap' }}>{fmt(totals.wastage)}</td>
-                          <td style={{ textAlign: 'right', fontWeight: 700, color: '#a78bfa', whiteSpace: 'nowrap' }}>{fmt(totals.staffMeals)}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-purple)', whiteSpace: 'nowrap' }}>{fmt(totals.staffMeals)}</td>
                           <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-accent)', whiteSpace: 'nowrap' }}>{fmt(totals.cogs)}</td>
                         </tr>
                       </tfoot>
@@ -601,14 +601,14 @@ export default function Stock() {
                     <th style={{ textAlign: 'right' }}>Purchased</th>
                     <th style={{ textAlign: 'right', color: 'var(--theme-red)' }}>Returned</th>
                     <th style={{ textAlign: 'right' }}>Wastage</th>
-                    <th style={{ textAlign: 'right', color: '#a78bfa' }}><Tip text="Staff & complimentary consumption recorded this period. Deducted from Used separately from wastage." width={240}>Staff Meals</Tip></th>
+                    <th style={{ textAlign: 'right', color: 'var(--theme-purple)' }}><Tip text="Staff & complimentary consumption recorded this period. Deducted from Used separately from wastage." width={240}>Staff Meals</Tip></th>
                     <th style={{ textAlign: 'right' }}>Closing</th>
                     <th style={{ textAlign: 'right' }}><Tip text="Opening + Purchased − Returned − Wastage − Staff Meals − Closing. What was actually consumed this period." width={240}>Used</Tip></th>
-                    <th style={{ textAlign: 'right', color: '#a78bfa' }}><Tip text="Total qty issued from the store via requisition slips this period. Should align with Used quantity." width={240}>Requisitioned</Tip></th>
+                    <th style={{ textAlign: 'right', color: 'var(--theme-purple)' }}><Tip text="Total qty issued from the store via requisition slips this period. Should align with Used quantity." width={240}>Requisitioned</Tip></th>
                     <th style={{ textAlign: 'right', color: 'var(--theme-text3)', borderLeft: '1px solid var(--theme-border)' }}><Tip text="Opening quantity × per-unit rate. Value of stock carried forward from the previous period." width={240}>Open. Value</Tip></th>
                     <th style={{ textAlign: 'right', color: 'var(--theme-accent)' }}><Tip text="Purchased quantity × per-unit purchase rate." width={220}>Purch. Value</Tip></th>
                     <th style={{ textAlign: 'right', color: 'var(--theme-red)' }}><Tip text="Wastage quantity × per-unit rate. NPR cost of goods recorded as waste." width={240}>Wastage Value</Tip></th>
-                    <th style={{ textAlign: 'right', color: '#a78bfa' }}><Tip text="Staff meals quantity × per-unit rate. NPR cost of complimentary/staff consumption." width={260}>Staff Meals Value</Tip></th>
+                    <th style={{ textAlign: 'right', color: 'var(--theme-purple)' }}><Tip text="Staff meals quantity × per-unit rate. NPR cost of complimentary/staff consumption." width={260}>Staff Meals Value</Tip></th>
                     <th style={{ textAlign: 'right', color: 'var(--theme-green)' }}><Tip text="Closing (physical count) quantity × per-unit rate." width={220}>Close Value</Tip></th>
                     <th style={{ textAlign: 'right', color: 'var(--theme-accent)' }}><Tip text="Cost of Goods Sold = Opening + Purchased − Wastage − Staff Meals − Closing, in NPR." width={270}>COGS (NPR)</Tip></th>
                   </tr>
@@ -637,18 +637,18 @@ export default function Stock() {
                         <td style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>{purchQty > 0 ? dispPurch(purchQty, item) : '—'}</td>
                         <td style={{ textAlign: 'right', color: 'var(--theme-red)' }}>{returned > 0 ? `−${Number(returned).toLocaleString()}` : '—'}</td>
                         <td style={{ textAlign: 'right', color: 'var(--theme-red)' }}>{row.wastage ? Number(row.wastage).toLocaleString() : '—'}</td>
-                        <td style={{ textAlign: 'right', color: '#a78bfa' }}>{staffQty > 0 ? Number(staffQty).toLocaleString() : '—'}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--theme-purple)' }}>{staffQty > 0 ? Number(staffQty).toLocaleString() : '—'}</td>
                         <td style={{ textAlign: 'right', color: 'var(--theme-green)' }}>{row.closing !== '' ? Number(row.closing).toLocaleString() : '—'}</td>
                         <td style={{ textAlign: 'right', fontWeight: 600, color: used < 0 ? 'var(--theme-red)' : 'var(--theme-text1)' }}>
                           {hasData ? Number(used).toLocaleString() : '—'}
                         </td>
-                        <td style={{ textAlign: 'right', color: '#a78bfa' }}>
+                        <td style={{ textAlign: 'right', color: 'var(--theme-purple)' }}>
                           {requisitioned[item.id] ? Number(requisitioned[item.id]).toLocaleString() : '—'}
                         </td>
                         <td style={{ textAlign: 'right', color: 'var(--theme-text3)', borderLeft: '1px solid var(--theme-border)' }}>{fmtVal(openQty)}</td>
                         <td style={{ textAlign: 'right', color: 'var(--theme-accent)' }}>{fmtVal(purchQty)}</td>
                         <td style={{ textAlign: 'right', color: 'var(--theme-red)' }}>{fmtVal(wastQty)}</td>
-                        <td style={{ textAlign: 'right', color: '#a78bfa' }}>{fmtVal(staffQty)}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--theme-purple)' }}>{fmtVal(staffQty)}</td>
                         <td style={{ textAlign: 'right', color: 'var(--theme-green)' }}>{fmtVal(closeQty)}</td>
                         <td style={{ textAlign: 'right', fontWeight: 700, color: used < 0 ? 'var(--theme-red)' : 'var(--theme-accent)' }}>
                           {hasData ? fmtVal(used) : '—'}

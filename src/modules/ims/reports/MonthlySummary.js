@@ -247,7 +247,7 @@ export default function MonthlySummary() {
                     <th style={{ textAlign: 'right', color: 'var(--theme-red)' }}>Returns</th>
                     <th style={{ textAlign: 'right' }}><Tip text="Gross purchases minus returns to vendor. The true amount spent on stock this period." width={220}>Net Purchases</Tip></th>
                     <th style={{ textAlign: 'right' }}>Wastage</th>
-                    <th style={{ textAlign: 'right', color: '#a78bfa' }}><Tip text="Staff & complimentary consumption recorded this period. Deducted from COGS separately from wastage." width={240}>Staff Meals</Tip></th>
+                    <th style={{ textAlign: 'right', color: 'var(--theme-purple)' }}><Tip text="Staff & complimentary consumption recorded this period. Deducted from COGS separately from wastage." width={240}>Staff Meals</Tip></th>
                     <th style={{ textAlign: 'right' }}>Closing Stock</th>
                     <th style={{ textAlign: 'right' }}><Tip text="Cost of Goods Used: Opening + Net Purchases − Wastage − Staff Meals − Closing. Ingredient cost actually consumed." width={250}>COGS</Tip></th>
                     <th style={{ textAlign: 'right' }}><Tip text="This category's COGS as a share of total COGS. Shows which category drives your ingredient spend." width={230}>% of Total COGS</Tip></th>
@@ -277,7 +277,7 @@ export default function MonthlySummary() {
                         <td style={{ textAlign: 'right', color: 'var(--theme-red)' }}>
                           {row.wastageVal > 0 ? fmt(row.wastageVal) : <span style={{ color: 'var(--theme-text3)' }}>—</span>}
                         </td>
-                        <td style={{ textAlign: 'right', color: '#a78bfa' }}>
+                        <td style={{ textAlign: 'right', color: 'var(--theme-purple)' }}>
                           {(row.staffMealsVal || 0) > 0 ? fmt(row.staffMealsVal) : <span style={{ color: 'var(--theme-text3)' }}>—</span>}
                         </td>
                         <td style={{ textAlign: 'right', color: 'var(--theme-green)' }}>
@@ -310,7 +310,7 @@ export default function MonthlySummary() {
                     </td>
                     <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-accent)', paddingTop: 14 }}>{fmt(report.totalNetPurchase)}</td>
                     <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-red)', paddingTop: 14 }}>{fmt(report.totalWastage)}</td>
-                    <td style={{ textAlign: 'right', fontWeight: 700, color: '#a78bfa', paddingTop: 14 }}>{report.totalStaffMeals > 0 ? fmt(report.totalStaffMeals) : '—'}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-purple)', paddingTop: 14 }}>{report.totalStaffMeals > 0 ? fmt(report.totalStaffMeals) : '—'}</td>
                     <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-green)', paddingTop: 14 }}>{fmt(report.totalClosing)}</td>
                     <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--theme-accent)', paddingTop: 14, fontSize: 15 }}>{fmt(report.totalCOGS)}</td>
                     <td style={{ textAlign: 'right', paddingTop: 14, fontWeight: 700, color: 'var(--theme-text2)' }}>100%</td>

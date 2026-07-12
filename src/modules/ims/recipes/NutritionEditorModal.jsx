@@ -184,8 +184,8 @@ export default function NutritionEditorModal({ item, onClose, onSaved }) {
       </div>
 
       {nutriMatches.length > 0 && (
-        <div style={{ marginBottom: 16, padding: '10px 14px', background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 8 }}>
-          <div style={{ fontSize: 11, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+        <div style={{ marginBottom: 16, padding: '10px 14px', background: 'color-mix(in srgb, var(--theme-purple) 6%, transparent)', border: '1px solid color-mix(in srgb, var(--theme-purple) 20%, transparent)', borderRadius: 8 }}>
+          <div style={{ fontSize: 11, color: 'var(--theme-purple)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
             {nutriMatches.length} match{nutriMatches.length > 1 ? 'es' : ''} from {nutriMatchSource}
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>

@@ -6,6 +6,9 @@ import Tip from '../../../components/Tip'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 
+// labor's blue has no dedicated theme token — accent/green/red/amber/purple are already spoken
+// for by food/overhead/profit-loss/target-warning/tax elsewhere on this page, so it stays a fixed
+// hex (same reasoning as a chart legend needing more distinct hues than the semantic token set).
 const BUCKET_CONFIG = {
   overhead: {
     label: 'Fixed Overheads',
@@ -36,7 +39,7 @@ const BUCKET_CONFIG = {
   },
   tax_fees: {
     label: 'Tax & Fees',
-    color: '#a78bfa',
+    color: 'var(--theme-purple)',
     target: 5,
     presets: ['VAT Compliance', 'Card Processing', 'Bank Charges', 'License & Permits', 'Accountant Fees'],
     placeholders: {
@@ -201,7 +204,7 @@ export default function Overheads() {
     if (actual == null) return 'var(--theme-text2)'
     const diff = actual - target
     if (diff <= 2)  return 'var(--theme-green)'
-    if (diff <= 8)  return '#f59e0b'
+    if (diff <= 8)  return 'var(--theme-amber)'
     return 'var(--theme-red)'
   }
 
@@ -214,7 +217,7 @@ export default function Overheads() {
     { key: 'food',   label: 'Food Cost',  amount: foodCost,        target: 30, color: 'var(--theme-accent)' },
     { key: 'labor',  label: 'Labor',      amount: totals.labor,    target: 30, color: '#60a5fa' },
     { key: 'oh',     label: 'Overhead',   amount: totals.overhead, target: 25, color: 'var(--theme-green)' },
-    { key: 'tax',    label: 'Tax & Fees', amount: totals.tax_fees, target: 5,  color: '#a78bfa' },
+    { key: 'tax',    label: 'Tax & Fees', amount: totals.tax_fees, target: 5,  color: 'var(--theme-purple)' },
     { key: 'profit', label: 'Net Profit', amount: netProfit,       target: 10,
       color: netProfit != null && netProfit >= 0 ? 'var(--theme-green)' : 'var(--theme-red)' },
   ] : null
@@ -295,7 +298,7 @@ export default function Overheads() {
           {
             label: 'Tax & Fees', value: fmt(totals.tax_fees),
             sub: fmtPct(totals.tax_fees, revenue) ? `${fmtPct(totals.tax_fees, revenue)} of revenue` : 'No sales data',
-            color: '#a78bfa',
+            color: 'var(--theme-purple)',
             tip: 'VAT compliance, card processing fees, bank charges, licenses. Often forgotten but real.'
           },
           {
@@ -522,13 +525,13 @@ export default function Overheads() {
 
           {/* Revenue cost stack — only when sales data available */}
           {hasSales && (() => {
-            const fc  = { key: 'food',     label: 'Food Cost', color: '#c9a84c', amount: foodCost,        pct: pct(foodCost,        revenue) || 0 }
+            const fc  = { key: 'food',     label: 'Food Cost', color: 'var(--theme-accent)', amount: foodCost,        pct: pct(foodCost,        revenue) || 0 }
             const lb  = { key: 'labor',    label: 'Labor',     color: '#60a5fa', amount: totals.labor,    pct: pct(totals.labor,    revenue) || 0 }
-            const oh  = { key: 'overhead', label: 'Overhead',  color: '#34d399', amount: totals.overhead, pct: pct(totals.overhead, revenue) || 0 }
-            const tx  = { key: 'tax',      label: 'Tax & Fees',color: '#a78bfa', amount: totals.tax_fees, pct: pct(totals.tax_fees, revenue) || 0 }
+            const oh  = { key: 'overhead', label: 'Overhead',  color: 'var(--theme-green)', amount: totals.overhead, pct: pct(totals.overhead, revenue) || 0 }
+            const tx  = { key: 'tax',      label: 'Tax & Fees',color: 'var(--theme-purple)', amount: totals.tax_fees, pct: pct(totals.tax_fees, revenue) || 0 }
             const prPct = netProfit != null ? pct(netProfit, revenue) : null
             const pr  = { key: 'profit',   label: prPct != null && prPct < 0 ? 'Loss' : 'Net Profit',
-                          color: prPct != null && prPct < 0 ? '#f87171' : '#4ade80',
+                          color: prPct != null && prPct < 0 ? 'var(--theme-red)' : 'var(--theme-green)',
                           amount: netProfit, pct: prPct || 0 }
             const segments = [fc, lb, oh, tx, pr].filter(s => s.amount != null && s.pct > 0.2)
             return (
@@ -752,7 +755,7 @@ export default function Overheads() {
               </div>
               <div>
                 <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginBottom: 4 }}>Tax & Fees / Cover</div>
-                <div style={{ fontSize: 18, fontWeight: 600, color: '#a78bfa' }}>
+                <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--theme-purple)' }}>
                   {covers > 0 && totals.tax_fees > 0 ? fmt(totals.tax_fees / covers) : '—'}
                 </div>
               </div>

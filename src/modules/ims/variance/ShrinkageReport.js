@@ -7,7 +7,7 @@ import Tip from '../../../components/Tip'
 function shrinkageStatus(count, covered) {
   const ratio = covered > 0 ? count / covered : 0
   if (ratio >= 0.67 && count >= 2) return { label: 'Consistent', color: 'var(--theme-red)', bg: 'rgba(248,113,113,0.1)' }
-  if (count >= 2)                  return { label: 'Occasional', color: '#f97316', bg: 'rgba(249,115,22,0.1)'  }
+  if (count >= 2)                  return { label: 'Occasional', color: 'var(--theme-amber)', bg: 'rgba(251,191,36,0.1)'  }
   if (count === 1)                 return { label: 'Once',       color: 'var(--theme-accent)', bg: 'rgba(201,168,76,0.1)'  }
   return                                  { label: 'Clear',      color: 'var(--theme-green)', bg: 'rgba(52,211,153,0.1)'  }
 }
@@ -216,7 +216,7 @@ export default function ShrinkageReport() {
             <div className="stat-label">
               <Tip text="Items with at least one period of unexplained over-use vs theoretical usage." width={220}>Any Shrinkage</Tip>
             </div>
-            <div className="stat-value" style={{ color: summary.anyFlagged > 0 ? '#f97316' : 'var(--theme-green)' }}>{summary.anyFlagged}</div>
+            <div className="stat-value" style={{ color: summary.anyFlagged > 0 ? 'var(--theme-amber)' : 'var(--theme-green)' }}>{summary.anyFlagged}</div>
             <div className="stat-sub">of {summary.totalTracked} recipe-covered items</div>
           </div>
           <div className="stat-card">

@@ -626,9 +626,9 @@ export default function Items() {
           onClick={() => setSortConvFirst(v => !v)}
           style={{
             fontSize: 12, padding: '7px 14px', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap',
-            border: sortConvFirst ? '1px solid rgba(20,184,166,0.5)' : '1px solid var(--theme-border)',
-            background: sortConvFirst ? 'rgba(20,184,166,0.1)' : 'transparent',
-            color: sortConvFirst ? '#2dd4bf' : 'var(--theme-text2)',
+            border: sortConvFirst ? '1px solid var(--theme-accent)' : '1px solid var(--theme-border)',
+            background: sortConvFirst ? 'var(--theme-table-hover)' : 'transparent',
+            color: sortConvFirst ? 'var(--theme-accent)' : 'var(--theme-text2)',
             fontWeight: sortConvFirst ? 600 : 400
           }}
         >

@@ -310,7 +310,9 @@ export default function TheoreticalVariance() {
                   <th style={{ textAlign: 'right' }}>
                     <Tip text="Actual − Theoretical. Positive = over-consumed (waste/theft/over-portioning). Negative = under-consumed (under-portioning or missing sales data)." width={280}>Variance</Tip>
                   </th>
-                  <th style={{ textAlign: 'right' }}>Variance %</th>
+                  <th style={{ textAlign: 'right' }}>
+                    <Tip text="Variance as a percentage of theoretical usage — normalizes the gap so items with different volumes are comparable." width={260}>Variance %</Tip>
+                  </th>
                   <th style={{ textAlign: 'right' }}>
                     <Tip text="Variance Qty × cost per UOM. Shows the NPR impact of the gap." width={220}>Value (NPR)</Tip>
                   </th>

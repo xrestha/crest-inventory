@@ -13,7 +13,7 @@ const PAYMENT_METHODS = ['Cash', 'Credit', 'FonePay']
 
 const STATUS_META = {
   draft:     { label: 'Draft',     color: 'var(--theme-text2)', bg: 'rgba(107,114,128,0.1)', border: 'rgba(107,114,128,0.3)' },
-  sent:      { label: 'Sent',      color: '#60a5fa', bg: 'rgba(96,165,250,0.1)',  border: 'rgba(96,165,250,0.3)' },
+  sent:      { label: 'Sent',      color: 'var(--theme-purple)', bg: 'color-mix(in srgb, var(--theme-purple) 10%, transparent)', border: 'color-mix(in srgb, var(--theme-purple) 30%, transparent)' },
   partial:   { label: 'Partial',   color: 'var(--theme-accent)', bg: 'rgba(201,168,76,0.1)',  border: 'rgba(201,168,76,0.3)' },
   received:  { label: 'Received',  color: 'var(--theme-green)', bg: 'rgba(52,211,153,0.1)',  border: 'rgba(52,211,153,0.3)' },
   cancelled: { label: 'Cancelled', color: 'var(--theme-red)', bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.3)' },
@@ -494,6 +494,7 @@ export default function PurchaseOrders() {
             <button className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 12px' }} onClick={addPoItemRow}>+ Add Row</button>
           </div>
 
+          <div className="table-wrap">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
@@ -541,8 +542,8 @@ export default function PurchaseOrders() {
                       {subtotal > 0 ? `NPR ${subtotal.toLocaleString('en-NP', { maximumFractionDigits: 0 })}` : '—'}
                     </td>
                     <td style={{ padding: '5px 0', textAlign: 'right' }}>
-                      <button onClick={() => removePoItemRow(row._key)}
-                        style={{ background: 'none', border: 'none', color: 'var(--theme-text3)', cursor: 'pointer', fontSize: 16, padding: '0 4px' }}>×</button>
+                      <button onClick={() => removePoItemRow(row._key)} aria-label="Remove item row"
+                        style={{ background: 'none', border: 'none', color: 'var(--theme-text3)', cursor: 'pointer', fontSize: 16, padding: '8px' }}>×</button>
                     </td>
                   </tr>
                 )
@@ -560,6 +561,7 @@ export default function PurchaseOrders() {
               </tfoot>
             )}
           </table>
+          </div>
 
           {formError && <p style={{ color: 'var(--theme-red)', fontSize: 13, margin: '16px 0 0' }}>{formError}</p>}
 
@@ -711,13 +713,13 @@ export default function PurchaseOrders() {
       </div>
 
       {filteredPos.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--theme-text3)' }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>📋</div>
-          <div style={{ fontSize: 14 }}>
+        <div className="empty-state">
+          <div className="empty-state-icon">▤</div>
+          <p className="empty-state-text">
             {pos.length === 0
               ? 'No purchase orders for this period. Click + New PO to create one.'
               : `No ${filterStatus} POs.`}
-          </div>
+          </p>
         </div>
       ) : (
         <div className="table-wrap">

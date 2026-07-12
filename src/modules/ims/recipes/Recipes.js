@@ -47,6 +47,7 @@ export default function Recipes() {
   // it's offered as a separate, explicit action once the user sees exactly which items missed.
   const [usdaCandidates, setUsdaCandidates] = useState([])
   const [usdaFillBusy, setUsdaFillBusy] = useState(false)
+  const [nutriStatus, setNutriStatus] = useState(null) // { text } | null — result banner for auto-fill runs
 
   const init = useCallback(async () => {
     if (!clientId) return
@@ -268,9 +269,9 @@ export default function Recipes() {
     setUsdaCandidates(unmatchedItems)
 
     if (seedTargets.length === 0) {
-      window.alert(unmatchedItems.length
-        ? `No regional library match for ${unmatchedItems.length} ingredient(s): ${unmatchedItems.map(i => i.name).join(', ')}.\n\nUse "🔍 Try USDA FoodData Central" below if you want a live US-sourced estimate, or add nutrition manually.`
-        : 'All ingredients already have nutrition data.')
+      setNutriStatus({ text: unmatchedItems.length
+        ? `No regional library match for ${unmatchedItems.length} ingredient(s): ${unmatchedItems.map(i => i.name).join(', ')}. Try USDA FoodData Central below, or add nutrition manually.`
+        : 'All ingredients already have nutrition data.' })
       return
     }
 
@@ -283,9 +284,9 @@ export default function Recipes() {
     const { filled, failed } = await saveNutritionTargets(seedTargets)
     setAutoFillBusy(false)
 
-    window.alert(`Filled ${filled} ingredient(s) from the regional library.`
+    setNutriStatus({ text: `Filled ${filled} ingredient(s) from the regional library.`
       + (failed ? ` ${failed} failed to save.` : '')
-      + (unmatchedItems.length ? `\n\n${unmatchedItems.length} still need nutrition data (no local match): ${unmatchedItems.map(i => i.name).join(', ')}.` : ''))
+      + (unmatchedItems.length ? ` ${unmatchedItems.length} still need nutrition data (no local match): ${unmatchedItems.map(i => i.name).join(', ')}.` : '') })
   }
 
   // Explicit, separate step — a live call to USDA FoodData Central, only for ingredients the
@@ -301,7 +302,7 @@ export default function Recipes() {
     setUsdaFillBusy(false)
 
     if (usdaTargets.length === 0) {
-      window.alert(`No USDA FoodData Central match found for: ${stillUnmatched.join(', ')}. Add these manually.`)
+      setNutriStatus({ text: `No USDA FoodData Central match found for: ${stillUnmatched.join(', ')}. Add these manually.` })
       setUsdaCandidates([])
       return
     }
@@ -316,7 +317,7 @@ export default function Recipes() {
     setUsdaFillBusy(false)
     setUsdaCandidates([])
 
-    window.alert(`Filled ${filled} ingredient(s) from USDA FoodData Central.` + (failed ? ` ${failed} failed to save.` : ''))
+    setNutriStatus({ text: `Filled ${filled} ingredient(s) from USDA FoodData Central.` + (failed ? ` ${failed} failed to save.` : '') })
   }
 
   function dismissUsdaCandidates() { setUsdaCandidates([]) }
@@ -583,7 +584,7 @@ export default function Recipes() {
                     background: isActive ? 'var(--theme-border)' : 'transparent',
                     border: 'none',
                     borderBottom: isActive
-                      ? `2px solid ${isSubTab ? 'var(--theme-accent)' : '#6366f1'}`
+                      ? `2px solid ${isSubTab ? 'var(--theme-accent)' : 'var(--theme-purple)'}`
                       : '2px solid transparent',
                     padding: '10px 16px',
                     fontSize: 13,
@@ -602,8 +603,8 @@ export default function Recipes() {
                 >
                   {tab.label}
                   <span style={{
-                    background: isActive ? (isSubTab ? 'rgba(201,168,76,0.15)' : 'rgba(99,102,241,0.15)') : 'var(--theme-border)',
-                    color: isActive ? (isSubTab ? 'var(--theme-accent)' : '#818cf8') : 'var(--theme-text3)',
+                    background: isActive ? (isSubTab ? 'rgba(201,168,76,0.15)' : 'color-mix(in srgb, var(--theme-purple) 15%, transparent)') : 'var(--theme-border)',
+                    color: isActive ? (isSubTab ? 'var(--theme-accent)' : 'var(--theme-purple)') : 'var(--theme-text3)',
                     borderRadius: 10,
                     fontSize: 11,
                     fontWeight: 600,
@@ -903,11 +904,11 @@ export default function Recipes() {
           {/* Live nutrition line */}
           {liveNutri && liveNutri.coverage.total > 0 && (
             <div style={{
-              background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.18)',
+              background: 'color-mix(in srgb, var(--theme-purple) 5%, transparent)', border: '1px solid color-mix(in srgb, var(--theme-purple) 18%, transparent)',
               borderRadius: 8, padding: '10px 16px', marginBottom: 20,
               display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', fontSize: 13
             }}>
-              <span style={{ color: '#818cf8', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              <span style={{ color: 'var(--theme-purple)', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                 🍽 {isSubRecipeForm ? 'total batch' : 'per portion'}
               </span>
               {NUTRIENTS.map(def => (
@@ -925,7 +926,7 @@ export default function Recipes() {
               <h3 style={{ margin: 0, fontSize: 14, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Ingredients</h3>
               <div style={{ display: 'flex', gap: 8 }}>
                 {showNutrition && (
-                  <button className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 12px', color: '#818cf8', borderColor: 'rgba(99,102,241,0.3)' }} onClick={autoFillNutrition} disabled={autoFillBusy}>
+                  <button className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 12px', color: 'var(--theme-purple)', borderColor: 'color-mix(in srgb, var(--theme-purple) 30%, transparent)' }} onClick={autoFillNutrition} disabled={autoFillBusy}>
                     <Tip width={290} text="Fills every ingredient that's missing nutrition with its best match from the regional library (DFTQC Nepal / IFCT 2017 / USDA), in one step. Doesn't reach for the live USDA FoodData Central API on a miss — that's offered separately below so USDA is never a silent default. Branded items (Open Food Facts) and unmatched items are left for you to add manually.">
                       {autoFillBusy ? 'Filling…' : '⚡ Auto-fill nutrition'}
                     </Tip>
@@ -934,6 +935,18 @@ export default function Recipes() {
                 <button className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 12px' }} onClick={addRow}>+ Add Row</button>
               </div>
             </div>
+
+            {nutriStatus && (
+              <div role="status" aria-live="polite" style={{
+                display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, fontSize: 12,
+                background: 'color-mix(in srgb, var(--theme-accent) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--theme-accent) 25%, transparent)',
+                borderRadius: 8, padding: '8px 12px', marginBottom: 14,
+              }}>
+                <span style={{ color: 'var(--theme-text1)' }}>{nutriStatus.text}</span>
+                <button onClick={() => setNutriStatus(null)} aria-label="Dismiss"
+                  style={{ background: 'none', border: 'none', color: 'var(--theme-text3)', cursor: 'pointer', fontSize: 14, padding: '4px 6px', flexShrink: 0 }}>×</button>
+              </div>
+            )}
 
             {showNutrition && usdaCandidates.length > 0 && (
               <div style={{
@@ -944,10 +957,10 @@ export default function Recipes() {
                 <span style={{ color: 'var(--theme-text2)' }}>
                   {usdaCandidates.length} ingredient{usdaCandidates.length > 1 ? 's' : ''} not in the regional library: {usdaCandidates.map(i => i.name).join(', ')}
                 </span>
-                <button className="btn btn-ghost" style={{ fontSize: 11, padding: '3px 10px', color: '#60a5fa', borderColor: 'rgba(96,165,250,0.3)' }} onClick={fillFromUsda} disabled={usdaFillBusy}>
+                <button className="btn btn-ghost" style={{ fontSize: 11, padding: '3px 10px', color: 'var(--theme-purple)', borderColor: 'color-mix(in srgb, var(--theme-purple) 30%, transparent)' }} onClick={fillFromUsda} disabled={usdaFillBusy}>
                   {usdaFillBusy ? 'Fetching…' : '🔍 Try USDA FoodData Central'}
                 </button>
-                <button style={{ background: 'none', border: 'none', color: 'var(--theme-text3)', cursor: 'pointer', fontSize: 14, padding: 0 }} onClick={dismissUsdaCandidates} title="Dismiss">✕</button>
+                <button style={{ background: 'none', border: 'none', color: 'var(--theme-text3)', cursor: 'pointer', fontSize: 14, padding: 8 }} onClick={dismissUsdaCandidates} title="Dismiss" aria-label="Dismiss USDA suggestion">✕</button>
               </div>
             )}
 
@@ -1045,8 +1058,8 @@ export default function Recipes() {
                         </td>
                       )}
                       <td style={{ padding: '6px 0', textAlign: 'right' }}>
-                        <button onClick={() => removeRow(ing._key)}
-                          style={{ background: 'none', border: 'none', color: 'var(--theme-text3)', cursor: 'pointer', fontSize: 16, padding: '0 4px' }}>×</button>
+                        <button onClick={() => removeRow(ing._key)} aria-label="Remove ingredient"
+                          style={{ background: 'none', border: 'none', color: 'var(--theme-text3)', cursor: 'pointer', fontSize: 16, padding: '8px' }}>×</button>
                       </td>
                     </tr>
                   )
@@ -1157,11 +1170,11 @@ export default function Recipes() {
             {/* Nutrition panel (per portion) */}
             {nutri && (
               <div style={{
-                background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)',
+                background: 'color-mix(in srgb, var(--theme-purple) 6%, transparent)', border: '1px solid color-mix(in srgb, var(--theme-purple) 20%, transparent)',
                 borderRadius: 8, padding: '16px 20px', marginBottom: 20
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
-                  <div style={{ fontSize: 11, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600 }}>
+                  <div style={{ fontSize: 11, color: 'var(--theme-purple)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600 }}>
                     🍽 Nutrition ({nutriLabel})
                   </div>
                   <div style={{ fontSize: 11, color: nutri.coverage.have < nutri.coverage.total ? 'var(--theme-accent)' : 'var(--theme-text2)' }}>
