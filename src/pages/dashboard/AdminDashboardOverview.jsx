@@ -6,6 +6,7 @@ import { supabase } from '../../supabaseClient'
 import Tip from '../../components/Tip'
 import { BS_MONTHS, adToBs } from '../../utils/bsCalendar'
 import { getSubStatus, getDateStatus } from '../../utils/subscription'
+import { DEFAULT_PLAN_PRICES, SUITE_BUNDLES } from '../../data/pricingPlans'
 
 // Cross-tenant admin overview — every client's periods/profiles in one unscoped read to build
 // the platform-wide table, so this stays on raw supabase.from() rather than scopedDb (there is
@@ -27,7 +28,7 @@ export default function AdminDashboardOverview() {
     const since24h = new Date(Date.now() - 86400000).toISOString()
     const [{ data: clients }, { data: periods }, { data: recentProfiles }] = await Promise.all([
       supabase.from('clients')
-        .select('id, name, plan, hr_plan, pos_plan, is_active, trial_ends_at, subscription_ends_at, ims_ends_at, hr_ends_at, pos_ends_at, billing_cycle, location, ims_enabled, hr_enabled, pos_enabled, is_trial, subscribe_requested, trial_expires_at')
+        .select('id, name, plan, hr_plan, pos_plan, suite_plan, is_active, trial_ends_at, subscription_ends_at, ims_ends_at, hr_ends_at, pos_ends_at, billing_cycle, location, ims_enabled, hr_enabled, pos_enabled, is_trial, subscribe_requested, trial_expires_at')
         .order('name'),
       supabase.from('monthly_periods')
         .select('client_id, bs_year, bs_month, status')
@@ -78,19 +79,41 @@ export default function AdminDashboardOverview() {
   const wantToSub    = trialSignups.filter(c => c.subscribe_requested)
   const activeClientIds = new Set(activeTodayClients.map(c => c.id))
 
-  // MRR: IMS + HR + POS combined (same plan price table for all three modules, editable in
-  // Settings > Plan Pricing — admin-only global row, falls back to these defaults if unset).
-  const PLAN_MRR = { starter: 5000, growth: 8000, pro: 12000, ...(settings.plan_prices || {}) }
+  // MRR: IMS (tiered) + HR (flat) + POS (flat), matching the real advertised pricing model in
+  // src/data/pricingPlans.js — editable in Settings > Plan Pricing (admin-only global row, falls
+  // back to these same defaults if unset).
+  const planPrices = settings.plan_prices || DEFAULT_PLAN_PRICES
+  const imsPrices = planPrices.ims || DEFAULT_PLAN_PRICES.ims
+  const hrPrice = planPrices.hr ?? DEFAULT_PLAN_PRICES.hr
+  const posPrice = planPrices.pos ?? DEFAULT_PLAN_PRICES.pos
+  // Same 25%-off-monthly conversion as Settings > Plan Pricing's Annual tab and the per-client
+  // Billing Cycle toggle ("Annual · Save 25%") — a client billed annually pays this discounted
+  // rate, so their MRR contribution should reflect that instead of the full monthly price.
+  function monthlyRate(base, billingCycle) {
+    return billingCycle === 'annual' ? Math.round(base * 0.75) : base
+  }
   function clientMRR(c) {
-    let val = 0
     // Each branch now also checks the module is actually enabled, not just that an end-date
     // happens to be set in the future — a client who had IMS (or HR/POS) once, then had it
     // toggled off without the corresponding *_ends_at ever being cleared, was still being
     // counted as paying for that module here, overstating MRR/ARR and the per-row Monthly Value.
     const imsEnd = c.ims_ends_at || c.subscription_ends_at
-    if (c.ims_enabled !== false && imsEnd && Math.ceil((new Date(imsEnd) - Date.now()) / 86400000) > 0) val += PLAN_MRR[c.plan] || 0
-    if (c.hr_enabled && c.hr_ends_at && Math.ceil((new Date(c.hr_ends_at) - Date.now()) / 86400000) > 0) val += PLAN_MRR[c.hr_plan] || 0
-    if (c.pos_enabled && c.pos_ends_at && Math.ceil((new Date(c.pos_ends_at) - Date.now()) / 86400000) > 0) val += PLAN_MRR[c.pos_plan] || 0
+    const imsActive = c.ims_enabled !== false && imsEnd && Math.ceil((new Date(imsEnd) - Date.now()) / 86400000) > 0
+
+    // Suite Bundle is a single discounted subscription covering IMS+HR+POS together, not an
+    // add-on — if it's set, it replaces the per-module sum entirely (summing on top of it would
+    // double-count). Anchored on IMS being active since every bundle key requires IMS. There's no
+    // separate suite_ends_at column, so IMS's own active window stands in for "is this client's
+    // subscription currently active" here.
+    if (c.suite_plan && imsActive) {
+      const bundle = SUITE_BUNDLES.find(b => b.key === c.suite_plan)
+      if (bundle) return c.billing_cycle === 'annual' ? bundle.annual : bundle.monthly
+    }
+
+    let val = 0
+    if (imsActive) val += monthlyRate(imsPrices[c.plan] || 0, c.billing_cycle)
+    if (c.hr_enabled && c.hr_ends_at && Math.ceil((new Date(c.hr_ends_at) - Date.now()) / 86400000) > 0) val += monthlyRate(hrPrice, c.billing_cycle)
+    if (c.pos_enabled && c.pos_ends_at && Math.ceil((new Date(c.pos_ends_at) - Date.now()) / 86400000) > 0) val += monthlyRate(posPrice, c.billing_cycle)
     return val
   }
   const estMRR = active.reduce((sum, c) => sum + clientMRR(c), 0)
@@ -328,7 +351,14 @@ export default function AdminDashboardOverview() {
 
                         {/* Monthly Value (IMS + HR + POS) */}
                         <td style={{ textAlign: 'right', fontWeight: mrr > 0 ? 700 : 400, color: mrr > 0 ? 'var(--theme-accent)' : 'var(--theme-text3)' }}>
-                          {mrr > 0 ? `NPR ${mrr.toLocaleString('en-NP')}` : '—'}
+                          {mrr > 0 ? (
+                            <>
+                              NPR {mrr.toLocaleString('en-NP')}
+                              <span style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--theme-text3)', marginTop: 2 }}>
+                                {c.billing_cycle === 'annual' ? 'Annual' : 'Monthly'}
+                              </span>
+                            </>
+                          ) : '—'}
                         </td>
 
                         {/* Billing type */}

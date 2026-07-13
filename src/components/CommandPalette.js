@@ -85,7 +85,9 @@ export default function CommandPalette({ open, onClose, items, onSelect }) {
                 borderLeft: `2px solid ${i === activeIndex ? 'var(--theme-accent)' : 'transparent'}`,
               }}
             >
-              <span style={{ width: 16, textAlign: 'center', fontSize: 'var(--font-size-nav-icon)', flexShrink: 0 }}>{item.icon}</span>
+              <span style={{ width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {item.icon && <item.icon size={14} strokeWidth={1.75} />}
+              </span>
               <span style={{ flex: 1, fontSize: 'var(--font-size-nav-item)', color: 'var(--theme-text1)' }}>{item.label}</span>
               {item.groupLabel && (
                 <span style={{ fontSize: 'var(--font-size-micro)', color: 'var(--theme-text3)' }}>{item.groupLabel}</span>

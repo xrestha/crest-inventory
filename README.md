@@ -124,13 +124,21 @@ Architecture: single React app, single Supabase project, feature flags per clien
 | Crest HR | ✅ Live | `/hr/dashboard`, `/hr/employees`, `/hr/pay-setup`, `/hr/attendance`, `/hr/leave`, `/hr/holidays`, `/hr/overtime`, `/hr/payroll`, `/hr/reports`, `/hr/festival`, `/hr/advances`, `/hr/gratuity`, `/hr/settlement`, `/hr/roster` |
 | Crest POS | 🔧 Building | `/pos` (setup/activation, manager+), `/pos/login` (public PIN picker), `/pos/tables` (supervisor+), `/pos/staff` (manager+); Orders, KOT, Billing, Shifts next |
 
-**Suite pricing:**
+**Pricing** (single source of truth: `src/data/pricingPlans.js` — also feeds Help's Plan & Pricing tab, the public `/pricing` page, and Admin Settings > Plan Pricing, S380):
 
-| Suite Plan | Monthly | Annual /mo |
+| Module | Starter | Growth | Pro |
+| --- | --- | --- | --- |
+| Crest IMS (tiered) | NPR 2,000/mo | NPR 2,600/mo | NPR 3,500/mo |
+| Crest HR (flat, no tiers) | NPR 2,600/mo | — | — |
+| Crest POS (flat, no tiers) | NPR 2,000/mo | — | — |
+
+| Suite Bundle (IMS+HR+POS, ~20% off buying separately) | Monthly | Annual /mo |
 | --- | --- | --- |
-| Suite Starter | NPR 12,000 | NPR 9,000 |
-| Suite Growth | NPR 22,000 | NPR 16,500 |
-| Suite Pro | NPR 32,000 | NPR 24,000 |
+| Suite Starter | NPR 5,300 | NPR 3,975 |
+| Suite Growth | NPR 5,800 | NPR 4,350 |
+| Suite Pro | NPR 6,500 | NPR 4,875 |
+
+Annual = 25% off monthly, applied uniformly everywhere annual pricing appears.
 
 **Module flags on `clients` table:** `ims_enabled` (DEFAULT true), `hr_enabled` (DEFAULT false), `pos_enabled` (DEFAULT false, column added S193), `ims_plan`, `hr_plan`, `pos_plan` (column added S193)  
 **Admin UI:** AdminClients → **card module strip** — toggle IMS/HR/POS directly on each client card; Billing tab = live toggles + plan selector + subscription date per module (POS wired S193)  
@@ -140,6 +148,30 @@ Architecture: single React app, single Supabase project, feature flags per clien
 ---
 
 ## Session Log
+
+### S380 — 2026-07-13 — Sidebar visual re-skin (lucide-react icons + pill nav) + admin viewModules staleness fix + Plan Pricing rebuilt to match real pricing (Monthly/Annual, Suite Bundle-aware MRR)
+
+Two linked engagements: a full visual re-skin of the app sidebar, and — surfaced while testing it — a chain of billing/pricing fixes on the Admin side.
+
+**Sidebar re-skin** (`Layout.js`, `Layout.css`, `CommandPalette.js`), modeled on a reference "Untitled UI"-style sidebar the user shared:
+
+- Added `lucide-react` and replaced every Unicode/emoji glyph icon across `NAV`/`REPORTS`/`POS_GROUPS`/`HR_GROUPS`/module tabs/bottom-row/command-palette (~75 icons) with real line-icon components.
+- Active nav item is now a solid rounded "pill" highlight (`.sidebar-link--active`) instead of the old left-border-bar + inset-ring; section groups separated by whitespace instead of hard divider lines; the "VIEWING [Client]"/"Property" block lost its filled/bordered card look, now a plain inline row.
+- Bottom icon row (Help/collapse/sign-out) switched from a stacked column to a horizontal row (matching the existing row↔column flip already used for the module switcher) to reclaim vertical space.
+- The user's name/role moved out of its own footer section to sit inline, right-aligned, next to the client/property name — the footer section itself now only renders at all when there's an upgrade-teaser button to show.
+- "Owner Dashboard" + this panel's own "Dashboard" link merged into one side-by-side equal-width row (`renderDashboardRow()`) instead of two stacked full-width rows, with a new `compact` mode on `renderNavItem` (tighter padding/gap/font/icon-size) and shortened labels ("Owner"/"Dashboard") since a ~100px half-width slot has no room for "Owner Dashboard"/"Inventory Dashboard" at readable size.
+
+**Admin `viewModules` staleness bug** (found while re-testing the module switcher): toggling a module on/off in AdminClients' drawer while already "viewing as" that client wrote straight to the DB but never re-fetched `AuthContext`'s `viewModules`, so the sidebar's module tabs (IMS/HR/POS) silently stayed stale until a manual re-select or page reload. Fixed with a new `refreshViewModules()` exposed from `AuthContext`, called from `ClientDrawer.js`'s three module-toggle handlers whenever the client being edited is the one currently being viewed as.
+
+**Plan Pricing rebuilt to match real pricing** (`Settings.js`, `SettingsContext.js`, `AdminDashboardOverview.jsx`, `pricingPlans.js`): a user comparison request surfaced that Admin Settings > Plan Pricing (`{starter:5000, growth:8000, pro:12000}`, one shared price applied identically to any module) was completely disconnected from the real advertised pricing in `pricingPlans.js` (IMS genuinely tiered at 2000/2600/3500; HR and POS each a flat single price with no tiers) — a Growth-tier client running all three modules was showing NPR 24,000 Monthly Value on the Admin Dashboard against an actual advertised price of NPR 5,800 (Suite bundle) or 7,200 (bought separately), a 3-4x overstatement.
+
+- Added `DEFAULT_PLAN_PRICES` to `pricingPlans.js`, derived directly from `IMS_TIERS`/`HR_PRICING`/`POS_PRICING` so the admin-analytics table can never independently drift from the real pricing again.
+- Settings > Plan Pricing tab rebuilt around 3 sections (IMS tiered / HR flat / POS flat) instead of one flat 3-price table, plus a Monthly/Annual sub-tab where Annual is read-only and auto-calculated as 25% off Monthly (same convention already used everywhere else annual pricing appears) — never independently editable, so the two can't drift apart.
+- `AdminDashboardOverview.jsx`'s `clientMRR()` rewritten to price IMS by tier and HR/POS as flat amounts (matching the real model), to apply the 25%-off conversion for any client on `billing_cycle: 'annual'` (previously always used the full monthly rate regardless of billing cycle), and to check `suite_plan` first — if a client has a Suite Bundle selected, its discounted bundle price now replaces the per-module sum entirely (previously `suite_plan` had no billing effect at all, so a Suite Growth client was still being counted as 3 separate full-price modules). Monthly Value column also gained a small "Monthly"/"Annual" tag.
+
+Compiled clean via the project's own Babel/`react-app` preset after every edit (no dev-server screenshot tooling available in this environment — visual sidebar changes were verified by the user directly against the running dev server).
+
+**Files:** `src/components/{Layout.js,Layout.css,CommandPalette.js}`, `src/context/{AuthContext.js,SettingsContext.js}`, `src/data/pricingPlans.js`, `src/pages/Settings.js`, `src/pages/adminClients/ClientDrawer.js`, `src/pages/dashboard/AdminDashboardOverview.jsx`, `package.json` (+`lucide-react`)
 
 ### S379 — 2026-07-13 — Dashboards: Supabase fetch failures no longer silently swallowed
 

@@ -170,8 +170,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 18px 14px;
-  border-bottom: 1px solid var(--theme-border);
+  padding: 18px 14px 14px;
   min-height: 64px;
   flex-shrink: 0;
 }
@@ -287,14 +286,20 @@
 
 .sidebar-bottom {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
+  justify-content: center;
   gap: 4px;
   padding: 8px 0;
   border-top: 1px solid var(--theme-border);
   flex-shrink: 0;
   margin-top: auto; /* belt-and-suspenders: always glued to the true bottom of .sidebar-shell,
                         regardless of how much vertical space .sidebar-content ends up using */
+}
+/* Collapsed rail is only 56px wide — not enough for 3 buttons side by side, so fall back to a
+   single icon column, same row/column flip already used for .module-switcher above. */
+.sidebar-wrap--collapsed .sidebar-bottom {
+  flex-direction: column;
 }
 
 .sidebar-toggle {
@@ -340,9 +345,9 @@
 }
 
 .sidebar-client {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--theme-border);
-  background: var(--theme-focus-ring);
+  display: flex;
+  flex-direction: column;
+  padding: 10px 16px 14px;
 }
 
 .sidebar-client-label {
@@ -358,7 +363,7 @@
   display: block;
   font-size: 13px;
   font-weight: 600;
-  color: var(--theme-text2);
+  color: var(--theme-text1);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -474,14 +479,14 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 20px;
+  margin: 1px 10px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
   font-size: var(--font-size-nav-item);
   color: var(--theme-text2);
   text-decoration: none;
   transition: color var(--motion-fast) var(--ease-standard),
-              background var(--motion-fast) var(--ease-standard),
-              border-color var(--motion-fast) var(--ease-standard);
-  border-left: 2px solid transparent;
+              background var(--motion-fast) var(--ease-standard);
   white-space: nowrap;
 }
 
@@ -491,23 +496,24 @@
 }
 
 .sidebar-link--active {
-  color: var(--theme-text1);
+  color: var(--theme-accent);
   background: var(--theme-focus-ring);
-  border-left-color: var(--theme-accent);
-  box-shadow: inset 0 0 0 1px var(--theme-focus-ring);
+  font-weight: 600;
 }
 
 .sidebar-icon {
-  width: 16px;
-  text-align: center;
-  font-size: var(--font-size-nav-icon);
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }
 
 .sidebar-divider {
-  height: 1px;
-  background: var(--theme-border);
-  margin: 8px 0;
+  height: 0;
+  margin: 8px 0 0;
+  background: none;
 }
 
 .sidebar-section-label {
@@ -519,8 +525,7 @@
 }
 
 .sidebar-footer {
-  padding: 16px 20px;
-  border-top: 1px solid var(--theme-border);
+  padding: 20px 20px 16px;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -528,17 +533,17 @@
 }
 
 .sidebar-user-name {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--theme-text2);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--theme-text1);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 140px;
+  max-width: 96px;
 }
 
 .sidebar-user-role {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--theme-text3);
 }
 

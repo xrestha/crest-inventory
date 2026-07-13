@@ -99,3 +99,13 @@ export const SUITE_BUNDLES = [
   { key: 'growth',  label: 'Suite Growth',  monthly: 5800, annual: 4350 },
   { key: 'pro',     label: 'Suite Pro',     monthly: 6500, annual: 4875 },
 ]
+
+// Admin-analytics pricing table (Settings > Plan Pricing, used by AdminDashboardOverview.jsx's
+// MRR/ARR estimate) — derived from the same tiers/prices above so a fresh install's internal
+// revenue estimate starts in sync with the actual advertised pricing, not an independently
+// hand-typed placeholder table that can silently drift out of step with it.
+export const DEFAULT_PLAN_PRICES = {
+  ims: Object.fromEntries(IMS_TIERS.map(t => [t.key, t.monthly])),
+  hr: HR_PRICING.monthly,
+  pos: POS_PRICING.monthly,
+}

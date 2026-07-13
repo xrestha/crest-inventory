@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import { supabase } from '../../supabaseClient'
 import { scopedFrom, scopedUpdate, scopedDelete } from '../../shared/scopedDb'
+import { useAuth } from '../../context/AuthContext'
 import { useSettings } from '../../context/SettingsContext'
 import { formatAd } from '../../utils/bsCalendar'
 import BsCalendarPicker from '../../components/BsCalendarPicker'
@@ -36,6 +37,7 @@ function deriveInvoicePrefix(name) {
 }
 
 export default function ClientDrawer({ client, onClose, onClientUpdated }) {
+  const { adminViewClientId, refreshViewModules } = useAuth()
   const { loadClientSettings, saveClientSettings } = useSettings()
   const [activeTab, setActiveTab] = useState('users')
 
@@ -279,6 +281,7 @@ export default function ClientDrawer({ client, onClose, onClientUpdated }) {
     setImsEnabled(next)
     await supabase.from('clients').update({ ims_enabled: next }).eq('id', client.id)
     onClientUpdated()
+    if (client.id === adminViewClientId) refreshViewModules()
   }
 
   async function handleToggleHr() {
@@ -286,6 +289,7 @@ export default function ClientDrawer({ client, onClose, onClientUpdated }) {
     setHrEnabled(next)
     await supabase.from('clients').update({ hr_enabled: next }).eq('id', client.id)
     onClientUpdated()
+    if (client.id === adminViewClientId) refreshViewModules()
   }
 
   async function handleTogglePos() {
@@ -293,6 +297,7 @@ export default function ClientDrawer({ client, onClose, onClientUpdated }) {
     setPosEnabled(next)
     await supabase.from('clients').update({ pos_enabled: next }).eq('id', client.id)
     onClientUpdated()
+    if (client.id === adminViewClientId) refreshViewModules()
   }
 
   // ── Billing ──

@@ -162,6 +162,10 @@ export function AuthProvider({ children }) {
   // When admin "views as" a client, fetch that client's actual module subscription so the
   // sidebar + dashboard show ONLY their modules (admin's isAdmin bypass otherwise shows all).
   const [viewModules, setViewModules] = useState(null)
+  async function fetchViewModules(id) {
+    const { data } = await supabase.from('clients').select('ims_enabled, hr_enabled, pos_enabled').eq('id', id).single()
+    setViewModules(data ? { ims: data.ims_enabled !== false, hr: !!data.hr_enabled, pos: !!data.pos_enabled } : null)
+  }
   useEffect(() => {
     if (!isAdmin || !adminViewClientId) { setViewModules(null); return }
     let cancelled = false
@@ -169,6 +173,13 @@ export function AuthProvider({ children }) {
       .then(({ data }) => { if (!cancelled) setViewModules(data ? { ims: data.ims_enabled !== false, hr: !!data.hr_enabled, pos: !!data.pos_enabled } : null) })
     return () => { cancelled = true }
   }, [isAdmin, adminViewClientId])
+
+  // Re-fetch on demand — the module toggles in AdminClients write straight to the DB (instant
+  // save) without changing adminViewClientId, so the effect above never re-runs on its own.
+  // Called by the drawer after toggling a module for the client currently being viewed as.
+  function refreshViewModules() {
+    if (isAdmin && adminViewClientId) fetchViewModules(adminViewClientId)
+  }
 
   // The DISPLAYED client's real module subscription (for nav visibility + dashboard sections).
   // Separate from imsEnabled/hrEnabled, which keep the admin route-access bypass.
@@ -254,7 +265,7 @@ export function AuthProvider({ children }) {
       // Suite bundle tier (IMS+HR+POS together) — an independent gating axis from the per-module
       // plan/hrPlan/posPlan above. NULL means not subscribed to Suite at all; no default tier.
       suitePlan: isAdmin ? 'pro' : (profile?.clients?.suite_plan || null),
-      adminViewClientId, adminViewClientName, switchAdminClient,
+      adminViewClientId, adminViewClientName, switchAdminClient, refreshViewModules,
     }}>
       {children}
     </AuthContext.Provider>

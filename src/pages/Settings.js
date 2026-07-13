@@ -5,9 +5,9 @@ import { supabase } from '../supabaseClient'
 import { useScopedDb } from '../shared/hooks/useScopedDb'
 import { useTheme, PRESETS } from '../context/ThemeContext'
 import Tip from '../components/Tip'
+import { MODULE_COLORS, DEFAULT_PLAN_PRICES } from '../data/pricingPlans'
 
 const ALL_TABS = ['Branding', 'Property', 'Thresholds', 'Item Codes', 'Vendor Codes', 'Sub-Recipe Codes', 'Recipe Categories', 'Contact', 'Plan Pricing', 'Data', 'Theme']
-const DEFAULT_PLAN_PRICES = { starter: 5000, growth: 8000, pro: 12000 }
 
 // Derives a short invoice-number prefix from the property/business name, e.g. "Casa Acai Cafe" -> "CAC"
 function deriveInvoicePrefix(name) {
@@ -30,6 +30,7 @@ export default function Settings() {
     return true
   })
   const [activeTab, setActiveTab] = useState(isAdmin ? 'Branding' : 'Thresholds')
+  const [pricingCycle, setPricingCycle] = useState('monthly')
   const [form, setForm] = useState({ ...settings })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -585,32 +586,107 @@ export default function Settings() {
       )}
 
       {/* PLAN PRICING */}
-      {activeTab === 'Plan Pricing' && (
-        <div className="card">
-          <h3 style={{ margin: '0 0 8px', fontSize: 14, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Monthly Plan Prices (NPR)</h3>
-          <p style={{ fontSize: 13, color: 'var(--theme-text2)', margin: '0 0 24px' }}>
-            One shared price per tier across IMS, HR, and POS — a client's Monthly Value on the Admin Dashboard
-            is the sum of these prices for each module they have active. Changing a price here takes effect
-            immediately on the Admin Dashboard's MRR/ARR figures; it does not retroactively bill or notify clients.
-          </p>
-          <div className="form-grid form-grid-2">
-            {['starter', 'growth', 'pro'].map(tier => (
-              <div className="form-field" key={tier}>
-                <label style={{ textTransform: 'capitalize' }}>{tier}</label>
+      {activeTab === 'Plan Pricing' && (() => {
+        const planPrices = form.plan_prices || DEFAULT_PLAN_PRICES
+        const imsPrices = planPrices.ims || DEFAULT_PLAN_PRICES.ims
+        function updateIms(tier, value) {
+          update('plan_prices', {
+            ...planPrices,
+            ims: { ...imsPrices, [tier]: value === '' ? 0 : Math.max(0, parseInt(value) || 0) },
+          })
+        }
+        function updateFlat(key, value) {
+          update('plan_prices', { ...planPrices, [key]: value === '' ? 0 : Math.max(0, parseInt(value) || 0) })
+        }
+        // Same 25%-off-monthly convention already used everywhere else annual pricing appears
+        // (pricingPlans.js's own IMS_TIERS/HR_PRICING/POS_PRICING/SUITE_BUNDLES annual fields are
+        // all exactly monthly × 0.75; ClientDrawer's Billing Cycle toggle labels it "Save 25%").
+        // Annual is a derived read-only view here, not a second editable source of truth — editing
+        // always happens on Monthly, so the two can never drift apart from each other.
+        const annualOf = monthly => Math.round((monthly || 0) * 0.75)
+        const isAnnual = pricingCycle === 'annual'
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div className="card">
+              <h3 style={{ margin: '0 0 8px', fontSize: 14, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Plan Prices (NPR)</h3>
+              <p style={{ fontSize: 13, color: 'var(--theme-text2)', margin: 0 }}>
+                Mirrors the real advertised pricing shown on the Help page's Plan &amp; Pricing tab and the public
+                pricing page (single source of truth: <code>src/data/pricingPlans.js</code>) — IMS is tiered,
+                HR and POS are each a single flat price with no tiers. A client's Monthly Value on the Admin
+                Dashboard sums whichever of these apply to their active modules. Changing a price here takes
+                effect immediately on the Admin Dashboard's MRR/ARR figures; it does not retroactively bill or
+                notify clients, and does not change the public pricing page itself.
+              </p>
+
+              <div style={{ display: 'flex', gap: 4, marginTop: 18, borderBottom: '1px solid var(--theme-border)' }}>
+                {[{ key: 'monthly', label: 'Monthly' }, { key: 'annual', label: 'Annual · Save 25%' }].map(opt => (
+                  <button key={opt.key} onClick={() => setPricingCycle(opt.key)} style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    padding: '8px 16px', fontSize: 12, fontWeight: 600,
+                    color: pricingCycle === opt.key ? 'var(--theme-accent)' : 'var(--theme-text2)',
+                    borderBottom: pricingCycle === opt.key ? '2px solid var(--theme-accent)' : '2px solid transparent',
+                    marginBottom: -1
+                  }}>{opt.label}</button>
+                ))}
+              </div>
+              {isAnnual && (
+                <p style={{ fontSize: 12, color: 'var(--theme-text3)', margin: '12px 0 0' }}>
+                  Auto-calculated from Monthly (25% off) — read-only. Edit the Monthly tab to change these.
+                </p>
+              )}
+            </div>
+
+            <div className="card">
+              <h4 style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 700, color: MODULE_COLORS.ims }}>Crest IMS — tiered</h4>
+              <div className="form-grid form-grid-3">
+                {['starter', 'growth', 'pro'].map(tier => (
+                  <div className="form-field" key={tier}>
+                    <label style={{ textTransform: 'capitalize' }}>{tier}</label>
+                    <input
+                      type="number" min="0" step="100"
+                      readOnly={isAnnual}
+                      value={isAnnual ? annualOf(imsPrices[tier]) : (imsPrices[tier] ?? '')}
+                      onChange={e => !isAnnual && updateIms(tier, e.target.value)}
+                      placeholder={String(isAnnual ? annualOf(DEFAULT_PLAN_PRICES.ims[tier]) : DEFAULT_PLAN_PRICES.ims[tier])}
+                      style={isAnnual ? { opacity: 0.7, cursor: 'default' } : undefined}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="card">
+              <h4 style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 700, color: MODULE_COLORS.hr }}>Crest HR — flat (no tiers)</h4>
+              <div className="form-field" style={{ maxWidth: 220 }}>
+                <label>{isAnnual ? 'Annual (equivalent /mo)' : 'Monthly price'}</label>
                 <input
                   type="number" min="0" step="100"
-                  value={(form.plan_prices || DEFAULT_PLAN_PRICES)[tier] ?? ''}
-                  onChange={e => update('plan_prices', {
-                    ...(form.plan_prices || DEFAULT_PLAN_PRICES),
-                    [tier]: e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value) || 0),
-                  })}
-                  placeholder={String(DEFAULT_PLAN_PRICES[tier])}
+                  readOnly={isAnnual}
+                  value={isAnnual ? annualOf(planPrices.hr) : (planPrices.hr ?? '')}
+                  onChange={e => !isAnnual && updateFlat('hr', e.target.value)}
+                  placeholder={String(isAnnual ? annualOf(DEFAULT_PLAN_PRICES.hr) : DEFAULT_PLAN_PRICES.hr)}
+                  style={isAnnual ? { opacity: 0.7, cursor: 'default' } : undefined}
                 />
               </div>
-            ))}
+            </div>
+
+            <div className="card">
+              <h4 style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 700, color: MODULE_COLORS.pos }}>Crest POS — flat (no tiers)</h4>
+              <div className="form-field" style={{ maxWidth: 220 }}>
+                <label>{isAnnual ? 'Annual (equivalent /mo)' : 'Monthly price'}</label>
+                <input
+                  type="number" min="0" step="100"
+                  readOnly={isAnnual}
+                  value={isAnnual ? annualOf(planPrices.pos) : (planPrices.pos ?? '')}
+                  onChange={e => !isAnnual && updateFlat('pos', e.target.value)}
+                  placeholder={String(isAnnual ? annualOf(DEFAULT_PLAN_PRICES.pos) : DEFAULT_PLAN_PRICES.pos)}
+                  style={isAnnual ? { opacity: 0.7, cursor: 'default' } : undefined}
+                />
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* THEME */}
       {activeTab === 'Theme' && (

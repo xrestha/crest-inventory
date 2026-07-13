@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { useAuth } from './AuthContext'
+import { DEFAULT_PLAN_PRICES } from '../data/pricingPlans'
 
 const SettingsContext = createContext({})
 
@@ -17,11 +18,12 @@ const DEFAULT_SETTINGS = {
   contact_phone: '',
   contact_email: '',
   contact_website: '',
-  // Per-tier monthly price (NPR), shared across IMS/HR/POS (each module bills at the same tier
-  // price today — see AdminDashboardOverview.jsx's clientMRR). Admin-editable via Settings >
-  // Plan Pricing; this object is just the fallback for a client_id-null settings row that
-  // predates that tab or never had it touched.
-  plan_prices: { starter: 5000, growth: 8000, pro: 12000 },
+  // Monthly price (NPR) per module, matching the real advertised pricing model in
+  // src/data/pricingPlans.js — IMS is tiered (starter/growth/pro), HR and POS are each a single
+  // flat price with no tiers. Admin-editable via Settings > Plan Pricing; this object is just the
+  // fallback for a client_id-null settings row that predates that tab or never had it touched.
+  // See AdminDashboardOverview.jsx's clientMRR for how this feeds the Admin Dashboard's MRR/ARR.
+  plan_prices: DEFAULT_PLAN_PRICES,
 }
 
 export const DEFAULT_RECIPE_CATS = ['Food', 'Beverage', 'Dessert', 'Snack', 'Other']

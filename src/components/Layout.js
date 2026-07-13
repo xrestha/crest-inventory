@@ -7,55 +7,68 @@ import { getSubStatus } from '../utils/subscription'
 import RailTip from './RailTip'
 import CommandPalette from './CommandPalette'
 import { useNavBadgeCounts } from '../shared/hooks/useNavBadgeCounts'
+import {
+  LayoutDashboard, CalendarRange, Package, Truck, ShoppingCart, ClipboardList, ClipboardCheck,
+  ArrowRightLeft, TrendingUp, ChefHat, Tag, PieChart, Receipt,
+  FileBarChart, CalendarDays, GitCompare, Target, Boxes, RefreshCw, LineChart, Trash2, PackageX,
+  ArrowUpDown, CalendarClock, Sigma, PackageMinus, Percent, ReceiptText, Wallet, HandCoins, Banknote,
+  Trophy, PiggyBank, Combine, Tags, Building2,
+  Settings2, Utensils, LayoutGrid, Users, Clock, TriangleAlert, Undo2, BarChart3, ScrollText,
+  UtensilsCrossed, Users2,
+  Settings, Palmtree, Calculator, PartyPopper, Gift, CreditCard, Briefcase, Coins, FileCheck2,
+  ShieldCheck, Warehouse, Store,
+  HelpCircle, PanelLeftClose, PanelLeftOpen, LogOut,
+  Crown, History, QrCode,
+} from 'lucide-react'
 import './Layout.css'
 
 // minPlan: 'growth' | 'pro' — used for lock icon and tier badge
 const NAV = [
-  { to: '/dashboard',        label: 'Dashboard',        icon: '▦' },
-  { to: '/periods',          label: 'Periods',           icon: '◷' },
-  { to: '/items',            label: 'Item Master',       icon: '≡' },
-  { to: '/vendors',          label: 'Vendors',           icon: '⊙' },
-  { to: '/purchases',        label: 'Purchases',         icon: '↓' },
-  { to: '/purchase-orders',  label: 'Purchase Orders',   icon: '◫', featureKey: 'purchase_orders', minPlan: 'growth' },
-  { to: '/stock',            label: 'Stock Count',       icon: '⊞' },
-  { to: '/requisitions',     label: 'Requisitions',      icon: '↔', featureKey: 'requisitions',    minPlan: 'growth' },
-  { to: '/sales',            label: 'Sales Entry',       icon: '↑', featureKey: 'sales_entry',     minPlan: 'starter' },
-  { to: '/recipes',          label: 'Recipe Costing',    icon: '◈', featureKey: 'recipe_costing',  minPlan: 'growth' },
-  { to: '/menu-pricing',     label: 'Menu Pricing',      icon: '₨', featureKey: 'menu_pricing',    minPlan: 'starter' },
-  { to: '/menu-engineering', label: 'Menu Engineering',  icon: '◈', featureKey: 'menu_engineering',minPlan: 'pro' },
-  { to: '/overheads',        label: 'Overheads',         icon: '₿', featureKey: 'overheads',       minPlan: 'pro' },
+  { to: '/dashboard',        label: 'Dashboard',        icon: LayoutDashboard },
+  { to: '/periods',          label: 'Periods',           icon: CalendarRange },
+  { to: '/items',            label: 'Item Master',       icon: Package },
+  { to: '/vendors',          label: 'Vendors',           icon: Truck },
+  { to: '/purchases',        label: 'Purchases',         icon: ShoppingCart },
+  { to: '/purchase-orders',  label: 'Purchase Orders',   icon: ClipboardList, featureKey: 'purchase_orders', minPlan: 'growth' },
+  { to: '/stock',            label: 'Stock Count',       icon: ClipboardCheck },
+  { to: '/requisitions',     label: 'Requisitions',      icon: ArrowRightLeft, featureKey: 'requisitions',    minPlan: 'growth' },
+  { to: '/sales',            label: 'Sales Entry',       icon: TrendingUp, featureKey: 'sales_entry',     minPlan: 'starter' },
+  { to: '/recipes',          label: 'Recipe Costing',    icon: ChefHat, featureKey: 'recipe_costing',  minPlan: 'growth' },
+  { to: '/menu-pricing',     label: 'Menu Pricing',      icon: Tag, featureKey: 'menu_pricing',    minPlan: 'starter' },
+  { to: '/menu-engineering', label: 'Menu Engineering',  icon: PieChart, featureKey: 'menu_engineering',minPlan: 'pro' },
+  { to: '/overheads',        label: 'Overheads',         icon: Receipt, featureKey: 'overheads',       minPlan: 'pro' },
 ]
 
 // cat: which characteristic report-group the item renders under in the sidebar
 const REPORTS = [
   // Summaries & planning
-  { to: '/summary',              label: 'Monthly Summary',      icon: '◻', featureKey: 'monthly_summary',   cat: 'summary' },
-  { to: '/annual-summary',       label: 'Annual Summary',       icon: '◫', featureKey: 'annual_summary',    cat: 'summary' },
-  { to: '/period-comparison',    label: 'Period Comparison',    icon: '⇄', featureKey: 'period_comparison', cat: 'summary', minPlan: 'pro' },
-  { to: '/budget',               label: 'Budget vs Actual',     icon: '◎', featureKey: 'budget_vs_actual',  cat: 'summary', minPlan: 'growth' },
+  { to: '/summary',              label: 'Monthly Summary',      icon: FileBarChart, featureKey: 'monthly_summary',   cat: 'summary' },
+  { to: '/annual-summary',       label: 'Annual Summary',       icon: CalendarDays, featureKey: 'annual_summary',    cat: 'summary' },
+  { to: '/period-comparison',    label: 'Period Comparison',    icon: GitCompare, featureKey: 'period_comparison', cat: 'summary', minPlan: 'pro' },
+  { to: '/budget',               label: 'Budget vs Actual',     icon: Target, featureKey: 'budget_vs_actual',  cat: 'summary', minPlan: 'growth' },
   // Stock & variance
-  { to: '/stock-report',         label: 'Stock Report',         icon: '▤', featureKey: 'stock_report',         cat: 'stock' },
-  { to: '/reorder',              label: 'Reorder Report',       icon: '↻', featureKey: 'reorder_report',       cat: 'stock' },
-  { to: '/demand-forecast',      label: 'Demand Forecast',      icon: '↗', featureKey: 'demand_forecast',      cat: 'stock', minPlan: 'pro' },
-  { to: '/wastage-report',       label: 'Wastage Report',       icon: '⚠', featureKey: 'wastage_report',       cat: 'stock' },
-  { to: '/dead-stock',           label: 'Dead Stock',           icon: '⊘', featureKey: 'dead_stock',           cat: 'stock', minPlan: 'growth' },
-  { to: '/variance',             label: 'Variance Report',      icon: '△', featureKey: 'variance_report',      cat: 'stock', minPlan: 'growth' },
-  { to: '/fifo',                 label: 'FIFO / Expiry',        icon: '◷', featureKey: 'fifo_report',           cat: 'stock', minPlan: 'pro' },
-  { to: '/theoretical-variance', label: 'Theoretical Variance', icon: '⊿', featureKey: 'theoretical_variance', cat: 'stock', minPlan: 'pro' },
-  { to: '/shrinkage',            label: 'Shrinkage Report',     icon: '⚠', featureKey: 'shrinkage_report',     cat: 'stock', minPlan: 'pro' },
+  { to: '/stock-report',         label: 'Stock Report',         icon: Boxes, featureKey: 'stock_report',         cat: 'stock' },
+  { to: '/reorder',              label: 'Reorder Report',       icon: RefreshCw, featureKey: 'reorder_report',       cat: 'stock' },
+  { to: '/demand-forecast',      label: 'Demand Forecast',      icon: LineChart, featureKey: 'demand_forecast',      cat: 'stock', minPlan: 'pro' },
+  { to: '/wastage-report',       label: 'Wastage Report',       icon: Trash2, featureKey: 'wastage_report',       cat: 'stock' },
+  { to: '/dead-stock',           label: 'Dead Stock',           icon: PackageX, featureKey: 'dead_stock',           cat: 'stock', minPlan: 'growth' },
+  { to: '/variance',             label: 'Variance Report',      icon: ArrowUpDown, featureKey: 'variance_report',      cat: 'stock', minPlan: 'growth' },
+  { to: '/fifo',                 label: 'FIFO / Expiry',        icon: CalendarClock, featureKey: 'fifo_report',           cat: 'stock', minPlan: 'pro' },
+  { to: '/theoretical-variance', label: 'Theoretical Variance', icon: Sigma, featureKey: 'theoretical_variance', cat: 'stock', minPlan: 'pro' },
+  { to: '/shrinkage',            label: 'Shrinkage Report',     icon: PackageMinus, featureKey: 'shrinkage_report',     cat: 'stock', minPlan: 'pro' },
   // Money & tax
-  { to: '/vat-report',           label: 'VAT Report',           icon: '₨', featureKey: 'vat_report',           cat: 'money' },
-  { to: '/non-vat-report',      label: 'Non-VAT Report',       icon: '₨', featureKey: 'non_vat_report',       cat: 'money' },
-  { to: '/payments',             label: 'Payment Summary',      icon: '⊕', featureKey: 'payment_summary',      cat: 'money', minPlan: 'starter' },
-  { to: '/payables',             label: 'Outstanding Payables', icon: '₨', featureKey: 'outstanding_payables', cat: 'money', minPlan: 'growth' },
-  { to: '/purchase-one-lakh-report', label: 'Purchase 1L+ Report', icon: '⚑', featureKey: 'vat_report',       cat: 'money' },
+  { to: '/vat-report',           label: 'VAT Report',           icon: Percent, featureKey: 'vat_report',           cat: 'money' },
+  { to: '/non-vat-report',      label: 'Non-VAT Report',       icon: ReceiptText, featureKey: 'non_vat_report',       cat: 'money' },
+  { to: '/payments',             label: 'Payment Summary',      icon: Wallet, featureKey: 'payment_summary',      cat: 'money', minPlan: 'starter' },
+  { to: '/payables',             label: 'Outstanding Payables', icon: HandCoins, featureKey: 'outstanding_payables', cat: 'money', minPlan: 'growth' },
+  { to: '/purchase-one-lakh-report', label: 'Purchase 1L+ Report', icon: Banknote, featureKey: 'vat_report',       cat: 'money' },
   // Menu & vendors
-  { to: '/best-sellers',         label: 'Best & Worst Sellers', icon: '▲', featureKey: 'best_sellers',   cat: 'menu', minPlan: 'growth' },
-  { to: '/recipe-margin',        label: 'Recipe Margin',        icon: '◈', featureKey: 'recipe_margin',  cat: 'menu', minPlan: 'growth' },
-  { to: '/combo-builder',        label: 'Combo Builder',        icon: '⋈', featureKey: 'combo_builder',  cat: 'menu', minPlan: 'growth' },
-  { to: '/menu-repricing',       label: 'Menu Repricing',       icon: '↗', featureKey: 'menu_repricing', cat: 'menu', minPlan: 'growth' },
-  { to: '/supplier-prices',      label: 'Price Tracker',        icon: '₨', featureKey: 'price_tracker',  cat: 'menu', minPlan: 'pro' },
-  { to: '/vendors-report',       label: 'Vendor Report',        icon: '⊙', featureKey: 'vendor_report',  cat: 'menu', minPlan: 'pro' },
+  { to: '/best-sellers',         label: 'Best & Worst Sellers', icon: Trophy, featureKey: 'best_sellers',   cat: 'menu', minPlan: 'growth' },
+  { to: '/recipe-margin',        label: 'Recipe Margin',        icon: PiggyBank, featureKey: 'recipe_margin',  cat: 'menu', minPlan: 'growth' },
+  { to: '/combo-builder',        label: 'Combo Builder',        icon: Combine, featureKey: 'combo_builder',  cat: 'menu', minPlan: 'growth' },
+  { to: '/menu-repricing',       label: 'Menu Repricing',       icon: Tags, featureKey: 'menu_repricing', cat: 'menu', minPlan: 'growth' },
+  { to: '/supplier-prices',      label: 'Price Tracker',        icon: LineChart, featureKey: 'price_tracker',  cat: 'menu', minPlan: 'pro' },
+  { to: '/vendors-report',       label: 'Vendor Report',        icon: Building2, featureKey: 'vendor_report',  cat: 'menu', minPlan: 'pro' },
 ]
 
 // Collapsible nav groups for the IMS sidebar (Dashboard stays pinned above; Settings below).
@@ -68,58 +81,58 @@ const IMS_GROUPS = [
   { key: 'reports-money',   label: 'Finance Reports',  items: REPORTS.filter(r => r.cat === 'money') },
   { key: 'reports-menu',    label: 'Menu & Vendors',   items: REPORTS.filter(r => r.cat === 'menu') },
 ]
-const HR_DASHBOARD = { to: '/hr/dashboard', label: 'HR Dashboard', icon: '▦' }
+const HR_DASHBOARD = { to: '/hr/dashboard', label: 'HR Dashboard', icon: LayoutDashboard }
 
 const POS_GROUPS = [
   { key: 'pos-setup', label: null, items: [
-    { to: '/pos', label: 'POS Setup', icon: '⊡', minPosRole: 'manager' },
+    { to: '/pos', label: 'POS Setup', icon: Settings2, minPosRole: 'manager' },
   ]},
   { key: 'pos-floor', label: 'Floor', items: [
-    { to: '/pos/orders', label: 'Orders', icon: '◉', minPosRole: 'staff' },
-    { to: '/pos/kds', label: 'Kitchen Display', icon: '▥', minPosRole: 'staff' },
-    { to: '/pos/tables', label: 'Tables', icon: '⊞', minPosRole: 'supervisor' },
-    { to: '/pos/customers', label: 'Customers', icon: '👤', minPosRole: 'supervisor' },
-    { to: '/pos/shifts', label: 'Shifts', icon: '⏱', minPosRole: 'supervisor' },
+    { to: '/pos/orders', label: 'Orders', icon: ClipboardList, minPosRole: 'staff' },
+    { to: '/pos/kds', label: 'Kitchen Display', icon: Utensils, minPosRole: 'staff' },
+    { to: '/pos/tables', label: 'Tables', icon: LayoutGrid, minPosRole: 'supervisor' },
+    { to: '/pos/customers', label: 'Customers', icon: Users, minPosRole: 'supervisor' },
+    { to: '/pos/shifts', label: 'Shifts', icon: Clock, minPosRole: 'supervisor' },
   ]},
   { key: 'pos-menu', label: 'Menu', items: [
-    { to: '/menu-pricing', label: 'Menu Pricing', icon: '₨', featureKey: 'menu_pricing', minPlan: 'starter', minPosRole: 'manager' },
+    { to: '/menu-pricing', label: 'Menu Pricing', icon: Tag, featureKey: 'menu_pricing', minPlan: 'starter', minPosRole: 'manager' },
   ]},
   { key: 'pos-reports', label: 'Reports', items: [
-    { to: '/pos/exceptions', label: 'Exceptions', icon: '⚠', minPosRole: 'manager' },
-    { to: '/pos/credit-notes', label: 'Credit Notes', icon: '↩', minPosRole: 'manager' },
-    { to: '/pos/sales-report', label: 'Sales Report', icon: '▤', minPosRole: 'manager' },
-    { to: '/pos/kot-log', label: 'KOT Log', icon: '🧾', minPosRole: 'manager' },
-    { to: '/pos/covers-report', label: 'Covers Report', icon: '🍽', minPosRole: 'manager' },
+    { to: '/pos/exceptions', label: 'Exceptions', icon: TriangleAlert, minPosRole: 'manager' },
+    { to: '/pos/credit-notes', label: 'Credit Notes', icon: Undo2, minPosRole: 'manager' },
+    { to: '/pos/sales-report', label: 'Sales Report', icon: BarChart3, minPosRole: 'manager' },
+    { to: '/pos/kot-log', label: 'KOT Log', icon: ScrollText, minPosRole: 'manager' },
+    { to: '/pos/covers-report', label: 'Covers Report', icon: UtensilsCrossed, minPosRole: 'manager' },
   ]},
   { key: 'pos-admin', label: 'Admin', items: [
-    { to: '/pos/staff', label: 'POS Staff', icon: '👥', minPosRole: 'manager' },
+    { to: '/pos/staff', label: 'POS Staff', icon: Users2, minPosRole: 'manager' },
   ]},
 ]
 
 const HR_GROUPS = [
   { key: 'hr-people', label: 'People', items: [
-    { to: '/hr/employees',  label: 'Employees',        icon: '👤' },
-    { to: '/hr/pay-setup',  label: 'Pay Setup',        icon: '⚙'  },
-    { to: '/hr/holidays',   label: 'Holiday Calendar', icon: '📆' },
+    { to: '/hr/employees',  label: 'Employees',        icon: Users },
+    { to: '/hr/pay-setup',  label: 'Pay Setup',        icon: Settings2  },
+    { to: '/hr/holidays',   label: 'Holiday Calendar', icon: CalendarDays },
   ]},
   { key: 'hr-attendance', label: 'Attendance', items: [
-    { to: '/hr/roster',     label: 'Staff Roster',     icon: '📅' },
-    { to: '/hr/attendance', label: 'Attendance',       icon: '🗓️' },
-    { to: '/hr/leave',      label: 'Leave',            icon: '🏖️' },
-    { to: '/hr/overtime',   label: 'Overtime',         icon: '⏱'  },
+    { to: '/hr/roster',     label: 'Staff Roster',     icon: CalendarClock },
+    { to: '/hr/attendance', label: 'Attendance',       icon: ClipboardCheck },
+    { to: '/hr/leave',      label: 'Leave',            icon: Palmtree },
+    { to: '/hr/overtime',   label: 'Overtime',         icon: Clock  },
   ]},
   { key: 'hr-payroll', label: 'Payroll', items: [
-    { to: '/hr/calculation', label: 'Calculation',       icon: '🧮' },
-    { to: '/hr/payroll',    label: 'Payroll',            icon: '💵' },
-    { to: '/hr/festival',   label: 'Festival Allowance', icon: '🎉' },
-    { to: '/hr/incentives', label: 'Incentives / Bonus', icon: '🎁' },
-    { to: '/hr/advances',   label: 'Advances & Loans',   icon: '💳' },
-    { to: '/hr/tada',       label: 'TADA Claims',        icon: '🧳' },
+    { to: '/hr/calculation', label: 'Calculation',       icon: Calculator },
+    { to: '/hr/payroll',    label: 'Payroll',            icon: Banknote },
+    { to: '/hr/festival',   label: 'Festival Allowance', icon: PartyPopper },
+    { to: '/hr/incentives', label: 'Incentives / Bonus', icon: Gift },
+    { to: '/hr/advances',   label: 'Advances & Loans',   icon: CreditCard },
+    { to: '/hr/tada',       label: 'TADA Claims',        icon: Briefcase },
   ]},
   { key: 'hr-reports', label: 'Reports', items: [
-    { to: '/hr/reports',    label: 'HR Reports',       icon: '📊' },
-    { to: '/hr/gratuity',   label: 'Gratuity',         icon: '💰' },
-    { to: '/hr/settlement', label: 'Final Settlement', icon: '🧾' },
+    { to: '/hr/reports',    label: 'HR Reports',       icon: BarChart3 },
+    { to: '/hr/gratuity',   label: 'Gratuity',         icon: Coins },
+    { to: '/hr/settlement', label: 'Final Settlement', icon: FileCheck2 },
   ]},
 ]
 
@@ -235,14 +248,18 @@ export default function Layout() {
     })
   }
 
-  function renderNavItem(item, { pinnable = true } = {}) {
+  function renderNavItem(item, { pinnable = true, style, compact = false } = {}) {
     const isPinned = pins.includes(item.to)
+    const mergedStyle = compact
+      ? { margin: 0, width: '100%', padding: '8px 8px', gap: 6, fontSize: 12, ...style }
+      : style
     return (
       <NavLink key={item.to} to={item.to}
         className={({ isActive }) => `sidebar-link${isActive ? ' sidebar-link--active' : ''}`}
+        style={mergedStyle}
         onClick={() => setMobileSidebarOpen(false)}>
-        <span className="sidebar-icon">{item.icon}</span>
-        <span style={{ flex: 1 }}>{item.label}</span>
+        <span className="sidebar-icon"><item.icon size={compact ? 15 : 16} strokeWidth={1.75} /></span>
+        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>
         {pinnable && (
           <span
             className={`sidebar-pin${isPinned ? ' sidebar-pin--active' : ''}`}
@@ -253,6 +270,29 @@ export default function Layout() {
           </span>
         )}
       </NavLink>
+    )
+  }
+
+  // Owner Dashboard + this panel's Dashboard link, side by side (equal width) instead of two
+  // full-width stacked rows — both are always-on utility links, not something worth pinning
+  // separately, so pinnable is off here to keep the half-width row uncluttered. Labels are
+  // shortened to single words (full label still used for the actual page title/command palette)
+  // since a ~100px-wide half of a 240px sidebar has no room for "Owner Dashboard"/"Inventory
+  // Dashboard" at readable size — the icon + position already disambiguate the two links.
+  function renderDashboardRow() {
+    const ownerItem = { to: '/owner-dashboard', label: 'Owner', icon: Crown }
+    const dashItem = { ...dashNavItem, label: 'Dashboard' }
+    return (
+      <div style={{ display: 'flex', gap: 4, margin: '1px 10px' }}>
+        {(isAdmin || isOwner) && (
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {renderNavItem(ownerItem, { pinnable: false, compact: true })}
+          </div>
+        )}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {renderNavItem(dashItem, { pinnable: false, compact: true })}
+        </div>
+      </div>
     )
   }
 
@@ -271,7 +311,7 @@ export default function Layout() {
           className="sidebar-group-header"
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-            background: 'none', border: 'none', cursor: 'pointer', padding: '9px 14px 5px',
+            background: 'none', border: 'none', cursor: 'pointer', padding: '16px 14px 6px',
             color: 'var(--theme-text3)', fontSize: 'var(--font-size-group-label)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em',
             fontFamily: 'inherit',
           }}
@@ -329,16 +369,16 @@ export default function Layout() {
   const paletteItems = useMemo(() => {
     const all = [
       dashNavItem,
-      { to: '/owner-dashboard', label: 'Owner Dashboard', icon: '◆' },
+      { to: '/owner-dashboard', label: 'Owner Dashboard', icon: Crown },
       ...NAV.slice(1),
       ...REPORTS,
       ...(hrVisible ? [HR_DASHBOARD, ...HR_GROUPS.flatMap(g => g.items)] : []),
       ...(posVisible ? POS_GROUPS.flatMap(g => g.items) : []),
       ...(isAdmin ? [
-        { to: '/admin/clients', label: 'Clients', icon: '⊛' },
-        { to: '/admin/audit', label: 'Audit Log', icon: '◈' },
+        { to: '/admin/clients', label: 'Clients', icon: Building2 },
+        { to: '/admin/audit', label: 'Audit Log', icon: History },
       ] : []),
-      { to: '/settings', label: 'Settings', icon: '⚙' },
+      { to: '/settings', label: 'Settings', icon: Settings },
     ]
     const seen = new Set()
     return all.filter(item => isItemVisible(item) && !seen.has(item.to) && seen.add(item.to))
@@ -425,19 +465,31 @@ export default function Layout() {
   // row when expanded, an icon column when collapsed (CSS flex-direction flip, same buttons).
   const moduleTabs = [
     isAdmin && {
-      key: 'admin', label: 'Admin', icon: '⊛', tip: 'Admin',
+      key: 'admin', label: 'Admin', icon: ShieldCheck, tip: 'Admin',
       dot: pendingTrialCount > 0 ? '#f87171' : newTrialCount > 0 ? '#f59e0b' : null,
     },
-    imsVisible && { key: 'ims', label: 'IMS', icon: '▤', tip: 'Crest IMS', dot: null },
+    imsVisible && { key: 'ims', label: 'IMS', icon: Warehouse, tip: 'Crest IMS', dot: null },
     hrVisible && {
-      key: 'hr', label: 'HR', icon: '👥', dot: hrPending > 0 ? 'var(--theme-amber)' : null,
+      key: 'hr', label: 'HR', icon: Users2, dot: hrPending > 0 ? 'var(--theme-amber)' : null,
       tip: hrPending > 0 ? `Crest HR — ${hrPending} pending` : 'Crest HR',
     },
     posVisible && {
-      key: 'pos', label: 'POS', icon: '◉', dot: posPending > 0 ? 'var(--theme-amber)' : null,
+      key: 'pos', label: 'POS', icon: Store, dot: posPending > 0 ? 'var(--theme-amber)' : null,
       tip: posPending > 0 ? `Crest POS — ${posPending} pending` : 'Crest POS',
     },
   ].filter(Boolean)
+
+  // Signed-in user's name/role — shown inline next to the client/property name (moved out of its
+  // own footer section to reclaim vertical space; the empty space to the right of the client
+  // name was otherwise unused).
+  const userInfoBlock = (
+    <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 8 }}>
+      <div className="sidebar-user-name">{profile?.full_name || 'User'}</div>
+      <div className="sidebar-user-role">
+        {isAdmin ? 'Admin' : isOwner ? 'Owner' : posRole ? `POS · ${posRole.charAt(0).toUpperCase() + posRole.slice(1)}` : 'Client'}
+      </div>
+    </div>
+  )
 
   return (
     <div className="layout-root">
@@ -474,7 +526,7 @@ export default function Layout() {
                     onClick={() => openPanel(t.key)}
                   >
                     <span className="module-tab-icon" style={{ position: 'relative' }}>
-                      {t.icon}
+                      <t.icon size={18} strokeWidth={1.75} />
                       {t.dot && (
                         <span style={{
                           position: 'absolute', top: -3, right: -5, width: 9, height: 9, borderRadius: '50%',
@@ -498,18 +550,23 @@ export default function Layout() {
         {(() => (
           isAdmin ? (
             <div className="sidebar-client" ref={dropdownRef}>
-              <span className="sidebar-client-label">{adminViewClientId ? 'Viewing' : 'Admin View'}</span>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <span className="sidebar-client-label">{adminViewClientId ? 'Viewing' : 'Admin View'}</span>
 
-              {/* Custom dropdown trigger */}
-              <button
-                className="sidebar-dropdown-trigger"
-                onClick={() => setClientDropdownOpen(o => !o)}
-              >
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                  {allClients.find(c => c.id === adminViewClientId)?.name || 'Crest Admin'}
-                </span>
-                <span className={`sidebar-dropdown-arrow${clientDropdownOpen ? ' sidebar-dropdown-arrow--open' : ''}`}>▼</span>
-              </button>
+                  {/* Custom dropdown trigger */}
+                  <button
+                    className="sidebar-dropdown-trigger"
+                    onClick={() => setClientDropdownOpen(o => !o)}
+                  >
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                      {allClients.find(c => c.id === adminViewClientId)?.name || 'Crest Admin'}
+                    </span>
+                    <span className={`sidebar-dropdown-arrow${clientDropdownOpen ? ' sidebar-dropdown-arrow--open' : ''}`}>▼</span>
+                  </button>
+                </div>
+                {userInfoBlock}
+              </div>
 
               {/* Subscription badge for selected client */}
               {!clientDropdownOpen && (() => {
@@ -562,13 +619,18 @@ export default function Layout() {
             </div>
           ) : clientName ? (
             <div className="sidebar-client">
-              <span className="sidebar-client-label">
-                Property ·{' '}
-                <span style={{ color: plan === 'pro' ? '#c9a84c' : plan === 'growth' ? '#34d399' : '#6b7280', fontWeight: 700 }}>
-                  {plan === 'pro' ? 'Pro' : plan === 'growth' ? 'Growth' : 'Starter'}
-                </span>
-              </span>
-              <span className="sidebar-client-name">{clientName}</span>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <span className="sidebar-client-label">
+                    Property ·{' '}
+                    <span style={{ color: plan === 'pro' ? '#c9a84c' : plan === 'growth' ? '#34d399' : '#6b7280', fontWeight: 700 }}>
+                      {plan === 'pro' ? 'Pro' : plan === 'growth' ? 'Growth' : 'Starter'}
+                    </span>
+                  </span>
+                  <span className="sidebar-client-name">{clientName}</span>
+                </div>
+                {userInfoBlock}
+              </div>
               {(() => {
                 const s = getSubStatus(profile?.clients)
                 if (!s.label) return null
@@ -587,24 +649,22 @@ export default function Layout() {
         ))()}
 
         <nav className="sidebar-nav">
-          {/* Cross-module — renders regardless of which panel (ims/hr/pos/admin) is active,
-              unlike everything below. SuiteGate inside the page itself handles the
-              ineligible-viewer upsell, so this link is never hidden or gated here. */}
-          {(isAdmin || isOwner) && renderNavItem({ to: '/owner-dashboard', label: 'Owner Dashboard', icon: '◆' })}
+          {/* Owner Dashboard (cross-module, renders regardless of active panel — SuiteGate inside
+              the page itself handles the ineligible-viewer upsell) + this panel's own Dashboard,
+              paired side by side by renderDashboardRow() below instead of two stacked rows. */}
 
           {panel === 'admin' && isAdmin && (
             <>
-              {renderNavItem(dashNavItem)}
+              {renderDashboardRow()}
               {renderPinnedGroup()}
               <NavLink to="/admin/clients"
                 className={({ isActive }) => `sidebar-link${isActive ? ' sidebar-link--active' : ''}`}
                 style={newTrialCount > 0 && pendingTrialCount === 0 ? {
-                  borderLeft: '3px solid #f59e0b',
                   background: 'rgba(245,158,11,0.10)',
-                  marginLeft: -3,
+                  boxShadow: 'inset 0 0 0 1px rgba(245,158,11,0.35)',
                 } : {}}
                 onClick={() => setMobileSidebarOpen(false)}>
-                <span className="sidebar-icon">⊛</span>
+                <span className="sidebar-icon"><Building2 size={16} strokeWidth={1.75} /></span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
                   Clients
                   {pendingTrialCount > 0 && (
@@ -621,33 +681,32 @@ export default function Layout() {
                   )}
                 </span>
               </NavLink>
-              {renderNavItem({ to: '/periods', label: 'Periods', icon: '◷' })}
-              {renderNavItem({ to: '/admin/guest-menu', label: 'Guest Menu', icon: '📱' })}
-              {renderNavItem({ to: '/admin/audit', label: 'Audit Log', icon: '◈' })}
-              {renderNavItem({ to: '/settings', label: 'Settings', icon: '⚙' })}
+              {renderNavItem({ to: '/periods', label: 'Periods', icon: CalendarRange })}
+              {renderNavItem({ to: '/admin/guest-menu', label: 'Guest Menu', icon: QrCode })}
+              {renderNavItem({ to: '/admin/audit', label: 'Audit Log', icon: History })}
+              {renderNavItem({ to: '/settings', label: 'Settings', icon: Settings })}
             </>
           )}
 
           {panel === 'ims' && imsVisible && (
             <>
-              {renderNavItem(dashNavItem)}
+              {renderDashboardRow()}
               {renderPinnedGroup()}
               {IMS_GROUPS.map(renderGroup)}
 
               {renderUpgradeTeaser()}
 
               {!isAdmin && hasFeature('settings') && (
-                <>
-                  <div className="sidebar-divider" />
-                  {renderNavItem({ to: '/settings', label: 'Settings', icon: '⚙' })}
-                </>
+                <div style={{ marginTop: 8 }}>
+                  {renderNavItem({ to: '/settings', label: 'Settings', icon: Settings })}
+                </div>
               )}
             </>
           )}
 
           {panel === 'hr' && hrVisible && (
             <>
-              {renderNavItem(dashNavItem)}
+              {renderDashboardRow()}
               {renderPinnedGroup()}
               {renderNavItem(HR_DASHBOARD)}
               {HR_GROUPS.map(renderGroup)}
@@ -656,15 +715,15 @@ export default function Layout() {
 
           {panel === 'pos' && posVisible && (
             <>
-              {renderNavItem(dashNavItem)}
+              {renderDashboardRow()}
               {renderPinnedGroup()}
               {POS_GROUPS.map(group => renderGroup({ ...group, items: group.items.filter(isItemVisible) }))}
             </>
           )}
         </nav>
 
-        <div className="sidebar-footer">
-          {!isAdmin && plan !== 'pro' && (
+        {!isAdmin && plan !== 'pro' && (
+          <div className="sidebar-footer">
             <button
               onClick={() => navigate('/pricing')}
               style={{
@@ -672,19 +731,13 @@ export default function Layout() {
                 color: plan === 'growth' ? '#c9a84c' : '#34d399',
                 background: plan === 'growth' ? 'rgba(201,168,76,0.1)' : 'rgba(52,211,153,0.1)',
                 border: `1px solid ${plan === 'growth' ? 'rgba(201,168,76,0.25)' : 'rgba(52,211,153,0.25)'}`,
-                borderRadius: 4, padding: '4px 8px', cursor: 'pointer', marginBottom: 8, display: 'block'
+                borderRadius: 4, padding: '4px 8px', cursor: 'pointer', display: 'block'
               }}
             >
               {plan === 'growth' ? 'Growth' : 'Starter'} · Upgrade ↑
             </button>
-          )}
-          <div className="sidebar-user">
-            <div className="sidebar-user-name">{profile?.full_name || 'User'}</div>
-            <div className="sidebar-user-role">
-              {isAdmin ? 'Admin' : isOwner ? 'Owner' : posRole ? `POS · ${posRole.charAt(0).toUpperCase() + posRole.slice(1)}` : 'Client'}
-            </div>
           </div>
-        </div>
+        )}
         </div>{/* /sidebar-content */}
 
         {/* Bottom-anchored, icon-only, always visible regardless of collapsed state — same three
@@ -693,15 +746,17 @@ export default function Layout() {
           <RailTip label="Help">
             <NavLink to="/help" title="Help"
               className={({ isActive }) => `rail-btn${isActive ? ' rail-btn--active' : ''}`}
-              onClick={() => setMobileSidebarOpen(false)}>?</NavLink>
+              onClick={() => setMobileSidebarOpen(false)}><HelpCircle size={18} strokeWidth={1.75} /></NavLink>
           </RailTip>
           <RailTip label={collapsed ? 'Show menu' : 'Hide menu'}>
             <button className="rail-btn" title={collapsed ? 'Show menu' : 'Hide menu'}
-              onClick={() => setCollapsed(c => !c)}>{collapsed ? '›' : '‹'}</button>
+              onClick={() => setCollapsed(c => !c)}>
+              {collapsed ? <PanelLeftOpen size={18} strokeWidth={1.75} /> : <PanelLeftClose size={18} strokeWidth={1.75} />}
+            </button>
           </RailTip>
           <RailTip label={posRole ? 'Lock POS' : 'Sign out'}>
             <button className="rail-btn rail-btn--signout" title={posRole ? 'Lock POS' : 'Sign out'}
-              onClick={handleSignOut}>⎋</button>
+              onClick={handleSignOut}><LogOut size={18} strokeWidth={1.75} /></button>
           </RailTip>
         </div>
         </div>{/* /sidebar-shell */}
