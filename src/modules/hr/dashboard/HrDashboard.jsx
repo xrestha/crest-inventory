@@ -178,7 +178,27 @@ export default function HrDashboard() {
     setLoading(false)
   }
 
-  if (loading) return <div className="page-container"><div className="loading-state">Loading HR Dashboard…</div></div>
+  // A skeleton mirroring the page's real layout (header + 3 stat-grid rows) instead of a plain
+  // "Loading…" text block — consistent with the per-KPI skeleton pattern used elsewhere on the
+  // client and owner dashboards.
+  if (loading) return (
+    <div className="page-container">
+      <div style={{ marginBottom: 20 }}>
+        <h1 className="page-title">HR Dashboard</h1>
+        <p className="page-subtitle">Headcount · Payroll · Approval queues · SSF · Advances at a glance</p>
+      </div>
+      {[0, 1, 2].map(row => (
+        <div key={row} className="stat-grid" style={{ marginBottom: 20 }}>
+          {[0, 1, 2, 3].map(card => (
+            <div key={card} className="stat-card">
+              <span className="skeleton" style={{ display: 'block', width: '60%', height: 11, marginBottom: 10 }} />
+              <span className="skeleton" style={{ display: 'block', width: '40%', height: 24 }} />
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  )
 
   const pendingLeave = pendingCounts.leave
   const pendingOt    = pendingCounts.ot
@@ -194,9 +214,9 @@ export default function HrDashboard() {
       </div>
 
       {/* ── KPI Row 1 — Approvals (everything a staff submission needs a manager to act on) ── */}
-      <div style={{ fontSize: 11, color: 'var(--theme-text3)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+      <h2 style={{ fontSize: 11, fontWeight: 700, margin: '0 0 8px', color: 'var(--theme-text3)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
         Approvals {pendingTotal > 0 && <span style={{ color: 'var(--theme-accent)' }}>({pendingTotal} pending)</span>}
-      </div>
+      </h2>
       <div className="stat-grid" style={{ marginBottom: 20 }}>
         <KCard
           label="Leave Pending"
@@ -237,7 +257,7 @@ export default function HrDashboard() {
       </div>
 
       {/* ── KPI Row 2 — Headcount ───────────────────────────────────────────── */}
-      <div style={{ fontSize: 11, color: 'var(--theme-text3)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Headcount</div>
+      <h2 style={{ fontSize: 11, fontWeight: 700, margin: '0 0 8px', color: 'var(--theme-text3)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Headcount</h2>
       <div className="stat-grid" style={{ marginBottom: 20 }}>
         <KCard
           label="Active Staff"
@@ -276,9 +296,9 @@ export default function HrDashboard() {
       {/* ── Payroll + SSF ───────────────────────────────────────────────────── */}
       {payInfo && (
         <>
-          <div style={{ fontSize: 11, color: 'var(--theme-text3)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+          <h2 style={{ fontSize: 11, fontWeight: 700, margin: '0 0 8px', color: 'var(--theme-text3)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             Last Finalized Payroll — {payInfo.periodLabel} ({payInfo.count} employees)
-          </div>
+          </h2>
           <div className="stat-grid" style={{ marginBottom: 20 }}>
             <KCard
               label="Net Payable"
@@ -324,9 +344,9 @@ export default function HrDashboard() {
 
         {/* Leave queue */}
         <div>
-          <div style={{ fontSize: 11, color: 'var(--theme-text3)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+          <h3 style={{ fontSize: 11, fontWeight: 700, margin: '0 0 8px', color: 'var(--theme-text3)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             Pending Leave Requests {pendingLeave > 0 && <span style={{ color: 'var(--theme-accent)' }}>({pendingLeave})</span>}
-          </div>
+          </h3>
           <div className="card" style={{ padding: 0 }}>
             {leaveList.length === 0 ? (
               <div style={{ padding: '18px 16px', fontSize: 13, color: 'var(--theme-text3)' }}>No pending leave requests ✓</div>
@@ -368,9 +388,9 @@ export default function HrDashboard() {
 
         {/* OT queue */}
         <div>
-          <div style={{ fontSize: 11, color: 'var(--theme-text3)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+          <h3 style={{ fontSize: 11, fontWeight: 700, margin: '0 0 8px', color: 'var(--theme-text3)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             Pending OT Entries {pendingOt > 0 && <span style={{ color: 'var(--theme-accent)' }}>({pendingOt})</span>}
-          </div>
+          </h3>
           <div className="card" style={{ padding: 0 }}>
             {otList.length === 0 ? (
               <div style={{ padding: '18px 16px', fontSize: 13, color: 'var(--theme-text3)' }}>No pending OT entries ✓</div>
@@ -418,9 +438,9 @@ export default function HrDashboard() {
 
         {/* TADA queue */}
         <div>
-          <div style={{ fontSize: 11, color: 'var(--theme-text3)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+          <h3 style={{ fontSize: 11, fontWeight: 700, margin: '0 0 8px', color: 'var(--theme-text3)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             Pending TADA Claims {pendingTada > 0 && <span style={{ color: 'var(--theme-accent)' }}>({pendingTada})</span>}
-          </div>
+          </h3>
           <div className="card" style={{ padding: 0 }}>
             {tadaList.length === 0 ? (
               <div style={{ padding: '18px 16px', fontSize: 13, color: 'var(--theme-text3)' }}>No pending TADA claims ✓</div>
@@ -460,9 +480,9 @@ export default function HrDashboard() {
 
         {/* Shift swap queue */}
         <div>
-          <div style={{ fontSize: 11, color: 'var(--theme-text3)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+          <h3 style={{ fontSize: 11, fontWeight: 700, margin: '0 0 8px', color: 'var(--theme-text3)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             Pending Shift Swaps {pendingSwap > 0 && <span style={{ color: 'var(--theme-accent)' }}>({pendingSwap})</span>}
-          </div>
+          </h3>
           <div className="card" style={{ padding: 0 }}>
             {swapList.length === 0 ? (
               <div style={{ padding: '18px 16px', fontSize: 13, color: 'var(--theme-text3)' }}>No pending shift swaps ✓</div>

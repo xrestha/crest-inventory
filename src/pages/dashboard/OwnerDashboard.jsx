@@ -311,7 +311,7 @@ export default function OwnerDashboard() {
             "—" plus the "No open period" banner below, which was simply wrong: the real cause is
             the missing module, not a missing period. */}
         {!(clientModules.ims && clientModules.hr) && !loading && (
-          <div className="card" style={{ marginBottom: 20, borderColor: 'rgba(217,119,6,0.15)', background: 'rgba(217,119,6,0.05)' }}>
+          <div className="card" style={{ marginBottom: 20, borderColor: 'color-mix(in srgb, var(--theme-amber) 15%, transparent)', background: 'color-mix(in srgb, var(--theme-amber) 5%, transparent)' }}>
             <p style={{ color: 'var(--theme-amber)', margin: 0, fontSize: 14 }}>
               ⚠ Owner Dashboard needs both Crest IMS and Crest HR enabled — this property has {clientModules.ims ? 'only IMS' : clientModules.hr ? 'only HR' : 'neither'}.
             </p>
@@ -319,7 +319,7 @@ export default function OwnerDashboard() {
         )}
         {clientModules.ims && clientModules.hr && !activePeriod && !loading && (
           <div
-            className="card interactive-card" style={{ marginBottom: 20, cursor: 'pointer', borderColor: 'rgba(201,168,76,0.3)' }}
+            className="card interactive-card" style={{ marginBottom: 20, cursor: 'pointer', borderColor: 'color-mix(in srgb, var(--theme-accent) 30%, transparent)' }}
             onClick={() => navigate('/periods')} role="button" tabIndex={0}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/periods') } }}
           >
@@ -327,11 +327,15 @@ export default function OwnerDashboard() {
           </div>
         )}
 
+        {/* No visible section title for either KPI row in the original design — an sr-only
+            heading gives screen-reader users a landmark to navigate by without changing the
+            visual layout. */}
+        <h2 className="sr-only">Profitability (month-to-date)</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 14 }}>
 
           <div {...kpiCard(() => navigate('/sales'))}>
             <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Revenue (MTD)</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--theme-green)', lineHeight: 1.1 }}>{loading ? '—' : fmt(revenueTotal)}</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--theme-green)', lineHeight: 1.1 }}>{loading ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : fmt(revenueTotal)}</div>
             <div style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 5 }}>From sales entries →</div>
           </div>
 
@@ -340,7 +344,7 @@ export default function OwnerDashboard() {
               <Tip text="Net purchases ÷ revenue × 100. Healthy range: 28–35% for Nepal F&B." width={240}>Food Cost % (MTD)</Tip>
             </div>
             <div style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.1, color: fcPct == null ? 'var(--theme-text2)' : fcPct <= 35 ? 'var(--theme-green)' : fcPct <= 45 ? 'var(--theme-accent)' : 'var(--theme-red)' }}>
-              {loading ? '—' : fcPct != null ? `${fcPct.toFixed(1)}%` : '—'}
+              {loading ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : fcPct != null ? `${fcPct.toFixed(1)}%` : '—'}
             </div>
             <div style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 5 }}>Target 28–35% →</div>
           </div>
@@ -350,7 +354,7 @@ export default function OwnerDashboard() {
               <Tip text="Prorated estimate: gross + overtime + employer SSF, scaled to days elapsed this month. Refines to the exact figure once Payroll Run is finalized." width={280}>Labor Cost % (MTD)</Tip>
             </div>
             <div style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.1, color: laborPct == null ? 'var(--theme-text2)' : laborPct <= 37 ? 'var(--theme-green)' : laborPct <= 45 ? 'var(--theme-accent)' : 'var(--theme-red)' }}>
-              {loading ? '—' : laborPct != null ? `${laborPct.toFixed(1)}%` : '—'}
+              {loading ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : laborPct != null ? `${laborPct.toFixed(1)}%` : '—'}
             </div>
             <div style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 5 }}>Estimate →</div>
           </div>
@@ -360,7 +364,7 @@ export default function OwnerDashboard() {
               <Tip text="Revenue minus food cost, labor cost, and overheads, as a % of revenue. This is what the business actually keeps." width={260}>True Net Margin % (MTD)</Tip>
             </div>
             <div style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.1, color: netMarginPct == null ? 'var(--theme-text2)' : netMarginPct >= 20 ? 'var(--theme-green)' : netMarginPct >= 10 ? 'var(--theme-accent)' : 'var(--theme-red)' }}>
-              {loading ? '—' : netMarginPct != null ? `${netMarginPct.toFixed(1)}%` : '—'}
+              {loading ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : netMarginPct != null ? `${netMarginPct.toFixed(1)}%` : '—'}
             </div>
             <div style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 5 }}>
               {!loading && overheadTotal === 0 ? 'Excludes overhead — not entered' : 'After food, labor & overhead'}
@@ -368,12 +372,13 @@ export default function OwnerDashboard() {
           </div>
         </div>
 
+        <h2 className="sr-only">Operations</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 20 }}>
 
           <div {...kpiCard(() => navigate('/wastage-report'))}>
             <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 4 }}>Wastage Value (MTD)</div>
             <div style={{ fontSize: 22, fontWeight: 700, color: stats?.wastageValueTotal > 0 ? 'var(--theme-red)' : 'var(--theme-text1)' }}>
-              {loading ? '—' : fmt(stats?.wastageValueTotal)}
+              {loading ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : fmt(stats?.wastageValueTotal)}
             </div>
             <div style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 4 }}>This period →</div>
           </div>
@@ -383,7 +388,7 @@ export default function OwnerDashboard() {
               <Tip text="Items whose current stock is at or below par level — a live inventory position, not a monthly total." width={260}>Items Below Par</Tip>
             </div>
             <div style={{ fontSize: 22, fontWeight: 700, color: reorderStats?.count > 0 ? 'var(--theme-red)' : 'var(--theme-text1)' }}>
-              {loading ? '—' : (reorderStats?.count ?? 0)}
+              {loading ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : (reorderStats?.count ?? 0)}
             </div>
             <div style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 4 }}>
               {!loading && reorderStats?.estValueTotal > 0 ? `${fmt(reorderStats.estValueTotal)} to restock →` : 'Full Report →'}
@@ -395,7 +400,7 @@ export default function OwnerDashboard() {
               <Tip text="Credit purchases unpaid for more than 60 days." width={220}>Overdue Payables</Tip>
             </div>
             <div style={{ fontSize: 22, fontWeight: 700, color: payablesStats?.overdueTotal > 0 ? 'var(--theme-red)' : 'var(--theme-text1)' }}>
-              {loading ? '—' : fmt(payablesStats?.overdueTotal)}
+              {loading ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : fmt(payablesStats?.overdueTotal)}
             </div>
             <div style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 4 }}>
               {!loading && payablesStats?.overdueCount > 0 ? `${payablesStats.overdueCount} bill${payablesStats.overdueCount === 1 ? '' : 's'} →` : 'Full Report →'}
@@ -407,7 +412,7 @@ export default function OwnerDashboard() {
               <Tip text="Net purchases (this period) split by payment method — not a revenue split." width={260}>Purchases · Cash / Credit</Tip>
             </div>
             <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--theme-text1)' }}>
-              {loading ? '—' : `${fmt(stats?.cashNet)} / ${fmt(stats?.creditNet)}`}
+              {loading ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : `${fmt(stats?.cashNet)} / ${fmt(stats?.creditNet)}`}
             </div>
             <div style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 4 }}>Cash / Credit →</div>
           </div>

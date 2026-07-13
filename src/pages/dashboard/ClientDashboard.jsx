@@ -599,8 +599,12 @@ export default function ClientDashboard() {
     : showPos ? 'POS Dashboard'
     : 'Dashboard'
   const showModuleHeaders = moduleCount >= 2
+  // A real <h2> (not a styled div) so screen-reader users can navigate the page's module
+  // sections (Inventory/Human Resources/Point of Sale) by heading, same as any other landmark.
+  // margin/fontWeight explicitly reset since a bare <h2> otherwise renders bold with browser
+  // default margins — visual size/weight is unchanged from the div it replaces.
   const moduleHeader = (text) => showModuleHeaders
-    ? <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>{text}</div>
+    ? <h2 style={{ fontSize: 11, fontWeight: 400, margin: '0 0 10px', color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{text}</h2>
     : null
 
   return (
@@ -632,7 +636,7 @@ export default function ClientDashboard() {
 
       {clientModules.ims && !activePeriod && !loading && (
         <div
-          className="card interactive-card" style={{ marginBottom: 20, cursor: 'pointer', borderColor: 'rgba(201,168,76,0.3)' }}
+          className="card interactive-card" style={{ marginBottom: 20, cursor: 'pointer', borderColor: 'color-mix(in srgb, var(--theme-accent) 30%, transparent)' }}
           onClick={() => navigate('/periods')} role="button" tabIndex={0}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/periods') } }}
         >
@@ -641,7 +645,7 @@ export default function ClientDashboard() {
       )}
 
       {periodExpired && !loading && (
-        <div className="card" style={{ marginBottom: 20, borderColor: 'rgba(217,119,6,0.15)', background: 'rgba(217,119,6,0.05)' }}>
+        <div className="card" style={{ marginBottom: 20, borderColor: 'color-mix(in srgb, var(--theme-amber) 15%, transparent)', background: 'color-mix(in srgb, var(--theme-amber) 5%, transparent)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
             <div>
               <p style={{ color: 'var(--theme-amber)', margin: 0, fontSize: 14, fontWeight: 600 }}>
@@ -657,8 +661,8 @@ export default function ClientDashboard() {
               <button
                 onClick={() => navigate('/periods')}
                 style={{
-                  flexShrink: 0, background: 'rgba(251,191,36,0.12)',
-                  border: '1px solid rgba(251,191,36,0.4)', color: 'var(--theme-amber)',
+                  flexShrink: 0, background: 'color-mix(in srgb, var(--theme-amber) 12%, transparent)',
+                  border: '1px solid color-mix(in srgb, var(--theme-amber) 40%, transparent)', color: 'var(--theme-amber)',
                   borderRadius: 6, padding: '8px 18px', cursor: 'pointer',
                   fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap'
                 }}
@@ -670,8 +674,8 @@ export default function ClientDashboard() {
                 onClick={closeAndAdvancePeriod}
                 disabled={advancingPeriod}
                 style={{
-                  flexShrink: 0, background: 'rgba(251,191,36,0.12)',
-                  border: '1px solid rgba(251,191,36,0.4)', color: 'var(--theme-amber)',
+                  flexShrink: 0, background: 'color-mix(in srgb, var(--theme-amber) 12%, transparent)',
+                  border: '1px solid color-mix(in srgb, var(--theme-amber) 40%, transparent)', color: 'var(--theme-amber)',
                   borderRadius: 6, padding: '8px 18px', cursor: advancingPeriod ? 'default' : 'pointer',
                   fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', opacity: advancingPeriod ? 0.6 : 1
                 }}
@@ -701,7 +705,7 @@ export default function ClientDashboard() {
           {kpiIcon('↓', 'blue')}
           <div style={kpiLabelStyle}>Net Purchases</div>
           <div style={{ ...kpiValueStyle(18), color: 'var(--theme-accent)' }}>
-            {loading ? '—' : `NPR ${(stats?.purchaseTotal || 0).toLocaleString('en-NP', { maximumFractionDigits: 0 })}`}
+            {loading ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : `NPR ${(stats?.purchaseTotal || 0).toLocaleString('en-NP', { maximumFractionDigits: 0 })}`}
           </div>
           <div style={kpiSubtextStyle}>Gross − returns · {periodLabel} →</div>
         </div>
@@ -712,7 +716,7 @@ export default function ClientDashboard() {
             {kpiIcon('↑', 'green')}
             <div style={kpiLabelStyle}>Revenue</div>
             <div style={{ ...kpiValueStyle(18), color: 'var(--theme-green)' }}>
-              {loading ? '—' : `NPR ${(stats?.revenueTotal || 0).toLocaleString('en-NP', { maximumFractionDigits: 0 })}`}
+              {loading ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : `NPR ${(stats?.revenueTotal || 0).toLocaleString('en-NP', { maximumFractionDigits: 0 })}`}
             </div>
             <div style={kpiSubtextStyle}>From sales entries →</div>
           </div>
@@ -729,7 +733,7 @@ export default function ClientDashboard() {
               ...kpiValueStyle(22, 800),
               color: fcPct == null ? 'var(--theme-text2)' : fcPct <= 35 ? 'var(--theme-green)' : fcPct <= 45 ? 'var(--theme-accent)' : 'var(--theme-red)'
             }}>
-              {loading ? '—' : fcPct != null ? `${fcPct.toFixed(1)}%` : '—'}
+              {loading ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : fcPct != null ? `${fcPct.toFixed(1)}%` : '—'}
             </div>
             <div style={kpiSubtextStyle}>
               <Tip text="Industry benchmark for Nepal cafes & restaurants. Green = healthy, yellow = watch, red = investigate immediately." width={240}>Target 28–35%</Tip> →
@@ -748,7 +752,7 @@ export default function ClientDashboard() {
               ...kpiValueStyle(22, 800),
               color: ohPct == null ? 'var(--theme-text2)' : ohPct <= 50 ? 'var(--theme-green)' : ohPct <= 65 ? 'var(--theme-accent)' : 'var(--theme-red)'
             }}>
-              {loading ? '—' : ohPct != null ? `${ohPct.toFixed(1)}%` : '—'}
+              {loading ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : ohPct != null ? `${ohPct.toFixed(1)}%` : '—'}
             </div>
             <div style={kpiSubtextStyle}>
               {stats?.overheadTotal ? `NPR ${stats.overheadTotal.toLocaleString('en-NP', { maximumFractionDigits: 0 })} total →` : 'No overhead data'}
@@ -769,7 +773,7 @@ export default function ClientDashboard() {
               ...kpiValueStyle(22, 800),
               color: netMarginPct == null ? 'var(--theme-text2)' : netMarginPct >= 20 ? 'var(--theme-green)' : netMarginPct >= 10 ? 'var(--theme-accent)' : 'var(--theme-red)'
             }}>
-              {loading ? '—' : netMarginPct != null ? `${netMarginPct.toFixed(1)}%` : '—'}
+              {loading ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : netMarginPct != null ? `${netMarginPct.toFixed(1)}%` : '—'}
             </div>
             <div style={kpiSubtextStyle}>After food & overheads · target ≥20%</div>
           </div>
@@ -781,7 +785,7 @@ export default function ClientDashboard() {
 
         <div {...kpiCard(null)}>
           <div style={kpiLabelStyle}>Active Period</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--theme-text1)' }}>{loading ? '—' : periodLabel}</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--theme-text1)' }}>{loading ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : periodLabel}</div>
           <div style={{ ...kpiSubtextStyle, color: activePeriod ? 'var(--theme-green)' : 'var(--theme-red)' }}>
             {activePeriod ? '● Open' : '● No open period'}
           </div>
@@ -789,20 +793,20 @@ export default function ClientDashboard() {
 
         <div {...kpiCard(() => navigate('/items'))}>
           <div style={kpiLabelStyle}>Items in Master</div>
-          <div style={kpiValueStyle(18)}>{loading ? '—' : stats?.itemCount}</div>
+          <div style={kpiValueStyle(18)}>{loading ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : stats?.itemCount}</div>
           <div style={kpiSubtextStyle}>Active ingredients →</div>
         </div>
 
         <div {...kpiCard(() => navigate('/vendors'))}>
           <div style={kpiLabelStyle}>Vendors</div>
-          <div style={kpiValueStyle(18)}>{loading ? '—' : stats?.vendorCount}</div>
+          <div style={kpiValueStyle(18)}>{loading ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : stats?.vendorCount}</div>
           <div style={kpiSubtextStyle}>Active suppliers →</div>
         </div>
 
         {canRecipes ? (
           <div {...kpiCard(() => navigate('/recipes'))}>
             <div style={kpiLabelStyle}>Costed Recipes</div>
-            <div style={kpiValueStyle(18)}>{loading ? '—' : stats?.recipeCount}</div>
+            <div style={kpiValueStyle(18)}>{loading ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : stats?.recipeCount}</div>
             <div style={kpiSubtextStyle}>
               {stats?.subRecipeCount > 0 ? `+ ${stats.subRecipeCount} sub-recipes →` : 'Active menu items →'}
             </div>
@@ -817,7 +821,7 @@ export default function ClientDashboard() {
               <Tip text="Dishes whose current food-cost % is above their target — priced too low to hit the margin you set. Open the Menu Repricing report for the prices to charge." width={300}>Menu Health</Tip>
             </div>
             <div style={{ ...kpiValueStyle(18), color: stats?.underpricedCount > 0 ? 'var(--theme-red)' : 'var(--theme-green)' }}>
-              {loading ? '—' : `${stats?.underpricedCount || 0} of ${stats?.costedPricedCount || 0}`}
+              {loading ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : `${stats?.underpricedCount || 0} of ${stats?.costedPricedCount || 0}`}
             </div>
             <div style={{ ...kpiSubtextStyle, color: stats?.menuOpportunityTotal > 0 ? 'var(--theme-accent)' : 'var(--theme-text3)' }}>
               {loading ? 'under target →'
@@ -835,7 +839,7 @@ export default function ClientDashboard() {
             <Tip text="Total NPR value of wastage recorded this period — qty wasted × unit rate per item." width={220}>Wastage Value</Tip>
           </div>
           <div style={{ ...kpiValueStyle(18), color: stats?.wastageValueTotal > 0 ? 'var(--theme-red)' : 'var(--theme-text1)' }}>
-            {loading ? '—' : `NPR ${Math.round(stats?.wastageValueTotal || 0).toLocaleString('en-NP')}`}
+            {loading ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : `NPR ${Math.round(stats?.wastageValueTotal || 0).toLocaleString('en-NP')}`}
           </div>
           <div style={kpiSubtextStyle}>This period →</div>
         </div>
@@ -844,7 +848,7 @@ export default function ClientDashboard() {
       {/* ── Charts Row ── */}
       {!loading && activePeriod && (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr 1fr', gap: 14, marginBottom: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14, marginBottom: 14 }}>
 
             {/* Pie — Category Spend */}
             <ChartCard
@@ -1024,14 +1028,14 @@ export default function ClientDashboard() {
           )}
 
           {/* ── Bottom: Variance + Reorder side by side ── */}
-          {<div style={{ display: 'grid', gridTemplateColumns: canReorder ? '1fr 1fr' : '1fr', gap: 14, marginBottom: 20 }}>
+          {<div style={{ display: 'grid', gridTemplateColumns: canReorder ? 'repeat(auto-fit, minmax(320px, 1fr))' : '1fr', gap: 14, marginBottom: 20 }}>
 
             {/* Variance table */}
             {canVariance ? (
               <div className="card" style={{ padding: '14px 16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Top Variance Items</div>
-                  <button className="btn btn-ghost" style={{ fontSize: 10, padding: '3px 8px' }} onClick={() => navigate('/variance')}>Full Report →</button>
+                  <h3 style={{ fontSize: 12, fontWeight: 600, margin: 0, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Top Variance Items</h3>
+                  <button className="btn btn-ghost" style={{ fontSize: 10, padding: '7px 12px' }} onClick={() => navigate('/variance')}>Full Report →</button>
                 </div>
                 {topVariance.length === 0 ? (
                   <p style={{ color: 'var(--theme-text3)', fontSize: 12, margin: '16px 0' }}>
@@ -1072,15 +1076,15 @@ export default function ClientDashboard() {
             {canReorder ? (
               <div className="card" style={{ padding: '14px 16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Items to Reorder</div>
-                  <button className="btn btn-ghost" style={{ fontSize: 10, padding: '3px 8px' }} onClick={() => navigate('/reorder')}>Full Report →</button>
+                  <h3 style={{ fontSize: 12, fontWeight: 600, margin: 0, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Items to Reorder</h3>
+                  <button className="btn btn-ghost" style={{ fontSize: 10, padding: '7px 12px' }} onClick={() => navigate('/reorder')}>Full Report →</button>
                 </div>
                 {reorderItems.length === 0 ? (
                   <p style={{ color: 'var(--theme-text3)', fontSize: 12, margin: '16px 0' }}>
                     No items below par.{' '}
                     <button
                       onClick={() => navigate('/reorder')} className="interactive-card"
-                      style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--theme-accent)', cursor: 'pointer' }}
+                      style={{ background: 'none', border: 'none', padding: '4px 6px', margin: '-4px -6px', font: 'inherit', color: 'var(--theme-accent)', cursor: 'pointer' }}
                     >Set par levels →</button>
                   </p>
                 ) : (
@@ -1107,19 +1111,27 @@ export default function ClientDashboard() {
       </>}
 
       {/* ── HR KPIs (below Inventory) ── */}
-      {showHr && hrStats && (
+      {/* Previously two entirely separate blocks — a full "Loading HR data…" text card while
+          !hrStats, then the real KPI grid once loaded — inconsistent with how the IMS/POS
+          sections above handle their own loading state (a skeleton bar per KPI value, same grid
+          shape throughout). Now one block, matching that pattern. */}
+      {showHr && (
         <div style={{ marginBottom: 14, marginTop: showIms ? 6 : 0 }}>
           {moduleHeader('Human Resources')}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
             <div {...kpiCard(() => navigate('/hr/employees'))}>
               <div style={kpiLabelStyle}>Total Employees</div>
-              <div style={{ ...kpiValueStyle(22, 800), color: 'var(--theme-text1)' }}>{hrStats.total}</div>
+              <div style={{ ...kpiValueStyle(22, 800), color: 'var(--theme-text1)' }}>
+                {!hrStats ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : hrStats.total}
+              </div>
               <div style={kpiSubtextStyle}>All statuses →</div>
             </div>
             <div {...kpiCard(() => navigate('/hr/employees'))}>
               <div style={kpiLabelStyle}>Active</div>
-              <div style={{ ...kpiValueStyle(22, 800), color: 'var(--theme-green)' }}>{hrStats.active}</div>
-              {hrStats.probation > 0 && (
+              <div style={{ ...kpiValueStyle(22, 800), color: 'var(--theme-green)' }}>
+                {!hrStats ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : hrStats.active}
+              </div>
+              {hrStats && hrStats.probation > 0 && (
                 <div style={{ ...kpiSubtextStyle, color: 'var(--theme-accent)' }}>{hrStats.probation} on probation</div>
               )}
             </div>
@@ -1128,18 +1140,13 @@ export default function ClientDashboard() {
                 <Tip text="Sum of basic salary for active and probation employees. Full payroll with allowances, SSF and TDS is computed during payroll run." width={260}>Basic Payroll / Month</Tip>
               </div>
               <div style={{ ...kpiValueStyle(18, 800), color: 'var(--theme-accent)' }}>
-                NPR {Math.round(hrStats.payroll).toLocaleString('en-NP')}
+                {!hrStats
+                  ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} />
+                  : `NPR ${Math.round(hrStats.payroll).toLocaleString('en-NP')}`}
               </div>
               <div style={kpiSubtextStyle}>Basic salary only</div>
             </div>
           </div>
-        </div>
-      )}
-
-      {showHr && !hrStats && (
-        <div style={{ marginBottom: 14 }}>
-          {moduleHeader('Human Resources')}
-          <div className="card"><p style={{ color: 'var(--theme-text2)', fontSize: 13, margin: 0 }}>Loading HR data…</p></div>
         </div>
       )}
 
@@ -1151,7 +1158,7 @@ export default function ClientDashboard() {
             <div {...kpiCard(() => navigate('/pos/sales-report'))}>
               <div style={kpiLabelStyle}>Revenue</div>
               <div style={{ ...kpiValueStyle(18), color: 'var(--theme-green)' }}>
-                {!posStats ? '—' : `NPR ${Math.round(posStats.revenueTotal).toLocaleString('en-NP')}`}
+                {!posStats ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : `NPR ${Math.round(posStats.revenueTotal).toLocaleString('en-NP')}`}
               </div>
               <div style={kpiSubtextStyle}>{periodLabel} · billed →</div>
             </div>
@@ -1160,21 +1167,21 @@ export default function ClientDashboard() {
                 <Tip text="Total covers (guests) served across all billed orders this period." width={220}>Covers Served</Tip>
               </div>
               <div style={kpiValueStyle(18)}>
-                {!posStats ? '—' : posStats.coversTotal}
+                {!posStats ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : posStats.coversTotal}
               </div>
               <div style={kpiSubtextStyle}>{!posStats ? '' : `${posStats.billCount} bill${posStats.billCount === 1 ? '' : 's'}`} →</div>
             </div>
             <div {...kpiCard(null)}>
               <div style={kpiLabelStyle}>Avg Check</div>
               <div style={kpiValueStyle(18)}>
-                {!posStats ? '—' : `NPR ${Math.round(posStats.avgCheck).toLocaleString('en-NP')}`}
+                {!posStats ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : `NPR ${Math.round(posStats.avgCheck).toLocaleString('en-NP')}`}
               </div>
               <div style={kpiSubtextStyle}>Revenue ÷ bills</div>
             </div>
             <div {...kpiCard(() => navigate('/pos/tables'))}>
               <div style={kpiLabelStyle}>Tables Occupied</div>
               <div style={{ ...kpiValueStyle(18), color: posStats?.tablesOccupied > 0 ? 'var(--theme-accent)' : 'var(--theme-text1)' }}>
-                {!posStats ? '—' : `${posStats.tablesOccupied} / ${posStats.tablesTotal}`}
+                {!posStats ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : `${posStats.tablesOccupied} / ${posStats.tablesTotal}`}
               </div>
               <div style={kpiSubtextStyle}>Right now →</div>
             </div>
