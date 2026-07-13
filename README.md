@@ -141,6 +141,20 @@ Architecture: single React app, single Supabase project, feature flags per clien
 
 ## Session Log
 
+### S377 — 2026-07-13 — Dashboard audit P2 fixes: skeleton loading, heading hierarchy, responsive grids, touch targets, color consolidation
+
+The 5 remaining medium-severity findings from S376's dashboard audit, across `ClientDashboard.jsx`, `OwnerDashboard.jsx`, and `HrDashboard.jsx`.
+
+- **Scattered hardcoded amber colors** — three different, mismatched RGB triples (`rgba(217,119,6,*)`, `rgba(201,168,76,*)`, `rgba(251,191,36,*)`) were all doing the same "warning banner"/"accent border" job across the two files, none actually derived from a theme token. Consolidated onto `var(--theme-amber)`/`var(--theme-accent)` via `color-mix(in srgb, ..., transparent)`, so they now track whichever of the 10 presets is active instead of one hardcoded shade.
+- **Two non-responsive fixed-column grids** (`ClientDashboard.jsx`'s 3-chart row and its Variance/Reorder row) — switched to `repeat(auto-fit, minmax(...))`, matching the pattern every other grid in the same file already used correctly.
+- **Sub-44px touch targets** — the two "Full Report →" buttons got roomier padding (`3px 8px` → `7px 12px`); the inline "Set par levels →" text link got a padding-plus-negative-margin trick that grows its actual hit area without shifting the surrounding sentence's layout.
+- **Missing heading hierarchy** — every section label that was a plain styled `<div>` (module headers, table titles, HR's Approvals/Headcount/Payroll/queue titles) is now a real `<h2>`/`<h3>`, with margin/font-weight explicitly reset so nothing looks different — a screen-reader user can now navigate each dashboard by heading. `OwnerDashboard.jsx`'s two KPI rows had no visible label to convert, so they got new `sr-only` headings ("Profitability"/"Operations") instead — a landmark without changing the visual design. New `.sr-only` utility class added to `Layout.css` for this.
+- **No skeleton loading states, inconsistent between sections** — new `.skeleton`/`.skeleton-block` shimmer classes (theme-token gradient, `prefers-reduced-motion` fallback per the app's existing motion convention) replace every `'—'` / `!posStats ? '—'` text placeholder in `ClientDashboard.jsx` and `OwnerDashboard.jsx`. `ClientDashboard.jsx`'s HR section previously showed a completely different "Loading HR data…" text card while its own KPIs loaded, instead of the IMS/POS sections' per-KPI dash — merged into one block using the same per-KPI skeleton pattern as everything else on the page. `HrDashboard.jsx`'s full-page "Loading HR Dashboard…" text is now a skeleton mirroring the page's real shape (header + 3 stat-grid rows of shimmering placeholder cards) instead of blank text.
+
+Build clean, 91/91 tests pass (`App.test.js`'s pre-existing unrelated `react-router-dom` resolution failure aside).
+
+**Files:** `src/pages/dashboard/{ClientDashboard.jsx,OwnerDashboard.jsx}`, `src/modules/hr/dashboard/HrDashboard.jsx`, `src/components/Layout.css`
+
 ### S376 — 2026-07-13 — ClientDashboard sub-recipe follow-up + full dashboard audit (16 fixes) + keyboard-accessibility hardening on all 3 dashboards
 
 Three linked engagements on `/dashboard`, `/owner-dashboard`, and `/hr/dashboard`.
