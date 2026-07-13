@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { supabase } from '../../supabaseClient'
@@ -13,6 +13,7 @@ import Tip from '../../components/Tip'
 import ChartCard from '../../components/ChartCard'
 import { getBsToday, BS_MONTHS, daysInBsMonth, bsToAd } from '../../utils/bsCalendar'
 import { getSubStatus } from '../../utils/subscription'
+import { explodeRecipeIngredients } from '../../utils/recipeCost'
 const CHART_COLORS = ['#c9a84c', '#34d399', '#60a5fa', '#f87171', '#a78bfa', '#fb923c', '#22d3ee', '#f472b6']
 
 export default function ClientDashboard() {
@@ -35,15 +36,24 @@ export default function ClientDashboard() {
   const [fcTrend, setFcTrend]             = useState([])
   const [hrStats, setHrStats]             = useState(null)
   const [posStats, setPosStats]           = useState(null)
+  // Guards against a stale response overwriting the current view — none of loadStats/loadHrStats/
+  // loadPosStats/loadFcTrend had a cancellation check, so switching "view as" client (or the
+  // module flags changing) while a slower request for the PREVIOUS client was still in flight
+  // could let that older response land last and silently repaint the screen with the wrong
+  // tenant's numbers. Each load call captures the id current at its own start and checks it's
+  // still current before committing any setState.
+  const loadIdRef = useRef(0)
+  const [advancingPeriod, setAdvancingPeriod] = useState(false)
 
   useEffect(() => {
     if (authLoading) return
     if (!effectiveClientId) return
+    const myId = ++loadIdRef.current
     // Load only the modules the displayed client actually subscribes to (clientModules from
     // AuthContext already resolves real-client vs admin "view as client").
-    if (clientModules.ims) loadStats(); else setLoading(false)
-    if (clientModules.hr) loadHrStats(); else setHrStats(null)
-    if (clientModules.pos) loadPosStats(); else setPosStats(null)
+    if (clientModules.ims) loadStats(myId); else setLoading(false)
+    if (clientModules.hr) loadHrStats(myId); else setHrStats(null)
+    if (clientModules.pos) loadPosStats(myId); else setPosStats(null)
   }, [authLoading, effectiveClientId, clientModules.ims, clientModules.hr, clientModules.pos, location.key]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const canSales    = hasFeature('sales_entry')
@@ -53,13 +63,14 @@ export default function ClientDashboard() {
   const canReorder  = hasFeature('reorder_report')
   const canOverheads = hasFeature('overheads')
 
-  async function loadStats() {
+  async function loadStats(myId) {
     setLoading(true)
 
     const { data: period } = await scopedFrom('monthly_periods')
       .eq('status', 'open')
       .order('bs_year', { ascending: false }).order('bs_month', { ascending: false })
       .limit(1).single()
+    if (loadIdRef.current !== myId) return // superseded by a newer client switch
 
     setActivePeriod(period)
 
@@ -77,7 +88,8 @@ export default function ClientDashboard() {
       { data: items },
       { data: parLevels },
       { data: overheadsData },
-      { data: wastagesData }
+      { data: wastagesData },
+      { data: allItems }
     ] = await Promise.all([
       scopedFrom('items', '*', { count: 'exact', head: true }).eq('is_active', true).eq('is_sub_recipe', false),
       scopedFrom('vendors', '*', { count: 'exact', head: true }).eq('is_active', true),
@@ -87,63 +99,92 @@ export default function ClientDashboard() {
       period ? supabase.from('vendor_returns').select('item_id, qty, rate, bs_day').eq('period_id', period.id) : { data: [] },
       // Revenue (and the daily revenue trend below) excludes comps (source='pos_comp') — a
       // comped dish was never paid for.
-      period ? supabase.from('sales_entries').select('recipe_id, qty_sold, bs_day').eq('period_id', period.id).neq('source', 'pos_comp') : { data: [] },
+      period ? supabase.from('sales_entries').select('recipe_id, qty_sold, bs_day, unit_price').eq('period_id', period.id).neq('source', 'pos_comp') : { data: [] },
       scopedFrom('recipes', 'id, name, selling_price, category, is_active, target_fc_pct'),
       period ? supabase.from('opening_stock').select('item_id, qty').eq('period_id', period.id) : { data: [] },
       period ? supabase.from('closing_stock').select('item_id, physical_qty').eq('period_id', period.id) : { data: [] },
       scopedFrom('items', 'id, name, uom, per_uom_rate, yield_pct, categories(name)').eq('is_active', true).eq('is_sub_recipe', false),
       scopedFrom('par_levels', 'item_id, par_qty'),
       period ? supabase.from('overheads').select('amount').eq('period_id', period.id) : { data: [] },
-      period ? supabase.from('wastages').select('item_id, qty').eq('period_id', period.id) : { data: [] }
+      period ? supabase.from('wastages').select('item_id, qty').eq('period_id', period.id) : { data: [] },
+      // Unfiltered by is_active — an item deactivated mid-period still has real purchase/wastage
+      // history for that period. Used for Top Items by Spend and itemRateMap below so those don't
+      // silently drop/zero-cost that history, unlike the active-only `items` fetch above (which
+      // still correctly limits Variance/Reorder/the item COUNT to currently-active stock items).
+      scopedFrom('items', 'id, name, per_uom_rate').eq('is_sub_recipe', false),
     ])
 
     // recipe_ingredients has no client_id — must be scoped by this client's recipe IDs
     const dashRecipeIds = (recipes || []).map(r => r.id)
-    const { data: recipeIngs } = dashRecipeIds.length
-      ? await supabase.from('recipe_ingredients').select('recipe_id, item_id, qty_per_portion, items(per_uom_rate)').in('recipe_id', dashRecipeIds)
-      : { data: [] }
+    // explodeRecipeIngredients recurses through sub-recipe ingredients and applies yield_pct —
+    // the previous direct recipe_ingredients read (below, now removed) only picked up rows with
+    // a direct item_id, silently dropping any ingredient that was itself a sub-recipe, and the
+    // Menu Health cost map didn't apply yield_pct at all. One call now feeds both theoreticalMap
+    // (item usage) and recipeCostMap (recipe cost) below.
+    const ingredientBreakdown = dashRecipeIds.length > 0 ? await explodeRecipeIngredients(supabase, dashRecipeIds) : {}
+    if (loadIdRef.current !== myId) return // superseded again after these two more awaits
 
     // PATCHED: purchaseTotal = gross − returns
     const grossTotal  = (purchases || []).reduce((s, p) => s + p.qty * p.rate, 0)
     const returnTotal = (returns || []).reduce((s, r) => s + r.qty * r.rate, 0)
     const purchaseTotal = grossTotal - returnTotal
 
-    const soldMap = {}
-    ;(salesData || []).forEach(s => { soldMap[s.recipe_id] = (soldMap[s.recipe_id] || 0) + parseFloat(s.qty_sold) })
-    const revenueTotal = (recipes || []).reduce((s, r) => s + (soldMap[r.id] || 0) * (parseFloat(r.selling_price) || 0), 0)
-
-    const yieldMap = {}
-    ;(items || []).forEach(i => { yieldMap[i.id] = (parseFloat(i.yield_pct) || 100) / 100 })
-
-    const clientRecipeIdSet = new Set((recipes || []).map(r => r.id))
-    const theoreticalMap = {}
-    ;(recipeIngs || []).filter(ri => clientRecipeIdSet.has(ri.recipe_id)).forEach(ri => {
-      if (!ri.item_id) return
-      const sold = soldMap[ri.recipe_id] || 0
-      const yieldFactor = yieldMap[ri.item_id] || 1
-      if (sold > 0) theoreticalMap[ri.item_id] = (theoreticalMap[ri.item_id] || 0) + sold * parseFloat(ri.qty_per_portion) / yieldFactor
+    const currentPriceMap = {}
+    ;(recipes || []).forEach(r => { currentPriceMap[r.id] = parseFloat(r.selling_price) || 0 })
+    // unit_price captured on the row (price actually charged) used per-row when present, else
+    // falls back to the recipe's current price — previously always used the current price, so
+    // this period's revenue silently reflected today's menu price rather than what was charged.
+    const soldMap = {}, revenueMap = {}
+    ;(salesData || []).forEach(s => {
+      const qty = parseFloat(s.qty_sold)
+      const price = s.unit_price != null ? parseFloat(s.unit_price) : (currentPriceMap[s.recipe_id] || 0)
+      soldMap[s.recipe_id] = (soldMap[s.recipe_id] || 0) + qty
+      revenueMap[s.recipe_id] = (revenueMap[s.recipe_id] || 0) + qty * price
     })
+    const revenueTotal = Object.values(revenueMap).reduce((s, v) => s + v, 0)
+
+    // theoreticalMap: item-level usage this period. ingredientBreakdown rows are already
+    // recursed through sub-recipe nesting and yield_pct-adjusted per one portion — just scale by
+    // how many portions actually sold.
+    const theoreticalMap = {}
+    Object.entries(ingredientBreakdown).forEach(([recipeId, rows]) => {
+      const sold = soldMap[recipeId] || 0
+      if (sold <= 0) return
+      rows.forEach(({ item_id, qty }) => { theoreticalMap[item_id] = (theoreticalMap[item_id] || 0) + sold * qty })
+    })
+
+    // itemRateMap built from allItems (unfiltered by is_active) — an item deactivated mid-period
+    // still has real wastage/recipe-cost history for that period; it shouldn't zero-cost to 0.
+    const itemRateMap = {}; (allItems || []).forEach(i => { itemRateMap[i.id] = parseFloat(i.per_uom_rate || 0) })
 
     // Menu Health — dishes priced below their target FC% (mirrors the Menu Repricing report).
-    const recipeCostMap = {}
-    ;(recipeIngs || []).filter(ri => clientRecipeIdSet.has(ri.recipe_id)).forEach(ri => {
-      const c = parseFloat(ri.qty_per_portion || 0) * parseFloat(ri.items?.per_uom_rate || 0)
-      recipeCostMap[ri.recipe_id] = (recipeCostMap[ri.recipe_id] || 0) + c
-    })
+    // Gated on canMenuReprice (Growth+) — this used to compute unconditionally and stash the
+    // result in `stats`/component state regardless of plan, so a Starter client's browser held
+    // the real Growth-tier Menu Health numbers even though only the UpsellCard was rendered; the
+    // gate was render-only, not a data gate. Same issue for Variance (below) and Reorder (below).
     let underpricedCount = 0, costedPricedCount = 0, menuOpportunityTotal = 0
-    ;(recipes || []).forEach(r => {
-      const price = parseFloat(r.selling_price) || 0
-      if (r.category === 'Sub-Recipe' || r.is_active === false || price <= 0) return
-      costedPricedCount++
-      const cost = recipeCostMap[r.id] || 0
-      const targetPct = parseFloat(r.target_fc_pct) || 30
-      const currentFcPct = (cost / price) * 100
-      if (currentFcPct > targetPct) {
-        underpricedCount++
-        const suggestedExVat = targetPct > 0 ? cost / (targetPct / 100) : 0
-        menuOpportunityTotal += Math.max(0, suggestedExVat - price) * (soldMap[r.id] || 0)
-      }
-    })
+    if (canMenuReprice) {
+      // Previously read only direct item_id ingredients with no yield_pct division at all — any
+      // dish built on a sub-recipe (sauces, batters, prepped components) was costed at zero here,
+      // and every dish understated cost by ignoring trim/prep loss.
+      const recipeCostMap = {}
+      Object.entries(ingredientBreakdown).forEach(([recipeId, rows]) => {
+        recipeCostMap[recipeId] = rows.reduce((s, { item_id, qty }) => s + qty * (itemRateMap[item_id] || 0), 0)
+      })
+      ;(recipes || []).forEach(r => {
+        const price = parseFloat(r.selling_price) || 0
+        if (r.category === 'Sub-Recipe' || r.is_active === false || price <= 0) return
+        costedPricedCount++
+        const cost = recipeCostMap[r.id] || 0
+        const targetPct = parseFloat(r.target_fc_pct) || 30
+        const currentFcPct = (cost / price) * 100
+        if (currentFcPct > targetPct) {
+          underpricedCount++
+          const suggestedExVat = targetPct > 0 ? cost / (targetPct / 100) : 0
+          menuOpportunityTotal += Math.max(0, suggestedExVat - price) * (soldMap[r.id] || 0)
+        }
+      })
+    }
 
     // PATCHED: purchMap net of returns
     const purchMap = {}
@@ -161,15 +202,20 @@ export default function ClientDashboard() {
     const closeMap = {}; (closing || []).forEach(r => { closeMap[r.item_id] = parseFloat(r.physical_qty) })
     const parMap = {}; (parLevels || []).forEach(p => { parMap[p.item_id] = parseFloat(p.par_qty) || 0 })
 
-    // Variance top 5
-    const varRows = (items || []).map(item => {
-      const actual = (openMap[item.id] || 0) + (purchMap[item.id] || 0) - (closeMap[item.id] || 0)
-      const theoretical = theoreticalMap[item.id] || 0
-      const variance = actual - theoretical
-      const value = variance * parseFloat(item.per_uom_rate || 0)
-      return { name: item.name, variance, value, uom: item.uom, category: item.categories?.name }
-    }).filter(r => r.value > 0).sort((a, b) => b.value - a.value).slice(0, 5)
-    setTopVariance(varRows)
+    // Variance top 5 — gated on canVariance (Growth+); see Menu Health comment above for why
+    // this needs a data gate, not just a render gate.
+    if (canVariance) {
+      const varRows = (items || []).map(item => {
+        const actual = (openMap[item.id] || 0) + (purchMap[item.id] || 0) - (closeMap[item.id] || 0)
+        const theoretical = theoreticalMap[item.id] || 0
+        const variance = actual - theoretical
+        const value = variance * parseFloat(item.per_uom_rate || 0)
+        return { name: item.name, variance, value, uom: item.uom, category: item.categories?.name }
+      }).filter(r => r.value > 0).sort((a, b) => b.value - a.value).slice(0, 5)
+      setTopVariance(varRows)
+    } else {
+      setTopVariance([])
+    }
 
     // Category spend (net)
     const itemMap = {}; (items || []).forEach(i => { itemMap[i.id] = i })
@@ -199,12 +245,14 @@ export default function ClientDashboard() {
     // Daily sales revenue — ONLY from day-attributed entries (bs_day > 0). Bulk monthly entries
     // (bs_day = 0) have no daily breakdown and are skipped. This map is the single source the chart
     // reads; when the POS ships it can feed this same shape (day → revenue) with no chart change.
-    const priceMap = {}; (recipes || []).forEach(r => { priceMap[r.id] = parseFloat(r.selling_price) || 0 })
+    // unit_price captured on the row used per-row when present, else falls back to the recipe's
+    // current price (see revenueTotal above for why).
     const daySalesMap = {}
     ;(salesData || []).forEach(s => {
       const d = parseInt(s.bs_day)
       if (!d || d <= 0) return
-      daySalesMap[d] = (daySalesMap[d] || 0) + parseFloat(s.qty_sold || 0) * (priceMap[s.recipe_id] || 0)
+      const price = s.unit_price != null ? parseFloat(s.unit_price) : (currentPriceMap[s.recipe_id] || 0)
+      daySalesMap[d] = (daySalesMap[d] || 0) + parseFloat(s.qty_sold || 0) * price
     })
     Object.keys(daySalesMap).forEach(d => { daySalesMap[d] = Math.round(daySalesMap[d]) }) // whole NPR (no ugly decimals)
     const salesDayNums = Object.keys(daySalesMap).map(Number).sort((a, b) => a - b)
@@ -261,8 +309,11 @@ export default function ClientDashboard() {
     }
     setDailyTrend(trend)
 
-    // Top items by net spend
-    const itemSpendRows = (items || [])
+    // Top items by net spend — built from allItems (unfiltered by is_active), not the
+    // active-only `items` list, so an item deactivated mid-period after being purchased still
+    // shows up here instead of silently vanishing while "Net Purchases" and "Spend by Category"
+    // on the same screen still include its value.
+    const itemSpendRows = (allItems || [])
       .filter(i => (purchValueMap[i.id] || 0) > 0)
       .map(i => ({
         name: i.name.length > 18 ? i.name.slice(0, 17) + '…' : i.name,
@@ -273,43 +324,52 @@ export default function ClientDashboard() {
       .slice(0, 10)
     setTopItemSpend(itemSpendRows)
 
-    // Reorder — use net purchMap for theoretical stock
-    const reorderRows = (items || [])
-      .filter(i => parMap[i.id] > 0)
-      .map(i => {
-        const hasPhysical = closeMap[i.id] !== undefined
-        const currentStock = hasPhysical
-          ? closeMap[i.id]
-          : Math.max(0, (openMap[i.id] || 0) + (purchMap[i.id] || 0) - (theoreticalMap[i.id] || 0))
-        const par = parMap[i.id]
-        const shortfall = par - currentStock
-        const estValue = shortfall > 0 ? shortfall * parseFloat(i.per_uom_rate || 0) : 0
-        return {
-          name: i.name, uom: i.uom, currentStock: Math.round(currentStock * 100) / 100,
-          par, shortfall: Math.round(shortfall * 100) / 100,
-          estValue: Math.round(estValue), needsReorder: shortfall > 0,
-          source: hasPhysical ? 'Physical' : "Calc'd"
-        }
-      })
-      .filter(r => r.needsReorder)
-      .sort((a, b) => b.estValue - a.estValue)
-      .slice(0, 8)
-    setReorderItems(reorderRows)
+    // Reorder — use net purchMap for theoretical stock. Gated on canReorder (Growth+); see Menu
+    // Health comment above for why this needs a data gate, not just a render gate.
+    if (canReorder) {
+      const reorderRows = (items || [])
+        .filter(i => parMap[i.id] > 0)
+        .map(i => {
+          const hasPhysical = closeMap[i.id] !== undefined
+          // `|| 0` guard: a closing_stock row can exist with a NULL physical_qty (a partial count
+          // save), which parses to NaN. Without the guard, NaN !== undefined so hasPhysical was
+          // still true, and NaN downstream (shortfall, needsReorder = NaN > 0 = false) silently
+          // dropped the item from the list entirely instead of flagging it — even if critically low.
+          const currentStock = hasPhysical
+            ? (closeMap[i.id] || 0)
+            : Math.max(0, (openMap[i.id] || 0) + (purchMap[i.id] || 0) - (theoreticalMap[i.id] || 0))
+          const par = parMap[i.id]
+          const shortfall = par - currentStock
+          const estValue = shortfall > 0 ? shortfall * parseFloat(i.per_uom_rate || 0) : 0
+          return {
+            name: i.name, uom: i.uom, currentStock: Math.round(currentStock * 100) / 100,
+            par, shortfall: Math.round(shortfall * 100) / 100,
+            estValue: Math.round(estValue), needsReorder: shortfall > 0,
+            source: hasPhysical ? 'Physical' : "Calc'd"
+          }
+        })
+        .filter(r => r.needsReorder)
+        .sort((a, b) => b.estValue - a.estValue)
+        .slice(0, 8)
+      setReorderItems(reorderRows)
+    } else {
+      setReorderItems([])
+    }
 
     const overheadTotal = (overheadsData || []).reduce((s, o) => s + parseFloat(o.amount || 0), 0)
 
-    const itemRateMap = {}
-    ;(items || []).forEach(i => { itemRateMap[i.id] = parseFloat(i.per_uom_rate || 0) })
+    // itemRateMap already built above (for recipeCostMap) — same items(id, per_uom_rate) shape.
     const wastageValueTotal = (wastagesData || []).reduce((s, w) => s + parseFloat(w.qty || 0) * (itemRateMap[w.item_id] || 0), 0)
 
     setStats({ itemCount, vendorCount, recipeCount, subRecipeCount, purchaseTotal, revenueTotal, overheadTotal, wastageValueTotal, underpricedCount, costedPricedCount, menuOpportunityTotal })
     setLoading(false)
     const fcPctNow = revenueTotal > 0 ? (purchaseTotal / revenueTotal) * 100 : null
-    loadFcTrend(period, fcPctNow)
+    loadFcTrend(period, fcPctNow, myId)
   }
 
-  async function loadHrStats() {
+  async function loadHrStats(myId) {
     const { data: employees } = await scopedFrom('hr_employees', 'status, basic_salary')
+    if (loadIdRef.current !== myId) return // superseded by a newer client switch
     const total     = employees?.length || 0
     const active    = employees?.filter(e => e.status === 'active').length || 0
     const probation = employees?.filter(e => e.status === 'probation').length || 0
@@ -325,7 +385,20 @@ export default function ClientDashboard() {
   // computeOrderAmounts) computed and stored at close time, so this reads it directly rather than
   // re-deriving VAT from pos_order_items — same shortcut Sales/Covers Report don't take only
   // because they need a per-category/per-item breakdown; a dashboard tile doesn't.
-  async function loadPosStats() {
+  // bsToAd builds a Date from local Y/M/D components with no timezone conversion, so its local
+  // getters always reproduce the same Nepal calendar day the caller asked for regardless of the
+  // runtime's own timezone. But calling .toISOString() on it converts using the RUNTIME's local
+  // offset, not Nepal's fixed +05:45 — for a viewer (e.g. an admin) outside Nepal, that silently
+  // shifts the day boundary compared against `closed_at` (a genuine UTC timestamptz), mis-
+  // bucketing orders near the start/end of the month. Build the boundary explicitly with Nepal's
+  // own offset instead of trusting the runtime's.
+  function bsDayBoundaryIso(bsYear, bsMonth, bsDay, endOfDay) {
+    const d = bsToAd(bsYear, bsMonth, bsDay)
+    const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), dd = String(d.getDate()).padStart(2, '0')
+    return endOfDay ? `${y}-${m}-${dd}T23:59:59.999+05:45` : `${y}-${m}-${dd}T00:00:00.000+05:45`
+  }
+
+  async function loadPosStats(myId) {
     const { data: period } = await scopedFrom('monthly_periods')
       .eq('status', 'open')
       .order('bs_year', { ascending: false }).order('bs_month', { ascending: false })
@@ -333,13 +406,12 @@ export default function ClientDashboard() {
 
     let orders = []
     if (period) {
-      const fromTs = bsToAd(period.bs_year, period.bs_month, 1).toISOString()
+      const fromTs = bsDayBoundaryIso(period.bs_year, period.bs_month, 1, false)
       const lastDay = daysInBsMonth(period.bs_year, period.bs_month)
-      const toDate = bsToAd(period.bs_year, period.bs_month, lastDay)
-      toDate.setHours(23, 59, 59, 999)
+      const toTs = bsDayBoundaryIso(period.bs_year, period.bs_month, lastDay, true)
       const { data } = await scopedFrom('pos_orders', 'id, covers, paid_amount, credit_note_id, close_type, closed_at')
         .eq('close_type', 'paid')
-        .gte('closed_at', fromTs).lte('closed_at', toDate.toISOString())
+        .gte('closed_at', fromTs).lte('closed_at', toTs)
       // Same exclusion as Sales/Covers Report — a since-Credit-Noted bill's revenue correction
       // posts on the day the Credit Note is issued, not retroactively here.
       orders = (data || []).filter(o => !o.credit_note_id)
@@ -351,6 +423,7 @@ export default function ClientDashboard() {
     const avgCheck      = billCount > 0 ? revenueTotal / billCount : 0
 
     const { data: tables } = await scopedFrom('pos_tables', 'status').neq('status', 'inactive')
+    if (loadIdRef.current !== myId) return // superseded by a newer client switch
     const tablesOccupied = (tables || []).filter(t => t.status === 'occupied').length
     const tablesTotal    = (tables || []).length
 
@@ -358,7 +431,8 @@ export default function ClientDashboard() {
   }
 
   async function closeAndAdvancePeriod() {
-    if (!activePeriod || !effectiveClientId) return
+    if (!activePeriod || !effectiveClientId || advancingPeriod) return
+    setAdvancingPeriod(true)
     const nextMonth = activePeriod.bs_month === 12 ? 1 : activePeriod.bs_month + 1
     const nextYear  = activePeriod.bs_month === 12 ? activePeriod.bs_year + 1 : activePeriod.bs_year
     await scopedUpdate('monthly_periods', { status: 'closed' }).eq('id', activePeriod.id)
@@ -367,10 +441,11 @@ export default function ClientDashboard() {
       bs_month: nextMonth,
       status: 'open'
     })
-    loadStats()
+    setAdvancingPeriod(false)
+    loadStats(loadIdRef.current)
   }
 
-  async function loadFcTrend(currentPeriod, currentFcPct) {
+  async function loadFcTrend(currentPeriod, currentFcPct, myId) {
     const { data: closedPeriods } = await scopedFrom('monthly_periods', 'id, bs_year, bs_month')
       .eq('status', 'closed')
       .order('bs_year', { ascending: false })
@@ -384,9 +459,10 @@ export default function ClientDashboard() {
       periodIds.length ? supabase.from('purchase_entries').select('period_id, qty, rate').in('period_id', periodIds) : { data: [] },
       periodIds.length ? supabase.from('vendor_returns').select('period_id, qty, rate').in('period_id', periodIds)   : { data: [] },
       // Revenue excludes comps (source='pos_comp') — a comped dish was never paid for.
-      periodIds.length ? supabase.from('sales_entries').select('period_id, recipe_id, qty_sold').in('period_id', periodIds).neq('source', 'pos_comp') : { data: [] },
+      periodIds.length ? supabase.from('sales_entries').select('period_id, recipe_id, qty_sold, unit_price').in('period_id', periodIds).neq('source', 'pos_comp') : { data: [] },
       scopedFrom('recipes', 'id, selling_price'),
     ])
+    if (loadIdRef.current !== myId) return // superseded by a newer client switch
 
     const priceMap = {}
     ;(recipeData || []).forEach(r => { priceMap[r.id] = parseFloat(r.selling_price || 0) })
@@ -395,7 +471,14 @@ export default function ClientDashboard() {
       const gross = (allPurch || []).filter(e => e.period_id === p.id).reduce((s, e) => s + parseFloat(e.qty) * parseFloat(e.rate), 0)
       const ret   = (allRet   || []).filter(e => e.period_id === p.id).reduce((s, e) => s + parseFloat(e.qty) * parseFloat(e.rate), 0)
       const net   = gross - ret
-      const rev   = (allSales || []).filter(e => e.period_id === p.id).reduce((s, e) => s + parseFloat(e.qty_sold) * (priceMap[e.recipe_id] || 0), 0)
+      // unit_price captured on the row when present, else falls back to the recipe's current
+      // price — this 11-month trend is exactly where always using today's price hurt most,
+      // since a single menu price change would retroactively distort every past month's Food
+      // Cost % line on the chart.
+      const rev   = (allSales || []).filter(e => e.period_id === p.id).reduce((s, e) => {
+        const price = e.unit_price != null ? parseFloat(e.unit_price) : (priceMap[e.recipe_id] || 0)
+        return s + parseFloat(e.qty_sold) * price
+      }, 0)
       const fc    = rev > 0 ? parseFloat(((net / rev) * 100).toFixed(1)) : null
       return { label: `${BS_MONTHS[p.bs_month - 1].slice(0, 3)} ${p.bs_year}`, fc, purchases: Math.round(net), revenue: Math.round(rev), open: false }
     }).reverse()
@@ -425,12 +508,23 @@ export default function ClientDashboard() {
     ? ((stats.revenueTotal - stats.purchaseTotal - (stats.overheadTotal || 0)) / stats.revenueTotal) * 100
     : null
 
-  // Shared mini card style
+  // Shared mini card style + a11y — returns a spreadable props object so every KPI card gets
+  // keyboard support (role/tabIndex/onKeyDown) and a visible focus ring for free, instead of each
+  // clickable div being mouse-only. Non-interactive cards (onClick == null) get style only.
   const kpiCard = (onClick) => ({
-    background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 'var(--radius-lg)',
-    boxShadow: 'var(--theme-card-shadow)',
-    padding: '10px 14px', cursor: onClick ? 'pointer' : 'default',
-    transition: 'border-color 0.15s'
+    style: {
+      background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 'var(--radius-lg)',
+      boxShadow: 'var(--theme-card-shadow)',
+      padding: '10px 14px', cursor: onClick ? 'pointer' : 'default',
+      transition: 'border-color 0.15s'
+    },
+    ...(onClick ? {
+      onClick,
+      role: 'button',
+      tabIndex: 0,
+      className: 'interactive-card',
+      onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }
+    } : {})
   })
   // Shared KPI text styles — single source of truth for label/value/subtext sizing across every
   // KPI grid section (IMS Row 1/2, HR, POS), so a future re-tune is a 3-line edit, not a sweep of
@@ -463,18 +557,26 @@ export default function ClientDashboard() {
 
   // Compact upsell card for a locked feature → links to /pricing. Only render when the
   // feature is locked; an admin grant flips hasFeature(...) → real KPI shows instead.
+  // Uses var(--theme-purple) (the rationed 4th-color token) instead of a hardcoded indigo —
+  // the old #818cf8/rgba(129,140,248,*) literal was unconditional across all 10 theme presets
+  // (unlike kpiIcon's bright-only hues above) and an unaudited contrast risk on light presets.
   const UpsellCard = ({ label, tier, blurb }) => (
     <div
       onClick={() => navigate('/pricing')}
+      role="button"
+      tabIndex={0}
+      className="interactive-card"
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/pricing') } }}
       style={{
-        background: 'rgba(129,140,248,0.05)', border: '1px dashed rgba(129,140,248,0.4)',
+        background: 'color-mix(in srgb, var(--theme-purple) 8%, transparent)',
+        border: '1px dashed color-mix(in srgb, var(--theme-purple) 40%, transparent)',
         borderRadius: 'var(--radius-lg)', padding: '10px 14px', cursor: 'pointer', transition: 'border-color 0.15s'
       }}
     >
       <div style={{ ...kpiLabelStyle, marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
         <span>{label}</span><span>🔒</span>
       </div>
-      <div style={{ fontSize: 15, fontWeight: 700, color: '#818cf8', lineHeight: 1.2 }}>Unlock with {tier}</div>
+      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--theme-purple)', lineHeight: 1.2 }}>Unlock with {tier}</div>
       <div style={kpiSubtextStyle}>{blurb} · View plans →</div>
     </div>
   )
@@ -529,7 +631,11 @@ export default function ClientDashboard() {
       })()}
 
       {clientModules.ims && !activePeriod && !loading && (
-        <div className="card" style={{ marginBottom: 20, cursor: 'pointer', borderColor: 'rgba(201,168,76,0.3)' }} onClick={() => navigate('/periods')}>
+        <div
+          className="card interactive-card" style={{ marginBottom: 20, cursor: 'pointer', borderColor: 'rgba(201,168,76,0.3)' }}
+          onClick={() => navigate('/periods')} role="button" tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/periods') } }}
+        >
           <p style={{ color: 'var(--theme-accent)', margin: 0, fontSize: 14 }}>⚠ No open period. Click here to create one in Periods →</p>
         </div>
       )}
@@ -562,14 +668,15 @@ export default function ClientDashboard() {
             ) : (
               <button
                 onClick={closeAndAdvancePeriod}
+                disabled={advancingPeriod}
                 style={{
                   flexShrink: 0, background: 'rgba(251,191,36,0.12)',
                   border: '1px solid rgba(251,191,36,0.4)', color: 'var(--theme-amber)',
-                  borderRadius: 6, padding: '8px 18px', cursor: 'pointer',
-                  fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap'
+                  borderRadius: 6, padding: '8px 18px', cursor: advancingPeriod ? 'default' : 'pointer',
+                  fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', opacity: advancingPeriod ? 0.6 : 1
                 }}
               >
-                End {BS_MONTHS[activePeriod.bs_month - 1]} & Start {BS_MONTHS[nextAdvMonth - 1]} →
+                {advancingPeriod ? 'Closing…' : `End ${BS_MONTHS[activePeriod.bs_month - 1]} & Start ${BS_MONTHS[nextAdvMonth - 1]} →`}
               </button>
             )}
           </div>
@@ -590,7 +697,7 @@ export default function ClientDashboard() {
       {showIms && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 14 }}>
 
         {/* Net Purchases */}
-        <div style={kpiCard(() => navigate('/purchases'))} onClick={() => navigate('/purchases')}>
+        <div {...kpiCard(() => navigate('/purchases'))}>
           {kpiIcon('↓', 'blue')}
           <div style={kpiLabelStyle}>Net Purchases</div>
           <div style={{ ...kpiValueStyle(18), color: 'var(--theme-accent)' }}>
@@ -601,7 +708,7 @@ export default function ClientDashboard() {
 
         {/* Revenue */}
         {canSales ? (
-          <div style={kpiCard(() => navigate('/sales'))} onClick={() => navigate('/sales')}>
+          <div {...kpiCard(() => navigate('/sales'))}>
             {kpiIcon('↑', 'green')}
             <div style={kpiLabelStyle}>Revenue</div>
             <div style={{ ...kpiValueStyle(18), color: 'var(--theme-green)' }}>
@@ -613,7 +720,7 @@ export default function ClientDashboard() {
 
         {/* Food Cost % — computable from purchases ÷ revenue, so any sales client sees it */}
         {canSales ? (
-          <div style={kpiCard(() => navigate(canVariance ? '/variance' : '/summary'))} onClick={() => navigate(canVariance ? '/variance' : '/summary')}>
+          <div {...kpiCard(() => navigate(canVariance ? '/variance' : '/summary'))}>
             {kpiIcon('◈', 'amber')}
             <div style={kpiLabelStyle}>
               <Tip text="Net purchases ÷ revenue × 100. Shows what portion of sales goes to ingredient cost. Healthy range: 28–35% for Nepal F&B." width={240}>Food Cost %</Tip>
@@ -632,7 +739,7 @@ export default function ClientDashboard() {
 
         {/* Fixed Costs % (Pro — needs overhead data) */}
         {canOverheads ? (
-          <div style={kpiCard(() => navigate('/overheads'))} onClick={() => navigate('/overheads')}>
+          <div {...kpiCard(() => navigate('/overheads'))}>
             {kpiIcon('₿', 'blue')}
             <div style={kpiLabelStyle}>
               <Tip text="All fixed costs (rent, utilities, labor, tax & fees) as a % of revenue. Target: under 60% combined. See Overheads page for the full breakdown." width={250}>Fixed Costs % of Revenue</Tip>
@@ -653,7 +760,7 @@ export default function ClientDashboard() {
 
         {/* Est. Net Margin % (Pro — only meaningful with overhead data) */}
         {canOverheads && (
-          <div style={kpiCard(null)}>
+          <div {...kpiCard(null)}>
             {kpiIcon('◎', 'green')}
             <div style={kpiLabelStyle}>
               <Tip text="Revenue minus food cost and overheads, as a % of revenue. This is what the business keeps after ingredient and fixed costs. Healthy Nepal F&B target: ≥20%." width={260}>Est. Net Margin %</Tip>
@@ -672,7 +779,7 @@ export default function ClientDashboard() {
       {/* ── IMS Row 2 + Charts ── */}
       {showIms && <><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 14 }}>
 
-        <div style={kpiCard(null)}>
+        <div {...kpiCard(null)}>
           <div style={kpiLabelStyle}>Active Period</div>
           <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--theme-text1)' }}>{loading ? '—' : periodLabel}</div>
           <div style={{ ...kpiSubtextStyle, color: activePeriod ? 'var(--theme-green)' : 'var(--theme-red)' }}>
@@ -680,20 +787,20 @@ export default function ClientDashboard() {
           </div>
         </div>
 
-        <div style={kpiCard(() => navigate('/items'))} onClick={() => navigate('/items')}>
+        <div {...kpiCard(() => navigate('/items'))}>
           <div style={kpiLabelStyle}>Items in Master</div>
           <div style={kpiValueStyle(18)}>{loading ? '—' : stats?.itemCount}</div>
           <div style={kpiSubtextStyle}>Active ingredients →</div>
         </div>
 
-        <div style={kpiCard(() => navigate('/vendors'))} onClick={() => navigate('/vendors')}>
+        <div {...kpiCard(() => navigate('/vendors'))}>
           <div style={kpiLabelStyle}>Vendors</div>
           <div style={kpiValueStyle(18)}>{loading ? '—' : stats?.vendorCount}</div>
           <div style={kpiSubtextStyle}>Active suppliers →</div>
         </div>
 
         {canRecipes ? (
-          <div style={kpiCard(() => navigate('/recipes'))} onClick={() => navigate('/recipes')}>
+          <div {...kpiCard(() => navigate('/recipes'))}>
             <div style={kpiLabelStyle}>Costed Recipes</div>
             <div style={kpiValueStyle(18)}>{loading ? '—' : stats?.recipeCount}</div>
             <div style={kpiSubtextStyle}>
@@ -705,7 +812,7 @@ export default function ClientDashboard() {
         )}
 
         {canMenuReprice ? (
-          <div style={kpiCard(() => navigate('/menu-repricing'))} onClick={() => navigate('/menu-repricing')}>
+          <div {...kpiCard(() => navigate('/menu-repricing'))}>
             <div style={kpiLabelStyle}>
               <Tip text="Dishes whose current food-cost % is above their target — priced too low to hit the margin you set. Open the Menu Repricing report for the prices to charge." width={300}>Menu Health</Tip>
             </div>
@@ -723,7 +830,7 @@ export default function ClientDashboard() {
           <UpsellCard label="Menu Health" tier="Growth" blurb="Spot underpriced dishes & lost margin" />
         )}
 
-        <div style={kpiCard(() => navigate('/wastage-report'))} onClick={() => navigate('/wastage-report')}>
+        <div {...kpiCard(() => navigate('/wastage-report'))}>
           <div style={kpiLabelStyle}>
             <Tip text="Total NPR value of wastage recorded this period — qty wasted × unit rate per item." width={220}>Wastage Value</Tip>
           </div>
@@ -971,7 +1078,10 @@ export default function ClientDashboard() {
                 {reorderItems.length === 0 ? (
                   <p style={{ color: 'var(--theme-text3)', fontSize: 12, margin: '16px 0' }}>
                     No items below par.{' '}
-                    <span style={{ color: 'var(--theme-accent)', cursor: 'pointer' }} onClick={() => navigate('/reorder')}>Set par levels →</span>
+                    <button
+                      onClick={() => navigate('/reorder')} className="interactive-card"
+                      style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--theme-accent)', cursor: 'pointer' }}
+                    >Set par levels →</button>
                   </p>
                 ) : (
                   <div>
@@ -1001,19 +1111,19 @@ export default function ClientDashboard() {
         <div style={{ marginBottom: 14, marginTop: showIms ? 6 : 0 }}>
           {moduleHeader('Human Resources')}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
-            <div style={kpiCard(() => navigate('/hr/employees'))} onClick={() => navigate('/hr/employees')}>
+            <div {...kpiCard(() => navigate('/hr/employees'))}>
               <div style={kpiLabelStyle}>Total Employees</div>
               <div style={{ ...kpiValueStyle(22, 800), color: 'var(--theme-text1)' }}>{hrStats.total}</div>
               <div style={kpiSubtextStyle}>All statuses →</div>
             </div>
-            <div style={kpiCard(() => navigate('/hr/employees'))} onClick={() => navigate('/hr/employees')}>
+            <div {...kpiCard(() => navigate('/hr/employees'))}>
               <div style={kpiLabelStyle}>Active</div>
               <div style={{ ...kpiValueStyle(22, 800), color: 'var(--theme-green)' }}>{hrStats.active}</div>
               {hrStats.probation > 0 && (
                 <div style={{ ...kpiSubtextStyle, color: 'var(--theme-accent)' }}>{hrStats.probation} on probation</div>
               )}
             </div>
-            <div style={kpiCard(null)}>
+            <div {...kpiCard(null)}>
               <div style={kpiLabelStyle}>
                 <Tip text="Sum of basic salary for active and probation employees. Full payroll with allowances, SSF and TDS is computed during payroll run." width={260}>Basic Payroll / Month</Tip>
               </div>
@@ -1038,14 +1148,14 @@ export default function ClientDashboard() {
         <div style={{ marginBottom: 14, marginTop: (showIms || showHr) ? 6 : 0 }}>
           {moduleHeader('Point of Sale')}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
-            <div style={kpiCard(() => navigate('/pos/sales-report'))} onClick={() => navigate('/pos/sales-report')}>
+            <div {...kpiCard(() => navigate('/pos/sales-report'))}>
               <div style={kpiLabelStyle}>Revenue</div>
               <div style={{ ...kpiValueStyle(18), color: 'var(--theme-green)' }}>
                 {!posStats ? '—' : `NPR ${Math.round(posStats.revenueTotal).toLocaleString('en-NP')}`}
               </div>
               <div style={kpiSubtextStyle}>{periodLabel} · billed →</div>
             </div>
-            <div style={kpiCard(() => navigate('/pos/covers-report'))} onClick={() => navigate('/pos/covers-report')}>
+            <div {...kpiCard(() => navigate('/pos/covers-report'))}>
               <div style={kpiLabelStyle}>
                 <Tip text="Total covers (guests) served across all billed orders this period." width={220}>Covers Served</Tip>
               </div>
@@ -1054,14 +1164,14 @@ export default function ClientDashboard() {
               </div>
               <div style={kpiSubtextStyle}>{!posStats ? '' : `${posStats.billCount} bill${posStats.billCount === 1 ? '' : 's'}`} →</div>
             </div>
-            <div style={kpiCard(null)}>
+            <div {...kpiCard(null)}>
               <div style={kpiLabelStyle}>Avg Check</div>
               <div style={kpiValueStyle(18)}>
                 {!posStats ? '—' : `NPR ${Math.round(posStats.avgCheck).toLocaleString('en-NP')}`}
               </div>
               <div style={kpiSubtextStyle}>Revenue ÷ bills</div>
             </div>
-            <div style={kpiCard(() => navigate('/pos/tables'))} onClick={() => navigate('/pos/tables')}>
+            <div {...kpiCard(() => navigate('/pos/tables'))}>
               <div style={kpiLabelStyle}>Tables Occupied</div>
               <div style={{ ...kpiValueStyle(18), color: posStats?.tablesOccupied > 0 ? 'var(--theme-accent)' : 'var(--theme-text1)' }}>
                 {!posStats ? '—' : `${posStats.tablesOccupied} / ${posStats.tablesTotal}`}

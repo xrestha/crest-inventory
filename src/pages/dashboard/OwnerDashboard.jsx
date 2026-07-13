@@ -10,6 +10,7 @@ import { calcAmount, hourlyRateOf } from '../../modules/hr/payroll/payrollComput
 import {
   SSF_CAP, SSF_EMPLOYER_PCT, OT_MULTIPLIER, OT_HOLIDAY_MULTIPLIER, STANDARD_HOURS_PER_DAY,
 } from '../../modules/hr/payrollConstants'
+import { explodeRecipeIngredients } from '../../utils/recipeCost'
 
 // Owner Dashboard — Phase 1 (Crest IMS + Crest HR only; POS revenue integration is Phase 2).
 // Every figure is Month-to-Date against the client's single currently-open monthly_periods row —
@@ -58,7 +59,7 @@ export default function OwnerDashboard() {
     const [{ data: purchases }, { data: returns }, { data: salesData }, { data: recipes }, { data: overheadsData }, { data: wastagesData }, { data: items }] = await Promise.all([
       period ? supabase.from('purchase_entries').select('item_id, qty, rate, payment_method').eq('period_id', period.id) : { data: [] },
       period ? supabase.from('vendor_returns').select('item_id, qty, rate').eq('period_id', period.id) : { data: [] },
-      period ? supabase.from('sales_entries').select('recipe_id, qty_sold').eq('period_id', period.id).neq('source', 'pos_comp') : { data: [] },
+      period ? supabase.from('sales_entries').select('recipe_id, qty_sold, unit_price').eq('period_id', period.id).neq('source', 'pos_comp') : { data: [] },
       scopedFrom('recipes', 'id, selling_price'),
       period ? supabase.from('overheads').select('amount').eq('period_id', period.id) : { data: [] },
       period ? supabase.from('wastages').select('item_id, qty').eq('period_id', period.id) : { data: [] },
@@ -69,8 +70,14 @@ export default function OwnerDashboard() {
     const returnTotal = (returns   || []).reduce((s, r) => s + parseFloat(r.qty || 0) * parseFloat(r.rate || 0), 0)
     const purchaseTotal = grossTotal - returnTotal
 
+    // unit_price captured on the row (price actually charged) used per-row when present, else
+    // falls back to the recipe's current price — this figure feeds Est. Net Margin, the number
+    // this dashboard exists specifically to make trustworthy enough to act on.
     const priceMap = {}; (recipes || []).forEach(r => { priceMap[r.id] = parseFloat(r.selling_price) || 0 })
-    const revenueTotal = (salesData || []).reduce((s, r) => s + parseFloat(r.qty_sold || 0) * (priceMap[r.recipe_id] || 0), 0)
+    const revenueTotal = (salesData || []).reduce((s, r) => {
+      const price = r.unit_price != null ? parseFloat(r.unit_price) : (priceMap[r.recipe_id] || 0)
+      return s + parseFloat(r.qty_sold || 0) * price
+    }, 0)
 
     const overheadTotal = (overheadsData || []).reduce((s, o) => s + parseFloat(o.amount || 0), 0)
 
@@ -102,18 +109,21 @@ export default function OwnerDashboard() {
     ])
 
     const dashRecipeIds = (recipes || []).map(r => r.id)
-    const { data: recipeIngs } = dashRecipeIds.length
-      ? await supabase.from('recipe_ingredients').select('recipe_id, item_id, qty_per_portion').in('recipe_id', dashRecipeIds)
-      : { data: [] }
+    // explodeRecipeIngredients recurses through sub-recipe ingredients and applies yield_pct —
+    // the previous direct recipe_ingredients read only picked up rows with a direct item_id,
+    // silently dropping any ingredient that was itself a sub-recipe (sauces, batters, prepped
+    // components) from theoretical usage entirely, so a raw item consumed only through one could
+    // show zero usage and never surface as needing reorder even when genuinely out of stock.
+    const ingredientBreakdown = dashRecipeIds.length > 0 ? await explodeRecipeIngredients(supabase, dashRecipeIds) : {}
 
     const soldMap = {}; (sales || []).forEach(s => { soldMap[s.recipe_id] = (soldMap[s.recipe_id] || 0) + parseFloat(s.qty_sold || 0) })
-    const yieldMap = {}; (items || []).forEach(i => { yieldMap[i.id] = (parseFloat(i.yield_pct) || 100) / 100 })
+    // ingredientBreakdown rows are already yield_pct-adjusted per one portion — just scale by how
+    // many portions actually sold.
     const theoreticalMap = {}
-    ;(recipeIngs || []).forEach(ri => {
-      if (!ri.item_id) return
-      const sold = soldMap[ri.recipe_id] || 0
-      const yieldFactor = yieldMap[ri.item_id] || 1
-      if (sold > 0) theoreticalMap[ri.item_id] = (theoreticalMap[ri.item_id] || 0) + sold * parseFloat(ri.qty_per_portion) / yieldFactor
+    Object.entries(ingredientBreakdown).forEach(([recipeId, rows]) => {
+      const sold = soldMap[recipeId] || 0
+      if (sold <= 0) return
+      rows.forEach(({ item_id, qty }) => { theoreticalMap[item_id] = (theoreticalMap[item_id] || 0) + sold * qty })
     })
 
     const purchMap = {}
@@ -159,7 +169,10 @@ export default function OwnerDashboard() {
     let overdueTotal = 0, overdueCount = 0
     rows.forEach(e => {
       const pr = e.monthly_periods
-      const adDate = bsToAd(pr.bs_year, pr.bs_month, e.bs_day || 1)
+      // purchase_entries.bs_day is NOT NULL with a CHECK(bs_day >= 1) at the DB level, so it can
+      // never actually be missing/falsy — no fallback needed (a `|| 1` here would silently bias
+      // every row toward looking more overdue than it is, which was never actually reachable).
+      const adDate = bsToAd(pr.bs_year, pr.bs_month, e.bs_day)
       const daysOld = Math.max(0, Math.floor((today - adDate) / (1000 * 60 * 60 * 24)))
       const value = parseFloat(e.qty || 0) * parseFloat(e.rate || 0)
       const remaining = Math.max(0, value - (paidMap[e.id] || 0))
@@ -182,17 +195,43 @@ export default function OwnerDashboard() {
     const elapsedDays = isCurrentMonth ? Math.min(bsToday.day, monthDays) : monthDays
 
     const [{ data: employees }, { data: components }, { data: otEntries }] = await Promise.all([
-      scopedFrom('hr_employees', 'id, status, basic_salary, pay_basis, ssf_enrolled'),
+      scopedFrom('hr_employees', 'id, status, basic_salary, pay_basis, ssf_enrolled, join_date, end_date'),
       scopedFrom('hr_salary_components', 'employee_id, type, calc_type, value'),
       scopedFrom('hr_overtime_entries', 'employee_id, ot_hours, ot_type, status, bs_year, bs_month')
         .eq('status', 'approved').eq('bs_year', period.bs_year).eq('bs_month', period.bs_month),
     ])
 
-    const active = (employees || []).filter(e => e.status === 'active' || e.status === 'probation')
     const empMap = Object.fromEntries((employees || []).map(e => [e.id, e]))
 
+    // Period boundaries in AD, for comparing against join_date/end_date (both plain AD dates).
+    const periodStartAd = bsToAd(period.bs_year, period.bs_month, 1)
+    const periodElapsedEndAd = bsToAd(period.bs_year, period.bs_month, elapsedDays)
+
+    // Previously counted every active/probation employee for the FULL elapsedDays regardless of
+    // join_date, and dropped a terminated employee from gross entirely (even for days they
+    // genuinely worked this period) while their already-approved OT for the same period still
+    // counted via empMap below — an internally inconsistent labor-cost % on the one dashboard
+    // whose whole purpose is making that number trustworthy. Now prorates by days actually worked
+    // within the elapsed window: a mid-month new hire only accrues from join_date; an employee
+    // deactivated mid-period is included (not just active/probation) IF end_date is actually set
+    // and falls inside this period — the deactivate action only flips status, it doesn't
+    // auto-populate end_date, so a stale/unset end_date must NOT be treated as "worked the
+    // whole period," hence the two-part condition below rather than trusting end_date alone.
     let accruedGross = 0, accruedSsfEmployer = 0
-    active.forEach(emp => {
+    ;(employees || []).forEach(emp => {
+      const isActiveish = emp.status === 'active' || emp.status === 'probation'
+      const endAd = emp.end_date ? new Date(emp.end_date) : null
+      const terminatedThisPeriod = !isActiveish && endAd && endAd >= periodStartAd && endAd <= periodElapsedEndAd
+      if (!isActiveish && !terminatedThisPeriod) return
+
+      const joinAd = emp.join_date ? new Date(emp.join_date) : null
+      if (joinAd && joinAd > periodElapsedEndAd) return // hasn't joined yet as of the elapsed window
+
+      const empStart = joinAd && joinAd > periodStartAd ? joinAd : periodStartAd
+      const empEnd    = endAd && endAd < periodElapsedEndAd ? endAd : periodElapsedEndAd
+      const daysWorked = Math.max(0, Math.floor((empEnd - empStart) / 86400000) + 1)
+      if (daysWorked <= 0) return
+
       const basic = parseFloat(emp.basic_salary) || 0
       const basis = emp.pay_basis || 'monthly'
       const allowances = basis === 'monthly'
@@ -204,10 +243,10 @@ export default function OwnerDashboard() {
         basis === 'hourly' ? basic * STANDARD_HOURS_PER_DAY * monthDays :
         basic + allowances
       const perDay = monthDays > 0 ? monthlyEquivGross / monthDays : 0
-      accruedGross += perDay * elapsedDays
+      accruedGross += perDay * daysWorked
 
       if (emp.ssf_enrolled) {
-        const ssfBase = Math.min(monthlyEquivGross, SSF_CAP) * (monthDays > 0 ? elapsedDays / monthDays : 0)
+        const ssfBase = Math.min(monthlyEquivGross, SSF_CAP) * (monthDays > 0 ? daysWorked / monthDays : 0)
         accruedSsfEmployer += ssfBase * SSF_EMPLOYER_PCT
       }
     })
@@ -238,10 +277,21 @@ export default function OwnerDashboard() {
 
   // Shared mini card style — matches ClientDashboard.jsx's kpiCard() convention exactly (this
   // page does not use stat-grid/badge-* despite those classes existing, same as ClientDashboard).
+  // Returns a spreadable props object (style + role/tabIndex/onKeyDown when clickable) so every
+  // KPI card gets keyboard support and a visible focus ring, matching ClientDashboard.jsx's fix.
   const kpiCard = (onClick) => ({
-    background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 'var(--radius-lg)',
-    boxShadow: 'var(--theme-card-shadow)',
-    padding: '14px 16px', cursor: onClick ? 'pointer' : 'default', transition: 'border-color 0.15s',
+    style: {
+      background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 'var(--radius-lg)',
+      boxShadow: 'var(--theme-card-shadow)',
+      padding: '14px 16px', cursor: onClick ? 'pointer' : 'default', transition: 'border-color 0.15s',
+    },
+    ...(onClick ? {
+      onClick,
+      role: 'button',
+      tabIndex: 0,
+      className: 'interactive-card',
+      onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }
+    } : {})
   })
 
   return (
@@ -255,21 +305,37 @@ export default function OwnerDashboard() {
       </div>
 
       <SuiteGate minTier="growth" featureKey="owner_dashboard">
-        {!activePeriod && !loading && (
-          <div className="card" style={{ marginBottom: 20, cursor: 'pointer', borderColor: 'rgba(201,168,76,0.3)' }} onClick={() => navigate('/periods')}>
+        {/* SuiteGate bypasses everything for admins, but this page's own data load only runs
+            when BOTH clientModules.ims and clientModules.hr are true — a client (or an admin
+            viewing as one) with only one of the two modules enabled otherwise saw every KPI as
+            "—" plus the "No open period" banner below, which was simply wrong: the real cause is
+            the missing module, not a missing period. */}
+        {!(clientModules.ims && clientModules.hr) && !loading && (
+          <div className="card" style={{ marginBottom: 20, borderColor: 'rgba(217,119,6,0.15)', background: 'rgba(217,119,6,0.05)' }}>
+            <p style={{ color: 'var(--theme-amber)', margin: 0, fontSize: 14 }}>
+              ⚠ Owner Dashboard needs both Crest IMS and Crest HR enabled — this property has {clientModules.ims ? 'only IMS' : clientModules.hr ? 'only HR' : 'neither'}.
+            </p>
+          </div>
+        )}
+        {clientModules.ims && clientModules.hr && !activePeriod && !loading && (
+          <div
+            className="card interactive-card" style={{ marginBottom: 20, cursor: 'pointer', borderColor: 'rgba(201,168,76,0.3)' }}
+            onClick={() => navigate('/periods')} role="button" tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/periods') } }}
+          >
             <p style={{ color: 'var(--theme-accent)', margin: 0, fontSize: 14 }}>⚠ No open period. Click here to create one in Periods →</p>
           </div>
         )}
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 14 }}>
 
-          <div style={kpiCard(() => navigate('/sales'))} onClick={() => navigate('/sales')}>
+          <div {...kpiCard(() => navigate('/sales'))}>
             <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Revenue (MTD)</div>
             <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--theme-green)', lineHeight: 1.1 }}>{loading ? '—' : fmt(revenueTotal)}</div>
             <div style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 5 }}>From sales entries →</div>
           </div>
 
-          <div style={kpiCard(() => navigate('/variance'))} onClick={() => navigate('/variance')}>
+          <div {...kpiCard(() => navigate('/variance'))}>
             <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
               <Tip text="Net purchases ÷ revenue × 100. Healthy range: 28–35% for Nepal F&B." width={240}>Food Cost % (MTD)</Tip>
             </div>
@@ -279,7 +345,7 @@ export default function OwnerDashboard() {
             <div style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 5 }}>Target 28–35% →</div>
           </div>
 
-          <div style={kpiCard(() => navigate('/hr/payroll'))} onClick={() => navigate('/hr/payroll')}>
+          <div {...kpiCard(() => navigate('/hr/payroll'))}>
             <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
               <Tip text="Prorated estimate: gross + overtime + employer SSF, scaled to days elapsed this month. Refines to the exact figure once Payroll Run is finalized." width={280}>Labor Cost % (MTD)</Tip>
             </div>
@@ -289,7 +355,7 @@ export default function OwnerDashboard() {
             <div style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 5 }}>Estimate →</div>
           </div>
 
-          <div style={kpiCard(null)}>
+          <div {...kpiCard(null)}>
             <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
               <Tip text="Revenue minus food cost, labor cost, and overheads, as a % of revenue. This is what the business actually keeps." width={260}>True Net Margin % (MTD)</Tip>
             </div>
@@ -304,7 +370,7 @@ export default function OwnerDashboard() {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 20 }}>
 
-          <div style={kpiCard(() => navigate('/wastage-report'))} onClick={() => navigate('/wastage-report')}>
+          <div {...kpiCard(() => navigate('/wastage-report'))}>
             <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 4 }}>Wastage Value (MTD)</div>
             <div style={{ fontSize: 22, fontWeight: 700, color: stats?.wastageValueTotal > 0 ? 'var(--theme-red)' : 'var(--theme-text1)' }}>
               {loading ? '—' : fmt(stats?.wastageValueTotal)}
@@ -312,7 +378,7 @@ export default function OwnerDashboard() {
             <div style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 4 }}>This period →</div>
           </div>
 
-          <div style={kpiCard(() => navigate('/reorder'))} onClick={() => navigate('/reorder')}>
+          <div {...kpiCard(() => navigate('/reorder'))}>
             <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 4 }}>
               <Tip text="Items whose current stock is at or below par level — a live inventory position, not a monthly total." width={260}>Items Below Par</Tip>
             </div>
@@ -324,7 +390,7 @@ export default function OwnerDashboard() {
             </div>
           </div>
 
-          <div style={kpiCard(() => navigate('/payables'))} onClick={() => navigate('/payables')}>
+          <div {...kpiCard(() => navigate('/payables'))}>
             <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 4 }}>
               <Tip text="Credit purchases unpaid for more than 60 days." width={220}>Overdue Payables</Tip>
             </div>
@@ -336,7 +402,7 @@ export default function OwnerDashboard() {
             </div>
           </div>
 
-          <div style={kpiCard(() => navigate('/payments'))} onClick={() => navigate('/payments')}>
+          <div {...kpiCard(() => navigate('/payments'))}>
             <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 4 }}>
               <Tip text="Net purchases (this period) split by payment method — not a revenue split." width={260}>Purchases · Cash / Credit</Tip>
             </div>

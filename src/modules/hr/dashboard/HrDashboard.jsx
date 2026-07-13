@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { useScopedDb } from '../../../shared/hooks/useScopedDb'
@@ -15,13 +15,17 @@ function nextMonthLabel(bs_year, bs_month) {
   return `${BS_MONTHS[nm - 1]} 15, ${ny}`
 }
 
-// Clickable KPI card
+// Clickable KPI card — role/tabIndex/onKeyDown + .interactive-card give keyboard users the same
+// access mouse users already had; this one shared component fixes every KCard instance at once.
 function KCard({ label, value, sub, color = 'var(--theme-text1)', tip, onClick, alert }) {
   return (
     <div
-      className="stat-card"
+      className={onClick ? 'stat-card interactive-card' : 'stat-card'}
       onClick={onClick}
       style={onClick ? { cursor: 'pointer' } : undefined}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }) : undefined}
     >
       <div className="stat-label">
         {tip ? <Tip text={tip} width={260}>{label}</Tip> : label}
@@ -50,13 +54,18 @@ export default function HrDashboard() {
   const [empMap,      setEmpMap]      = useState({})
   const [typeMap,     setTypeMap]     = useState({})
   const [pendingCounts, setPendingCounts] = useState({ leave: 0, ot: 0, tada: 0, swap: 0 })
+  // Guards against a stale response overwriting the current view — load() had no cancellation
+  // check, so switching "view as" client rapidly enough could let a slower response for the
+  // PREVIOUS client land last and silently repaint this screen with the wrong tenant's approval
+  // counts/SSF figures — exactly the numbers an admin acts on directly from this page.
+  const loadIdRef = useRef(0)
 
   useEffect(() => {
     if (!clientId) return
-    load()
+    load(++loadIdRef.current)
   }, [clientId]) // eslint-disable-line
 
-  async function load() {
+  async function load(myId) {
     setLoading(true)
 
     const [
@@ -102,6 +111,7 @@ export default function HrDashboard() {
       scopedFrom('hr_tada_claims', 'id', { count: 'exact', head: true }).eq('status', 'pending'),
       scopedFrom('hr_shift_swap_requests', 'id', { count: 'exact', head: true }).eq('status', 'pending_admin'),
     ])
+    if (loadIdRef.current !== myId) return // superseded by a newer client switch
 
     // ── Employee stats ─────────────────────────────────────────────────────────
     const todayMs = new Date().setHours(0, 0, 0, 0)
@@ -110,7 +120,13 @@ export default function HrDashboard() {
     ;(emps || []).forEach(e => {
       if (e.status === 'active' || e.status === 'probation') payrollBase += parseFloat(e.basic_salary || 0)
       if (e.retirement_date && (e.status === 'active' || e.status === 'probation')) {
-        const days = Math.round((new Date(e.retirement_date) - todayMs) / 86400000)
+        // retirement_date is a bare YYYY-MM-DD — `new Date(...)` on that parses as UTC midnight,
+        // while todayMs above is LOCAL midnight. In Nepal (UTC+5:45) that's a ~5h45m mismatch,
+        // which can flip `days` across the 180-day threshold for someone retiring right around
+        // it. Parse the Y-M-D components directly into a LOCAL date instead, matching todayMs.
+        const [ry, rm, rd] = e.retirement_date.split('-').map(Number)
+        const retireMs = new Date(ry, rm - 1, rd).getTime()
+        const days = Math.round((retireMs - todayMs) / 86400000)
         if (days >= 0 && days <= RETIRE_DAYS) retiringSoon++
       }
     })
@@ -146,6 +162,7 @@ export default function HrDashboard() {
     if (lastRun) {
       const { data: slips } = await scopedFrom('hr_payslips', 'net_pay, ssf_employee, ssf_employer')
         .eq('run_id', lastRun.id)
+      if (loadIdRef.current !== myId) return // superseded again after this extra await
       const mp = lastRun.monthly_periods
       setPayInfo({
         periodLabel:  mp ? `${BS_MONTHS[mp.bs_month - 1]} ${mp.bs_year}` : '—',
@@ -303,7 +320,7 @@ export default function HrDashboard() {
       )}
 
       {/* ── Pending queues ───────────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 4 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginTop: 4 }}>
 
         {/* Leave queue */}
         <div>
@@ -314,6 +331,7 @@ export default function HrDashboard() {
             {leaveList.length === 0 ? (
               <div style={{ padding: '18px 16px', fontSize: 13, color: 'var(--theme-text3)' }}>No pending leave requests ✓</div>
             ) : (
+              <div className="table-wrap">
               <table className="data-table">
                 <thead>
                   <tr>
@@ -325,7 +343,11 @@ export default function HrDashboard() {
                 </thead>
                 <tbody>
                   {leaveList.map(r => (
-                    <tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => navigate('/hr/leave')}>
+                    <tr
+                      key={r.id} className="interactive-row" style={{ cursor: 'pointer' }}
+                      onClick={() => navigate('/hr/leave')} role="button" tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/hr/leave') } }}
+                    >
                       <td style={{ fontWeight: 600, fontSize: 12, color: 'var(--theme-text1)' }}>{empMap[r.employee_id] || '—'}</td>
                       <td style={{ fontSize: 12, color: 'var(--theme-text2)' }}>{typeMap[r.leave_type_id] || '—'}</td>
                       <td style={{ fontSize: 12, color: 'var(--theme-text3)' }}>{fmtD(r.start_date)}</td>
@@ -334,6 +356,7 @@ export default function HrDashboard() {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
           {pendingLeave > 0 && (
@@ -352,6 +375,7 @@ export default function HrDashboard() {
             {otList.length === 0 ? (
               <div style={{ padding: '18px 16px', fontSize: 13, color: 'var(--theme-text3)' }}>No pending OT entries ✓</div>
             ) : (
+              <div className="table-wrap">
               <table className="data-table">
                 <thead>
                   <tr>
@@ -363,7 +387,11 @@ export default function HrDashboard() {
                 </thead>
                 <tbody>
                   {otList.map(e => (
-                    <tr key={e.id} style={{ cursor: 'pointer' }} onClick={() => navigate('/hr/overtime')}>
+                    <tr
+                      key={e.id} className="interactive-row" style={{ cursor: 'pointer' }}
+                      onClick={() => navigate('/hr/overtime')} role="button" tabIndex={0}
+                      onKeyDown={(e2) => { if (e2.key === 'Enter' || e2.key === ' ') { e2.preventDefault(); navigate('/hr/overtime') } }}
+                    >
                       <td style={{ fontWeight: 600, fontSize: 12, color: 'var(--theme-text1)' }}>{empMap[e.employee_id] || '—'}</td>
                       <td style={{ textAlign: 'center', fontSize: 12, color: 'var(--theme-text3)' }}>
                         {BS_MONTHS[e.bs_month - 1]} {e.bs_day}
@@ -378,6 +406,7 @@ export default function HrDashboard() {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
           {pendingOt > 0 && (
@@ -396,6 +425,7 @@ export default function HrDashboard() {
             {tadaList.length === 0 ? (
               <div style={{ padding: '18px 16px', fontSize: 13, color: 'var(--theme-text3)' }}>No pending TADA claims ✓</div>
             ) : (
+              <div className="table-wrap">
               <table className="data-table">
                 <thead>
                   <tr>
@@ -406,7 +436,11 @@ export default function HrDashboard() {
                 </thead>
                 <tbody>
                   {tadaList.map(c => (
-                    <tr key={c.id} style={{ cursor: 'pointer' }} onClick={() => navigate('/hr/tada')}>
+                    <tr
+                      key={c.id} className="interactive-row" style={{ cursor: 'pointer' }}
+                      onClick={() => navigate('/hr/tada')} role="button" tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/hr/tada') } }}
+                    >
                       <td style={{ fontWeight: 600, fontSize: 12, color: 'var(--theme-text1)' }}>{empMap[c.employee_id] || '—'}</td>
                       <td style={{ fontSize: 12, color: 'var(--theme-text2)' }}>{c.destination || c.trip_purpose || '—'}</td>
                       <td style={{ textAlign: 'right', fontWeight: 600, fontSize: 12, color: 'var(--theme-text1)' }}>{fmt(c.total_amount)}</td>
@@ -414,6 +448,7 @@ export default function HrDashboard() {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
           {pendingTada > 0 && (
@@ -432,6 +467,7 @@ export default function HrDashboard() {
             {swapList.length === 0 ? (
               <div style={{ padding: '18px 16px', fontSize: 13, color: 'var(--theme-text3)' }}>No pending shift swaps ✓</div>
             ) : (
+              <div className="table-wrap">
               <table className="data-table">
                 <thead>
                   <tr>
@@ -441,7 +477,11 @@ export default function HrDashboard() {
                 </thead>
                 <tbody>
                   {swapList.map(s => (
-                    <tr key={s.id} style={{ cursor: 'pointer' }} onClick={() => navigate('/hr/roster')}>
+                    <tr
+                      key={s.id} className="interactive-row" style={{ cursor: 'pointer' }}
+                      onClick={() => navigate('/hr/roster')} role="button" tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/hr/roster') } }}
+                    >
                       <td style={{ fontSize: 12, color: 'var(--theme-text2)' }}>
                         <span style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{empMap[s.requester_employee_id] || '—'}</span>
                         {' ⇄ '}
@@ -454,6 +494,7 @@ export default function HrDashboard() {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
           {pendingSwap > 0 && (

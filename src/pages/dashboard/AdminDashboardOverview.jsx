@@ -5,7 +5,7 @@ import { useSettings } from '../../context/SettingsContext'
 import { supabase } from '../../supabaseClient'
 import Tip from '../../components/Tip'
 import { BS_MONTHS, adToBs } from '../../utils/bsCalendar'
-import { getSubStatus } from '../../utils/subscription'
+import { getSubStatus, getDateStatus } from '../../utils/subscription'
 
 // Cross-tenant admin overview — every client's periods/profiles in one unscoped read to build
 // the platform-wide table, so this stays on raw supabase.from() rather than scopedDb (there is
@@ -66,7 +66,11 @@ export default function AdminDashboardOverview() {
   const churnRisk   = active.filter(c => {
     const endDate = c.ims_ends_at || c.subscription_ends_at
     if (!endDate) return false
-    const s = getSubStatus(c)
+    // IMS-specific status, not getSubStatus(c)'s cross-module "farthest expiry" — a client whose
+    // IMS lapses in 2 days but HR runs another 90 was previously excluded from churn risk (the
+    // gate above correctly used the IMS endDate, but the days check didn't), since HR's later
+    // date won the Math.max inside getSubStatus and made s.days look healthy.
+    const s = getDateStatus(endDate)
     return s.days !== null && s.days <= 7
   })
   const noPeriod     = active.filter(c => !clientPeriods[c.id] || clientPeriods[c.id].status !== 'open')
@@ -242,14 +246,21 @@ export default function AdminDashboardOverview() {
                 </thead>
                 <tbody>
                   {sorted.map(c => {
-                    const sub     = getSubStatus(c)
                     const mrr     = clientMRR(c)
                     const endDate = c.ims_ends_at || c.subscription_ends_at
+                    // IMS-specific status, matching this column's own tooltip ("IMS subscription
+                    // countdown") — getSubStatus(c) instead took Math.max across ims/hr/pos/
+                    // subscription_ends_at, so a client whose IMS had already lapsed could still
+                    // show the healthy green "Subscription" label as long as HR/POS ran longer.
+                    const sub     = getDateStatus(endDate)
                     const isPaying = endDate && sub.days !== null && sub.days > 0
-                    const isTrial  = !endDate && c.trial_ends_at
+                    // The real trial-signup path (admin-user-ops Edge Function) only ever writes
+                    // trial_expires_at — trial_ends_at is never set, so every self-service trial
+                    // was falling through to "No billing" with a blank expiry below.
+                    const isTrial  = !endDate && c.trial_expires_at
                     const isActiveToday = activeClientIds.has(c.id)
 
-                    const expiryIso = endDate || c.trial_ends_at
+                    const expiryIso = endDate || c.trial_expires_at
                     let expiryBs = null
                     if (expiryIso) {
                       const bs = adToBs(new Date(expiryIso))

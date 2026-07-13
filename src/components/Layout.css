@@ -602,6 +602,15 @@
   padding: 24px;
 }
 
+/* Applied alongside role="button"/tabIndex={0} on clickable cards and rows that aren't real
+   <button> elements (dashboard KPI cards, queue table rows) — gives keyboard users a visible
+   focus indicator, matching .ticket-btn's existing focus-visible treatment. */
+.interactive-card:focus-visible,
+tr.interactive-row:focus-visible {
+  outline: 2px solid var(--theme-focus-ring);
+  outline-offset: 2px;
+}
+
 .btn {
   display: inline-flex;
   align-items: center;

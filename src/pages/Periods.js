@@ -135,7 +135,14 @@ export default function Periods() {
       status: 'open'
     })
     if (error) {
-      setError(error.message.includes('unique') ? 'A period for this month already exists.' : error.message)
+      // Two distinct unique constraints can fire here — the message must distinguish them, or
+      // trying to open a new period while a DIFFERENT month is already open would confusingly
+      // say "a period for THIS month already exists" (the wrong constraint's message).
+      setError(
+        error.message.includes('one_open_per_client') ? 'A period is already open for this client. Close it before opening another.'
+          : error.message.includes('unique') ? 'A period for this month already exists.'
+          : error.message
+      )
     } else {
       setShowForm(false)
       loadPeriods()
