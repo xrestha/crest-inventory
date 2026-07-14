@@ -149,6 +149,22 @@ Annual = 25% off monthly, applied uniformly everywhere annual pricing appears.
 
 ## Session Log
 
+### S382 — 2026-07-14 — Admin Danger Zone: rewired clear/delete buttons for 3 features shipped after they were built + live circular-FK fix
+
+Prompted by an admin screenshot review of AdminClients → Danger Zone on a real Pro client (BHATTI CHOILA): the per-module "Clear Transactions" and "Clear Client Data"/"Delete Client" buttons in `admin-user-ops`'s `clearModuleData`/`deleteClientData` actions hadn't been touched since they were first built, while three later features added client-scoped tables that were never wired in — POS credit notes, HR TADA/Incentives/Roster-publish/Shift-swap (S306/S307), and POS guest-ordering/payment-webhook scaffold. None of those tables' `client_id` FKs have `ON DELETE CASCADE`, so this wasn't just stale leftover data: **Clear POS Transactions, Clear Client Data, and Delete Client would throw a foreign-key-violation and abort mid-sequence** for any client that had ever issued a credit note, submitted a TADA claim, run an incentive calc, published a roster, or requested a shift swap.
+
+Added the missing deletes to both `clearModuleData` and `deleteClientData` in `supabase/functions/admin-user-ops/index.ts`: `demand_forecast_daily`/`demand_forecast_run_log` (IMS); `hr_tada_claims` (cascades to `hr_tada_claim_items`), `hr_incentives`, `hr_incentive_configs`, `hr_roster_publish_state`, `hr_shift_swap_requests` (HR); `pos_credit_notes`, `pos_payment_confirmations`, `pos_guest_order_requests` (POS) — each ordered so children are cleared before the parent rows they reference.
+
+Live testing on BHATTI CHOILA (a real client with a credit note on file) caught a second problem the static read-through missed: a **circular FK** between `pos_orders.credit_note_id → pos_credit_notes.id` and `pos_credit_notes.order_id → pos_orders.id`, neither cascading. The first deploy still failed with `violates foreign key constraint "pos_orders_credit_note_id_fkey"` on the very first delete statement (nothing else had run yet, so no partial corruption). Fixed by nulling `pos_orders.credit_note_id` for the client before deleting `pos_credit_notes`, in both action branches. Redeployed and reconfirmed: "POS transactions cleared. Setup data was kept."
+
+Updated the three per-module Danger Zone tooltips in `ClientDrawer.js` to list the newly-included tables so they stop under-describing what actually gets deleted.
+
+Also fixed a UI-only bug the live test surfaced: all 6 Danger Zone buttons shared one `deleting` boolean, so clicking any single button flipped every button's label to "Working…" and made it look like all 6 destructive actions had fired at once. Replaced with `deletingAction` (holds which specific action is in flight); all buttons still disable together during any run (prevents firing a second destructive action mid-flight), but only the one actually clicked now shows "Working…".
+
+No schema migration — this was entirely an Edge Function + frontend fix. `admin-user-ops` was redeployed twice this session via `supabase functions deploy admin-user-ops`.
+
+**Files:** `supabase/functions/admin-user-ops/index.ts`, `src/pages/adminClients/ClientDrawer.js`
+
 ### S381 — 2026-07-14 — Suite Bundle billing consistency + sidebar/help follow-ups + recipe-ingredient duplicate-key fix
 
 Four smaller, linked fixes following on from S380's pricing rework.

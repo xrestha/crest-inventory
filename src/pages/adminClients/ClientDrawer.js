@@ -89,8 +89,10 @@ export default function ClientDrawer({ client, onClose, onClientUpdated }) {
   const [logoUploading, setLogoUploading] = useState(false)
   const [logoMsg, setLogoMsg] = useState('')
 
-  // Danger Zone state
-  const [deleting, setDeleting] = useState(false)
+  // Danger Zone state — tracks which specific action is in flight so only that
+  // button shows "Working…"; all buttons still disable together to block concurrent runs.
+  const [deletingAction, setDeletingAction] = useState(null)
+  const deleting = !!deletingAction
   const [deleteMsg, setDeleteMsg] = useState('')
 
   // Edit client state
@@ -397,10 +399,10 @@ export default function ClientDrawer({ client, onClose, onClientUpdated }) {
       `Purchase Unit, Base Unit, Conversion Factor and Purchase Qty will be reset to 1 for each affected item.\n\n` +
       `This cannot be undone.`
     )) return
-    setDeleting(true); setDeleteMsg('')
+    setDeletingAction('conversions'); setDeleteMsg('')
     const { error } = await scopedUpdate('items', client.id, { purchase_unit: null, base_unit: null, conversion_factor: 1, purchase_qty: 1 })
       .not('purchase_unit', 'is', null)
-    setDeleting(false)
+    setDeletingAction(null)
     setDeleteMsg(error ? 'error:' + error.message : `ok:Conversions cleared on ${count} item${count !== 1 ? 's' : ''}.`)
   }
 
@@ -415,7 +417,7 @@ export default function ClientDrawer({ client, onClose, onClientUpdated }) {
       `This deletes: ${labels[module]}\n\n` +
       `This cannot be undone.`
     )) return
-    setDeleting(true)
+    setDeletingAction(module)
     setDeleteMsg('')
     try {
       await adminOp('clearModuleData', { clientId: client.id, module })
@@ -423,7 +425,7 @@ export default function ClientDrawer({ client, onClose, onClientUpdated }) {
     } catch (err) {
       setDeleteMsg('error:' + err.message)
     }
-    setDeleting(false)
+    setDeletingAction(null)
   }
 
   async function handleDeleteClientData() {
@@ -436,7 +438,7 @@ export default function ClientDrawer({ client, onClose, onClientUpdated }) {
       `The client record, user accounts, feature flags, and settings are kept intact.\n\n` +
       `This cannot be undone.`
     )) return
-    setDeleting(true)
+    setDeletingAction('clientData')
     setDeleteMsg('')
     try {
       await adminOp('deleteClientData', { clientId: client.id })
@@ -444,7 +446,7 @@ export default function ClientDrawer({ client, onClose, onClientUpdated }) {
     } catch (err) {
       setDeleteMsg('error:' + err.message)
     }
-    setDeleting(false)
+    setDeletingAction(null)
   }
 
   async function handleDeleteClient() {
@@ -453,7 +455,7 @@ export default function ClientDrawer({ client, onClose, onClientUpdated }) {
       `This removes EVERYTHING: all operational data, user accounts, feature flags, settings, and the client record itself.\n\n` +
       `This cannot be undone.`
     )) return
-    setDeleting(true)
+    setDeletingAction('deleteClient')
     setDeleteMsg('')
     try {
       // Delete all user auth accounts for this client
@@ -470,7 +472,7 @@ export default function ClientDrawer({ client, onClose, onClientUpdated }) {
       onClose()
     } catch (err) {
       setDeleteMsg('error:' + err.message)
-      setDeleting(false)
+      setDeletingAction(null)
     }
   }
 
@@ -1179,7 +1181,7 @@ export default function ClientDrawer({ client, onClose, onClientUpdated }) {
                 Clear one module — transactions only, setup kept
               </p>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
-                <Tip text="Deletes IMS activity: purchases, stock counts, wastage, staff meals, sales, budgets, payables, POs, requisitions, overheads, stock movements. Keeps items, vendors, categories, recipes, par levels, and periods (periods are shared with HR payroll). Cannot be undone.">
+                <Tip text="Deletes IMS activity: purchases, stock counts, wastage, staff meals, sales, budgets, payables, POs, requisitions, overheads, stock movements, demand forecast runs. Keeps items, vendors, categories, recipes, par levels, and periods (periods are shared with HR payroll). Cannot be undone.">
                   <button onClick={() => handleClearModule('ims')} disabled={deleting}
                     style={{
                       background: 'rgba(248,113,113,0.05)', border: '1px solid rgba(248,113,113,0.15)',
@@ -1187,10 +1189,10 @@ export default function ClientDrawer({ client, onClose, onClientUpdated }) {
                       cursor: deleting ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600,
                       opacity: deleting ? 0.6 : 1
                     }}>
-                    {deleting ? 'Working…' : 'Clear IMS Transactions'}
+                    {deletingAction === 'ims' ? 'Working…' : 'Clear IMS Transactions'}
                   </button>
                 </Tip>
-                <Tip text="Deletes HR activity: attendance, payroll runs, payslips, leave requests, overtime, advances + repayments, festival allowances, roster. Keeps employees, salary components, leave types, holiday calendar, and shift types. Cannot be undone.">
+                <Tip text="Deletes HR activity: attendance, payroll runs, payslips, leave requests, overtime, advances + repayments, festival allowances, roster, TADA claims, incentive runs + configs, roster publish state, shift swap requests. Keeps employees, salary components, leave types, holiday calendar, and shift types. Cannot be undone.">
                   <button onClick={() => handleClearModule('hr')} disabled={deleting}
                     style={{
                       background: 'rgba(248,113,113,0.05)', border: '1px solid rgba(248,113,113,0.15)',
@@ -1198,10 +1200,10 @@ export default function ClientDrawer({ client, onClose, onClientUpdated }) {
                       cursor: deleting ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600,
                       opacity: deleting ? 0.6 : 1
                     }}>
-                    {deleting ? 'Working…' : 'Clear HR Transactions'}
+                    {deletingAction === 'hr' ? 'Working…' : 'Clear HR Transactions'}
                   </button>
                 </Tip>
-                <Tip text="Deletes POS activity: orders, order items, shifts, customers, POS-sourced sales entries, and the stock-movements ledger. Keeps tables, floor plan, and staff accounts/PINs; occupied tables are freed. Invoice numbering restarts. Cannot be undone.">
+                <Tip text="Deletes POS activity: orders, order items, shifts, customers, credit notes, payment confirmations, guest order requests, POS-sourced sales entries, and the stock-movements ledger. Keeps tables, floor plan, and staff accounts/PINs; occupied tables are freed. Invoice numbering restarts. Cannot be undone.">
                   <button onClick={() => handleClearModule('pos')} disabled={deleting}
                     style={{
                       background: 'rgba(248,113,113,0.05)', border: '1px solid rgba(248,113,113,0.15)',
@@ -1209,7 +1211,7 @@ export default function ClientDrawer({ client, onClose, onClientUpdated }) {
                       cursor: deleting ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600,
                       opacity: deleting ? 0.6 : 1
                     }}>
-                    {deleting ? 'Working…' : 'Clear POS Transactions'}
+                    {deletingAction === 'pos' ? 'Working…' : 'Clear POS Transactions'}
                   </button>
                 </Tip>
               </div>
@@ -1229,7 +1231,7 @@ export default function ClientDrawer({ client, onClose, onClientUpdated }) {
                       opacity: deleting ? 0.6 : 1
                     }}
                   >
-                    {deleting ? 'Working…' : 'Clear All Conversions'}
+                    {deletingAction === 'conversions' ? 'Working…' : 'Clear All Conversions'}
                   </button>
                 </Tip>
                 <Tip text="Permanently deletes ALL operational data across IMS, HR, and POS — master data and transactions. The client account, users, feature flags, and settings are kept. Cannot be undone.">
@@ -1243,7 +1245,7 @@ export default function ClientDrawer({ client, onClose, onClientUpdated }) {
                       opacity: deleting ? 0.6 : 1
                     }}
                   >
-                    {deleting ? 'Working…' : 'Clear Client Data'}
+                    {deletingAction === 'clientData' ? 'Working…' : 'Clear Client Data'}
                   </button>
                 </Tip>
                 <Tip text="Permanently deletes everything: all operational data, user accounts, feature flags, settings, and the client record itself. The email is freed for re-registration. Cannot be undone.">
@@ -1257,7 +1259,7 @@ export default function ClientDrawer({ client, onClose, onClientUpdated }) {
                       opacity: deleting ? 0.6 : 1
                     }}
                   >
-                    {deleting ? 'Working…' : 'Delete Client'}
+                    {deletingAction === 'deleteClient' ? 'Working…' : 'Delete Client'}
                   </button>
                 </Tip>
               </div>

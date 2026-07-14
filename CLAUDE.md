@@ -224,7 +224,8 @@ Recipes with `type = 'sub_recipe'` auto-create a mirror row in `items` with `is_
 3. **Nav**: add an entry to `NAV` or `REPORTS` in `Layout.js` with `featureKey` and `minPlan`.
 4. **Tooltips**: every non-obvious column header and form label needs a `<Tip>` tooltip.
 5. **Help page**: add an entry to `src/pages/Help.js`.
-6. **README**: update both `C:\crest-inventory\README.md` and `E:\CREST INVENTORY MANAGEMENT\README.md`.
+6. **README**: update both `C:\crest-suite\README.md` and `E:\CREST SUITE MANAGEMENT\README.md`.
+7. **Danger Zone**: if the feature adds a new client-scoped table (a `client_id` column, directly or via a parent it cascades from), add it to `clearModuleData` and `deleteClientData` in `supabase/functions/admin-user-ops/index.ts`, then `supabase functions deploy admin-user-ops`. These two actions back the Admin → Danger Zone "Clear X Transactions"/"Clear Client Data"/"Delete Client" buttons; a table left out isn't just stale data left behind — most of these FKs default to `NO ACTION` (no cascade), so the button throws a foreign-key violation and aborts mid-sequence the first time a client actually has a row in the missed table (found live, S382, via `pos_credit_notes`). Check for **reverse** FKs too, not just the new table's own `client_id`/parent FK — `pos_orders.credit_note_id → pos_credit_notes.id` is a circular reference in the opposite direction that a table-by-table read-through missed; it only surfaced as a real error when tested against a client with an actual credit note.
 
 ---
 

@@ -359,6 +359,8 @@ Deno.serve(async (req) => {
         await del(admin.from('requisitions').delete().eq('client_id', clientId), 'requisitions')
 
         await del(admin.from('overheads').delete().eq('client_id', clientId), 'overheads')
+        await del(admin.from('demand_forecast_daily').delete().eq('client_id', clientId), 'demand_forecast_daily')
+        await del(admin.from('demand_forecast_run_log').delete().eq('client_id', clientId), 'demand_forecast_run_log')
         // monthly_periods are intentionally KEPT — HR attendance/payroll reference the same periods
         return json({ success: true })
       }
@@ -377,10 +379,23 @@ Deno.serve(async (req) => {
         await del(admin.from('hr_advance_repayments').delete().eq('client_id', clientId), 'hr_advance_repayments')
         await del(admin.from('hr_advances').delete().eq('client_id', clientId), 'hr_advances')
         await del(admin.from('hr_roster').delete().eq('client_id', clientId), 'hr_roster')
+        // hr_tada_claim_items cascades from hr_tada_claims; hr_incentives.config_id SET NULLs on config delete
+        await del(admin.from('hr_tada_claims').delete().eq('client_id', clientId), 'hr_tada_claims')
+        await del(admin.from('hr_incentives').delete().eq('client_id', clientId), 'hr_incentives')
+        await del(admin.from('hr_incentive_configs').delete().eq('client_id', clientId), 'hr_incentive_configs')
+        await del(admin.from('hr_roster_publish_state').delete().eq('client_id', clientId), 'hr_roster_publish_state')
+        await del(admin.from('hr_shift_swap_requests').delete().eq('client_id', clientId), 'hr_shift_swap_requests')
         return json({ success: true })
       }
 
       if (module === 'pos') {
+        // Circular FK: pos_orders.credit_note_id -> pos_credit_notes.id AND
+        // pos_credit_notes.order_id -> pos_orders.id, neither ON DELETE CASCADE.
+        // Null the order-side link first or deleting pos_credit_notes fails.
+        await del(admin.from('pos_orders').update({ credit_note_id: null }).eq('client_id', clientId), 'pos_orders.credit_note_id reset')
+        await del(admin.from('pos_credit_notes').delete().eq('client_id', clientId), 'pos_credit_notes')
+        await del(admin.from('pos_payment_confirmations').delete().eq('client_id', clientId), 'pos_payment_confirmations')
+        await del(admin.from('pos_guest_order_requests').delete().eq('client_id', clientId), 'pos_guest_order_requests')
         const { data: orderRows } = await admin.from('pos_orders').select('id').eq('client_id', clientId)
         const orderIds = (orderRows || []).map((o: { id: string }) => o.id)
         if (orderIds.length > 0) {
@@ -452,6 +467,13 @@ Deno.serve(async (req) => {
       }
 
       // POS module data (orders reference tables; movements/orders must go before periods)
+      // Circular FK: pos_orders.credit_note_id -> pos_credit_notes.id AND
+      // pos_credit_notes.order_id -> pos_orders.id, neither ON DELETE CASCADE.
+      // Null the order-side link first or deleting pos_credit_notes fails.
+      await del(admin.from('pos_orders').update({ credit_note_id: null }).eq('client_id', clientId), 'pos_orders.credit_note_id reset')
+      await del(admin.from('pos_credit_notes').delete().eq('client_id', clientId), 'pos_credit_notes')
+      await del(admin.from('pos_payment_confirmations').delete().eq('client_id', clientId), 'pos_payment_confirmations')
+      await del(admin.from('pos_guest_order_requests').delete().eq('client_id', clientId), 'pos_guest_order_requests')
       const { data: orderRows } = await admin.from('pos_orders').select('id').eq('client_id', clientId)
       const orderIds = (orderRows || []).map((o: { id: string }) => o.id)
       if (orderIds.length > 0) {
@@ -477,6 +499,12 @@ Deno.serve(async (req) => {
       await del(admin.from('hr_advance_repayments').delete().eq('client_id', clientId), 'hr_advance_repayments')
       await del(admin.from('hr_advances').delete().eq('client_id', clientId), 'hr_advances')
       await del(admin.from('hr_roster').delete().eq('client_id', clientId), 'hr_roster')
+      // hr_tada_claim_items cascades from hr_tada_claims; hr_incentives.config_id SET NULLs on config delete
+      await del(admin.from('hr_tada_claims').delete().eq('client_id', clientId), 'hr_tada_claims')
+      await del(admin.from('hr_incentives').delete().eq('client_id', clientId), 'hr_incentives')
+      await del(admin.from('hr_incentive_configs').delete().eq('client_id', clientId), 'hr_incentive_configs')
+      await del(admin.from('hr_roster_publish_state').delete().eq('client_id', clientId), 'hr_roster_publish_state')
+      await del(admin.from('hr_shift_swap_requests').delete().eq('client_id', clientId), 'hr_shift_swap_requests')
       await del(admin.from('hr_salary_components').delete().eq('client_id', clientId), 'hr_salary_components')
       await del(admin.from('hr_employees').delete().eq('client_id', clientId), 'hr_employees')
       await del(admin.from('hr_leave_types').delete().eq('client_id', clientId), 'hr_leave_types')
@@ -487,6 +515,8 @@ Deno.serve(async (req) => {
       await del(admin.from('requisitions').delete().eq('client_id', clientId), 'requisitions')
       await del(admin.from('overheads').delete().eq('client_id', clientId), 'overheads')
       await del(admin.from('par_levels').delete().eq('client_id', clientId), 'par_levels')
+      await del(admin.from('demand_forecast_daily').delete().eq('client_id', clientId), 'demand_forecast_daily')
+      await del(admin.from('demand_forecast_run_log').delete().eq('client_id', clientId), 'demand_forecast_run_log')
       await del(admin.from('monthly_periods').delete().eq('client_id', clientId), 'monthly_periods')
       await del(admin.from('recipes').delete().eq('client_id', clientId), 'recipes')
       await del(admin.from('items').delete().eq('client_id', clientId), 'items')
