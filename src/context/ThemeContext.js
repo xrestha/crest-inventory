@@ -52,7 +52,7 @@ export const PRESETS = {
   latte: {
     name: 'Latte', description: 'Soft pastel light',
     bg: '#eff1f5', card: '#ffffff', border: '#ccd0da', borderLt: '#e6e9ef', sidebar: '#e6e9ef',
-    text1: '#4c4f69', text2: '#6c6f85', text3: '#8c8fa1',
+    text1: '#4c4f69', text2: '#6c6f85', text3: '#71748a',
     accent: '#8839ef', accentHover: '#7a2fd8', accentText: '#ffffff',
     inputBg: '#f7f8fb', tableHover: '#e9ebf1', focusRing: 'rgba(136,57,239,0.12)',
     green: '#40a02b', red: '#d20f39', amber: '#df8e1d', purple: '#8839ef',
@@ -61,7 +61,7 @@ export const PRESETS = {
   dawn: {
     name: 'Rosé Dawn', description: 'Warm rose light',
     bg: '#faf4ed', card: '#fffaf3', border: '#dfd9d3', borderLt: '#f2e9e1', sidebar: '#f2e9e1',
-    text1: '#575279', text2: '#797593', text3: '#9893a5',
+    text1: '#575279', text2: '#66627d', text3: '#766f86',
     accent: '#d7827e', accentHover: '#c66e6a', accentText: '#ffffff',
     inputBg: '#fffaf3', tableHover: '#f4ece4', focusRing: 'rgba(215,130,126,0.16)',
     green: '#56949f', red: '#b4637a', amber: '#ea9d34', purple: '#907aa9',
@@ -70,7 +70,7 @@ export const PRESETS = {
   solarized: {
     name: 'Solarized', description: 'Cream & ocean blue',
     bg: '#fdf6e3', card: '#fffbf0', border: '#e2dac0', borderLt: '#f0e9d6', sidebar: '#eee8d5',
-    text1: '#586e75', text2: '#7b8a8a', text3: '#93a1a1',
+    text1: '#586e75', text2: '#5c6868', text3: '#677676',
     accent: '#268bd2', accentHover: '#1f6fa8', accentText: '#ffffff',
     inputBg: '#fffbf0', tableHover: '#f3edda', focusRing: 'rgba(38,139,210,0.12)',
     green: '#859900', red: '#dc322f', amber: '#b58900', purple: '#6c71c4',
@@ -79,7 +79,7 @@ export const PRESETS = {
   light: {
     name: 'Light', description: 'Clean warm white',
     bg: '#f6f3ef', card: '#ffffff', border: '#ddd6cf', borderLt: '#ece6df', sidebar: '#ece6dd',
-    text1: '#1c1917', text2: '#5c554e', text3: '#857d74',
+    text1: '#1c1917', text2: '#5c554e', text3: '#7b746c',
     accent: '#b07d2b', accentHover: '#946720', accentText: '#ffffff',
     inputBg: '#fbf9f6', tableHover: '#f3ede6', focusRing: 'rgba(176,125,43,0.14)',
     green: '#15803d', red: '#dc2626', amber: '#b45309', purple: '#7c3aed',
@@ -88,7 +88,7 @@ export const PRESETS = {
   bright: {
     name: 'Bright', description: 'Crisp cool-bright blue',
     bg: '#f4f7fc', card: '#ffffff', border: '#dde4f0', borderLt: '#eaeff8', sidebar: '#eaf0fb',
-    text1: '#0f172a', text2: '#5b6b85', text3: '#8996ad',
+    text1: '#0f172a', text2: '#5b6b85', text3: '#667692',
     accent: '#3a6df0', accentHover: '#2f5cdb', accentText: '#ffffff',
     inputBg: '#f8faff', tableHover: '#eaf0fc', focusRing: 'rgba(58,109,240,0.14)',
     green: '#16a34a', red: '#dc2626', amber: '#d97706', purple: '#7c3aed',

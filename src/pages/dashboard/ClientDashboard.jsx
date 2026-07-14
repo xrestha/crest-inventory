@@ -9,6 +9,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine,
   BarChart, Bar
 } from 'recharts'
+import { ArrowDown, ArrowUp, Percent, Receipt, Target, Lock, TriangleAlert, Clock, LayoutGrid } from 'lucide-react'
 import Tip from '../../components/Tip'
 import ChartCard from '../../components/ChartCard'
 import { getBsToday, BS_MONTHS, daysInBsMonth, bsToAd } from '../../utils/bsCalendar'
@@ -550,6 +551,25 @@ export default function ClientDashboard() {
   // redundantly re-reducing the same, unchanging total.
   const categorySpendTotal = categorySpend.reduce((s, r) => s + r.value, 0)
 
+  // Screen-reader-only chart summaries — the 4 charts below have no text alternative today;
+  // a non-sighted user gets zero information from a trend/proportion a sighted user reads at a
+  // glance. Rendered via ChartCard's `footer` slot (inside the same card, so it doesn't add an
+  // extra grid item the way a sibling element would).
+  const categorySpendSummary = categorySpend.length === 0
+    ? 'No purchase data for this period.'
+    : `Top spend category: ${categorySpend[0].name} at NPR ${categorySpend[0].value.toLocaleString('en-NP')}${categorySpendTotal > 0 ? ` (${Math.round((categorySpend[0].value / categorySpendTotal) * 100)}% of total purchases)` : ''}.`
+  const dailyTrendPurchTotal = dailyTrend.reduce((s, d) => s + (d.purchases || 0), 0)
+  const dailyTrendSalesTotal = dailyTrend.reduce((s, d) => s + (d.sales || 0), 0)
+  const dailyTrendSummary = dailyTrend.length === 0
+    ? 'No purchase or sales data for this period.'
+    : `Purchases and sales trend, ${periodLabel}. Purchases shown so far total NPR ${dailyTrendPurchTotal.toLocaleString('en-NP')}.${hasDailySales ? ` Sales shown so far total NPR ${dailyTrendSalesTotal.toLocaleString('en-NP')}.` : ''}${salesProjection ? ` Projected month-end revenue: NPR ${salesProjection.projectedMonthEnd.toLocaleString('en-NP')}.` : ''}`
+  const topItemSpendSummary = topItemSpend.length === 0
+    ? 'No purchase data for this period.'
+    : `Top items by spend: ${topItemSpend.slice(0, 3).map(i => `${i.fullName} at NPR ${i.value.toLocaleString('en-NP')}`).join(', ')}.`
+  const fcTrendSummary = fcTrend.length === 0
+    ? 'No food cost history yet.'
+    : `Food cost percentage over the last ${fcTrend.length} month${fcTrend.length === 1 ? '' : 's'}: ${fcTrend.map(p => `${p.label} ${p.fc}%`).join(', ')}.`
+
   // Shared mini card style + a11y — returns a spreadable props object so every KPI card gets
   // keyboard support (role/tabIndex/onKeyDown) and a visible focus ring for free, instead of each
   // clickable div being mouse-only. Non-interactive cards (onClick == null) get style only.
@@ -579,7 +599,7 @@ export default function ClientDashboard() {
   // Accent Rule, scoped to the Bright preset only (see DESIGN.md's exception note). Every other
   // preset keeps plain text-only stat cards, same as today. Not applied to every stat card on
   // every page — just this dashboard's primary IMS row, matching what was actually mocked up.
-  function kpiIcon(glyph, hue) {
+  function kpiIcon(Icon, hue) {
     if (themeKey !== 'bright') return null
     const hues = {
       blue:  { bg: 'rgba(58,109,240,0.12)', fg: colors.accent },
@@ -590,9 +610,9 @@ export default function ClientDashboard() {
     return (
       <div aria-hidden="true" style={{
         width: 30, height: 30, borderRadius: 'var(--radius-md)', display: 'flex',
-        alignItems: 'center', justifyContent: 'center', fontSize: 14, marginBottom: 10,
+        alignItems: 'center', justifyContent: 'center', marginBottom: 10,
         background: h.bg, color: h.fg,
-      }}>{glyph}</div>
+      }}><Icon size={16} strokeWidth={2.25} /></div>
     )
   }
   const kpiValueStyle = (size, weight = 700) => ({ fontSize: size, fontWeight: weight, lineHeight: 1.1 })
@@ -616,7 +636,7 @@ export default function ClientDashboard() {
       }}
     >
       <div style={{ ...kpiLabelStyle, marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
-        <span>{label}</span><span aria-hidden="true">🔒</span>
+        <span>{label}</span><Lock size={12} aria-hidden="true" />
       </div>
       <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--theme-purple)', lineHeight: 1.2 }}>Unlock with {tier}</div>
       <div style={kpiSubtextStyle}>{blurb} · View plans →</div>
@@ -676,13 +696,13 @@ export default function ClientDashboard() {
           borderColor: 'color-mix(in srgb, var(--theme-red) 25%, transparent)',
           background: 'color-mix(in srgb, var(--theme-red) 8%, transparent)',
         }}>
-          <p style={{ color: 'var(--theme-red)', margin: 0, fontSize: 13 }}>
-            <span aria-hidden="true">⚠</span> {msg}
+          <p style={{ color: 'var(--theme-red)', margin: 0, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <TriangleAlert size={14} aria-hidden="true" /> {msg}
           </p>
           <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-            <button className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 10px' }} onClick={() => retryLoad(section)}>Retry</button>
+            <button className="btn btn-ghost" style={{ fontSize: 12, padding: '8px 12px' }} onClick={() => retryLoad(section)}>Retry</button>
             <button
-              className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 10px' }}
+              className="btn btn-ghost" style={{ fontSize: 12, padding: '8px 12px' }}
               onClick={() => setLoadErrors(prev => ({ ...prev, [section]: '' }))} aria-label="Dismiss"
             >×</button>
           </div>
@@ -695,8 +715,8 @@ export default function ClientDashboard() {
         const isExpired = s.days < 0
         return (
           <div className="card" style={{ marginBottom: 20, borderColor: s.border, background: s.bg }}>
-            <p style={{ color: s.color, margin: 0, fontSize: 14, fontWeight: 600 }}>
-              <span aria-hidden="true">⚠</span>{' '}
+            <p style={{ color: s.color, margin: 0, fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <TriangleAlert size={16} aria-hidden="true" />
               {isExpired ? 'Your subscription has expired' : `Your ${s.label.startsWith('Trial') ? 'trial' : 'subscription'} expires in ${s.days} day${s.days !== 1 ? 's' : ''}`}
             </p>
             <p style={{ color: 'var(--theme-text2)', margin: '4px 0 0', fontSize: 12 }}>
@@ -712,7 +732,7 @@ export default function ClientDashboard() {
           onClick={() => navigate('/periods')} role="button" tabIndex={0}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/periods') } }}
         >
-          <p style={{ color: 'var(--theme-accent)', margin: 0, fontSize: 14 }}><span aria-hidden="true">⚠</span> No open period. Click here to create one in Periods →</p>
+          <p style={{ color: 'var(--theme-accent)', margin: 0, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}><TriangleAlert size={15} aria-hidden="true" /> No open period. Click here to create one in Periods →</p>
         </div>
       )}
 
@@ -720,8 +740,8 @@ export default function ClientDashboard() {
         <div className="card" style={{ marginBottom: 20, borderColor: 'color-mix(in srgb, var(--theme-amber) 15%, transparent)', background: 'color-mix(in srgb, var(--theme-amber) 5%, transparent)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
             <div>
-              <p style={{ color: 'var(--theme-amber)', margin: 0, fontSize: 14, fontWeight: 600 }}>
-                <span aria-hidden="true">◷</span> {BS_MONTHS[activePeriod.bs_month - 1]} {activePeriod.bs_year} has ended
+              <p style={{ color: 'var(--theme-amber)', margin: 0, fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Clock size={15} aria-hidden="true" /> {BS_MONTHS[activePeriod.bs_month - 1]} {activePeriod.bs_year} has ended
               </p>
               <p style={{ color: 'var(--theme-text2)', margin: '4px 0 0', fontSize: 12 }}>
                 {isAdmin
@@ -745,7 +765,7 @@ export default function ClientDashboard() {
       {/* ── No modules enabled ── */}
       {!showIms && !showHr && !showPos && (
         <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }} aria-hidden="true">⊛</div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }} aria-hidden="true"><LayoutGrid size={32} strokeWidth={1.5} /></div>
           <p style={{ fontSize: 15, color: 'var(--theme-text1)', fontWeight: 600, margin: '0 0 8px' }}>No modules enabled</p>
           <p style={{ fontSize: 13, color: 'var(--theme-text2)', margin: 0 }}>Contact your consultant to activate Crest IMS, Crest HR, or Crest POS.</p>
         </div>
@@ -757,7 +777,7 @@ export default function ClientDashboard() {
 
         {/* Net Purchases */}
         <div {...kpiCard(() => navigate('/purchases'))}>
-          {kpiIcon('↓', 'blue')}
+          {kpiIcon(ArrowDown, 'blue')}
           <div style={kpiLabelStyle}>Net Purchases</div>
           <div style={{ ...kpiValueStyle(18), color: 'var(--theme-accent)' }}>
             {loading ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : `NPR ${(stats?.purchaseTotal || 0).toLocaleString('en-NP', { maximumFractionDigits: 0 })}`}
@@ -768,7 +788,7 @@ export default function ClientDashboard() {
         {/* Revenue */}
         {canSales ? (
           <div {...kpiCard(() => navigate('/sales'))}>
-            {kpiIcon('↑', 'green')}
+            {kpiIcon(ArrowUp, 'green')}
             <div style={kpiLabelStyle}>Revenue</div>
             <div style={{ ...kpiValueStyle(18), color: 'var(--theme-green)' }}>
               {loading ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : `NPR ${(stats?.revenueTotal || 0).toLocaleString('en-NP', { maximumFractionDigits: 0 })}`}
@@ -780,7 +800,7 @@ export default function ClientDashboard() {
         {/* Food Cost % — computable from purchases ÷ revenue, so any sales client sees it */}
         {canSales ? (
           <div {...kpiCard(() => navigate(canVariance ? '/variance' : '/summary'))}>
-            {kpiIcon('◈', 'amber')}
+            {kpiIcon(Percent, 'amber')}
             <div style={kpiLabelStyle}>
               <Tip text="Net purchases ÷ revenue × 100. Shows what portion of sales goes to ingredient cost. Healthy range: 28–35% for Nepal F&B." width={240}>Food Cost %</Tip>
             </div>
@@ -799,7 +819,7 @@ export default function ClientDashboard() {
         {/* Fixed Costs % (Pro — needs overhead data) */}
         {canOverheads ? (
           <div {...kpiCard(() => navigate('/overheads'))}>
-            {kpiIcon('₿', 'blue')}
+            {kpiIcon(Receipt, 'blue')}
             <div style={kpiLabelStyle}>
               <Tip text="All fixed costs (rent, utilities, labor, tax & fees) as a % of revenue. Target: under 60% combined. See Overheads page for the full breakdown." width={250}>Fixed Costs % of Revenue</Tip>
             </div>
@@ -820,7 +840,7 @@ export default function ClientDashboard() {
         {/* Est. Net Margin % (Pro — only meaningful with overhead data) */}
         {canOverheads && (
           <div {...kpiCard(null)}>
-            {kpiIcon('◎', 'green')}
+            {kpiIcon(Target, 'green')}
             <div style={kpiLabelStyle}>
               <Tip text="Revenue minus food cost and overheads, as a % of revenue. This is what the business keeps after ingredient and fixed costs. Healthy Nepal F&B target: ≥20%." width={260}>Est. Net Margin %</Tip>
             </div>
@@ -909,6 +929,7 @@ export default function ClientDashboard() {
             <ChartCard
               title="Spend by Category"
               smallHeight={140}
+              footer={<p className="sr-only">{categorySpendSummary}</p>}
               renderChart={h => categorySpend.length === 0 ? (
                 <div style={{ height: h, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <p style={{ color: 'var(--theme-text3)', fontSize: 12 }}>No purchase data</p>
@@ -959,12 +980,15 @@ export default function ClientDashboard() {
                 {salesProjection && <span style={{ color: 'var(--theme-text2)' }}><span style={{ color: 'var(--theme-green)', letterSpacing: '-2px' }}>┄</span> Projection</span>}
                 {!hasDailySales && <span style={{ color: 'var(--theme-text3)' }}>Enter daily sales to see the sales trend</span>}
               </>}
-              footer={salesProjection && (
-                <div style={{ marginTop: 8, fontSize: 11, color: 'var(--theme-text2)' }}>
-                  Projected month-end revenue: <strong style={{ color: 'var(--theme-green)' }}>NPR {salesProjection.projectedMonthEnd.toLocaleString()}</strong>
-                  <span style={{ color: 'var(--theme-text3)' }}> · trend estimate</span>
-                </div>
-              )}
+              footer={<>
+                {salesProjection && (
+                  <div style={{ marginTop: 8, fontSize: 11, color: 'var(--theme-text2)' }}>
+                    Projected month-end revenue: <strong style={{ color: 'var(--theme-green)' }}>NPR {salesProjection.projectedMonthEnd.toLocaleString()}</strong>
+                    <span style={{ color: 'var(--theme-text3)' }}> · trend estimate</span>
+                  </div>
+                )}
+                <p className="sr-only">{dailyTrendSummary}</p>
+              </>}
               renderChart={h => {
                 if (dailyTrend.length === 0) return (
                   <div style={{ height: h, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1001,6 +1025,7 @@ export default function ClientDashboard() {
             {/* Bar — Top Items */}
             <ChartCard
               title="Top Items by Spend"
+              footer={<p className="sr-only">{topItemSpendSummary}</p>}
               renderChart={h => {
                 const big = h > 200
                 const count = big ? topItemSpend.length : 6
@@ -1035,14 +1060,15 @@ export default function ClientDashboard() {
             <ChartCard
               title="Food Cost % — Monthly Trend"
               cardStyle={{ marginBottom: 14 }}
-              footer={
+              footer={<>
                 <div style={{ display: 'flex', gap: 16, marginTop: 6, fontSize: 10 }}>
                   <span style={{ color: 'var(--theme-green)' }}>● ≤35% Good</span>
                   <span style={{ color: 'var(--theme-accent)' }}>● 35–45% Watch</span>
                   <span style={{ color: 'var(--theme-red)' }}>● &gt;45% High</span>
                   <span style={{ marginLeft: 'auto', color: 'var(--theme-text2)' }}>⊙ = current open period</span>
                 </div>
-              }
+                <p className="sr-only">{fcTrendSummary}</p>
+              </>}
               renderChart={h => (
                 <div style={{ overflowX: 'auto', overflowY: 'hidden' }}>
                   <div style={{ minWidth: Math.max(0, fcTrend.length * 64), height: h }}>
@@ -1089,7 +1115,7 @@ export default function ClientDashboard() {
               <div className="card" style={{ padding: '14px 16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                   <h3 style={{ fontSize: 12, fontWeight: 600, margin: 0, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Top Variance Items</h3>
-                  <button className="btn btn-ghost" style={{ fontSize: 10, padding: '7px 12px' }} onClick={() => navigate('/variance')}>Full Report →</button>
+                  <button className="btn btn-ghost" style={{ fontSize: 10, padding: '9px 12px' }} onClick={() => navigate('/variance')}>Full Report →</button>
                 </div>
                 {topVariance.length === 0 ? (
                   <p style={{ color: 'var(--theme-text3)', fontSize: 12, margin: '16px 0' }}>
@@ -1100,11 +1126,11 @@ export default function ClientDashboard() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                     <thead>
                       <tr>
-                        <th style={{ color: 'var(--theme-text2)', fontWeight: 500, textAlign: 'left', paddingBottom: 6, borderBottom: '1px solid var(--theme-border)' }}>Item</th>
-                        <th style={{ color: 'var(--theme-text2)', fontWeight: 500, textAlign: 'right', paddingBottom: 6, borderBottom: '1px solid var(--theme-border)' }}>
+                        <th scope="col" style={{ color: 'var(--theme-text2)', fontWeight: 500, textAlign: 'left', paddingBottom: 6, borderBottom: '1px solid var(--theme-border)' }}>Item</th>
+                        <th scope="col" style={{ color: 'var(--theme-text2)', fontWeight: 500, textAlign: 'right', paddingBottom: 6, borderBottom: '1px solid var(--theme-border)' }}>
                           <Tip text="Qty used above what recipes predict — indicates waste, theft, or over-portioning.">Over-used</Tip>
                         </th>
-                        <th style={{ color: 'var(--theme-text2)', fontWeight: 500, textAlign: 'right', paddingBottom: 6, borderBottom: '1px solid var(--theme-border)' }}>
+                        <th scope="col" style={{ color: 'var(--theme-text2)', fontWeight: 500, textAlign: 'right', paddingBottom: 6, borderBottom: '1px solid var(--theme-border)' }}>
                           <Tip text="Over-used qty × item rate. The NPR cost of unaccounted usage this period." width={200}>Value at Risk</Tip>
                         </th>
                       </tr>
@@ -1131,7 +1157,7 @@ export default function ClientDashboard() {
               <div className="card" style={{ padding: '14px 16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                   <h3 style={{ fontSize: 12, fontWeight: 600, margin: 0, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Items to Reorder</h3>
-                  <button className="btn btn-ghost" style={{ fontSize: 10, padding: '7px 12px' }} onClick={() => navigate('/reorder')}>Full Report →</button>
+                  <button className="btn btn-ghost" style={{ fontSize: 10, padding: '9px 12px' }} onClick={() => navigate('/reorder')}>Full Report →</button>
                 </div>
                 {reorderItems.length === 0 ? (
                   <p style={{ color: 'var(--theme-text3)', fontSize: 12, margin: '16px 0' }}>
@@ -1150,7 +1176,7 @@ export default function ClientDashboard() {
                           <div style={{ fontSize: 10, color: 'var(--theme-text2)' }}>Stock: {item.currentStock} · Par: {item.par} {item.uom}</div>
                         </div>
                         <div style={{ textAlign: 'right', marginLeft: 12, flexShrink: 0 }}>
-                          <div style={{ fontSize: 11, color: 'var(--theme-red)', fontWeight: 700 }}>↓ {item.shortfall} {item.uom}</div>
+                          <div style={{ fontSize: 11, color: 'var(--theme-red)', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 2 }}><ArrowDown size={11} aria-hidden="true" /> {item.shortfall} {item.uom}</div>
                           <div style={{ fontSize: 10, color: 'var(--theme-text3)' }}>NPR {item.estValue.toLocaleString()}</div>
                         </div>
                       </div>

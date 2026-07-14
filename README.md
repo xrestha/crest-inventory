@@ -149,6 +149,20 @@ Annual = 25% off monthly, applied uniformly everywhere annual pricing appears.
 
 ## Session Log
 
+### S388 — 2026-07-14 — Dashboard `/impeccable audit` fixes: 5-preset contrast bug, icon vocabulary, a11y
+
+Ran an `/impeccable audit` on `ClientDashboard.jsx` (16/20 — Good) and fixed all 5 recommended actions:
+
+- **[P1] Tertiary/secondary text contrast failure on all 5 light-leaning theme presets.** `--theme-text3` (tertiary — KPI subtext, timestamps) failed WCAG AA (4.5:1) on **every one** of Latte, Rosé Dawn, Solarized, Light, and Bright — computed ratios ranged 2.59:1 (Solarized) to 4.05:1 (Light), none passing. Widening the check turned up `--theme-text2` (secondary — KPI labels) also failing on Rosé Dawn (4.23:1) and Solarized (3.47:1). Fixed by computing new hex values via HSL-lightness binary search (same hue/saturation, darkened until ≥4.6:1 against each preset's own card background) rather than hand-picking — script kept at `.claude`-adjacent scratch, not committed. Dark-leaning presets (Dark, Tokyo Night, Dracula, Nord, Catppuccin) were spot-checked and already pass (5.2–6.7:1) — untouched. **This is a shared token fix, not dashboard-specific** — it corrects tertiary/secondary text contrast app-wide on those 5 presets, not just this page.
+- **[P2] Table headers missing `scope="col"`** — added to the 3 `<th>` in Top Variance Items (screen readers now announce the column when navigating cell-by-cell).
+- **[P2] Ghost buttons under the touch-target minimum** — Retry/Dismiss/"Full Report →" grew from ~22-24px to a measured 31px tall (padding `5px 10px`/`7px 12px` → `8px 12px`/`9px 12px`), clearing WCAG 2.2's 24×24px AA minimum with margin, without visually bulking up the dense KPI-grid aesthetic.
+- **[P2] Icon vocabulary split from the sidebar** — the 2026-07-12 sidebar re-skin moved `Layout.js` onto `lucide-react`, but this dashboard (the very next screen a user sees) still rendered hand-picked Unicode glyphs (↓ ↑ ◈ ₿ ◎ ⚠ ◷ ⊛ 🔒) for the same job. Swapped for `ArrowDown`/`ArrowUp`/`Percent`/`Receipt`/`Target`/`Lock`/`TriangleAlert`/`Clock`/`LayoutGrid`, same per-preset coloring `kpiIcon()` already handled. Also caught and fixed one more glyph outside the original audit's grep (the Reorder panel's shortfall `↓`) during verification.
+- **[P3] Charts had no accessible data alternative** — added a computed `.sr-only` summary sentence to all 4 `ChartCard`s (Spend by Category, Daily Purchases vs Sales, Top Items by Spend, FC% Trend) via their existing `footer` slot, so a screen-reader user gets the same trend/proportion a sighted user reads from the chart instead of nothing.
+
+Verified: `CI=true npx react-scripts build` compiles clean (warnings-as-errors), live-checked in the browser on the Bright preset — icons render correctly, `getComputedStyle` confirms `--theme-text3` is now `#667692` (4.60:1) against `#ffffff`, `scope="col"` present, ghost buttons measure 31px.
+
+**Files:** `src/context/ThemeContext.js`, `src/pages/dashboard/ClientDashboard.jsx`
+
 ### S387 — 2026-07-14 — HR Employees staff photo upload (S386) reverted — Supabase Storage RLS never resolved
 
 S386's staff-photo upload was fully backed out after an exhaustive live-debugging session found no fixable cause. Every upload attempt from a real client login failed with `new row violates row-level security policy` (SQLSTATE 42501), and the diagnostic trail ruled out every SQL-level explanation in turn:
