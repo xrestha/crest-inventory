@@ -150,6 +150,16 @@ Annual = 25% off monthly, applied uniformly everywhere annual pricing appears.
 
 ## Session Log
 
+### S396 — 2026-07-15 — `/impeccable` pass on Stock Movements: keyboard-accessibility bug fix
+
+Ran `/impeccable stock movement page` (product register) against the new Stock Movements report and its Reorder Report cross-link from S395. Found one real, confirmed bug and one copy improvement:
+
+- **[Confirmed real bug] Both new clickable elements were keyboard-inaccessible** — the Order # cell in `StockMovements.js` and the Book Stock cell link in `ReorderReport.js` were bare `<span onClick>` with no way to reach or activate them from a keyboard, violating PRODUCT.md's stated WCAG AA baseline. Fixed using the exact existing app convention for this (already established in `HrDashboard.jsx`/`OwnerDashboard.jsx`/`ClientDashboard.jsx`'s clickable rows/cards): `role="button" tabIndex={0}`, an `onKeyDown` handler firing the same action on Enter/Space, and the shared `.interactive-card` class for a themed focus-visible ring — no new CSS needed, reused what already existed.
+- **Empty state copy** — Stock Movements' "No stock movements recorded" fell into the bare "nothing here" pattern PRODUCT.md's Components section warns against. Reworded to explain what populates the ledger (a POS bill being charged or marked Complimentary), so an owner seeing it empty understands why, not just that it's empty.
+- Checked and deliberately left unchanged (would have introduced a new inconsistency rather than fixed one): loading state stays plain text to match every sibling report page (skeleton loading is a dashboard-only pattern in this codebase); row hover/badge colors/the rationed purple already come for free from global CSS and DESIGN.md's existing rules; search input styling intentionally matches `ReorderReport.js`'s own inline pattern rather than diverging on one page.
+
+**Files:** `src/modules/ims/stockcount/StockMovements.js`, `src/modules/ims/stockcount/ReorderReport.js`
+
 ### S395 — 2026-07-15 — POS discount netting bug fix + new "Stock Movements" report page
 
 A cross-module audit (IMS↔POS↔HR) surfaced two related gaps in how `stock_movements`/`sales_entries` — the tables POS writes to on every sale/comp close — actually got used downstream. Both fixed this session.

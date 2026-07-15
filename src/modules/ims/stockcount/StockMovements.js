@@ -165,7 +165,7 @@ export default function StockMovements() {
         ) : filtered.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">✓</div>
-            <p className="empty-state-text">No stock movements recorded for this period yet.</p>
+            <p className="empty-state-text">No stock movements yet for this period. Entries appear here automatically the moment a POS bill is charged or marked Complimentary.</p>
           </div>
         ) : (
           <div className="table-wrap">
@@ -200,6 +200,8 @@ export default function StockMovements() {
                       {r.order?.order_no ? (
                         <span
                           onClick={() => viewPosBill(effectiveClientId, { id: r.ref_id, close_type: r.order.close_type })}
+                          role="button" tabIndex={0} className="interactive-card"
+                          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); viewPosBill(effectiveClientId, { id: r.ref_id, close_type: r.order.close_type }) } }}
                           style={{ cursor: 'pointer', color: 'var(--theme-accent)', borderBottom: '1px dashed var(--theme-accent)', paddingBottom: 1 }}
                         >
                           #{r.order.order_no}

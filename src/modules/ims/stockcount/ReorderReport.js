@@ -353,6 +353,8 @@ export default function ReorderReport() {
                             <Tip text="Click to see every stock-depletion entry behind this number, with the POS order that caused each one." width={260}>
                               <span
                                 onClick={() => navigate(`/stock-movements?item=${row.item.id}&period=${selectedPeriod.id}`)}
+                                role="button" tabIndex={0} className="interactive-card"
+                                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/stock-movements?item=${row.item.id}&period=${selectedPeriod.id}`) } }}
                                 style={{ cursor: 'pointer', borderBottom: '1px dashed var(--theme-border)', paddingBottom: 1 }}
                               >
                                 {row.bookStock.toFixed(2)}
