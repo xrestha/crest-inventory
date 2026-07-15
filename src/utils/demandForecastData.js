@@ -73,6 +73,12 @@ export function forecastByWeekday(dailyHistory, horizonDays, holidaysByKey = {})
     const bs = adToBs(target)
     const holidayKey = `${bs.year}:${bs.month}:${bs.day}`
     const holiday = holidaysByKey[holidayKey] || null
+    // Nepal holiday footfall swings both directions depending on the specific festival and the
+    // business (some restaurants close for Dashain Tika, others get slammed the week after), so
+    // the multiplier is owner-set per holiday occurrence in Holiday Calendar rather than guessed
+    // here — a holiday with no multiplier configured is still flagged (via `holiday` below) but
+    // left unadjusted, same as before.
+    const multiplier = holiday && holiday.demand_multiplier != null ? parseFloat(holiday.demand_multiplier) : null
 
     // Qty averages over every sample (manual-basis rows carry real qty signal, that's their
     // whole purpose). Covers/revenue average ONLY over pos-basis samples — a manual-basis row
@@ -86,14 +92,20 @@ export function forecastByWeekday(dailyHistory, horizonDays, holidaysByKey = {})
         qtyByRecipe[recipeId] = (qtyByRecipe[recipeId] || 0) + qty / (n || 1)
       }
     }
+    if (multiplier != null) {
+      for (const recipeId of Object.keys(qtyByRecipe)) qtyByRecipe[recipeId] *= multiplier
+    }
+
+    const rawCovers = posSamples.length > 0 ? posSamples.reduce((s, r) => s + r.covers, 0) / posSamples.length : null
+    const rawRevenue = posSamples.length > 0 ? posSamples.reduce((s, r) => s + r.revenue, 0) / posSamples.length : null
 
     results.push({
       date: target, bs, weekday,
       sampleCount: n, posSampleCount: posSamples.length,
-      forecastCovers: posSamples.length > 0 ? posSamples.reduce((s, r) => s + r.covers, 0) / posSamples.length : null,
-      forecastRevenue: posSamples.length > 0 ? posSamples.reduce((s, r) => s + r.revenue, 0) / posSamples.length : null,
+      forecastCovers: rawCovers != null && multiplier != null ? rawCovers * multiplier : rawCovers,
+      forecastRevenue: rawRevenue != null && multiplier != null ? rawRevenue * multiplier : rawRevenue,
       forecastQtyByRecipe: qtyByRecipe,
-      holiday, // { name, holiday_type } if this date matches hr_holiday_calendar, else null — model does NOT auto-adjust for it
+      holiday, // { name, holiday_type, demand_multiplier } if this date matches hr_holiday_calendar, else null
     })
   }
   return results
@@ -112,7 +124,7 @@ export async function runForecast(clientId, horizonDays = 7) {
         .eq('status', 'billed').eq('close_type', 'paid')
         .gte('closed_at', lookbackStart.toISOString()),
       scopedFrom('monthly_periods', clientId, 'id, bs_year, bs_month'),
-      scopedFrom('hr_holiday_calendar', clientId, 'bs_year, bs_month, bs_day, name, holiday_type'),
+      scopedFrom('hr_holiday_calendar', clientId, 'bs_year, bs_month, bs_day, name, holiday_type, demand_multiplier'),
     ])
     const orderList = orders || []
 
@@ -141,7 +153,7 @@ export async function runForecast(clientId, horizonDays = 7) {
     }
 
     const holidaysByKey = Object.fromEntries(
-      (holidays || []).map(h => [`${h.bs_year}:${h.bs_month}:${h.bs_day}`, { name: h.name, holiday_type: h.holiday_type }])
+      (holidays || []).map(h => [`${h.bs_year}:${h.bs_month}:${h.bs_day}`, { name: h.name, holiday_type: h.holiday_type, demand_multiplier: h.demand_multiplier }])
     )
 
     const forecast = forecastByWeekday(history, horizonDays, holidaysByKey)
@@ -171,6 +183,8 @@ export async function runForecast(clientId, horizonDays = 7) {
         forecast_covers: f.forecastCovers, forecast_qty: null, forecast_revenue: revenue,
         revenue_estimated: revenueEstimated,
         model_basis: hasPosSignal ? 'pos' : 'manual', horizon_days: horizonDays,
+        holiday_name: f.holiday?.name || null,
+        holiday_multiplier: f.holiday?.demand_multiplier ?? null,
       })
       for (const [recipeId, qty] of Object.entries(f.forecastQtyByRecipe)) {
         rows.push({

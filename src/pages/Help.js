@@ -17,8 +17,8 @@ const IMS_FEATURE_TIERS = [
       },
       {
         icon: '◆', name: 'Owner Dashboard',
-        guide: 'A single cross-module view for owners — Revenue, Food Cost %, Labor Cost %, and True Net Margin % (Revenue − Food Cost − Labor Cost − Overhead), plus Wastage Value, Items Below Par, and Overdue Payables. All figures are Month-to-Date against the current open period, same scoping as Monthly Summary. Requires both Crest IMS and Crest HR enabled, plus a Crest Suite Growth subscription or above — a separate bundle tier from the individual module plans, set from the Billing tab in Manage Clients.',
-        tips: ['Labor Cost % is a prorated estimate (scaled to days elapsed this month) — it refines to the exact figure once Payroll Run is finalized for the month', 'Items Below Par is a live inventory position, not a monthly total', 'A locked padlock means Crest Suite needs upgrading — contact your consultant']
+        guide: 'A single cross-module view for owners — Revenue, Food Cost %, Labor Cost %, Prime Cost % (Food Cost % + Labor Cost %), and True Net Margin % (Revenue − Food Cost − Labor Cost − Overhead), plus Wastage Value, Items Below Par, and Overdue Payables. All figures are Month-to-Date against the current open period, same scoping as Monthly Summary. Requires both Crest IMS and Crest HR enabled, plus a Crest Suite Growth subscription or above — a separate bundle tier from the individual module plans, set from the Billing tab in Manage Clients.',
+        tips: ['Labor Cost % is a prorated estimate (scaled to days elapsed this month) — it refines to the exact figure once Payroll Run is finalized for the month', 'Prime Cost % is the number most operators benchmark against directly — industry standard is roughly 60–65% of revenue', 'Items Below Par is a live inventory position, not a monthly total', 'A locked padlock means Crest Suite needs upgrading — contact your consultant']
       },
       {
         icon: '◷', name: 'Periods',
@@ -232,8 +232,8 @@ const IMS_FEATURE_TIERS = [
       },
       {
         icon: '↗', name: 'Demand Forecast',
-        guide: 'Predicts covers, revenue, and per-dish quantity for the next 7 or 30 days using a day-of-week moving average over your last ~12 weeks of POS sales (falls back to manual Sales entries if POS history is thin). Click "Recompute Forecast" to generate or refresh it — it does not run automatically. Click a day\'s row to see its top forecasted items. A holiday badge means the target date matches your Holiday Calendar, but the model does not automatically boost or dampen for it — treat the number as a floor, not a ceiling, on festival days.',
-        tips: ['Recompute weekly for the freshest prediction — it only reflects sales up to the last time you ran it', 'A thin or brand-new POS history produces a less confident forecast — give it a few weeks of data', 'Add movable holidays (Dashain, Tihar) to the Holiday Calendar so they at least get flagged on the report']
+        guide: 'Predicts covers, revenue, and per-dish quantity for the next 7 or 30 days using a day-of-week moving average over your last ~12 weeks of POS sales (falls back to manual Sales entries if POS history is thin). Click "Recompute Forecast" to generate or refresh it — it does not run automatically. Click a day\'s row to see its top forecasted items. A holiday badge means the target date matches your Holiday Calendar; if that holiday has a Demand Multiplier set, the badge shows "×N" and the covers/revenue/item numbers on that row are already scaled by it — if not, the badge shows the holiday name alone and the forecast is NOT adjusted (treat it as a floor, not a ceiling, on that day).',
+        tips: ['Recompute weekly for the freshest prediction — it only reflects sales up to the last time you ran it', 'A thin or brand-new POS history produces a less confident forecast — give it a few weeks of data', 'Set a Demand Multiplier on a holiday in Holiday Calendar (e.g. 0.3 if you close/run quiet, 1.5 if it\'s your busiest day) to have this page actually scale the forecast for it, not just flag it', 'Add movable holidays (Dashain, Tihar) to the Holiday Calendar so they get flagged even before you set a multiplier for them']
       },
     ]
   },
@@ -290,6 +290,7 @@ const HR_FEATURES = [
       'Leave-conflict cells (red hatching) still let you assign a shift with a confirm — useful if a leave was approved in error and needs overriding',
       'Labor Forecast tab: one row per day (Weekly or Monthly, same navigation as the Board) showing Scheduled Hours, Forecast Revenue, Planned Labor Cost, Cost %, Recommended Staff, Scheduled Staff, and a Covered/Short status badge — deliberately kept off the Board and out of print since it\'s management-only data, not something to hand to staff',
       'A day shows "—" for forecast columns until Demand Forecast has been run/refreshed for that date on the Demand Forecast page',
+      'A festival/holiday badge next to a date on the Labor Forecast tab means Demand Forecast matched it against Holiday Calendar — "×N" means that day\'s Forecast Revenue/Covers were scaled by the Demand Multiplier set on that holiday; no "×N" means the holiday is known but no multiplier has been set yet, so the forecast is unadjusted for it — set one in HR → Holiday Calendar if this is a day your business runs noticeably busier or quieter',
       'Recommended Staff = forecasted covers ÷ Covers/Staff target (editable on the Labor Forecast tab, saved per client, default 20) — a starting estimate, not a hard rule',
       'Cost % turns amber above 35% of that day\'s forecasted revenue',
       'On the Board itself, a short-staffed day\'s column header shows a small "Rec: N" hint (amber if you\'re currently under it) — hidden from print, screen-only, so you see the target while you\'re actually assigning shifts',
@@ -303,12 +304,13 @@ const HR_FEATURES = [
   },
   {
     icon: '📆', name: 'Holiday Calendar',
-    guide: 'Per-client list of Nepal public and optional holidays for each fiscal year. Two types: Public (gazetted by the Nepal government — all staff entitled to the day off; working on a public holiday attracts 2× overtime under the Nepal Labour Act) and Optional (floating holidays at employer discretion). Use "Seed Fixed" to add the 5 fixed-date gazetted holidays automatically (Constitution Day on Ashwin 3, Prithvi Narayan Shah\'s Birthday on Poush 27, Martyrs\' Day on Magh 5, National Democracy Day on Falgun 7, and Republic Day on Jestha 15). Movable holidays — Dashain, Tihar, Holi, Buddha Jayanti, Teej, Chhath, Eid-ul-Fitr, Eid-ul-Adha, and others — must be added manually each year from the Nepal government gazette, as their dates shift annually by the lunar calendar. Holidays are stored per fiscal year and scoped to each client.',
+    guide: 'Per-client list of Nepal public and optional holidays for each fiscal year. Two types: Public (gazetted by the Nepal government — all staff entitled to the day off; working on a public holiday attracts 2× overtime under the Nepal Labour Act) and Optional (floating holidays at employer discretion). Use "Seed Fixed" to add the 5 fixed-date gazetted holidays automatically (Constitution Day on Ashwin 3, Prithvi Narayan Shah\'s Birthday on Poush 27, Martyrs\' Day on Magh 5, National Democracy Day on Falgun 7, and Republic Day on Jestha 15). Movable holidays — Dashain, Tihar, Holi, Buddha Jayanti, Teej, Chhath, Eid-ul-Fitr, Eid-ul-Adha, and others — must be added manually each year from the Nepal government gazette, as their dates shift annually by the lunar calendar. Each holiday can optionally carry a Demand Multiplier (e.g. 0.3 for a day you close/run quiet, 1.5 for a day you\'re slammed) — set it once per specific date and it automatically scales that day\'s covers/revenue/item forecast on the Demand Forecast page and Roster\'s Labor Forecast tab; leave it blank and the day is still flagged, just not adjusted. Holidays are stored per fiscal year and scoped to each client.',
     tips: [
       '"Seed Fixed" adds only the 5 gazetted holidays with a fixed BS date every year — it skips any that already exist, so it is safe to click again after adding movable ones',
       'Movable holidays must be added manually each year: Dashain (7th-day through Vijaya Dashami), Tihar (Laxmi Puja + Mha Puja), Holi, Buddha Jayanti, Teej, Janai Purnima, Chhath, and Eid dates — check the Nepal government gazette annually',
       'FY selector groups holidays by fiscal year (Shrawan to Ashadh). Months 4–12 use the FY start BS year; months 1–3 use the following BS year — the "stored as BS year" hint in the form confirms which year a date maps to',
       'Public holidays feed into Overtime Management for automatic 2× rate suggestion when OT is logged on a holiday date',
+      'Demand Multiplier is per specific date, not per holiday name — Dashain Tika might be 0.2 (closed) while the days right after might be 1.6 (family outings), so set each occurrence individually rather than expecting one "Dashain" setting to apply everywhere',
       'Holiday Count stat cards show Public and Optional separately — Nepal Labour Act requires at least 13 days of public holiday leave per year',
     ]
   },
@@ -400,6 +402,7 @@ const GLOSSARY = [
   { term: 'Conversion Factor', def: 'How many base units are in one purchase unit. E.g. 1 case = 24 bottles → conversion factor = 24.' },
   { term: 'BS Calendar',      def: 'Bikram Sambat calendar used in Nepal. The system works natively in BS months.' },
   { term: 'Par Level',        def: 'Minimum stock quantity before reordering. Used in the Reorder Report to flag items running low.' },
+  { term: 'Prime Cost',       def: 'Food Cost % + Labor Cost % — the two controllable costs combined, as a % of revenue. The single figure most restaurant operators benchmark against directly (industry standard ≈60–65%). Shown on Owner Dashboard.' },
   { term: 'Book Stock',       def: 'Live stock count fed by Crest POS — decremented automatically on every POS sale/comp close, shown in the Reorder Report. Only reflects POS activity; physical stock count remains the source of truth. See Stock Movements for the itemised ledger.' },
   { term: 'SSF',              def: 'Social Security Fund (सामाजिक सुरक्षा कोष). Nepal mandatory contribution: 11% employee + 20% employer of basic salary.' },
   // — Crest HR —

@@ -56,7 +56,10 @@ export default function DemandForecast() {
         forecastCovers: null, forecastRevenue: null, revenueEstimated: false, forecastQtyByRecipe: {}, holiday: null,
       }
       if (r.recipe_id) day.forecastQtyByRecipe[r.recipe_id] = r.forecast_qty
-      else { day.forecastCovers = r.forecast_covers; day.forecastRevenue = r.forecast_revenue; day.revenueEstimated = r.revenue_estimated }
+      else {
+        day.forecastCovers = r.forecast_covers; day.forecastRevenue = r.forecast_revenue; day.revenueEstimated = r.revenue_estimated
+        day.holiday = r.holiday_name ? { name: r.holiday_name, multiplier: r.holiday_multiplier } : null
+      }
     }
     const list = Object.values(byDay).sort((a, b) => a.bs.year - b.bs.year || a.bs.month - b.bs.month || a.bs.day - b.bs.day)
     setForecast(list)
@@ -174,7 +177,11 @@ export default function DemandForecast() {
                           ? <Tip text="Estimated from forecasted item quantities × menu price — this day of week has no direct POS revenue history yet, only manual Sales entries (which track quantity, not revenue).">≈ {fmtNpr(f.forecastRevenue)}</Tip>
                           : fmtNpr(f.forecastRevenue)}
                       </td>
-                      <td>{f.holiday && <Tip text="Historical model does not auto-adjust for this holiday — treat the forecast as a floor, not a ceiling, on a festival day."><span className="badge-amber" style={{ fontSize: 10 }}>{f.holiday.name}</span></Tip>}</td>
+                      <td>{f.holiday && (
+                        f.holiday.multiplier != null
+                          ? <Tip text={`Adjusted ×${f.holiday.multiplier} for ${f.holiday.name} — set in Holiday Calendar. Covers, revenue, and item quantities above already reflect this.`}><span className="badge-amber" style={{ fontSize: 10 }}>{f.holiday.name} ×{f.holiday.multiplier}</span></Tip>
+                          : <Tip text={`No demand multiplier set for ${f.holiday.name} in Holiday Calendar — this forecast is NOT adjusted for it. Treat it as a floor, not a ceiling, on a festival day.`}><span className="badge-amber" style={{ fontSize: 10 }}>{f.holiday.name}</span></Tip>
+                      )}</td>
                     </tr>
                     {allItems.length > 0 && (
                       <tr>

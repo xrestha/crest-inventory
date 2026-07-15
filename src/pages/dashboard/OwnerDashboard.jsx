@@ -295,6 +295,10 @@ export default function OwnerDashboard() {
   const revenueTotal = stats?.revenueTotal || 0
   const fcPct = revenueTotal > 0 ? (stats.purchaseTotal / revenueTotal) * 100 : null
   const laborPct = revenueTotal > 0 && laborCostTotal != null ? (laborCostTotal / revenueTotal) * 100 : null
+  // Prime Cost % = Food Cost % + Labor Cost % — the single number restaurant operators actually
+  // benchmark against (industry standard ~60-65%), not something anyone reads off two separate
+  // cards and adds up themselves. Both inputs already exist above; this is purely their sum.
+  const primeCostPct = fcPct != null && laborPct != null ? fcPct + laborPct : null
   const overheadTotal = stats?.overheadTotal || 0
   const netMarginPct = revenueTotal > 0 && laborCostTotal != null
     ? ((revenueTotal - stats.purchaseTotal - laborCostTotal - overheadTotal) / revenueTotal) * 100
@@ -415,6 +419,16 @@ export default function OwnerDashboard() {
               {loading ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : laborPct != null ? `${laborPct.toFixed(1)}%` : '—'}
             </div>
             <div style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 5 }}>Estimate →</div>
+          </div>
+
+          <div {...kpiCard()}>
+            <div style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
+              <Tip text="Food Cost % + Labor Cost % — the two controllable costs combined, the number operators actually benchmark against. Industry standard: 60-65% of revenue." width={280}>Prime Cost % (MTD)</Tip>
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.1, color: primeCostPct == null ? 'var(--theme-text2)' : primeCostPct <= 60 ? 'var(--theme-green)' : primeCostPct <= 65 ? 'var(--theme-accent)' : 'var(--theme-red)' }}>
+              {loading ? <span className="skeleton" style={{ display: 'inline-block', width: '3em', height: '0.85em', verticalAlign: 'middle' }} /> : primeCostPct != null ? `${primeCostPct.toFixed(1)}%` : '—'}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 5 }}>Target ≤60-65% →</div>
           </div>
 
           <div {...kpiCard(canOverheads ? null : () => navigate('/overheads'))}>

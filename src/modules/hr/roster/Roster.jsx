@@ -115,12 +115,12 @@ export default function Roster() {
         if (!months.has(k)) months.set(k, bs)
       })
       for (const bs of months.values()) {
-        const { data } = await scopedFrom('demand_forecast_daily', 'bs_year, bs_month, bs_day, forecast_covers, forecast_revenue, generated_at')
+        const { data } = await scopedFrom('demand_forecast_daily', 'bs_year, bs_month, bs_day, forecast_covers, forecast_revenue, generated_at, holiday_name, holiday_multiplier')
           .is('recipe_id', null).eq('bs_year', bs.year).eq('bs_month', bs.month)
         all.push(...(data || []))
       }
     } else {
-      const { data } = await scopedFrom('demand_forecast_daily', 'bs_year, bs_month, bs_day, forecast_covers, forecast_revenue, generated_at')
+      const { data } = await scopedFrom('demand_forecast_daily', 'bs_year, bs_month, bs_day, forecast_covers, forecast_revenue, generated_at, holiday_name, holiday_multiplier')
         .is('recipe_id', null).eq('bs_year', bsYear).eq('bs_month', bsMonth)
       all = data || []
     }
@@ -129,7 +129,10 @@ export default function Roster() {
       const key = `${r.bs_year}:${r.bs_month}:${r.bs_day}`
       // A day can have both a 7-day and 30-day forecast row — prefer whichever was generated most recently.
       if (!map[key] || new Date(r.generated_at) > new Date(map[key].generated_at)) {
-        map[key] = { covers: r.forecast_covers, revenue: r.forecast_revenue, generated_at: r.generated_at }
+        map[key] = {
+          covers: r.forecast_covers, revenue: r.forecast_revenue, generated_at: r.generated_at,
+          holiday: r.holiday_name ? { name: r.holiday_name, multiplier: r.holiday_multiplier } : null,
+        }
       }
     }
     setForecastByDay(map)
@@ -484,7 +487,7 @@ export default function Roster() {
     const scheduledCount = filteredEmps.filter(emp => roster[rKey(col.bsYear, col.bsMonth, col.bsDay, emp.id)]).length
     const recommended    = computeRecommendedHeadcount(f?.covers, coversPerStaffTarget)
     const costPct        = f?.revenue > 0 ? (plannedCost / f.revenue) * 100 : null
-    return { col, scheduledHrs, plannedCost, scheduledCount, recommended, costPct, forecastRevenue: f?.revenue ?? null, forecastCovers: f?.covers ?? null }
+    return { col, scheduledHrs, plannedCost, scheduledCount, recommended, costPct, forecastRevenue: f?.revenue ?? null, forecastCovers: f?.covers ?? null, holiday: f?.holiday ?? null }
   })
   const forecastRowByKey = Object.fromEntries(laborForecastRows.map(r => [`${r.col.bsYear}:${r.col.bsMonth}:${r.col.bsDay}`, r]))
 
@@ -943,7 +946,7 @@ export default function Roster() {
           </div>
 
           <p style={{ fontSize: 12, color: 'var(--theme-text3)', margin: '0 0 14px' }}>
-            Scheduled hours/cost come from the roster; Forecast Revenue/Covers come from Demand Forecast (run/update it on the Demand Forecast page) — a day with no forecast yet just shows "—".
+            Scheduled hours/cost come from the roster; Forecast Revenue/Covers come from Demand Forecast (run/update it on the Demand Forecast page) — a day with no forecast yet just shows "—". A festival/holiday badge next to a date means that day's forecast was adjusted by the multiplier set for it in Holiday Calendar — an unadjusted badge (no "×N") means the holiday is known but no multiplier has been set yet.
           </p>
 
           <div className="table-wrap">
@@ -970,6 +973,15 @@ export default function Roster() {
                     <tr key={i}>
                       <td style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>
                         {weekday} {r.col.bsDay} {BS_MONTHS[r.col.bsMonth - 1].slice(0, 3)}
+                        {r.holiday && (
+                          r.holiday.multiplier != null
+                            ? <Tip text={`Forecast Revenue/Covers on this row are adjusted ×${r.holiday.multiplier} for ${r.holiday.name} (set in Holiday Calendar).`} width={260}>
+                                <span className="badge-amber" style={{ fontSize: 9, marginLeft: 6 }}>{r.holiday.name} ×{r.holiday.multiplier}</span>
+                              </Tip>
+                            : <Tip text={`${r.holiday.name} — no demand multiplier set in Holiday Calendar, so Forecast Revenue/Covers on this row are NOT adjusted for it.`} width={260}>
+                                <span className="badge-amber" style={{ fontSize: 9, marginLeft: 6 }}>{r.holiday.name}</span>
+                              </Tip>
+                        )}
                       </td>
                       <td style={{ textAlign: 'right' }}>{r.scheduledHrs > 0 ? `${r.scheduledHrs}h` : '—'}</td>
                       <td style={{ textAlign: 'right' }}>{r.forecastRevenue != null ? fmtNpr(r.forecastRevenue) : '—'}</td>

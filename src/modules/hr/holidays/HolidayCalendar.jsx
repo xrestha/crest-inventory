@@ -32,7 +32,7 @@ function fyYearsFrom(holidays) {
   return [...set].sort((a, b) => b - a)
 }
 
-const BLANK = { name: '', bs_month: 6, bs_day: 3, holiday_type: 'public' }
+const BLANK = { name: '', bs_month: 6, bs_day: 3, holiday_type: 'public', demand_multiplier: '' }
 
 const lbl = {
   fontSize: 11, color: 'var(--theme-text3)', fontWeight: 600,
@@ -77,7 +77,7 @@ export default function HolidayCalendar() {
 
   function openAdd() { setForm({ open: true, editing: null, ...BLANK }); setMsg('') }
   function openEdit(h) {
-    setForm({ open: true, editing: h, name: h.name, bs_month: h.bs_month, bs_day: h.bs_day, holiday_type: h.holiday_type })
+    setForm({ open: true, editing: h, name: h.name, bs_month: h.bs_month, bs_day: h.bs_day, holiday_type: h.holiday_type, demand_multiplier: h.demand_multiplier ?? '' })
     setMsg('')
   }
   function closeForm() { setForm(f => ({ ...f, open: false, editing: null })) }
@@ -92,8 +92,15 @@ export default function HolidayCalendar() {
     if (!bs_day || bs_day < 1 || bs_day > maxDay) {
       setMsg(`error:Day must be 1–${maxDay} for ${BS_MONTHS[bs_month - 1]}`); return
     }
+    const multiplierStr = String(form.demand_multiplier).trim()
+    if (multiplierStr && (isNaN(parseFloat(multiplierStr)) || parseFloat(multiplierStr) < 0)) {
+      setMsg('error:Demand multiplier must be a positive number (e.g. 0.3 or 1.5), or left blank'); return
+    }
     setBusy(true); setMsg('')
-    const payload = { bs_year, bs_month, bs_day, name: form.name.trim(), holiday_type: form.holiday_type }
+    const payload = {
+      bs_year, bs_month, bs_day, name: form.name.trim(), holiday_type: form.holiday_type,
+      demand_multiplier: multiplierStr ? parseFloat(multiplierStr) : null,
+    }
     const { error } = form.editing
       ? await scopedUpdate('hr_holiday_calendar', payload).eq('id', form.editing.id)
       : await scopedInsert('hr_holiday_calendar', payload)
@@ -219,6 +226,11 @@ export default function HolidayCalendar() {
                       Type
                     </Tip>
                   </th>
+                  <th>
+                    <Tip text="Scales Demand Forecast on this day. Blank = flagged but unadjusted." width={260}>
+                      Demand
+                    </Tip>
+                  </th>
                   <th></th>
                 </tr>
               </thead>
@@ -234,6 +246,9 @@ export default function HolidayCalendar() {
                       <span className={h.holiday_type === 'public' ? 'badge-amber' : 'badge-gray'} style={{ fontSize: 11 }}>
                         {h.holiday_type === 'public' ? 'Public' : 'Optional'}
                       </span>
+                    </td>
+                    <td style={{ color: 'var(--theme-text2)', fontSize: 12 }}>
+                      {h.demand_multiplier != null ? `×${h.demand_multiplier}` : <span style={{ color: 'var(--theme-text3)' }}>—</span>}
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
@@ -332,6 +347,25 @@ export default function HolidayCalendar() {
                     {t.label}
                   </label>
                 ))}
+              </div>
+            </div>
+
+            {/* Demand Multiplier */}
+            <div style={{ marginTop: 14 }}>
+              <label style={lbl}>
+                <Tip text="Scales this day's Demand Forecast (covers, revenue, and item quantities) by this factor — e.g. 0.3 if you close/run quiet on this day, 1.5 if it's your busiest day of the year. Leave blank for no adjustment; the day still shows a holiday flag either way." width={320}>
+                  Demand Multiplier (optional)
+                </Tip>
+              </label>
+              <input
+                type="number" min="0" step="0.1"
+                style={{ ...inp, width: 120 }}
+                value={form.demand_multiplier}
+                onChange={e => setForm(f => ({ ...f, demand_multiplier: e.target.value }))}
+                placeholder="e.g. 1.5"
+              />
+              <div style={{ fontSize: 10, color: 'var(--theme-text2)', marginTop: 4 }}>
+                Feeds Demand Forecast and Roster's Labor Forecast tab. Blank = forecast unaffected.
               </div>
             </div>
 
