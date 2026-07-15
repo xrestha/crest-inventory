@@ -20,6 +20,7 @@ const DEFAULT_FLAGS = {
   combo_builder: null,
   guest_ordering: null,
   owner_dashboard: null,
+  stock_movement_log: null,
 }
 
 const FEATURE_GROUPS = [
@@ -38,6 +39,7 @@ const FEATURE_GROUPS = [
     { key: 'monthly_summary', label: 'Monthly Summary' },
     { key: 'annual_summary',  label: 'Annual Summary' },
     { key: 'reorder_report',  label: 'Reorder Report' },
+    { key: 'stock_movement_log', label: 'Stock Movements' },
     { key: 'vat_report',      label: 'VAT Report' },
     { key: 'non_vat_report',  label: 'Non-VAT Report' },
     { key: 'wastage_report',  label: 'Wastage Report' },

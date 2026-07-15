@@ -35,7 +35,7 @@ Works natively in Bikram Sambat (BS) calendar · NPR currency · FonePay payment
 
 | Plan | Monthly | Annual /mo | Includes |
 | --- | --- | --- | --- |
-| Starter | NPR 5,000 | NPR 3,750 | Dashboard, Items, Vendors, Periods, Purchases, Stock, Help + Sales Entry, Payment Summary, Monthly Summary, Annual Summary, Reorder Report, VAT Report, Non-VAT Report, Wastage Report, Settings, Stock Report, Menu Pricing |
+| Starter | NPR 5,000 | NPR 3,750 | Dashboard, Items, Vendors, Periods, Purchases, Stock, Help + Sales Entry, Payment Summary, Monthly Summary, Annual Summary, Reorder Report, Stock Movements, VAT Report, Non-VAT Report, Wastage Report, Settings, Stock Report, Menu Pricing |
 | Growth | NPR 8,000 | NPR 6,000 | + Recipes, Variance, Budget vs Actual, Best Sellers, Purchase Orders, Requisitions, Dead Stock, Recipe Margin, Outstanding Payables, Staff Meals, Menu Repricing |
 | Pro | NPR 12,000 | NPR 9,000 | + Menu Engineering, FIFO, Vendor Report, Supplier Price Tracker, Overheads, Period Comparison, Theoretical Variance, Shrinkage Report |
 
@@ -60,6 +60,7 @@ Starter: 1-month free trial. Annual = 25% off monthly.
 | `/summary` | **Starter+** | `monthly_summary` |
 | `/annual-summary` | **Starter+** | `annual_summary` |
 | `/reorder` | **Starter+** | `reorder_report` |
+| `/stock-movements` | **Starter+** | `stock_movement_log` |
 | `/vat-report` | **Starter+** | `vat_report` |
 | `/non-vat-report` | **Starter+** | `non_vat_report` |
 | `/wastage-report` | **Starter+** | `wastage_report` |
@@ -148,6 +149,17 @@ Annual = 25% off monthly, applied uniformly everywhere annual pricing appears.
 ---
 
 ## Session Log
+
+### S395 — 2026-07-15 — POS discount netting bug fix + new "Stock Movements" report page
+
+A cross-module audit (IMS↔POS↔HR) surfaced two related gaps in how `stock_movements`/`sales_entries` — the tables POS writes to on every sale/comp close — actually got used downstream. Both fixed this session.
+
+- **[Confirmed real bug] POS bill-level discounts weren't netted into `sales_entries`** — `writeSalesEntries()` in [PosOrders.jsx:1236-1240](src/modules/pos/orders/PosOrders.jsx#L1236-L1240) inserted `qty_sold × unit_price` at the full pre-discount price regardless of the bill's `discountAmt`/`discRatio` (already computed for the bill's own VAT recalculation, [PosOrders.jsx:303-310](src/modules/pos/orders/PosOrders.jsx#L303-L310)). Every revenue-based IMS report reading `sales_entries.unit_price` — MonthlySummary, PeriodComparison, AnnualSummary, MenuRepricing, MenuEngineering, RecipeMargin, Overheads, BestSellers, Sales.js, and Owner Dashboard's Food Cost %/Net Margin % — was silently overstating revenue by the discount total on every discounted bill. Fixed by applying `discRatio` (only when `closeType === 'paid'`) to the `unit_price` snapshotted on `'pos'`-source rows; `'pos_comp'` rows are left at full price since they're already excluded from revenue by source and only their `qty_sold` is read downstream. Single fix point — no per-report changes needed. Historical rows aren't backfilled (same convention as the earlier `unit_price`/`vat_rate` migration, S-prior).
+- **New Stock Movements report** (`/stock-movements`, Starter, `stock_movement_log` flag) — the audit found `stock_movements` (the POS stock-depletion ledger written by `writeSalesEntries()`) had exactly one reader anywhere in the app: Reorder Report's "Book Stock" column. There was no way to actually see the ledger itself. New page in [StockMovements.js](src/modules/ims/stockcount/StockMovements.js) shows a chronological, per-period log of every movement — item, qty depleted, source (POS Sale/POS Comp), the causing order (click-through via the existing `viewPosBill()` helper to the exact original bill/comp-slip), staff, and food-cost value (`qty × per_uom_rate`). Stat cards include "Comp Value" — the food-cost value of comped dishes, a number that existed nowhere else in the app despite comps correctly being zero-revenue everywhere else. Reorder Report's Book Stock cell now links through (`?item=&period=`, the app's first query-string report pre-filter — no existing convention to follow, confirmed by codebase search) since it was the only existing page with a `stock_movements`-derived concept to attach to; Stock Report/Dead Stock/Stock/Variance/Owner Dashboard were deliberately left alone as out of scope (none reference the ledger today).
+- **DB migration:** `20260715090000_feature_flags_stock_movement_log.sql` — `feature_flags` is a wide table (one boolean column per feature key), so the new key needs its own column before `FeatureAccessModal.js` can toggle it per client.
+- Wired through the full "new feature" checklist: `STARTER_KEYS` (AuthContext.js), `DEFAULT_FLAGS` (SettingsContext.js + FeatureAccessModal.js), Starter feature group (FeatureAccessModal.js), nav entry (Layout.js `REPORTS`, `cat: 'stock'`), route (App.js), Help.js (new entry + cross-references in the existing Reorder Report entry and "Book Stock" glossary term).
+
+**Files:** `src/modules/pos/orders/PosOrders.jsx`, `src/modules/ims/stockcount/StockMovements.js` (new), `src/modules/ims/stockcount/ReorderReport.js`, `src/context/AuthContext.js`, `src/context/SettingsContext.js`, `src/pages/adminClients/FeatureAccessModal.js`, `src/components/Layout.js`, `src/App.js`, `src/pages/Help.js`, `supabase/migrations/20260715090000_feature_flags_stock_movement_log.sql`
 
 ### S394 — 2026-07-14 — Danger Zone "Clear X Transactions" cross-module `sales_entries` bugs (both directions)
 

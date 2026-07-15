@@ -22,6 +22,7 @@ import PaymentReport from './modules/ims/reports/PaymentReport'
 import Help from './pages/Help'
 import VendorReport from './modules/ims/reports/VendorReport'
 import ReorderReport from './modules/ims/stockcount/ReorderReport'
+import StockMovements from './modules/ims/stockcount/StockMovements'
 import SupplierPriceTracker from './modules/ims/purchases/SupplierPriceTracker'
 import MenuEngineering from './modules/ims/recipes/MenuEngineering'
 import AdminClients from './pages/AdminClients'
@@ -130,6 +131,8 @@ export default function App() {
                 element={<ModuleGate module="ims"><PremiumGate featureKey="annual_summary" minPlan="starter"><AnnualSummary /></PremiumGate></ModuleGate>} />
               <Route path="/reorder"
                 element={<ModuleGate module="ims"><PremiumGate featureKey="reorder_report" minPlan="starter"><ReorderReport /></PremiumGate></ModuleGate>} />
+              <Route path="/stock-movements"
+                element={<ModuleGate module="ims"><PremiumGate featureKey="stock_movement_log" minPlan="starter"><StockMovements /></PremiumGate></ModuleGate>} />
               <Route path="/vat-report"
                 element={<ModuleGate module="ims"><PremiumGate featureKey="vat_report" minPlan="starter"><VatReport /></PremiumGate></ModuleGate>} />
               <Route path="/purchase-one-lakh-report"

@@ -87,8 +87,13 @@ const IMS_FEATURE_TIERS = [
       },
       {
         icon: '⚑', name: 'Reorder Report',
-        guide: 'Flags items running below their par level. Theoretical stock = Opening + Net Purchases − Wastage − Usage. Set par levels inline on the report. "✕ Clear All Par" resets all par levels at once. Book Stock is a separate, live column fed by Crest POS — every time a POS order is charged or marked Complimentary, the recipe is exploded into its raw ingredients (recursing through sub-recipes) and a depletion entry is recorded automatically. Book Stock shows "—" for items with no POS sales this period; it does not replace Current Stock, which still reflects manual Sales Entry too. Admins see a "✕ Clear Book Stock" button to wipe the ledger for the selected period back to "—" (e.g. to clear out bad test data) without touching physical counts or Current Stock.',
+        guide: 'Flags items running below their par level. Theoretical stock = Opening + Net Purchases − Wastage − Usage. Set par levels inline on the report. "✕ Clear All Par" resets all par levels at once. Book Stock is a separate, live column fed by Crest POS — every time a POS order is charged or marked Complimentary, the recipe is exploded into its raw ingredients (recursing through sub-recipes) and a depletion entry is recorded automatically. Book Stock shows "—" for items with no POS sales this period; it does not replace Current Stock, which still reflects manual Sales Entry too. Admins see a "✕ Clear Book Stock" button to wipe the ledger for the selected period back to "—" (e.g. to clear out bad test data) without touching physical counts or Current Stock. Click a Book Stock value to see the full itemised ledger behind it in Stock Movements.',
         tips: ['Set par levels based on supplier lead time × daily usage rate', 'Review the reorder report weekly, not just at month end', 'Book Stock only reflects POS-recorded sales/comps — if you also log sales manually, Current Stock is the more complete number']
+      },
+      {
+        icon: '↺', name: 'Stock Movements',
+        guide: 'The itemised ledger behind Reorder Report\'s Book Stock column — every POS-driven depletion entry for the selected period, one row per item per order. Shows the date, item, quantity depleted, source (POS Sale vs POS Comp), the order number (click it to open the exact original bill or complimentary slip), the staff member who closed that order, and the food-cost value of the depletion (qty × per-unit rate). The "Comp Value" stat card totals what was given away complimentary — food cost consumed with zero revenue collected. Arriving from Reorder Report\'s Book Stock link pre-filters to that item and period automatically.',
+        tips: ['POS Comp rows are excluded from revenue everywhere else in the app, but the food cost still shows here — this is the one place to see what comps actually cost', 'Click any Order # to jump straight to the original bill for full traceability', 'Only reflects POS activity — a client without POS sales in a period will see an empty ledger even with active stock movement from purchases/wastage']
       },
       {
         icon: '⊛', name: 'VAT Report',
@@ -395,7 +400,7 @@ const GLOSSARY = [
   { term: 'Conversion Factor', def: 'How many base units are in one purchase unit. E.g. 1 case = 24 bottles → conversion factor = 24.' },
   { term: 'BS Calendar',      def: 'Bikram Sambat calendar used in Nepal. The system works natively in BS months.' },
   { term: 'Par Level',        def: 'Minimum stock quantity before reordering. Used in the Reorder Report to flag items running low.' },
-  { term: 'Book Stock',       def: 'Live stock count fed by Crest POS — decremented automatically on every POS sale/comp close, shown in the Reorder Report. Only reflects POS activity; physical stock count remains the source of truth.' },
+  { term: 'Book Stock',       def: 'Live stock count fed by Crest POS — decremented automatically on every POS sale/comp close, shown in the Reorder Report. Only reflects POS activity; physical stock count remains the source of truth. See Stock Movements for the itemised ledger.' },
   { term: 'SSF',              def: 'Social Security Fund (सामाजिक सुरक्षा कोष). Nepal mandatory contribution: 11% employee + 20% employer of basic salary.' },
   // — Crest HR —
   { term: 'TDS',              def: 'Tax Deducted at Source. Nepal\'s monthly income tax withholding on salary, computed via year-to-date cumulative projection against the current fiscal year\'s tax slabs.' },

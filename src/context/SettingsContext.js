@@ -47,6 +47,7 @@ const DEFAULT_FLAGS = {
   guest_ordering: false,
   combo_builder: false,
   owner_dashboard: false,
+  stock_movement_log: false,
 }
 
 export function SettingsProvider({ children }) {

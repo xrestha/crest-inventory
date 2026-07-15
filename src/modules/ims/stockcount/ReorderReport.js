@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
@@ -12,6 +13,7 @@ export default function ReorderReport() {
   const { clientId, profile, isAdmin, loading: authLoading } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
   const { scopedFrom, scopedInsert, scopedUpdate, scopedDelete } = useScopedDb()
+  const navigate = useNavigate()
 
   const [periods, setPeriods] = useState([])
   const [selectedPeriod, setSelectedPeriod] = useState(null)
@@ -347,7 +349,16 @@ export default function ReorderReport() {
                           {row.currentStock.toFixed(2)}
                         </td>
                         <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>
-                          {row.hasMovements ? row.bookStock.toFixed(2) : '—'}
+                          {row.hasMovements ? (
+                            <Tip text="Click to see every stock-depletion entry behind this number, with the POS order that caused each one." width={260}>
+                              <span
+                                onClick={() => navigate(`/stock-movements?item=${row.item.id}&period=${selectedPeriod.id}`)}
+                                style={{ cursor: 'pointer', borderBottom: '1px dashed var(--theme-border)', paddingBottom: 1 }}
+                              >
+                                {row.bookStock.toFixed(2)}
+                              </span>
+                            </Tip>
+                          ) : '—'}
                         </td>
                         <td>
                           <Tip text={row.stockSource === 'closing' ? 'Physical closing count entered via stock count.' : 'Calculated: Opening + Net Purchases − Usage − Wastage'} width={240}>
