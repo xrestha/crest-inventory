@@ -13,7 +13,7 @@ const fmt = n => Math.round(n || 0).toLocaleString('en-NP')
 
 function Section({ title, children }) {
   return (
-    <div style={{ marginBottom: 14 }}>
+    <div className="calc-section" style={{ marginBottom: 14 }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--theme-accent)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{title}</div>
       {children}
     </div>
@@ -26,7 +26,7 @@ function Section({ title, children }) {
 // small always-visible `hint` caption underneath.
 function Line({ label, value, op, hint, strong, color }) {
   return (
-    <div style={{ padding: '3px 0', borderBottom: '1px dotted var(--theme-border-lt)' }}>
+    <div className="calc-line" style={{ padding: '3px 0', borderBottom: '1px dotted var(--theme-border-lt)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12.5 }}>
         <span style={{ color: 'var(--theme-text2)' }}>{op ? `${op} ${label}` : label}</span>
         <span style={{ color: color || 'var(--theme-text1)', fontWeight: strong ? 700 : 400, whiteSpace: 'nowrap' }}>{value}</span>
@@ -45,7 +45,7 @@ function CalcDetail({ row, monthDays, advances }) {
   const earningComps = comps.filter(c => c.type === 'earning')
 
   return (
-    <div style={{ padding: '18px 22px', background: 'var(--theme-bg)', borderTop: '1px solid var(--theme-border)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 36px' }}>
+    <div className="calc-detail-grid" style={{ padding: '18px 22px', background: 'var(--theme-bg)', borderTop: '1px solid var(--theme-border)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 36px' }}>
       <div>
         <Section title="Attendance Tally">
           {ATTENDANCE_STATUSES.map(s => (

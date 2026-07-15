@@ -150,6 +150,38 @@ Annual = 25% off monthly, applied uniformly everywhere annual pricing appears.
 
 ## Session Log
 
+### S402 — 2026-07-15 — Payslip gets a company letterhead, SSF number, and a Net Pay highlight
+
+User pointed out the Payslip (S401) was "too generic" — no company identity anywhere on a document that exists specifically to tell one employee what one employer paid them. Researched what a payslip should contain (legally and for design) before touching anything: employer name/address/tax ID, employee SSF number, and clear visual emphasis on Net Pay came back as the consistent gaps versus what was already there. Confirmed with user: include the employer PAN/VAT number (same field already public on POS Tax Invoices, no new exposure) and keep the redesign modest — add the missing fields and polish, not a structural overhaul.
+
+- **Letterhead** — `PayrollRun.jsx` now fetches `clients.name` + `settings.property_address`/`vat_number` (same pattern `DemandForecast.js` already uses for its own print header) and renders it above the employee block, in both the on-screen modal and the print output. Best-effort: a client that hasn't filled in Settings just gets a shorter header, not a broken one — the whole block is gated on `bizInfo.name` being present.
+- **SSF number** — `hr_employees.ssf_no` was already being fetched into `employees` state but never displayed anywhere on the payslip. Now shown inline in the employee meta line, only when `ssf_enrolled && ssf_no` are both set.
+- **Net Pay highlight** — subtle accent-tinted background band around the Net Pay row, screen-only (light fills don't reproduce reliably on B&W printers, so print keeps relying on the existing bold border + accent color for emphasis).
+- Deliberately not added: an explicit pay-period date range. Every period in this app already IS a full BS month by construction (no partial-month periods exist), so "Ashadh 2083" already fully specifies the pay period — a "1–32 Ashadh 2083" range would be redundant, not new information.
+
+**Files:** `src/modules/hr/payroll/PayrollRun.jsx`
+
+### S401 — 2026-07-15 — Payslip print: fixed edge-to-edge layout with a dead gap down the middle
+
+User attached a Payslip PDF (Payroll Run's individual employee payslip, distinct from S400's Payroll Calculation page): at 100% print scale the label/value columns sat flush against opposite edges of the A4 page with a large empty gap between them, and content ran right to the paper edge with no margin. A brief detour: initially misread a compressed digit in a screenshot as a NPR 2 arithmetic inconsistency between this Payslip and Payroll Calculation for the same employee — user zoomed to 175% and the real figure matched (NPR 10,156 both places, sums correctly to the displayed Net Pay); false alarm, corrected and moved to the actual reported issue.
+
+- **Root cause**: `PayrollRun.jsx`'s print-only wrapper (`{printSlip && <div className="print-only">...}`) had no padding and no width constraint at all — unlike `PayslipModal`'s on-screen version, which is deliberately capped at `width: 460`. `PayslipBody`'s `Row` component uses `justify-content: space-between`, so with nothing constraining the container it stretched across the full A4 width, pushing every label to the far left and every value to the far right.
+- **Fix**: added `padding: '28px 36px'` (margin off the paper edge, matching the Payroll Calculation print wrapper's convention) and a `maxWidth: 420` inner wrapper around `PayslipBody`, so it reads as a compact payslip instead of a page-wide table. [PayrollRun.jsx:480-489](src/modules/hr/payroll/PayrollRun.jsx#L480-L489)
+- Verified via an isolated Playwright/Chromium repro (same CSS, same content) — before/after comparison confirmed the fix collapses the dead middle gap without changing anything else about the layout.
+
+**Files:** `src/modules/hr/payroll/PayrollRun.jsx`
+
+### S400 — 2026-07-15 — Payroll Calculation print: fixed spilling to a near-blank 2nd page
+
+User attached a PDF export: page 1 was just the header, all the actual numbers pushed entirely onto page 2 despite clearly having room to spare. Root cause: Chromium's print engine treats a `display: grid` container as non-fragmentable — if it can't prove the whole grid fits below the current cursor position, it defers the ENTIRE grid to a fresh page rather than breaking inside it, even when the content would fit right where it is. `CalcDetail`'s two-column layout (`PayrollCalculation.jsx`) is exactly that kind of container.
+
+- Tried to reproduce the exact bug in an isolated Playwright/Chromium test (same CSS, same content, several margin/scale configurations) and couldn't trigger it — reported honestly as inconclusive rather than claiming a verified root-cause fix.
+- Shipped the standard `break-inside: auto` override plus a more robust fallback: print rendering drops the grid to `display: block` with the two columns as floats instead (floats have always paginated correctly in Chromium, unlike grid/flex formatting contexts) — visually identical, on-screen view untouched. New `.calc-detail-grid` print-only CSS in [Layout.css:1183-1221](src/components/Layout.css#L1183-L1221).
+- User's own test (100% vs 99% print scale) confirmed the actual cause precisely: real content was ~1% (≈10px) taller than one A4 page — right at the threshold where Chromium's all-or-nothing grid deferral bites hardest. Trimmed print-only vertical rhythm to clear that with real margin instead of relying only on graceful float overflow: `Line` padding 3px→2px, `Section` margin-bottom 14px→10px (new `.calc-line`/`.calc-section` classes, print-only overrides — the on-screen expanded row keeps its original roomier spacing). ~84px of saved height against a ~10px deficit, so it should hold across employees with more line items (e.g. SSF-enrolled) too.
+- **Confirmed fixed live** (2026-07-15) — user's re-print at 100% scale now fits one page.
+
+**Files:** `src/modules/hr/payroll/PayrollCalculation.jsx`, `src/components/Layout.css`
+
 ### S399 — 2026-07-15 — Demand Forecast auto-adjusts on holidays (opportunity #2 from S398's research); Roster gets matching help
 
 Closed the loop the demand-forecast model had left explicitly open: `forecastByWeekday()`'s comment said outright "model does NOT auto-adjust for" a matched holiday — it only attached the name for display. Since Nepal holiday footfall swings both directions depending on the specific festival and business (some restaurants close for Dashain Tika, others get slammed the week after), the fix is an **owner-set multiplier per holiday occurrence**, not a hardcoded guess.
@@ -159,7 +191,7 @@ Closed the loop the demand-forecast model had left explicitly open: `forecastByW
 - **Holiday Calendar** (`HolidayCalendar.jsx`) — new optional "Demand Multiplier" field on Add/Edit Holiday (e.g. `0.3` if closed/quiet, `1.5` if slammed), validated as a non-negative number; new table column showing `×N` or `—`. Deliberately per-date, not per-holiday-name — Dashain Tika and the days right after it don't behave the same, so each occurrence is set individually.
 - **Demand Forecast page** — `loadStored()` was silently discarding the holiday info on every reload (it reshapes rows from `demand_forecast_daily` and had `holiday: null` hardcoded with nothing ever repopulating it — the "shows a holiday badge" behavior only ever worked in the instant right after a fresh Recompute, never on a normal page load, which wasn't previously caught). Now reads back `holiday_name`/`holiday_multiplier` from the stored row; the badge/tip distinguishes "×N adjusted" from "flagged, no multiplier set."
 - **Roster's Labor Forecast tab** — was the second ask this session ("show help on the roster page as well"): `loadForecast()` now also selects `holiday_name`/`holiday_multiplier`, and the Date column shows the same adjusted/flagged-only badge next to any holiday, so a manager staffing off this tab sees the same information without switching pages. Help.js updated on all three touched pages (Demand Forecast, Holiday Calendar, Roster).
-- **Migration not applied** — this sandbox's outbound network can't reach the Supabase pooler (connection times out on a plain `select 1`, confirmed twice). The file is ready at `supabase/migrations/20260715120000_demand_forecast_holiday_multiplier.sql` — needs to be pasted into the Supabase Dashboard → SQL Editor and run before this feature does anything live (the app code will otherwise just silently treat every holiday as un-adjusted, since the new columns won't exist to read from).
+- **Migration applied** — this sandbox's outbound network couldn't reach the Supabase pooler to run it directly, so it was handed off as raw SQL; confirmed run successfully via Dashboard → SQL Editor (2026-07-15). Feature is fully live.
 
 **Files:** `src/utils/demandForecastData.js`, `src/modules/hr/holidays/HolidayCalendar.jsx`, `src/modules/ims/stockcount/DemandForecast.js`, `src/modules/hr/roster/Roster.jsx`, `src/pages/Help.js`, `supabase/migrations/20260715120000_demand_forecast_holiday_multiplier.sql` (pending)
 

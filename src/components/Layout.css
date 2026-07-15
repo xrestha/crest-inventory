@@ -1201,6 +1201,35 @@ input[type="number"] {
   .print-sheet-cat { color: black !important; border-bottom: 1px solid #999 !important; }
   .print-sheet-blank { min-width: 80px; height: 28px; }
   .print-sheet-section { page-break-inside: avoid; }
+
+  /* Chromium's print engine has a long-standing history of treating `display: grid`/`flex`
+     containers (and their items) as non-fragmentable — if the browser can't prove the whole
+     grid fits below the current cursor position, it defers the ENTIRE grid to a fresh page
+     rather than breaking inside it, even when the content would easily fit right where it is
+     (found on Payroll Calculation's print view, S400: header alone on page 1, all content
+     pushed to page 2). `break-inside: auto` alone was not reliably enough to override this in
+     every Chromium build, so the print rendering also drops out of grid entirely — normal block
+     flow with floats has always paginated correctly, since floats participate in ordinary block
+     layout rather than a separate non-fragmentable formatting context. Visual result is the same
+     two-column layout; only the print layout mechanism changes, on-screen (still `display:grid`
+     via the inline style) is untouched. */
+  .calc-detail-grid {
+    display: block !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+  .calc-detail-grid > div:first-child { float: left; width: 47%; }
+  .calc-detail-grid > div:last-child { float: right; width: 47%; }
+  .calc-detail-grid::after { content: ''; display: block; clear: both; }
+
+  /* Confirmed live (S400): at 100% print scale the real content was ~1% taller than one A4
+     page — 99% scale alone fixed it, meaning it was only ever a few pixels over. The float fix
+     above stops that sliver from wasting a whole page, but the more direct fix is not needing
+     it: trim print-only vertical rhythm so it reliably clears one page with real margin, not by
+     a hair. Print-only — the on-screen expanded row (same Section/Line components) keeps its
+     roomier spacing since it's read on a monitor, not fitted to a fixed page height. */
+  .calc-section { margin-bottom: 10px !important; }
+  .calc-line { padding: 2px 0 !important; }
 }
 
 /* ── MOBILE RESPONSIVE ───────────────────────────────────────────────────── */

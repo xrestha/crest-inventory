@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../../context/AuthContext'
 import { useScopedDb } from '../../../shared/hooks/useScopedDb'
+import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
 import * as XLSX from 'xlsx'
 import { BS_MONTHS } from '../../../utils/bsCalendar'
@@ -34,8 +35,22 @@ export default function PayrollRun() {
   const [msg,        setMsg]        = useState('')
   const [viewSlip,   setViewSlip]   = useState(null)
   const [printSlip,  setPrintSlip]  = useState(null)
+  // Company letterhead for the payslip — a payslip with no employer identity on it at all is
+  // missing the single most basic thing a pay document is expected to have. Same source fields
+  // Tax Invoice already prints (settings.vat_number is Nepal's PAN, reused as-is — not a new ID).
+  const [bizInfo, setBizInfo] = useState({ name: '', address: '', vatNumber: '' })
 
   const empMap = Object.fromEntries(employees.map(e => [e.id, e]))
+
+  useEffect(() => {
+    if (!clientId) return
+    Promise.all([
+      supabase.from('clients').select('name').eq('id', clientId).single(),
+      supabase.from('settings').select('property_address, vat_number').eq('client_id', clientId).maybeSingle(),
+    ]).then(([{ data: client }, { data: settings }]) => {
+      setBizInfo({ name: client?.name || '', address: settings?.property_address || '', vatNumber: settings?.vat_number || '' })
+    })
+  }, [clientId])
 
   useEffect(() => {
     if (!clientId) return
@@ -474,20 +489,25 @@ export default function PayrollRun() {
 
       {/* On-screen payslip modal */}
       {viewSlip && (
-        <PayslipModal data={viewSlip} period={period} periodLabel={periodLabel} onClose={() => setViewSlip(null)} onPrint={() => printPayslip(viewSlip.slip, viewSlip.emp)} />
+        <PayslipModal data={viewSlip} period={period} periodLabel={periodLabel} bizInfo={bizInfo} onClose={() => setViewSlip(null)} onPrint={() => printPayslip(viewSlip.slip, viewSlip.emp)} />
       )}
 
-      {/* Print-only payslip */}
+      {/* Print-only payslip — explicit padding (margin off the paper edge, unlike the on-screen
+          modal which sits inside its own bordered card) and a max-width, or the Row/space-between
+          layout below stretches across the full A4 width and shoves label/value to opposite
+          edges of the page with a wide dead gap between them. */}
       {printSlip && (
-        <div className="print-only">
-          <PayslipBody slip={printSlip.slip} emp={printSlip.emp} periodLabel={periodLabel} forPrint />
+        <div className="print-only" style={{ padding: '28px 36px' }}>
+          <div style={{ maxWidth: 420 }}>
+            <PayslipBody slip={printSlip.slip} emp={printSlip.emp} periodLabel={periodLabel} bizInfo={bizInfo} forPrint />
+          </div>
         </div>
       )}
     </div>
   )
 }
 
-function PayslipModal({ data, periodLabel, onClose, onPrint }) {
+function PayslipModal({ data, periodLabel, bizInfo, onClose, onPrint }) {
   const { slip, emp } = data
   return (
     <div className="no-print" style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', overflowY: 'auto', padding: '40px 16px' }}>
@@ -497,7 +517,7 @@ function PayslipModal({ data, periodLabel, onClose, onPrint }) {
           <h2 style={{ margin: 0, fontSize: 16, color: 'var(--theme-text1)' }}>Payslip</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--theme-text2)', fontSize: 18, cursor: 'pointer' }}>✕</button>
         </div>
-        <PayslipBody slip={slip} emp={emp} periodLabel={periodLabel} />
+        <PayslipBody slip={slip} emp={emp} periodLabel={periodLabel} bizInfo={bizInfo} />
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 18 }}>
           <button className="btn btn-ghost" onClick={onClose}>Close</button>
           <button className="btn btn-primary" onClick={onPrint}>🖨 Print</button>
@@ -507,7 +527,7 @@ function PayslipModal({ data, periodLabel, onClose, onPrint }) {
   )
 }
 
-function PayslipBody({ slip, emp, periodLabel, forPrint }) {
+function PayslipBody({ slip, emp, periodLabel, bizInfo, forPrint }) {
   const c1 = forPrint ? '#000' : 'var(--theme-text3)'
   const c2 = forPrint ? '#000' : 'var(--theme-text1)'
   const fmtn = n => `NPR ${Math.round(n || 0).toLocaleString('en-NP')}`
@@ -518,12 +538,26 @@ function PayslipBody({ slip, emp, periodLabel, forPrint }) {
     </div>
   )
   const isMonthly = slip.pay_basis === 'monthly'
+  const ssfLine = emp.ssf_enrolled && emp.ssf_no ? `SSF ${emp.ssf_no}` : null
   return (
     <div>
+      {/* Letterhead — a payslip with no employer identity on it is missing the single most
+          basic thing a pay document is expected to have. bizInfo is best-effort: an client that
+          hasn't filled in Settings → Property Address/PAN just gets a shorter header, not a
+          broken one. */}
+      {bizInfo?.name && (
+        <div style={{ marginBottom: 12, paddingBottom: 10, borderBottom: `2px solid ${forPrint ? '#000' : 'var(--theme-accent)'}` }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: c2 }}>{bizInfo.name}</div>
+          {bizInfo.address && <div style={{ fontSize: 11, color: c1 }}>{bizInfo.address}</div>}
+          {bizInfo.vatNumber && <div style={{ fontSize: 11, color: c1 }}>PAN: {bizInfo.vatNumber}</div>}
+          <div style={{ fontSize: 10, color: c1, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Payslip</div>
+        </div>
+      )}
+
       <div style={{ marginBottom: 12, paddingBottom: 12, borderBottom: `1px solid ${forPrint ? '#ccc' : 'var(--theme-border)'}` }}>
         <div style={{ fontSize: 15, fontWeight: 700, color: c2 }}>{emp.full_name}</div>
         <div style={{ fontSize: 12, color: c1 }}>
-          {[emp.employee_code, emp.department, `${slip.pay_basis} pay`].filter(Boolean).join(' · ')} — {periodLabel}
+          {[emp.employee_code, emp.department, `${slip.pay_basis} pay`, ssfLine].filter(Boolean).join(' · ')} — {periodLabel}
         </div>
       </div>
 
@@ -551,7 +585,14 @@ function PayslipBody({ slip, emp, periodLabel, forPrint }) {
         </>
       )}
 
-      <div style={{ marginTop: 12, paddingTop: 12, borderTop: `2px solid ${forPrint ? '#000' : 'var(--theme-border)'}` }}>
+      <div style={{
+        marginTop: 12, paddingTop: 12, borderTop: `2px solid ${forPrint ? '#000' : 'var(--theme-border)'}`,
+        // Background tint only on screen — light fills are unreliable on B&W printers and the
+        // bold border + accent-colored figure already carry the emphasis on paper.
+        background: forPrint ? 'transparent' : 'color-mix(in srgb, var(--theme-accent) 8%, transparent)',
+        borderRadius: forPrint ? 0 : 6, padding: forPrint ? '12px 0 0' : '10px 10px 6px',
+        marginLeft: forPrint ? 0 : -10, marginRight: forPrint ? 0 : -10,
+      }}>
         <Row label="Net Pay" value={slip.net_pay} strong />
       </div>
       {slip.ssf_employer > 0 && (
