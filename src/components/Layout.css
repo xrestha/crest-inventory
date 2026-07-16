@@ -1200,7 +1200,19 @@ input[type="number"] {
   .print-sheet-header p { color: black !important; }
   .print-sheet-cat { color: black !important; border-bottom: 1px solid #999 !important; }
   .print-sheet-blank { min-width: 80px; height: 28px; }
-  .print-sheet-section { page-break-inside: avoid; }
+
+  /* A section taller than the space left on the current page must NOT be forced
+     onto a fresh page whole (Chromium won't split a `page-break-inside: avoid`
+     block even when it would fit fine split — same failure mode as S400's
+     Payroll Calculation grid: header alone on page 1, everything else on page 2,
+     confirmed live here on a 32-row category following a short print header).
+     Let the section break; keep its heading glued to the first row instead, and
+     repeat the table's own header row on the next page so a split section still
+     reads correctly. */
+  .print-sheet-section { page-break-inside: auto; break-inside: auto; }
+  .print-sheet-cat { page-break-after: avoid; break-after: avoid-page; }
+  .print-sheet-table thead { display: table-header-group; }
+  .print-sheet-table tr { page-break-inside: avoid; break-inside: avoid; }
 
   /* Chromium's print engine has a long-standing history of treating `display: grid`/`flex`
      containers (and their items) as non-fragmentable — if the browser can't prove the whole

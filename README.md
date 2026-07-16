@@ -150,6 +150,15 @@ Annual = 25% off monthly, applied uniformly everywhere annual pricing appears.
 
 ## Session Log
 
+### S404 — 2026-07-16 — Stock Count Sheet print: fixed blank page 1 on tall categories
+
+User printed a Stock Count Sheet (Stock.js's Print Sheet tab) and got a page 1 with only the header on it — the rest of the page blank — with the first category's table (DAIRY & BAKERY, 32 rows) starting fresh on page 2.
+
+- **Root cause**: `.print-sheet-section { page-break-inside: avoid }` in `Layout.css` told Chromium never to split a category section across pages. When a section is taller than the space left after the header on page 1, Chromium doesn't split it — it defers the *entire* section to a fresh page instead, same failure mode already documented for Payroll Calculation's print grid (S400).
+- **Fix**: `.print-sheet-section` now allows breaking across pages; `.print-sheet-cat` (the category heading) stays glued to its first row via `page-break-after: avoid` so a heading can't get orphaned; each table's `<thead>` repeats on the next page (`display: table-header-group`) so a split section still shows column headers; individual `<tr>` rows still can't split mid-row.
+
+**Files:** `src/components/Layout.css`
+
 ### S403 — 2026-07-16 — Vendor Report: Daily Breakdown drills into the bill, skips blank days for a selected vendor
 
 User selecting a single vendor via the Vendor Purchase Report search box saw the Daily Breakdown tab still list every day in the period, with `—` for every day that vendor didn't buy anything, and no way to get from a day's number to the actual bill behind it.
