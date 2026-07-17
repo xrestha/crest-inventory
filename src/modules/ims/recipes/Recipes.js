@@ -590,6 +590,8 @@ export default function Recipes() {
       ? subRecipeList
       : filtered.filter(r => r.category === activeTab)
 
+  const activeTabLabel = (tabs.find(t => t.key === activeTab)?.label || 'All Recipes').replace(/^⚙\s*/, '')
+
   return (
     <div>
       {/* Header */}
@@ -601,6 +603,9 @@ export default function Recipes() {
             {view === 'edit' && (selectedRecipe ? `Editing: ${selectedRecipe.name}` : 'New Recipe')}
             {view === 'detail' && selectedRecipe?.name}
           </p>
+          {view === 'list' && (
+            <p className="page-subtitle print-only" style={{ marginTop: 2 }}>{activeTabLabel} — {tabFiltered.length} recipe{tabFiltered.length === 1 ? '' : 's'}</p>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           {view === 'edit' && <button className="btn btn-ghost" onClick={() => setView('list')}>← Back</button>}
@@ -611,11 +616,12 @@ export default function Recipes() {
       {view === 'list' && (
         <div className={printRecipe ? 'no-print' : ''}>
           {/* Search bar */}
-          <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center' }}>
+          <div className="no-print" style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center' }}>
             <input
               style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none', width: 240 }}
               placeholder="Search recipes…" value={search} onChange={e => setSearch(e.target.value)} />
             <RecipeImportButton items={items} subRecipes={subRecipes} recipes={recipes} clientId={clientId} scopedInsert={scopedInsert} onImported={init} isAdmin={isAdmin} />
+            <button className="btn btn-ghost" onClick={() => printWithTitle(`Recipe Costing - ${activeTabLabel}`)}>🖶 Print</button>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
               <Tip text="Find every recipe that uses an ingredient — e.g. type 'milk' to list all dishes containing it. Also matches ingredients hidden inside sub-recipes (e.g. 'coffee' finds a Flat White via its Doppio)." width={300}>
                 <span style={{ fontSize: 13, color: 'var(--theme-text2)' }}>ⓘ</span>
@@ -633,13 +639,13 @@ export default function Recipes() {
             </div>
           </div>
           {ingQ && (
-            <div style={{ fontSize: 12, color: 'var(--theme-accent)', margin: '-8px 0 14px' }}>
+            <div className="no-print" style={{ fontSize: 12, color: 'var(--theme-accent)', margin: '-8px 0 14px' }}>
               Showing recipes that use an ingredient matching "<strong>{ingSearch}</strong>" ({filtered.length} found).
             </div>
           )}
 
           {/* FC% filter pills */}
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 14 }}>
+          <div className="no-print" style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 14 }}>
             <span style={{ fontSize: 11, color: 'var(--theme-text3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginRight: 2, flexShrink: 0 }}>FC %</span>
             {[
               { key: 'all',   label: 'All',                                  color: null },
@@ -659,7 +665,7 @@ export default function Recipes() {
           </div>
 
           {/* Tab bar */}
-          <div style={{ display: 'flex', gap: 2, marginBottom: 0, borderBottom: '1px solid var(--theme-border)' }}>
+          <div className="no-print" style={{ display: 'flex', gap: 2, marginBottom: 0, borderBottom: '1px solid var(--theme-border)' }}>
             {tabs.map(tab => {
               const isActive = activeTab === tab.key
               const isSubTab = tab.key === 'sub-recipes'
@@ -733,7 +739,7 @@ export default function Recipes() {
                       <th style={{ textAlign: 'right' }}>Total Cost</th>
                       <th style={{ textAlign: 'right' }}>Yield</th>
                       <th style={{ textAlign: 'right' }}>Cost per Unit</th>
-                      <th></th>
+                      <th className="no-print"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -755,7 +761,7 @@ export default function Recipes() {
                           <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--theme-text1)' }}>
                             NPR {costPerUnit.toFixed(2)} / {recipe.yield_uom}
                           </td>
-                          <td style={{ textAlign: 'right' }}>
+                          <td className="no-print" style={{ textAlign: 'right' }}>
                             <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                               <button className="btn btn-ghost" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => setPrintRecipe(recipe)}>🖶</button>
                               <button className="btn btn-ghost" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => openEdit(recipe)}>Edit</button>
@@ -780,7 +786,7 @@ export default function Recipes() {
                       <th style={{ textAlign: 'right' }}>Food Cost</th>
                       <th style={{ textAlign: 'right' }}><Tip text="Menu price ex-VAT (stored without VAT). VAT-inclusive price = selling price × (1 + VAT rate)." width={240}>Selling Price</Tip></th>
                       <th style={{ textAlign: 'right' }}><Tip text="Food Cost % = ingredient cost ÷ selling price. ≤30% excellent, 31–38% acceptable, >38% too high. Nepal F&B target: 28–35%." width={280}>FC %</Tip></th>
-                      <th></th>
+                      <th className="no-print"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -812,7 +818,7 @@ export default function Recipes() {
                           <td style={{ textAlign: 'right', fontWeight: 700, color: fcColor }}>
                             {fcPct != null ? `${fcPct.toFixed(1)}%` : '—'}
                           </td>
-                          <td style={{ textAlign: 'right' }}>
+                          <td className="no-print" style={{ textAlign: 'right' }}>
                             <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                               <button className="btn btn-ghost" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => setPrintRecipe(recipe)}>🖶</button>
                               <button className="btn btn-ghost" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => openEdit(recipe)}>Edit</button>
