@@ -31,11 +31,27 @@ export default function PosParkingSlips() {
       supabase.from('clients').select('name').eq('id', clientId).single(),
       supabase.from('settings').select('property_address').eq('client_id', clientId).maybeSingle(),
     ])
+
+    // Sweep-close any slip still "open" from a previous day — the Open tab should start fresh
+    // each day, not accumulate vehicles staff forgot to Mark Exited. No server cron in this
+    // project (see Periods.js's own client-side expired-period check), so this runs the moment
+    // the page is next opened, whatever day that is. Data is never deleted, just flagged
+    // auto_closed so it stays distinguishable from a real confirmed exit.
+    const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0)
+    const stale = (rows || []).filter(s => s.status === 'open' && new Date(s.time_in) < startOfDay)
+    if (stale.length > 0) {
+      const nowIso = new Date().toISOString()
+      await scopedUpdate('pos_parking_slips', { status: 'closed', time_out: nowIso, auto_closed: true })
+        .in('id', stale.map(s => s.id))
+      const staleIds = new Set(stale.map(s => s.id))
+      ;(rows || []).forEach(s => { if (staleIds.has(s.id)) { s.status = 'closed'; s.time_out = nowIso; s.auto_closed = true } })
+    }
+
     setSlips(rows || [])
     setStaffNames(Object.fromEntries((profs || []).map(p => [p.id, p.full_name])))
     setBizInfo({ name: client?.name || '', address: settings?.property_address || '' })
     setLoading(false)
-  }, [clientId, scopedFrom])
+  }, [clientId, scopedFrom, scopedUpdate])
 
   useEffect(() => { loadSlips() }, [loadSlips])
 
@@ -85,7 +101,7 @@ export default function PosParkingSlips() {
                 <th>Time In</th>
                 <th><Tip text="If this slip was linked to a bill at issue time (e.g. to honor a 'free parking with purchase' policy) — click to view that bill." width={280}>Bill No</Tip></th>
                 <th>Notes</th>
-                <th><Tip text="Open means the vehicle is still parked; Closed means it's been marked as exited/retrieved." width={260}>Status</Tip></th>
+                <th><Tip text="Open means the vehicle is still parked; Closed means staff marked it exited/retrieved; Auto-Closed means it rolled over from a previous day unattended and was closed automatically — the vehicle's actual exit was never confirmed." width={300}>Status</Tip></th>
                 <th>Issued By</th>
                 <th></th>
               </tr>
@@ -112,9 +128,15 @@ export default function PosParkingSlips() {
                     {s.notes || <span style={{ color: 'var(--theme-text3)' }}>—</span>}
                   </td>
                   <td>
-                    <span className={`badge ${s.status === 'open' ? 'badge-amber' : 'badge-green'}`}>
-                      {s.status === 'open' ? 'Open' : 'Closed'}
-                    </span>
+                    {s.status === 'open' ? (
+                      <span className="badge badge-amber">Open</span>
+                    ) : s.auto_closed ? (
+                      <Tip text="Automatically closed when the page was next opened after this slip's day ended — staff never confirmed the vehicle actually exited." width={280}>
+                        <span className="badge badge-gray">Auto-Closed</span>
+                      </Tip>
+                    ) : (
+                      <span className="badge badge-green">Closed</span>
+                    )}
                   </td>
                   <td>{staffNames[s.issued_by] || '—'}</td>
                   <td style={{ textAlign: 'right', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>

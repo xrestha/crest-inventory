@@ -38,12 +38,27 @@ export default function GatePasses() {
       // members' names needs get_client_profile_names(), a SECURITY DEFINER RPC.
       supabase.rpc('get_client_profile_names', { p_client_id: clientId }),
     ])
+
+    // Sweep-close any pass still "open" from a previous day — same reasoning/pattern as
+    // PosParkingSlips.jsx's loadSlips(): no server cron in this project, so this runs the moment
+    // the page is next opened. Never deletes data, just flags auto_closed so it stays
+    // distinguishable from a real staff-confirmed Mark Exited.
+    const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0)
+    const stale = (p || []).filter(x => x.status === 'open' && new Date(x.time_in) < startOfDay)
+    if (stale.length > 0) {
+      const nowIso = new Date().toISOString()
+      await scopedUpdate('ims_gate_passes', { status: 'closed', time_out: nowIso, auto_closed: true })
+        .in('id', stale.map(x => x.id))
+      const staleIds = new Set(stale.map(x => x.id))
+      ;(p || []).forEach(x => { if (staleIds.has(x.id)) { x.status = 'closed'; x.time_out = nowIso; x.auto_closed = true } })
+    }
+
     setPasses(p || [])
     setVendors(v || [])
     setBizInfo({ name: client?.name || '', address: settings?.property_address || '', vatNumber: settings?.vat_number || '' })
     setStaffNames(Object.fromEntries((profs || []).map(pr => [pr.id, pr.full_name])))
     setLoading(false)
-  }, [clientId, scopedFrom])
+  }, [clientId, scopedFrom, scopedUpdate])
 
   useEffect(() => { load() }, [load])
 
@@ -109,7 +124,7 @@ export default function GatePasses() {
                 <th>Vehicle No</th>
                 <th><Tip text="Reason for the visit — delivery, pickup, maintenance, or other." width={220}>Purpose</Tip></th>
                 <th>Time In</th>
-                <th><Tip text="Open means the vehicle is still on the premises; Closed means it's been marked as exited." width={260}>Status</Tip></th>
+                <th><Tip text="Open means the vehicle is still on the premises; Closed means staff marked it exited; Auto-Closed means it rolled over from a previous day unattended and was closed automatically — the vehicle's actual exit was never confirmed." width={300}>Status</Tip></th>
                 <th>Issued By</th>
                 <th></th>
               </tr>
@@ -124,9 +139,15 @@ export default function GatePasses() {
                   <td>{PURPOSE_LABELS[p.purpose] || p.purpose}</td>
                   <td>{new Date(p.time_in).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</td>
                   <td>
-                    <span className={`badge ${p.status === 'open' ? 'badge-amber' : 'badge-green'}`}>
-                      {p.status === 'open' ? 'Open' : 'Closed'}
-                    </span>
+                    {p.status === 'open' ? (
+                      <span className="badge badge-amber">Open</span>
+                    ) : p.auto_closed ? (
+                      <Tip text="Automatically closed when the page was next opened after this pass's day ended — staff never confirmed the vehicle actually exited." width={280}>
+                        <span className="badge badge-gray">Auto-Closed</span>
+                      </Tip>
+                    ) : (
+                      <span className="badge badge-green">Closed</span>
+                    )}
                   </td>
                   <td>{staffNames[p.issued_by] || '—'}</td>
                   <td style={{ textAlign: 'right', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>

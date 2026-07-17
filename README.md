@@ -150,6 +150,16 @@ Annual = 25% off monthly, applied uniformly everywhere annual pricing appears.
 
 ## Session Log
 
+### S411 — 2026-07-17 — Parking Slips / Gate Passes auto-close on day rollover
+
+User asked what happens to a Parking Slip/Gate Pass left "open" if staff forget Mark Exited — answer was: nothing, it stays Open forever (no day-boundary reset existed). User wanted today's slips/passes to auto-close and the page to start fresh tomorrow, without losing the data — same ask for both features.
+
+- New `auto_closed boolean` column on both `pos_parking_slips` and `ims_gate_passes` (default false). No server cron in this project (confirmed — same reasoning as `Periods.js`'s own client-side expired-period banner), so both `PosParkingSlips.jsx`'s `loadSlips()` and `GatePasses.jsx`'s `load()` now sweep-close, on load, any row still `status='open'` whose `time_in` is before today's local midnight — flips it to `closed` with `auto_closed=true`, never deletes anything.
+- The Status column now shows a third state, "Auto-Closed" (gray badge, `Tip` explains), distinguishing a rollover sweep from a real staff-confirmed Mark Exited (green badge) — so it's always possible to tell whether a vehicle's exit was actually confirmed or just stopped being tracked.
+- Sweep boundary is plain local midnight (matches `KitchenDisplay.jsx`'s own "today" cutoff) — not a configurable "business day," which would matter for a venue operating past midnight; flagged as a simplifying assumption, not raised as a concern.
+
+**Files:** `supabase/migrations/20260717170000_parking_gate_pass_auto_close.sql`, `src/modules/pos/parking/PosParkingSlips.jsx`, `src/modules/ims/gatepasses/GatePasses.jsx`, `src/pages/Help.js`
+
 ### S410 — 2026-07-17 — Parking Slip: bill link, vehicle type toggle, notes, date display
 
 User feedback on the S406 Parking Slip form: missing a read-only date, Notes, and a way to record which bill was issued to the parked customer; Vehicle Type should be a quick toggle, not free text.

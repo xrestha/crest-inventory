@@ -38,7 +38,7 @@ const IMS_FEATURE_TIERS = [
       {
         icon: '⛊', name: 'Gate Passes',
         guide: 'Issue a printable gate pass for a vendor or delivery vehicle arriving at the property — pick an existing vendor or type a one-off company name, plus driver name, vehicle number, and purpose (delivery/pickup/maintenance/other). Prints an A4 pass with Security/Supervisor signature lines. No extra role gate beyond normal IMS access — anyone who can reach this page can issue one.',
-        tips: ['Mark a pass "Exited" once the vehicle leaves — the Open tab is a quick live view of who\'s currently on the premises', 'The Pass No is sequential per client, separate from any other numbering in the app', 'Reprint from the log at any time if the original is lost']
+        tips: ['Mark a pass "Exited" once the vehicle leaves — the Open tab is a quick live view of who\'s currently on the premises', 'The Pass No is sequential per client, separate from any other numbering in the app', 'Reprint from the log at any time if the original is lost', 'A pass left open past its day auto-closes the next time this page is opened, showing "Auto-Closed" instead of "Closed" — the record is kept, but it means staff never confirmed the vehicle actually left']
       },
       {
         icon: '↓', name: 'Purchases',
@@ -1109,6 +1109,7 @@ export default function Help() {
                     'The Open tab shows only vehicles still parked; switch to All to see the full history',
                     'Mark Exited as soon as the vehicle is retrieved — it closes the slip and records who closed it',
                     'Reprint is available to any staff if the original token is lost',
+                    'A slip left open past its day auto-closes the next time this page is opened, showing "Auto-Closed" instead of "Closed" — the record is kept, but it means staff never confirmed the vehicle actually left',
                   ],
                 },
                 {
