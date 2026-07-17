@@ -6,8 +6,10 @@ import { getBsToday, daysInBsMonth } from '../../../utils/bsCalendar'
 import Tip from '../../../components/Tip'
 import BsCalendarPicker from '../../../components/BsCalendarPicker'
 import SalesImportButton from './SalesImportButton'
+import { printWithTitle } from '../../../utils/printTitle'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
+const TAB_LABELS = { bulk: 'Bulk Entry', daily: 'Daily Entry', breakdown: 'Daily Breakdown', summary: 'Period Summary' }
 
 export default function Sales() {
   const { clientId, profile, loading: authLoading, isAdmin } = useAuth()
@@ -249,6 +251,7 @@ export default function Sales() {
     : '—'
 
   const isLocked = !isAdmin && selectedPeriod?.status === 'closed'
+  const tabPrintLabel = `${TAB_LABELS[viewMode]} — ${periodLabel}${viewMode === 'daily' ? `, Day ${selectedDay}` : ''}`
 
   return (
     <div>
@@ -257,18 +260,22 @@ export default function Sales() {
         <div>
           <h1 className="page-title">Sales Entry</h1>
           <p className="page-subtitle">Period total sales per menu item — {periodLabel}</p>
+          <p className="page-subtitle print-only" style={{ marginTop: 2 }}>{tabPrintLabel}</p>
         </div>
-        <select
-          style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none' }}
-          value={selectedPeriod?.id || ''}
-          onChange={e => handlePeriodChange(e.target.value)}
-        >
-          {periods.map(p => (
-            <option key={p.id} value={p.id}>
-              {BS_MONTHS[p.bs_month - 1]} {p.bs_year} {p.status === 'open' ? '(open)' : '(closed)'}
-            </option>
-          ))}
-        </select>
+        <div className="no-print" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <select
+            style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: 'var(--theme-text1)', outline: 'none' }}
+            value={selectedPeriod?.id || ''}
+            onChange={e => handlePeriodChange(e.target.value)}
+          >
+            {periods.map(p => (
+              <option key={p.id} value={p.id}>
+                {BS_MONTHS[p.bs_month - 1]} {p.bs_year} {p.status === 'open' ? '(open)' : '(closed)'}
+              </option>
+            ))}
+          </select>
+          <button className="btn btn-ghost" onClick={() => printWithTitle(`Sales Entry - ${tabPrintLabel}`)}>🖶 Print</button>
+        </div>
       </div>
 
 
@@ -279,7 +286,7 @@ export default function Sales() {
         </div>
       )}
       {/* Stat cards */}
-      <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginBottom: 20 }}>
+      <div className="stat-grid no-print" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginBottom: 20 }}>
         <div className="stat-card">
           <div className="stat-label">Total Covers</div>
           <div className="stat-value">{totalQty.toLocaleString()}</div>
@@ -300,14 +307,9 @@ export default function Sales() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid var(--theme-border)', marginBottom: 20 }}>
+      <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid var(--theme-border)', marginBottom: 20 }}>
         <div style={{ display: 'flex', gap: 4 }}>
-          {[
-            { key: 'bulk',      label: 'Bulk Entry' },
-            { key: 'daily',     label: 'Daily Entry' },
-            { key: 'breakdown', label: 'Daily Breakdown' },
-            { key: 'summary',   label: 'Period Summary' },
-          ].map(({ key, label }) => (
+          {Object.entries(TAB_LABELS).map(([key, label]) => (
             <button key={key} onClick={() => setViewMode(key)} style={{
               background: 'none', border: 'none', cursor: 'pointer',
               padding: '10px 20px', fontSize: 13, fontWeight: 500,
@@ -340,11 +342,11 @@ export default function Sales() {
           {/* BULK ENTRY */}
           {viewMode === 'bulk' && (
             <>
-              <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: 'var(--theme-accent)' }}>
+              <div className="no-print" style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: 'var(--theme-accent)' }}>
                 Enter total qty sold for the entire period per menu item. Sub-recipes are excluded.
               </div>
               <div className="card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                   <span style={{ fontSize: 13, color: 'var(--theme-text2)' }}>
                     Period total — <strong style={{ color: 'var(--theme-accent)' }}>{periodLabel}</strong>
                   </span>
@@ -430,11 +432,11 @@ export default function Sales() {
           {/* DAILY ENTRY */}
           {viewMode === 'daily' && (
             <>
-              <div style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: 'var(--theme-accent)' }}>
+              <div className="no-print" style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: 'var(--theme-accent)' }}>
                 Enter qty sold per menu item for a single day. Use Bulk Entry for period totals instead.
               </div>
               <div className="card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+                <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 13, color: 'var(--theme-text2)' }}>Day</span>
                     {(() => {
@@ -566,7 +568,7 @@ export default function Sales() {
                     </tbody>
                   </table>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+                  <div className="no-print" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
                     <button
                       className="btn btn-ghost"
                       disabled={isLocked}

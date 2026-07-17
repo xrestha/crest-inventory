@@ -1192,8 +1192,9 @@ input[type="number"] {
   .page-title { color: black !important; }
   .stat-card { border: 1px solid #ccc !important; background: white !important; }
   table { border-collapse: collapse !important; }
-  th, td { border: 1px solid #ccc !important; color: black !important; padding: 6px 10px !important; }
+  th, td { border: 1px solid #ccc !important; color: black !important; padding: 6px 10px !important; background: white !important; }
   .badge { border: 1px solid #ccc !important; color: black !important; background: white !important; }
+  input { background: white !important; color: black !important; border: 1px solid #ccc !important; }
   .no-print { display: none !important; }
   .print-sheet-header { display: block !important; margin-bottom: 16px; }
   .print-sheet-header h2,
