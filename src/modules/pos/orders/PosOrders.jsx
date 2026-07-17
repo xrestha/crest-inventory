@@ -19,7 +19,7 @@ import {
 import { buildKotBotHtml, buildBillHtml, buildTenderSlipHtml, buildCompSlipHtml } from './posOrderPrintHtml'
 import {
   vatOf, fmtNpr, toItemPayload, QR_PAY_METHODS, STATUS_BADGE, STATUS_LABEL, STATUS_COLOR,
-  KOT_STATUS_BADGE, KOT_STATUS_LABEL, KOT_STATUS_RANK,
+  KOT_STATUS_BADGE, KOT_STATUS_LABEL, KOT_STATUS_RANK, kotTimerLabel,
   PAYMENT_METHODS, VOID_REASONS, COMP_REASONS, DEFAULT_DISCOUNT_REASONS, COPY_LABEL,
   btnSm, billInput,
 } from './posOrdersConstants'
@@ -58,6 +58,12 @@ export default function PosOrders() {
   // table_id -> 'new' | 'in_progress' | 'ready' — least-advanced pos_kot_log status for that
   // table's open order, so wait staff can see Sent/Started/Ready without walking to the kitchen.
   const [kotStatusByTable, setKotStatusByTable] = useState({})
+  // pos_kot_log rows for the order currently open on screen (view === 'order') — powers the
+  // per-line-item KOT/BOT timer shown on the menu tile and next to the cart row's "✓ KOT/BOT"
+  // badge. Separate from kotStatusByTable above, which only tracks the floor view's per-table
+  // summary (deliberately no ETA there — the floor grid stays to the plain Sent/Started/Ready badge).
+  const [orderKotTickets, setOrderKotTickets] = useState([])
+  const [kotNow, setKotNow] = useState(() => Date.now())
   // table_id -> array of pending pos_guest_order_requests rows ({ id, items, guest_notes, covers, created_at })
   // awaiting staff Accept/Dismiss — see submit_guest_order (Guest QR self-ordering, Pro-tier feature).
   const [pendingGuestOrders, setPendingGuestOrders] = useState({})
@@ -241,6 +247,21 @@ export default function PosOrders() {
     const poll = setInterval(() => loadKotStatus(), 5000)
     return () => clearInterval(poll)
   }, [view, tableOrders]) // eslint-disable-line
+
+  // Keeps each cart line's KOT/BOT timer live while the order screen for a saved order is open.
+  // A brand-new, not-yet-sent order (orderId still null) has no tickets to poll for.
+  useEffect(() => {
+    if (view !== 'order' || !orderId) { setOrderKotTickets([]); return }
+    loadOrderKotTickets(orderId)
+    const poll = setInterval(() => loadOrderKotTickets(orderId), 5000)
+    return () => clearInterval(poll)
+  }, [view, orderId]) // eslint-disable-line
+
+  useEffect(() => {
+    if (view !== 'order') return
+    const tick = setInterval(() => setKotNow(Date.now()), 15000)
+    return () => clearInterval(tick)
+  }, [view])
 
   // Keeps pending guest-order requests live both on the floor grid (badge) and while a table is
   // open (Accept/Dismiss banner) — a guest can submit a new request at any point. clientId is in
@@ -577,6 +598,26 @@ export default function PosOrders() {
       if (oid in worstRank) map[tableId] = rankToStatus[worstRank[oid]]
     }
     setKotStatusByTable(map)
+  }
+
+  // Ticket rows for the order currently open on screen — matched to a cart line by recipe_id (see
+  // ticketForRecipe below) so each item can show its own Sent/Started/Ready timer, not just the
+  // table-wide summary loadKotStatus computes for the floor view.
+  async function loadOrderKotTickets(oid) {
+    if (!oid || !navigator.onLine) { setOrderKotTickets([]); return }
+    const { data } = await scopedFrom('pos_kot_log', 'id, items, status, sent_at, started_at, ready_at, estimated_prep_minutes')
+      .eq('order_id', oid)
+      .neq('status', 'cancelled')
+      .order('sent_at', { ascending: false })
+    setOrderKotTickets(data || [])
+  }
+
+  // Most-recently-sent ticket containing this recipe — if the same item was sent in two separate
+  // KOT/BOT sends (e.g. reordered after the first batch was already Ready), the newer send is the
+  // one still relevant to a waiter checking on it.
+  function ticketForRecipe(recipeId) {
+    if (!recipeId) return null
+    return orderKotTickets.find(t => (t.items || []).some(i => i.recipe_id === recipeId)) || null
   }
 
   // Replays every queued offline order against Supabase, one at a time (structurally identical to
@@ -1767,6 +1808,7 @@ export default function PosOrders() {
                   const vat   = vatReg ? vatOf(r) : 0
                   const price = Math.round((parseFloat(r.selling_price) || 0) * (1 + vat))
                   const inOrd = orderItems.find(i => i.recipe_id === r.id)
+                  const kotTimer = inOrd?.sent_to_kot ? kotTimerLabel(ticketForRecipe(r.id), kotNow) : null
                   return (
                     <button key={r.id} onClick={() => addItem(r)} style={{
                       background: inOrd
@@ -1792,6 +1834,11 @@ export default function PosOrders() {
                       <span style={{ fontSize: 12, color: 'var(--theme-accent)', fontWeight: 600 }}>
                         NPR {price}
                       </span>
+                      {kotTimer && (
+                        <span style={{ fontSize: 10, fontWeight: 600, color: kotTimer.color }}>
+                          {kotTimer.text}
+                        </span>
+                      )}
                     </button>
                   )
                 })}
@@ -1815,6 +1862,7 @@ export default function PosOrders() {
               </p>
             ) : orderItems.map((item, idx) => {
               const lineTotal = item.qty * item.unit_price * (1 + (vatReg ? (item.vat_rate ?? 0) : 0))
+              const kotTimer = item.sent_to_kot ? kotTimerLabel(ticketForRecipe(item.recipe_id), kotNow) : null
               return (
                 <div key={idx} style={{
                   display: 'flex', flexDirection: 'column', gap: 4,
@@ -1834,6 +1882,13 @@ export default function PosOrders() {
                             borderRadius: 4, padding: '1px 5px', cursor: 'default',
                           }}>
                             ✓ {botCategories.has(item.category || 'Other') ? 'BOT' : 'KOT'}
+                          </span>
+                        </Tip>
+                      )}
+                      {kotTimer && (
+                        <Tip text="Live kitchen/bar status for this item's ticket — Sent (not yet started) / a countdown once Started, using the kitchen's own estimate / Ready once done">
+                          <span style={{ fontSize: 9, fontWeight: 600, flexShrink: 0, color: kotTimer.color }}>
+                            {kotTimer.text}
                           </span>
                         </Tip>
                       )}
@@ -2672,7 +2727,7 @@ export default function PosOrders() {
                       {STATUS_LABEL[t.status] || t.status}
                     </span>
                     {ord && kotStatusByTable[t.id] && (
-                      <Tip text="Kitchen/bar status of items sent for this order — Sent (not yet started) / Started (being prepared) / Ready (waiting to be served)">
+                      <Tip text="Kitchen/bar status of items sent for this order — Sent (not yet started) / Started (being prepared) / Ready (waiting to be served). Open the table to see per-item prep timers.">
                         <span className={KOT_STATUS_BADGE[kotStatusByTable[t.id]]} style={{ fontSize: 9 }}>
                           {KOT_STATUS_LABEL[kotStatusByTable[t.id]]}
                         </span>

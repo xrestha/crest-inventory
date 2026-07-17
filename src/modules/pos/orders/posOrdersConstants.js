@@ -37,6 +37,33 @@ export const KOT_STATUS_LABEL = { new: 'Sent', in_progress: 'Started', ready: 'R
 // shows the least-advanced one — that's the one still needing attention.
 export const KOT_STATUS_RANK  = { new: 0, in_progress: 1, ready: 2 }
 
+// Per-line-item KOT/BOT timer shown in the order cart next to the "✓ KOT/BOT" sent badge — same
+// New/In Progress/Ready stages as KitchenDisplay.jsx's TicketCard, but compact (a few words, not
+// a whole card) since this sits inline on a cart row. `ticket` is a pos_kot_log row (status,
+// sent_at, started_at, ready_at, estimated_prep_minutes); `now` is a live-ticking epoch ms so the
+// caller re-renders on a timer without this function needing to know about React.
+export function kotTimerLabel(ticket, now) {
+  if (!ticket) return null
+  if (ticket.status === 'ready') {
+    if (ticket.started_at && ticket.ready_at) {
+      const actualMin = Math.round((new Date(ticket.ready_at).getTime() - new Date(ticket.started_at).getTime()) / 60000)
+      return { text: `Ready (${actualMin}m)`, color: 'var(--theme-green)' }
+    }
+    return { text: 'Ready', color: 'var(--theme-green)' }
+  }
+  if (ticket.status === 'in_progress') {
+    if (ticket.started_at && ticket.estimated_prep_minutes) {
+      const remainingMin = Math.round((new Date(ticket.started_at).getTime() + ticket.estimated_prep_minutes * 60000 - now) / 60000)
+      const over = remainingMin < 0
+      return { text: over ? `${Math.abs(remainingMin)}m over` : `~${remainingMin}m left`, color: over ? 'var(--theme-red)' : 'var(--theme-amber)' }
+    }
+    return { text: 'Cooking', color: 'var(--theme-amber)' }
+  }
+  // 'new' — sent but not yet started
+  const sentMin = Math.max(0, Math.round((now - new Date(ticket.sent_at).getTime()) / 60000))
+  return { text: `Sent ${sentMin}m ago`, color: 'var(--theme-text3)' }
+}
+
 export const PAYMENT_METHODS = ['Cash', 'Card', 'eSewa', 'Khalti', 'FonePay']
 // Delivery partners (Foodmandu, Pathao, etc.) are NOT payment methods — they don't pay the
 // restaurant at the counter (they remit later, minus commission), so their orders close as Credit

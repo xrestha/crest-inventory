@@ -94,6 +94,11 @@ export default function GuestMenu() {
   const [rows, setRows] = useState(null) // null = loading, [] = loaded-but-empty
   const [error, setError] = useState(false)
   const [kotStatus, setKotStatus] = useState(null) // null = no open order / nothing sent yet
+  // Minutes until the kitchen's estimated ready time (get_guest_table_status), only ever set
+  // while kotStatus === 'in_progress' and at least one in-progress ticket has an estimate on it —
+  // NULL otherwise, including once it goes non-positive (see the >0 guards below this is used
+  // with) so a guest is never shown a negative "your food is late" countdown.
+  const [remainingMinutes, setRemainingMinutes] = useState(null)
 
   const [cart, setCart] = useState(() => loadStoredCart(tableId)?.cart || {}) // recipe_id -> qty
   const [covers, setCovers] = useState(() => loadStoredCart(tableId)?.covers ?? 2)
@@ -173,6 +178,7 @@ export default function GuestMenu() {
       if (cancelled) return
       const row = data?.[0]
       setKotStatus(row?.has_open_order ? row.kot_status : null)
+      setRemainingMinutes(row?.has_open_order ? (row.remaining_minutes ?? null) : null)
     })
     poll()
     const id = setInterval(poll, 5000)
@@ -373,7 +379,7 @@ export default function GuestMenu() {
             aria-live="polite"
           >
             <OrderStatusCard
-              requestStatus={requestStatus} kotStatus={kotStatus}
+              requestStatus={requestStatus} kotStatus={kotStatus} remainingMinutes={remainingMinutes}
               items={requestSnapshot.items} covers={requestSnapshot.covers}
               onOrderAgain={orderAgain}
             />
@@ -382,6 +388,7 @@ export default function GuestMenu() {
           <div style={{ textAlign: 'center', marginBottom: 20 }}>
             <span className={`badge ${KOT_STATUS_BADGE[kotStatus]}`} style={{ display: 'inline-block', fontSize: 11 }}>
               {KOT_STATUS_LABEL[kotStatus]}
+              {kotStatus === 'in_progress' && remainingMinutes > 0 && ` — about ${remainingMinutes} min left`}
             </span>
           </div>
         )}
@@ -475,7 +482,7 @@ export default function GuestMenu() {
   )
 }
 
-function OrderStatusCard({ requestStatus, kotStatus, items, covers, onOrderAgain }) {
+function OrderStatusCard({ requestStatus, kotStatus, remainingMinutes, items, covers, onOrderAgain }) {
   if (requestStatus === 'dismissed') {
     return (
       <div className="card" style={{ padding: 16, marginBottom: 24, borderColor: 'var(--theme-red)' }}>
@@ -492,11 +499,17 @@ function OrderStatusCard({ requestStatus, kotStatus, items, covers, onOrderAgain
 
   const stage = computeStage(requestStatus, kotStatus)
   const stageIdx = STAGES.indexOf(stage)
+  // "About" rather than a bare countdown — this is the kitchen's own estimate, not a measured
+  // time, so the wording deliberately avoids reading as a precise promise. Omitted once it's
+  // no longer positive rather than showing a negative/overdue number to a paying guest.
+  const stageLabel = stage === 'preparing' && remainingMinutes > 0
+    ? `Being prepared — about ${remainingMinutes} min left`
+    : STAGE_LABEL[stage]
 
   return (
     <div className="card" style={{ padding: 16, marginBottom: 24, borderColor: 'var(--theme-accent)' }}>
       <p style={{ margin: '0 0 14px', fontSize: 15, fontWeight: 700, color: 'var(--theme-text1)' }}>
-        {STAGE_LABEL[stage]}
+        {stageLabel}
       </p>
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
         {STAGES.map((s, i) => (

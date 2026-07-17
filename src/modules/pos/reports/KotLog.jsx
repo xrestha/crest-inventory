@@ -23,6 +23,13 @@ function sumSentQtyByOrderItem(logs) {
   return sentByOrderItem
 }
 
+// Actual prep minutes for a pos_kot_log row — null until the ticket has both been started and
+// marked Ready in the Kitchen Display (KitchenDisplay.jsx). estimated_prep_minutes (entered by
+// staff on Start) is read straight off the row wherever it's needed, no helper required.
+function actualPrepMin(r) {
+  return (r.started_at && r.ready_at) ? Math.round((new Date(r.ready_at) - new Date(r.started_at)) / 60000) : null
+}
+
 function flagOrderDiscrepancies(orderById, sentByOrderItem, currentByOrderItem) {
   const rows = []
   for (const entry of Object.values(sentByOrderItem)) {
@@ -189,6 +196,8 @@ export default function KotLog() {
           'Station': r.station,
           'Items': (r.items || []).map(i => `${i.name} ×${i.qty}`).join(', '),
           'Sent By': staffNames[r.sent_by] || '—',
+          'Est. Prep (min)': r.estimated_prep_minutes ?? '',
+          'Actual Prep (min)': actualPrepMin(r) ?? '',
         }
       }))
       XLSX.utils.book_append_sheet(wb, ws, 'KOT Register')
@@ -269,11 +278,14 @@ export default function KotLog() {
         <div className="table-wrap">
           <table className="data-table">
             <thead>
-              <tr><th>Date/Time (BS)</th><th>Table</th><th>Order#</th><th>Station</th><th>Items</th><th>Sent By</th></tr>
+              <tr><th>Date/Time (BS)</th><th>Table</th><th>Order#</th><th>Station</th><th>Items</th><th>Sent By</th><th style={{ textAlign: 'right' }}><Tip text="Estimated prep time (entered by kitchen/bar staff on Start) vs. actual time from Start to Ready. Red when actual ran over the estimate." width={280}>Prep (Est/Actual)</Tip></th></tr>
             </thead>
             <tbody>
               {logRows.map(r => {
                 const bs = adToBs(new Date(r.sent_at))
+                const actual = actualPrepMin(r)
+                const est = r.estimated_prep_minutes
+                const overEst = est != null && actual != null && actual > est
                 return (
                   <tr key={r.id}>
                     <td>
@@ -287,6 +299,9 @@ export default function KotLog() {
                     <td><span className={r.station === 'BOT' ? 'badge-gold' : 'badge-green'} style={{ fontSize: 11 }}>{r.station}</span></td>
                     <td>{(r.items || []).map(i => `${i.name} ×${i.qty}`).join(', ')}</td>
                     <td>{staffNames[r.sent_by] || '—'}</td>
+                    <td style={{ textAlign: 'right', color: overEst ? 'var(--theme-red)' : undefined }}>
+                      {est == null && actual == null ? '—' : `${est ?? '—'}m / ${actual ?? '—'}m`}
+                    </td>
                   </tr>
                 )
               })}

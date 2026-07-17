@@ -66,13 +66,32 @@ export default function Periods() {
     setAllLoading(false)
   }
 
+  // Copies each item's counted closing qty (closing_stock.physical_qty) into the new period's
+  // opening_stock — "this month's closing IS next month's opening," a real physical count, not
+  // recomputed. Only ever adds a row for an item that was actually counted (no closing_stock row
+  // = nothing carried, same as never entering it manually); upserts rather than plain-inserts so
+  // re-running this (e.g. a retried close after a network blip) can't fail on a conflict. Both
+  // tables are period-scoped, not client-scoped (see CLAUDE.md), so this stays on raw
+  // supabase.from() like the rest of Stock.js's opening/closing reads and writes.
+  async function carryForwardOpeningStock(closedPeriodId, newPeriodId) {
+    if (!closedPeriodId || !newPeriodId) return
+    const { data: closingRows } = await supabase.from('closing_stock')
+      .select('item_id, physical_qty').eq('period_id', closedPeriodId)
+    const rows = (closingRows || [])
+      .filter(r => r.physical_qty != null)
+      .map(r => ({ period_id: newPeriodId, item_id: r.item_id, qty: r.physical_qty }))
+    if (rows.length === 0) return
+    await supabase.from('opening_stock').upsert(rows, { onConflict: 'period_id,item_id' })
+  }
+
   async function adminCloseAndAdvance(period, cid) {
     const nextMonth = period.bs_month === 12 ? 1 : period.bs_month + 1
     const nextYear  = period.bs_month === 12 ? period.bs_year + 1 : period.bs_year
     if (!window.confirm(`Close ${BS_MONTHS[period.bs_month - 1]} ${period.bs_year} and open ${BS_MONTHS[nextMonth - 1]} ${nextYear}?`)) return
     setActionClientId(cid)
     await scopedUpdateRaw('monthly_periods', cid, { status: 'closed' }).eq('id', period.id)
-    await scopedInsertRaw('monthly_periods', cid, { bs_year: nextYear, bs_month: nextMonth, status: 'open' })
+    const { data: newPeriod } = await scopedInsertRaw('monthly_periods', cid, { bs_year: nextYear, bs_month: nextMonth, status: 'open' }, { single: true })
+    if (newPeriod?.id) await carryForwardOpeningStock(period.id, newPeriod.id)
     await loadAllClientPeriods()
     setActionClientId(null)
   }
@@ -157,14 +176,23 @@ export default function Periods() {
       `Close ${BS_MONTHS[period.bs_month - 1]} ${period.bs_year} and open ${BS_MONTHS[nextMonth - 1]} ${nextYear}?`
     )) return
     await scopedUpdate('monthly_periods', { status: 'closed' }).eq('id', period.id)
-    const { error } = await scopedInsert('monthly_periods', {
+    const { data: newPeriod, error } = await scopedInsert('monthly_periods', {
       bs_year: nextYear,
       bs_month: nextMonth,
       status: 'open'
-    })
-    if (error && !error.message.includes('unique') && error.code !== '23505') {
-      console.error('Could not create next period:', error)
+    }, { single: true })
+    let nextPeriodId = newPeriod?.id
+    if (error) {
+      if (error.message.includes('unique') || error.code === '23505') {
+        // Next period already existed (e.g. a retried click) — still carry forward into it.
+        const { data: existing } = await scopedFrom('monthly_periods', 'id')
+          .eq('bs_year', nextYear).eq('bs_month', nextMonth).maybeSingle()
+        nextPeriodId = existing?.id
+      } else {
+        console.error('Could not create next period:', error)
+      }
     }
+    if (nextPeriodId) await carryForwardOpeningStock(period.id, nextPeriodId)
     loadPeriods()
   }
 

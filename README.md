@@ -150,6 +150,36 @@ Annual = 25% off monthly, applied uniformly everywhere annual pricing appears.
 
 ## Session Log
 
+### S409 — 2026-07-17 — Fixed: Closing Stock now actually carries forward to next period's Opening Stock
+
+User asked whether closing Ashadh 2083 without finishing its month-end stock count would affect anything. In answering, found `Help.js`'s own Periods guide already claimed "Closing stock auto-carries to next month opening" — but `Periods.js`'s `closeAndAdvance`/`adminCloseAndAdvance` never actually did this; each period's `opening_stock`/`closing_stock` were entered fully independently. A real gap between documented and shipped behavior, not a new idea — fixed to match what was already promised.
+
+- New `carryForwardOpeningStock(closedPeriodId, newPeriodId)` in `Periods.js` — after a period closes and the next one is created, copies every counted item's `closing_stock.physical_qty` into the new period's `opening_stock` (upsert, so a retried close can't fail on conflict). Only ever carries what was actually counted — an item with no `closing_stock` row (never counted) still starts the new period blank, same as before.
+- Wired into both `closeAndAdvance` (the client-facing "Close & Start Next" / expiry-banner action) and `adminCloseAndAdvance` (the admin all-clients view's equivalent) — both needed the newly-created period's id captured back from the insert (`{ single: true }`, previously discarded) to carry forward into.
+- `closeAndAdvance` also now handles the case where the next period already existed (a unique-constraint conflict on retry) by looking it up and still carrying forward into it, rather than silently skipping.
+
+**Files:** `src/pages/Periods.js`
+
+### S408 — 2026-07-17 — KOT/BOT prep timer: per-item cart display + guest menu ETA
+
+Follow-up to S407's estimated prep time popup. Two refinements requested after testing:
+
+- The live prep timer (Sent Xm ago / ~Xm left / Ready) is now shown per menu item in Order Taking — both on the menu-tile picker grid (under the price, for items already in the order) and next to the cart list's "✓ KOT/BOT" badge, matched to the right `pos_kot_log` ticket by `recipe_id` (most recent send wins if the same item was sent twice). Deliberately NOT added to the floor-view table tiles — tried that first, then removed it per feedback; the floor grid stays on the plain Sent/Started/Ready badge, full timers only show once a table is actually opened.
+- Extended to the public Guest QR menu (`GuestMenu.jsx`) — the existing 5-stage order-status stepper's "Being prepared" stage now shows "about X min left" once kitchen/bar staff have entered an estimate. `get_guest_table_status` (the anonymous-caller `SECURITY DEFINER` RPC backing this, unchanged pattern from its original migration) now also returns a computed `remaining_minutes` — never the raw `started_at`/estimate columns — worked out via the same "slowest in-progress ticket wins" rule already used for the staff floor badge. Deliberately worded "about X min" rather than an exact countdown, and omitted entirely once it goes non-positive, since this is a staff-entered guess becoming a customer-facing promise for the first time, not a measured value.
+
+**Files:** `supabase/migrations/20260717140000_guest_kot_eta.sql`, `src/modules/pos/orders/PosOrders.jsx`, `src/modules/pos/orders/posOrdersConstants.js`, `src/modules/pos/guestmenu/GuestMenu.jsx`, `src/pages/Help.js`
+
+### S407 — 2026-07-17 — Kitchen Display: estimated prep time popup on Start
+
+User wanted a way for kitchen/bar staff to record the probable prep time when they tap Start on a KOT/BOT ticket, so front-of-house can see an ETA and the estimate can be compared against actual prep time in reports.
+
+- New `EstimateTimeModal.jsx` — a calculator-style popup (digit keypad adapted from the PIN pad in `PosLogin.jsx`, plus 5/10/15/20-min quick-preset buttons) shown when Kitchen Display's Start button is tapped. Entering a value is required — Confirm stays disabled until a value is entered, and closing the popup leaves the ticket in New (Ready is unaffected, no popup).
+- `pos_kot_log` gets a new `estimated_prep_minutes` column, written alongside the existing `started_at` when a ticket advances to In Progress. `KitchenDisplay.jsx`'s ticket cards now show a live "~X min left" countdown (red once overdue) while in progress, and "Done in Xm (est. Ym)" once Ready.
+- The estimate surfaces to front-of-house too: the floor-plan table badge in `PosOrders.jsx` (already showing Sent/Started/Ready) now appends a live "~Xm" ETA next to Started, using the slowest in-progress ticket per table.
+- POS Reports → KOT Log → Register tab gained a "Prep (Est/Actual)" column (and matching Excel export columns) — zero query change needed since the Register tab already selects every column on `pos_kot_log`.
+
+**Files:** `supabase/migrations/20260717130000_pos_kot_estimated_prep_time.sql`, `src/modules/pos/kds/EstimateTimeModal.jsx` (new), `src/modules/pos/kds/KitchenDisplay.jsx`, `src/modules/pos/orders/PosOrders.jsx`, `src/modules/pos/reports/KotLog.jsx`, `src/pages/Help.js`
+
 ### S406 — 2026-07-17 — Parking Slip facility: POS customer tokens + IMS vendor/delivery gate passes
 
 User wanted a printable "parking slip" for customers who park a vehicle, plus an equivalent for vendor/delivery vehicles arriving at the back office — printable only by Supervisor level+.

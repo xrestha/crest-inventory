@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
+import EstimateTimeModal from './EstimateTimeModal'
 
 const STATIONS = ['KOT', 'BOT']
 const POLL_MS = 4000
@@ -47,13 +48,16 @@ export default function KitchenDisplay() {
   // indication the DB write never landed — a busy kitchen could believe a ticket was done when
   // it wasn't. Now reverted immediately below on error, with a dismissible reason shown here.
   const [kdsError, setKdsError] = useState('')
+  // Ticket awaiting an estimated prep time before it can advance to In Progress — see
+  // requestEstimate/confirmStart below and EstimateTimeModal.jsx.
+  const [estimateTicket, setEstimateTicket] = useState(null)
 
   const load = useCallback(async () => {
     const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0)
     // 'cancelled' (set by PosOrders.jsx's closeOrder when the parent order is voided) is excluded
     // entirely rather than shown as a 4th column — there's nothing left for kitchen/bar to do
     // with a ticket whose order no longer exists.
-    const { data } = await scopedFrom('pos_kot_log', 'id, order_id, order_no, table_name, station, items, sent_at, status, started_at, ready_at')
+    const { data } = await scopedFrom('pos_kot_log', 'id, order_id, order_no, table_name, station, items, sent_at, status, started_at, ready_at, estimated_prep_minutes')
       .eq('station', station)
       .neq('status', 'cancelled')
       .gte('sent_at', startOfDay.toISOString())
@@ -78,15 +82,17 @@ export default function KitchenDisplay() {
     localStorage.setItem('pos_kds_station', s)
   }
 
-  async function advance(ticket, nextStatus) {
+  async function advance(ticket, nextStatus, estimatedMinutes) {
     if (advancing.has(ticket.id)) return
     setAdvancing(prev => new Set(prev).add(ticket.id))
     const prevStatus = ticket.status
     // Optimistic — reverted below if the write actually fails; otherwise the next poll (≤4s)
     // reconciles with the server as before.
-    setTickets(prev => prev.map(t => t.id === ticket.id ? { ...t, status: nextStatus } : t))
+    setTickets(prev => prev.map(t => t.id === ticket.id
+      ? { ...t, status: nextStatus, ...(nextStatus === 'in_progress' ? { estimated_prep_minutes: estimatedMinutes } : {}) }
+      : t))
     const patch = { status: nextStatus, status_updated_by: profile?.id || null }
-    if (nextStatus === 'in_progress') patch.started_at = new Date().toISOString()
+    if (nextStatus === 'in_progress') { patch.started_at = new Date().toISOString(); patch.estimated_prep_minutes = estimatedMinutes }
     if (nextStatus === 'ready') patch.ready_at = new Date().toISOString()
     const { error } = await scopedUpdate('pos_kot_log', patch).eq('id', ticket.id)
     if (error) {
@@ -94,6 +100,15 @@ export default function KitchenDisplay() {
       setKdsError(`Could not update ${ticket.table_name || 'this ticket'} — ${error.message}`)
     }
     setAdvancing(prev => { const next = new Set(prev); next.delete(ticket.id); return next })
+  }
+
+  // Start requires an estimate first — opens EstimateTimeModal instead of advancing directly;
+  // Ready has no such requirement and still advances immediately (see TicketCard's onClick below).
+  function requestEstimate(ticket) { setEstimateTicket(ticket) }
+  function confirmStart(minutes) {
+    const ticket = estimateTicket
+    setEstimateTicket(null)
+    advance(ticket, 'in_progress', minutes)
   }
 
   if (!hasPosAccess('staff')) return <Navigate to="/pos" replace />
@@ -153,7 +168,10 @@ export default function KitchenDisplay() {
                     <div className="card" style={{ padding: 20, textAlign: 'center', color: 'var(--theme-text3)', fontSize: 12 }}>—</div>
                   )}
                   {colTickets.map(t => (
-                    <TicketCard key={t.id} ticket={t} now={now} onAdvance={advance} action={col.action} next={col.next} advancing={advancing.has(t.id)} />
+                    <TicketCard
+                      key={t.id} ticket={t} now={now} onAdvance={advance} onRequestEstimate={requestEstimate}
+                      action={col.action} next={col.next} isStartAction={col.status === 'new'} advancing={advancing.has(t.id)}
+                    />
                   ))}
                 </div>
               </div>
@@ -161,17 +179,43 @@ export default function KitchenDisplay() {
           })}
         </div>
       )}
+
+      {estimateTicket && (
+        <EstimateTimeModal ticket={estimateTicket} onClose={() => setEstimateTicket(null)} onConfirm={confirmStart} />
+      )}
     </div>
   )
 }
 
-function TicketCard({ ticket, now, onAdvance, action, next, advancing }) {
+function TicketCard({ ticket, now, onAdvance, onRequestEstimate, action, next, isStartAction, advancing }) {
   const sentMs = new Date(ticket.sent_at).getTime()
   const elapsedMin = Math.max(0, Math.round((now - sentMs) / 60000))
   const isLate = ticket.status !== 'ready' && (now - sentMs) > LATE_MS
   const isWarn = ticket.status !== 'ready' && !isLate && (now - sentMs) > WARN_MS
   const borderColor = isLate ? 'var(--theme-red)' : isWarn ? 'var(--theme-amber)' : 'var(--theme-border)'
   const stageColor = STATUS_COLOR[ticket.status] || 'var(--theme-border)'
+
+  // Estimated-vs-actual readout, shown once a ticket has an estimate on it (set via the Start
+  // popup) — a live "time left" while in progress, then a settled comparison once Ready.
+  let etaNode = null
+  if (ticket.status === 'in_progress' && ticket.started_at && ticket.estimated_prep_minutes) {
+    const startedMs = new Date(ticket.started_at).getTime()
+    const remainingMin = Math.round((startedMs + ticket.estimated_prep_minutes * 60000 - now) / 60000)
+    const over = remainingMin < 0
+    etaNode = (
+      <span style={{ fontSize: 12, color: over ? 'var(--theme-red)' : 'var(--theme-text3)', fontWeight: over ? 700 : 400 }}>
+        {over ? `${Math.abs(remainingMin)} min over est.` : `~${remainingMin} min left`}
+      </span>
+    )
+  } else if (ticket.status === 'ready' && ticket.started_at && ticket.ready_at && ticket.estimated_prep_minutes) {
+    const actualMin = Math.round((new Date(ticket.ready_at).getTime() - new Date(ticket.started_at).getTime()) / 60000)
+    const overEst = actualMin > ticket.estimated_prep_minutes
+    etaNode = (
+      <span style={{ fontSize: 12, color: overEst ? 'var(--theme-red)' : 'var(--theme-green)' }}>
+        Done in {actualMin}m (est. {ticket.estimated_prep_minutes}m)
+      </span>
+    )
+  }
 
   return (
     <div className="card" style={{ padding: 16, borderColor, borderWidth: isLate || isWarn ? 2 : 1, overflow: 'hidden' }}>
@@ -186,13 +230,19 @@ function TicketCard({ ticket, now, onAdvance, action, next, advancing }) {
         ))}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Tip text="Time since this ticket was sent">
-          <span style={{ fontSize: 13, color: isLate ? 'var(--theme-red)' : isWarn ? 'var(--theme-amber)' : 'var(--theme-text3)', fontWeight: isLate || isWarn ? 700 : 400 }}>
-            {elapsedMin} min ago
-          </span>
-        </Tip>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <Tip text="Time since this ticket was sent">
+            <span style={{ fontSize: 13, color: isLate ? 'var(--theme-red)' : isWarn ? 'var(--theme-amber)' : 'var(--theme-text3)', fontWeight: isLate || isWarn ? 700 : 400 }}>
+              {elapsedMin} min ago
+            </span>
+          </Tip>
+          {etaNode}
+        </div>
         {action && (
-          <button className="btn btn-primary" style={{ fontSize: 14, padding: '8px 16px' }} disabled={advancing} onClick={() => onAdvance(ticket, next)}>
+          <button
+            className="btn btn-primary" style={{ fontSize: 14, padding: '8px 16px' }} disabled={advancing}
+            onClick={() => isStartAction ? onRequestEstimate(ticket) : onAdvance(ticket, next)}
+          >
             {advancing ? '…' : action}
           </button>
         )}
