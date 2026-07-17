@@ -5,7 +5,7 @@ import BsCalendarPicker from '../../../components/BsCalendarPicker'
 import Tip from '../../../components/Tip'
 import Modal from '../../../components/Modal'
 import SearchableSelect from '../../../components/SearchableSelect'
-import { getCf } from './purchasesHelpers'
+import { getCf, calcBillTotals } from './purchasesHelpers'
 
 const EMPTY_HEADER = { vendor_id: '', bs_day: '', invoice_ref: '', payment_method: 'Cash', discount: '', vat_inclusive: false }
 const PAYMENT_METHODS = ['Cash', 'Credit', 'FonePay']
@@ -146,7 +146,7 @@ export default function PurchaseBillModal({ period, items, itemOptions, vendors,
     }
 
     setSaving(false)
-    onSaved(valid)
+    onSaved(billHeader, valid)
   }
 
   return (
@@ -326,14 +326,7 @@ export default function PurchaseBillModal({ period, items, itemOptions, vendors,
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-end', marginTop: 14, gap: 16 }}>
         {(() => {
-          const taxableBase    = billLines.reduce((s, l) => l.vat_inclusive ? s + (parseFloat(l.qty)||0) * (parseFloat(l.rate)||0) : s, 0)
-          const nonTaxableBase = billLines.reduce((s, l) => !l.vat_inclusive ? s + (parseFloat(l.qty)||0) * (parseFloat(l.rate)||0) : s, 0)
-          const subTotal       = taxableBase + nonTaxableBase
-          const discount       = parseFloat(billHeader.discount) || 0
-          // Discount spread proportionally; VAT levied only on taxable portion after discount
-          const vatTaxable     = subTotal > 0 ? taxableBase * (1 - discount / subTotal) : 0
-          const vatTotal       = vatTaxable * 0.13
-          const grandTotal     = subTotal - discount + vatTotal
+          const { taxableBase, nonTaxableBase, subTotal, discount, vatTotal, grandTotal } = calcBillTotals(billLines, billHeader.discount)
           if (subTotal === 0) return null
           const fmt = n => n.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
           const itemCount = billLines.filter(l => l.item_id && parseFloat(l.qty) > 0 && parseFloat(l.rate) > 0).length

@@ -7,7 +7,9 @@ import Fab from '../../../components/Fab'
 import * as XLSX from 'xlsx'
 import { getCf } from './purchasesHelpers'
 import PurchaseBillModal from './PurchaseBillModal'
+import PurchaseBillPrint from './PurchaseBillPrint'
 import ReturnsTab from './ReturnsTab'
+import { printWithTitle } from '../../../utils/printTitle'
 
 const BS_MONTHS = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
 
@@ -32,6 +34,10 @@ export default function Purchases() {
   const [editingGroupId, setEditingGroupId] = useState(null)
   const [rateUpdateItems, setRateUpdateItems]       = useState([])
   const [rateUpdateSelected, setRateUpdateSelected] = useState(new Set())
+  const [printBill, setPrintBill]           = useState(null)
+  // Company letterhead for the auto-printed purchase voucher — same source fields the payslip
+  // print uses (settings.vat_number is Nepal's PAN, reused as-is — not a new ID).
+  const [bizInfo, setBizInfo]               = useState({ name: '', address: '', vatNumber: '' })
 
   // Returns tab
   const [returns, setReturns]               = useState([])
@@ -40,6 +46,16 @@ export default function Purchases() {
   const [collapsedRegisterCats, setCollapsedRegisterCats] = useState(new Set())
 
   useEffect(() => { if (!authLoading && effectiveClientId) init() }, [clientId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!effectiveClientId) return
+    Promise.all([
+      supabase.from('clients').select('name').eq('id', effectiveClientId).single(),
+      supabase.from('settings').select('property_address, vat_number').eq('client_id', effectiveClientId).maybeSingle(),
+    ]).then(([{ data: client }, { data: settings }]) => {
+      setBizInfo({ name: client?.name || '', address: settings?.property_address || '', vatNumber: settings?.vat_number || '' })
+    })
+  }, [effectiveClientId])
 
   async function init() {
     setLoading(true)
@@ -97,13 +113,27 @@ export default function Purchases() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  // Auto-print a new bill's voucher right after save (not on edits — see feedback captured
+  // during S404+1 design discussion) so it can be stapled to the vendor's physical bill for
+  // record-keeping/approval.
+  function printPurchaseBill(header, validLines) {
+    const vendor = vendors.find(v => v.id === header.vendor_id)
+    setPrintBill({ header, lines: validLines, vendorName: vendor?.name || '' })
+    setTimeout(() => {
+      printWithTitle(`Purchase Voucher - ${vendor?.name || 'No Vendor'} - ${periodLabel} Day ${header.bs_day}`)
+      setPrintBill(null)
+    }, 60)
+  }
+
   // Called by PurchaseBillModal after it successfully saves — reloads the list and checks
   // whether any entered rate differs from Item Master, offering to sync it (previously the tail
   // end of this component's own saveBill()).
-  async function handleBillSaved(validLines) {
+  async function handleBillSaved(header, validLines) {
+    const wasNew = !editingGroupId
     setShowForm(false)
     setEditingGroupId(null)
     loadPurchases(selectedPeriod.id)
+    if (wasNew) printPurchaseBill(header, validLines)
 
     const changed = []
     for (const l of validLines) {
@@ -209,7 +239,8 @@ export default function Purchases() {
   const isLocked = !isAdmin && selectedPeriod?.status === 'closed'
 
   return (
-    <div>
+    <>
+    <div className={printBill ? 'no-print' : ''}>
 
       {/* Rate update modal */}
       {rateUpdateItems.length > 0 && (
@@ -683,5 +714,22 @@ export default function Purchases() {
       })()}
 
     </div>
+
+      {/* Print-only purchase voucher — see printPurchaseBill(); mounted only for the brief
+          setTimeout window it takes to fire the browser print dialog, then unmounted. */}
+      {printBill && (
+        <div className="print-only">
+          <PurchaseBillPrint
+            header={printBill.header}
+            lines={printBill.lines}
+            items={items}
+            vendorName={printBill.vendorName}
+            period={selectedPeriod}
+            bizInfo={bizInfo}
+            enteredBy={profile?.full_name || profile?.email || ''}
+          />
+        </div>
+      )}
+    </>
   )
 }

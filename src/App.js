@@ -10,6 +10,7 @@ import OwnerDashboard from './pages/dashboard/OwnerDashboard'
 import Periods from './pages/Periods'
 import Items from './modules/ims/items/Items'
 import Vendors from './modules/ims/vendors/Vendors'
+import GatePasses from './modules/ims/gatepasses/GatePasses'
 import Purchases from './modules/ims/purchases/Purchases'
 import PurchaseOrders from './modules/ims/purchases/PurchaseOrders'
 import Stock from './modules/ims/stockcount/Stock'
@@ -75,6 +76,7 @@ import PosOrders from './modules/pos/orders/PosOrders'
 import PosTableManagement from './modules/pos/tables/PosTableManagement'
 import PosStaff from './modules/pos/staff/PosStaff'
 import PosCustomers from './modules/pos/customers/PosCustomers'
+import PosParkingSlips from './modules/pos/parking/PosParkingSlips'
 import PosExceptionReport from './modules/pos/reports/PosExceptionReport'
 import PosShifts from './modules/pos/shifts/PosShifts'
 import CreditNotes from './modules/pos/creditnotes/CreditNotes'
@@ -117,6 +119,7 @@ export default function App() {
               {/* Crest IMS — gated on ims_enabled */}
               <Route path="/items"     element={<ModuleGate module="ims"><Items /></ModuleGate>} />
               <Route path="/vendors"   element={<ModuleGate module="ims"><Vendors /></ModuleGate>} />
+              <Route path="/gate-passes" element={<ModuleGate module="ims"><GatePasses /></ModuleGate>} />
               <Route path="/purchases" element={<ModuleGate module="ims"><Purchases /></ModuleGate>} />
               <Route path="/stock"     element={<ModuleGate module="ims"><Stock /></ModuleGate>} />
 
@@ -216,6 +219,7 @@ export default function App() {
               <Route path="/pos/orders" element={<ModuleGate module="pos"><PosOrders /></ModuleGate>} />
               <Route path="/pos/tables" element={<ModuleGate module="pos"><PosTableManagement /></ModuleGate>} />
               <Route path="/pos/customers" element={<ModuleGate module="pos"><PosCustomers /></ModuleGate>} />
+              <Route path="/pos/parking" element={<ModuleGate module="pos"><PosParkingSlips /></ModuleGate>} />
               <Route path="/pos/shifts" element={<ModuleGate module="pos"><PosShifts /></ModuleGate>} />
               <Route path="/pos/exceptions" element={<ModuleGate module="pos"><PosExceptionReport /></ModuleGate>} />
               <Route path="/pos/credit-notes" element={<ModuleGate module="pos"><CreditNotes /></ModuleGate>} />

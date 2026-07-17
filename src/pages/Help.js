@@ -36,6 +36,11 @@ const IMS_FEATURE_TIERS = [
         tips: ['Add all vendors before starting purchase entries', 'Inactive vendors are hidden from purchase dropdowns but their data is preserved']
       },
       {
+        icon: '⛊', name: 'Gate Passes',
+        guide: 'Issue a printable gate pass for a vendor or delivery vehicle arriving at the property — pick an existing vendor or type a one-off company name, plus driver name, vehicle number, and purpose (delivery/pickup/maintenance/other). Prints an A4 pass with Security/Supervisor signature lines. No extra role gate beyond normal IMS access — anyone who can reach this page can issue one.',
+        tips: ['Mark a pass "Exited" once the vehicle leaves — the Open tab is a quick live view of who\'s currently on the premises', 'The Pass No is sequential per client, separate from any other numbering in the app', 'Reprint from the log at any time if the original is lost']
+      },
+      {
         icon: '↓', name: 'Purchases',
         guide: 'Record every ingredient purchase here. Each bill has a header (vendor, day, invoice ref, discount, payment method) and one row per item. Per row: select item, enter qty and rate, tick VAT if this line attracts 13% VAT, optionally enter an expiry date or shelf-life days (expiry auto-fills from the bill date). Use the Returns tab to log items sent back to suppliers.',
         tips: ['Enter purchases daily from the actual invoice — not from memory at month end', 'Always enter the actual invoice rate if it differs from the master rate', 'Add invoice reference number for audit trail', 'VAT is per-line — tick only the items that are VAT-able on that invoice', 'Enter shelf-life days and the expiry date fills automatically from the bill date', 'Returns auto-inherit rate and vendor from the original purchase', 'Daily Register tab: one row per item with a column per day plus a Total column at the end summing that item\'s purchases across the whole period — also included in Export Excel', 'The Total column stays pinned to the right edge as you scroll — no need to scroll all the way right to see it', 'Click any category header in Daily Register to collapse/expand it and cut down scrolling on a long item list']
@@ -409,7 +414,7 @@ const GLOSSARY = [
   { term: 'TDS',              def: 'Tax Deducted at Source. Nepal\'s monthly income tax withholding on salary, computed via year-to-date cumulative projection against the current fiscal year\'s tax slabs.' },
   { term: 'Gratuity',         def: 'A lump-sum retirement/severance benefit under Nepal\'s Labour Act, accrued per year of service and paid at final settlement — separate from SSF.' },
   { term: 'CTC',              def: 'Cost to Company. Gross salary + Employer SSF contribution (20% of basic) — the employer\'s true monthly outlay, not the employee\'s take-home pay.' },
-  { term: 'Dearness Allowance', def: 'महँगी भत्ता — a statutory monthly allowance separate from basic salary. Minimum NPR 7,380/month (FY 2082/83). SSF is not computed on it.' },
+  { term: 'Dearness Allowance', def: 'महँगी भत्ता — a statutory monthly allowance separate from basic salary. Minimum NPR 7,380/month (set FY 2082/83, unchanged through FY 2083/84 — next review due Shrawan 2084). SSF is not computed on it.' },
   { term: 'Shift Type',       def: 'A named work-shift template (e.g. Morning, Evening, Split) with a colour and start/end time, defined in Roster → Shift Types and assigned to staff on the Roster Board.' },
   { term: 'Roster',           def: 'The weekly/monthly staff shift schedule. Planning-only — Attendance is the official record that feeds Payroll, though Attendance can be pre-filled from Roster via Generate from Roster.' },
   { term: 'Final Settlement', def: 'The full-and-final payment computed when an employee leaves — unpaid salary, leave encashment, and gratuity, minus any pending dues.' },
@@ -1089,6 +1094,16 @@ export default function Help() {
                     'Ready tickets stay visible for 10 minutes so staff can confirm pickup, then drop off the board on their own — they\'re never deleted, and still count in KOT Register/Reconciliation reports',
                     'Mount this on a tablet or spare screen at the pass — anyone with Staff role or above can open it, same PIN login as Order Taking',
                     'Printing is not replaced — if a client doesn\'t have a screen at a station yet, paper tickets keep working exactly as they do today',
+                  ],
+                },
+                {
+                  icon: '🅿', name: 'Parking Slips', path: '/pos/parking',
+                  desc: 'Issue a printable parking token for a customer\'s vehicle — no order or table required, so a walk-in can get one before ordering. Enter the vehicle number (required), plus optional vehicle type and customer name. Requires Supervisor role or above to issue/print; any staff can view the log and mark a slip Exited once the vehicle is retrieved.',
+                  tips: [
+                    'Prints an 80mm thermal token with the vehicle number in large text — the single detail a valet reads back to reunite car with customer',
+                    'The Open tab shows only vehicles still parked; switch to All to see the full history',
+                    'Mark Exited as soon as the vehicle is retrieved — it closes the slip and records who closed it',
+                    'Reprint is available to any staff if the original token is lost',
                   ],
                 },
                 {

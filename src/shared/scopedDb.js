@@ -18,7 +18,7 @@ export const CLIENT_SCOPED_TABLES = [
   'recipes', 'items', 'vendors', 'categories', 'monthly_periods', 'requisitions',
   'overheads', 'purchase_orders', 'vendor_returns', 'feature_flags',
   'par_levels', 'payable_payments', 'recipe_suggestions',
-  'demand_forecast_daily', 'demand_forecast_run_log', 'stock_movements',
+  'demand_forecast_daily', 'demand_forecast_run_log', 'stock_movements', 'ims_gate_passes',
   // HR
   'hr_employees', 'hr_attendance', 'hr_advances', 'hr_advance_repayments',
   'hr_leave_requests', 'hr_leave_types', 'hr_holiday_calendar', 'hr_festival_allowances',
@@ -31,7 +31,7 @@ export const CLIENT_SCOPED_TABLES = [
   // POS
   'pos_orders', 'pos_order_items', 'pos_order_payments', 'pos_tables', 'pos_customers',
   'pos_credit_notes', 'pos_kot_log', 'pos_shifts', 'pos_payment_confirmations',
-  'pos_guest_order_requests',
+  'pos_guest_order_requests', 'pos_parking_slips',
 ]
 
 // A UUID column can never equal this, so any scoped query built without a real

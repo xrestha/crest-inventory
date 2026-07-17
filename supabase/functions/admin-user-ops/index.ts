@@ -361,6 +361,7 @@ Deno.serve(async (req) => {
         await del(admin.from('overheads').delete().eq('client_id', clientId), 'overheads')
         await del(admin.from('demand_forecast_daily').delete().eq('client_id', clientId), 'demand_forecast_daily')
         await del(admin.from('demand_forecast_run_log').delete().eq('client_id', clientId), 'demand_forecast_run_log')
+        await del(admin.from('ims_gate_passes').delete().eq('client_id', clientId), 'ims_gate_passes')
         // monthly_periods are intentionally KEPT — HR attendance/payroll reference the same periods
         return json({ success: true })
       }
@@ -411,6 +412,7 @@ Deno.serve(async (req) => {
         await del(admin.from('pos_orders').delete().eq('client_id', clientId), 'pos_orders')
         await del(admin.from('pos_shifts').delete().eq('client_id', clientId), 'pos_shifts')
         await del(admin.from('pos_customers').delete().eq('client_id', clientId), 'pos_customers')
+        await del(admin.from('pos_parking_slips').delete().eq('client_id', clientId), 'pos_parking_slips')
         // Tables are kept (setup) but any left "occupied" by a deleted order are freed
         await admin.from('pos_tables').update({ status: 'available' }).eq('client_id', clientId)
         return json({ success: true })
@@ -483,6 +485,7 @@ Deno.serve(async (req) => {
       await del(admin.from('pos_orders').delete().eq('client_id', clientId), 'pos_orders')
       await del(admin.from('pos_shifts').delete().eq('client_id', clientId), 'pos_shifts')
       await del(admin.from('pos_customers').delete().eq('client_id', clientId), 'pos_customers')
+      await del(admin.from('pos_parking_slips').delete().eq('client_id', clientId), 'pos_parking_slips')
       await del(admin.from('pos_tables').delete().eq('client_id', clientId), 'pos_tables')
 
       // HR module data (payslips reference runs; attendance/payroll reference monthly_periods)
@@ -520,6 +523,7 @@ Deno.serve(async (req) => {
       await del(admin.from('monthly_periods').delete().eq('client_id', clientId), 'monthly_periods')
       await del(admin.from('recipes').delete().eq('client_id', clientId), 'recipes')
       await del(admin.from('items').delete().eq('client_id', clientId), 'items')
+      await del(admin.from('ims_gate_passes').delete().eq('client_id', clientId), 'ims_gate_passes')
       await del(admin.from('vendors').delete().eq('client_id', clientId), 'vendors')
       await del(admin.from('categories').delete().eq('client_id', clientId), 'categories')
 

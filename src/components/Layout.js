@@ -19,6 +19,7 @@ import {
   ShieldCheck, Warehouse, Store,
   HelpCircle, PanelLeftClose, PanelLeftOpen, LogOut,
   Crown, History, QrCode, Hexagon, Search, ChevronDown,
+  ParkingSquare, IdCardLanyard,
 } from 'lucide-react'
 import './Layout.css'
 
@@ -29,6 +30,7 @@ const NAV = [
   { to: '/items',            label: 'Item Master',       icon: Package },
   { to: '/vendors',          label: 'Vendors',           icon: Truck },
   { to: '/purchases',        label: 'Purchases',         icon: ShoppingCart },
+  { to: '/gate-passes',      label: 'Gate Passes',       icon: IdCardLanyard },
   { to: '/sales',            label: 'Sales Entry',       icon: TrendingUp, featureKey: 'sales_entry',     minPlan: 'starter' },
   { to: '/purchase-orders',  label: 'Purchase Orders',   icon: ClipboardList, featureKey: 'purchase_orders', minPlan: 'growth' },
   { to: '/stock',            label: 'Stock Count',       icon: ClipboardCheck },
@@ -75,8 +77,8 @@ const REPORTS = [
 // Collapsible nav groups for the IMS sidebar (Dashboard stays pinned above; Settings below).
 // Reports are split by characteristic instead of one 20+-item list — open just the slice you need.
 const IMS_GROUPS = [
-  { key: 'ops',             label: 'Operations',       items: NAV.slice(1, 9) }, // Periods … Sales Entry
-  { key: 'costing',         label: 'Costing',          items: NAV.slice(9) },    // Recipe Costing … Overheads
+  { key: 'ops',             label: 'Operations',       items: NAV.slice(1, 10) }, // Periods … Requisitions
+  { key: 'costing',         label: 'Costing',          items: NAV.slice(10) },    // Recipe Costing … Overheads
   { key: 'reports-summary', label: 'Summary Reports',  items: REPORTS.filter(r => r.cat === 'summary') },
   { key: 'reports-stock',   label: 'Stock Reports',    items: REPORTS.filter(r => r.cat === 'stock') },
   { key: 'reports-money',   label: 'Finance Reports',  items: REPORTS.filter(r => r.cat === 'money') },
@@ -91,6 +93,7 @@ const POS_GROUPS = [
   { key: 'pos-floor', label: 'Floor', items: [
     { to: '/pos/orders', label: 'Orders', icon: ClipboardList, minPosRole: 'staff' },
     { to: '/pos/kds', label: 'Kitchen Display', icon: Utensils, minPosRole: 'staff' },
+    { to: '/pos/parking', label: 'Parking Slips', icon: ParkingSquare, minPosRole: 'staff' },
     { to: '/pos/tables', label: 'Tables', icon: LayoutGrid, minPosRole: 'supervisor' },
     { to: '/pos/customers', label: 'Customers', icon: Users, minPosRole: 'supervisor' },
     { to: '/pos/shifts', label: 'Shifts', icon: Clock, minPosRole: 'supervisor' },

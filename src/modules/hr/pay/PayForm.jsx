@@ -389,7 +389,7 @@ export default function PayForm({ employee, onSave, onClose }) {
                   {/* Compliance notice */}
                   {(basicBelowMin || dearnessBelowMin || grossBelowMin) && (
                     <div style={{ padding: '12px 14px', background: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 8, fontSize: 12, color: 'var(--theme-red)', lineHeight: 1.6 }}>
-                      <strong>Minimum wage check (FY 2082/83)</strong>
+                      <strong>Minimum wage check (FY 2083/84)</strong>
                       <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
                         <div style={{ color: basic >= MIN_BASIC_MONTHLY ? 'var(--theme-green)' : 'var(--theme-red)' }}>
                           {basic >= MIN_BASIC_MONTHLY ? '✓' : '✗'} Basic ≥ NPR {MIN_BASIC_MONTHLY.toLocaleString('en-NP')} &nbsp;
@@ -410,7 +410,7 @@ export default function PayForm({ employee, onSave, onClose }) {
                   {/* All clear */}
                   {!basicBelowMin && !dearnessBelowMin && !grossBelowMin && gross > 0 && (
                     <div style={{ padding: '10px 14px', background: 'rgba(52,211,153,0.06)', border: '1px solid rgba(52,211,153,0.15)', borderRadius: 8, fontSize: 12, color: 'var(--theme-green)' }}>
-                      ✓ Meets Nepal minimum wage requirements (FY 2082/83)
+                      ✓ Meets Nepal minimum wage requirements (FY 2083/84)
                     </div>
                   )}
                 </div>

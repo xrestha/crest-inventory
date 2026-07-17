@@ -150,6 +150,28 @@ Annual = 25% off monthly, applied uniformly everywhere annual pricing appears.
 
 ## Session Log
 
+### S406 — 2026-07-17 — Parking Slip facility: POS customer tokens + IMS vendor/delivery gate passes
+
+User wanted a printable "parking slip" for customers who park a vehicle, plus an equivalent for vendor/delivery vehicles arriving at the back office — printable only by Supervisor level+.
+
+- Researched valet-ticket and vendor gate-pass conventions, then found the codebase has no existing "parking"/"gate pass"/"vehicle" concept — genuinely new. Exploration surfaced an asymmetry: POS already has a Supervisor/Manager role hierarchy (`hasPosAccess()` in `AuthContext.js`, the same helper gating Void/Complimentary), but IMS has none (only Owner vs platform Admin). Confirmed with user: the IMS side gets no extra role gate beyond `ModuleGate` (the real boundary is RLS, same as `vendors`); both slip types persist with a log + sequential per-client slip number; the POS side is a standalone action, not tied to any order/table.
+- **POS (`/pos/parking`)**: Supervisor+ only can create+auto-print an 80mm thermal token (vehicle number large/bold, popup-window print convention matching `creditNoteHtml.js`); any staff can view the log and Mark Exited. New table `pos_parking_slips` with its own trigger-assigned `slip_no` (same `pg_advisory_xact_lock` + `MAX+1` shape as `assign_pos_order_no()`).
+- **IMS (`/gate-passes`)**: any Owner/Admin can create+auto-print an A4 gate pass — pick an existing vendor or type a one-off company name, driver, vehicle number, purpose, Security/Supervisor signature lines (print-only-div + `printWithTitle()` convention matching this session's Purchase Voucher work, S405). New table `ims_gate_passes` with its own `pass_no`; `vendor_id` is `ON DELETE SET NULL` so a later vendor delete never blocks it.
+- Both tables added to `scopedDb.js`'s `CLIENT_SCOPED_TABLES`, standard + S316 restrictive RLS policies (verified against `20260708130000_staff_account_business_table_isolation.sql` — `ims_gate_passes` mirrors `vendors` on both restrictive lists; `pos_parking_slips` mirrors `pos_orders`, excluded from HR self-service but not from POS PIN staff), nav/routing (`Layout.js`/`App.js`), Tip tooltips, and the admin Danger Zone (`clearModuleData`/`deleteClientData` in `admin-user-ops`) — edge function redeployed live.
+- No `feature_flags`/`PremiumGate` for either sub-feature — matches the existing `/vendors`/`/purchases` and POS-core-route precedent of `ModuleGate`-only gating for an operational utility.
+
+**Files:** `supabase/migrations/20260717120000_parking_slips_gate_passes.sql`, `src/modules/pos/parking/*` (new), `src/modules/ims/gatepasses/*` (new), `src/shared/scopedDb.js`, `src/components/Layout.js`, `src/App.js`, `src/pages/Help.js`, `supabase/functions/admin-user-ops/index.ts`
+
+### S405 — 2026-07-17 — New fiscal year (2083/84) payroll rule check + Purchase Voucher auto-print
+
+Today (Shrawan 1) begins Nepal's FY 2083/84 — user asked for an in-depth rule audit against the new fiscal year, plus a new auto-print-on-save feature for Purchases so a physical voucher can be attached to the vendor's bill for approval.
+
+- Researched the actual Finance Bill 2083 (budget presented 29 May 2026) against the live codebase. Confirmed `tds.js`'s `SLABS_2083_84` already exactly matches the new unified income-tax schedule (1%/10%/20%/27%/29% across 10L/15L/25L/40L bands) — no code change needed, it was already correctly anticipated. Confirmed SSF rate/cap (11%/20%, NPR 100,000 basic cap) and minimum wage (NPR 19,550) are unchanged this FY — minimum wage is revised only every 2 years, next due Shrawan 2084. Updated stale "(FY 2082/83)" labels in `PayForm.jsx`/`Help.js`/`payrollConstants.js` to reflect the rollover, without changing any figures.
+- Flagged (not removed, pending user decision) `src/shared/constants/taxSlabs.js` as dead code — an unused, superseded pre-2082/83 tax-slab implementation with an obsolete "female tax rebate" concept, exported from a barrel but never imported anywhere. A landmine if it's ever reached for by mistake.
+- New Purchases feature: saving a **new** purchase bill (not edits) now auto-fires an A4 "Purchase Entry Voucher" print — company letterhead, line items in purchase units, VAT/discount/grand-total breakdown, and Prepared By/Checked By/Approved By signature lines. Totals logic extracted into `calcBillTotals()` in `purchasesHelpers.js` so the on-screen modal total and the printed voucher can never drift apart.
+
+**Files:** `src/modules/hr/payroll/payrollConstants.js`, `src/modules/hr/pay/PayForm.jsx`, `src/pages/Help.js`, `src/modules/ims/purchases/purchasesHelpers.js`, `src/modules/ims/purchases/PurchaseBillModal.jsx`, `src/modules/ims/purchases/PurchaseBillPrint.jsx` (new), `src/modules/ims/purchases/Purchases.js`
+
 ### S404 — 2026-07-16 — Stock Count Sheet print: fixed blank page 1 on tall categories
 
 User printed a Stock Count Sheet (Stock.js's Print Sheet tab) and got a page 1 with only the header on it — the rest of the page blank — with the first category's table (DAIRY & BAKERY, 32 rows) starting fresh on page 2.

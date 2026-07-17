@@ -1,4 +1,8 @@
-// Nepal payroll legal constants — FY 2082/83 (effective Shrawan 1, 2082 / 15 Jul 2025).
+// Nepal payroll legal constants. Minimum wage last revised Shrawan 1, 2082 (15 Jul 2025);
+// under Labour Act 2074 s.106(2) it's reviewed every 2 years, so this figure carries forward
+// unchanged through FY 2083/84 (started Shrawan 1, 2083 / 17 Jul 2026) — next review due
+// Shrawan 2084 (Jul 2027). SSF rate/cap confirmed unchanged in the FY 2083/84 budget (2026-07-17
+// research pass — only the income-tax slabs changed this FY, see SLABS_2083_84 in tds.js).
 // Update these when the government revises rates. See memory: nepal-payroll-law.
 
 // SSF: 11% employee + 20% employer, computed on basic salary capped at NPR 100,000/month.
