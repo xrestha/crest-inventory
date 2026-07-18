@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Navigate } from 'react-router-dom'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
@@ -34,6 +34,7 @@ const STATUS_COLOR = { new: 'var(--theme-red)', in_progress: 'var(--theme-amber)
 export default function KitchenDisplay() {
   const { profile, hasPosAccess } = useAuth()
   const { scopedFrom, scopedUpdate } = useScopedDb()
+  const navigate = useNavigate()
 
   const [station, setStation] = useState(() => localStorage.getItem('pos_kds_station') || 'KOT')
   const [tickets, setTickets] = useState([])
@@ -51,6 +52,11 @@ export default function KitchenDisplay() {
   // Ticket awaiting an estimated prep time before it can advance to In Progress — see
   // requestEstimate/confirmStart below and EstimateTimeModal.jsx.
   const [estimateTicket, setEstimateTicket] = useState(null)
+  // New-ticket chime bookkeeping — same "skip the very first load, chime only on a genuinely new
+  // arrival" pattern as PosOrders.jsx's playGuestOrderChime, reset per-station since switching the
+  // KOT/BOT toggle is a real station change, not a fresh arrival on the previous station.
+  const seenTicketIds = useRef(new Set())
+  const loadedOnce = useRef(false)
 
   const load = useCallback(async () => {
     const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0)
@@ -62,10 +68,45 @@ export default function KitchenDisplay() {
       .neq('status', 'cancelled')
       .gte('sent_at', startOfDay.toISOString())
       .order('sent_at', { ascending: true })
-    setTickets(data || [])
+    const rows = data || []
+    const newTickets = rows.filter(t => t.status === 'new')
+    if (loadedOnce.current && newTickets.some(t => !seenTicketIds.current.has(t.id))) {
+      playNewTicketChime()
+    }
+    seenTicketIds.current = new Set(newTickets.map(t => t.id))
+    loadedOnce.current = true
+    setTickets(rows)
     setLoading(false)
   }, [scopedFrom, station])
 
+  // A wall-mounted KDS screen is the one place in POS most likely to not be looked at
+  // continuously — the same two-tone Web Audio beep PosOrders.jsx/GuestMenu.jsx already use for
+  // their own new-arrival events, so a new ticket doesn't rely on someone glancing at the board.
+  function playNewTicketChime() {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext
+      if (!Ctx) return
+      const ctx = new Ctx()
+      const now = ctx.currentTime
+      ;[880, 660].forEach((freq, i) => {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'sine'
+        osc.frequency.value = freq
+        gain.gain.setValueAtTime(0.0001, now + i * 0.18)
+        gain.gain.exponentialRampToValueAtTime(0.3, now + i * 0.18 + 0.02)
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.18 + 0.16)
+        osc.connect(gain); gain.connect(ctx.destination)
+        osc.start(now + i * 0.18)
+        osc.stop(now + i * 0.18 + 0.18)
+      })
+    } catch (_) { /* audio blocked or unsupported — visual board still shows the new ticket */ }
+  }
+
+  // Switching stations is a real context switch, not a fresh arrival on the station just left —
+  // without this, the first load after toggling KOT→BOT would chime for every ticket already
+  // sitting in BOT's New column, not just a genuinely new one.
+  useEffect(() => { loadedOnce.current = false; seenTicketIds.current = new Set() }, [station])
   useEffect(() => { setLoading(true); load() }, [load])
   useEffect(() => {
     const poll = setInterval(load, POLL_MS)
@@ -120,15 +161,25 @@ export default function KitchenDisplay() {
   })
 
   return (
-    <div style={{ padding: '20px 24px', maxWidth: 1400 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h2 style={{ margin: 0, color: 'var(--theme-text1)', fontSize: 20 }}>Kitchen Display</h2>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--theme-text3)' }}>
-            Live view of today's {station === 'KOT' ? 'kitchen' : 'bar'} tickets — printing still happens as normal, this just mirrors it on screen.
-          </p>
+    // A wall-mounted, no-keyboard screen viewed from several feet away is a genuinely different
+    // device profile than the admin sidebar shell every other POS page shares — same reasoning
+    // PosOrders.jsx already uses to escape the shell for its own full-screen order-taking view.
+    // Full-bleed (no maxWidth cap) so a wide kitchen monitor shows more of the board, not a
+    // centered column with wasted space on either side.
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'var(--theme-bg)', display: 'flex', flexDirection: 'column', padding: '20px 28px', overflowY: 'auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <button onClick={() => navigate('/pos/orders')} className="btn btn-ghost" style={{ fontSize: 13 }}>
+            ← Exit
+          </button>
+          <div>
+            <h2 style={{ margin: 0, color: 'var(--theme-text1)', fontSize: 26 }}>Kitchen Display</h2>
+            <p style={{ margin: '4px 0 0', fontSize: 14, color: 'var(--theme-text3)' }}>
+              Live view of today's {station === 'KOT' ? 'kitchen' : 'bar'} tickets — printing still happens as normal, this just mirrors it on screen.
+            </p>
+          </div>
         </div>
-        <div className="tab-bar">
+        <div className="tab-bar" style={{ fontSize: 15 }}>
           {STATIONS.map(s => (
             <button key={s} className={`tab-btn${station === s ? ' tab-btn--active' : ''}`} onClick={() => selectStation(s)}>
               {s === 'KOT' ? 'Kitchen (KOT)' : 'Bar (BOT)'}
@@ -138,8 +189,8 @@ export default function KitchenDisplay() {
       </div>
 
       {kdsError && (
-        <div style={{
-          background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)',
+        <div role="alert" style={{
+          background: 'color-mix(in srgb, var(--theme-red) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--theme-red) 25%, transparent)',
           borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontSize: 13,
           color: 'var(--theme-red)', cursor: 'pointer',
         }} onClick={() => setKdsError('')}>

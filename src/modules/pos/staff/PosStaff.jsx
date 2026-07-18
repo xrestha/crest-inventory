@@ -57,6 +57,19 @@ export default function PosStaff() {
 
   useEffect(() => { if (clientId) init() }, [clientId]) // eslint-disable-line
 
+  // Escape-to-close — none of this file's 3 hand-rolled overlays use the shared Modal.js
+  // component, so each needs its own listener; only one is ever open at a time in practice.
+  useEffect(() => {
+    function onKeyDown(e) {
+      if (e.key !== 'Escape') return
+      if (rolesModal) setRolesModal(false)
+      else if (addModal && !adding) setAddModal(false)
+      else if (pinTarget && !resetting) setPinTarget(null)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [rolesModal, addModal, adding, pinTarget, resetting])
+
   async function init() {
     setLoading(true)
     const [{ data: staffData }, { data: settingsData }, { data: empData }] = await Promise.all([
@@ -266,7 +279,7 @@ export default function PosStaff() {
         ))}
       </div>
 
-      {msg && <p style={{ fontSize: 13, color: 'var(--theme-red)', marginBottom: 16 }}>{msg}</p>}
+      {msg && <p role="alert" style={{ fontSize: 13, color: 'var(--theme-red)', marginBottom: 16 }}>{msg}</p>}
 
       {loading ? (
         <p style={{ color: 'var(--theme-text3)' }}>Loading…</p>
@@ -361,7 +374,7 @@ export default function PosStaff() {
               Define custom role names for your team. Each maps to a permission level.
             </p>
 
-            {rolesError && <p style={{ color: 'var(--theme-red)', fontSize: 12, margin: '-8px 0 12px' }}>{rolesError}</p>}
+            {rolesError && <p role="alert" style={{ color: 'var(--theme-red)', fontSize: 12, margin: '-8px 0 12px' }}>{rolesError}</p>}
 
             {customRoles.length === 0 ? (
               <p style={{ fontSize: 13, color: 'var(--theme-text3)', fontStyle: 'italic', marginBottom: 16 }}>
@@ -528,7 +541,7 @@ export default function PosStaff() {
               </select>
             </div>
 
-            {addMsg && <p style={{ fontSize: 12, color: 'var(--theme-red)', marginBottom: 12 }}>{addMsg}</p>}
+            {addMsg && <p role="alert" style={{ fontSize: 12, color: 'var(--theme-red)', marginBottom: 12 }}>{addMsg}</p>}
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button className="btn btn-ghost" onClick={() => setAddModal(false)} disabled={adding}>Cancel</button>
@@ -563,7 +576,7 @@ export default function PosStaff() {
                 onChange={e => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
               />
             </div>
-            {pinMsg && <p style={{ fontSize: 12, color: 'var(--theme-red)', marginBottom: 12 }}>{pinMsg}</p>}
+            {pinMsg && <p role="alert" style={{ fontSize: 12, color: 'var(--theme-red)', marginBottom: 12 }}>{pinMsg}</p>}
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button className="btn btn-ghost" onClick={() => setPinTarget(null)} disabled={resetting}>Cancel</button>
               <button className="btn btn-primary" onClick={resetPin} disabled={resetting}>

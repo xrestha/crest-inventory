@@ -23,6 +23,14 @@ export default function IssueCreditNoteModal({ order, onClose, onIssued }) {
   const { clientId, profile, hasPosAccess } = useAuth()
   const { scopedFrom, scopedInsert, scopedUpdate } = useScopedDb()
 
+  // Escape-to-close — matches the existing backdrop-click behavior below (no in-progress guard,
+  // since neither render path below guards its own backdrop-click on `submitting` either).
+  useEffect(() => {
+    function onKeyDown(e) { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
   const [items, setItems] = useState([])
   const [settings, setSettings] = useState({ is_vat_registered: true, invoice_prefix: '', vat_number: '', property_address: '', property_phone: '' })
   const [outletName, setOutletName] = useState('')
@@ -192,7 +200,7 @@ export default function IssueCreditNoteModal({ order, onClose, onIssued }) {
               <div><label style={labelStyle}>Phone</label><input style={inputStyle} value={buyerPhone} onChange={e => setBuyerPhone(e.target.value)} /></div>
             </div>
 
-            {msg && <p style={{ color: msg.startsWith('error:') ? 'var(--theme-red)' : 'var(--theme-green)', fontSize: 12, marginBottom: 8 }}>{msg.replace('error:', '')}</p>}
+            {msg && <p role="alert" style={{ color: msg.startsWith('error:') ? 'var(--theme-red)' : 'var(--theme-green)', fontSize: 12, marginBottom: 8 }}>{msg.replace('error:', '')}</p>}
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button className="btn btn-ghost" onClick={onClose} disabled={submitting}>Cancel</button>

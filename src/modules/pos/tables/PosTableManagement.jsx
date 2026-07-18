@@ -1092,7 +1092,7 @@ export default function PosTableManagement() {
             )}
 
             {msg && (
-              <p style={{ margin: 0, fontSize: 12, color: msg.startsWith('error:') ? 'var(--theme-red)' : 'var(--theme-green)' }}>
+              <p role="alert" style={{ margin: 0, fontSize: 12, color: msg.startsWith('error:') ? 'var(--theme-red)' : 'var(--theme-green)' }}>
                 {msg.replace(/^(error|ok):/, '')}
               </p>
             )}

@@ -33,6 +33,11 @@ export default function PosOrders() {
   // amber (#b45309), a genuinely dark burnt-orange. Same contrast-pick approach avatarColorFor()
   // already uses, so this stays correct if a future preset's amber ever needs white too.
   const amberBadgeText = contrastRatio(colors.amber, '#ffffff') >= contrastRatio(colors.amber, '#000000') ? '#ffffff' : '#000000'
+  // Same reasoning, extended to the green/red solid-fill badges (KOT/BOT sent, Payment button,
+  // Void Order button) that were still hardcoding white text and failing WCAG AA on light pastel
+  // presets (Nord, Catppuccin, Tokyo Night).
+  const greenBadgeText  = contrastRatio(colors.green, '#ffffff') >= contrastRatio(colors.green, '#000000') ? '#ffffff' : '#000000'
+  const redBadgeText    = contrastRatio(colors.red, '#ffffff')   >= contrastRatio(colors.red, '#000000')   ? '#ffffff' : '#000000'
 
   // Upsell/Cross-sell suggestion-chip tiering (product-roadmap memory, built S210 but never
   // actually gated by plan until now — every client got the full Pro+IMS experience for free).
@@ -152,6 +157,10 @@ export default function PosOrders() {
   const [compQtyByRecipe, setCompQtyByRecipe] = useState({})
   const [itemCompReason, setItemCompReason] = useState('')
   const [itemsExpanded,  setItemsExpanded]  = useState(false) // collapsed by default — see render site
+  // Buyer details used to always render 4 fields on every single Cash payment, on top of the
+  // payment-method/discount/comp choices already on this tab — collapsed by default the same way
+  // Items is, and force-expanded (no toggle) whenever requireBuyerId actually makes them mandatory.
+  const [buyerExpanded, setBuyerExpanded] = useState(false)
   const [discountMode,    setDiscountMode]    = useState('amount') // 'amount' | 'percent'
   const [discountStr,     setDiscountStr]     = useState('')
   const [discountReason,  setDiscountReason]  = useState('')
@@ -395,6 +404,21 @@ export default function PosOrders() {
     // itself, which regenerates on every discount/amount keystroke) so re-rendering the same QR
     // for the same order doesn't reset the interval either.
   }, [billingOpen, splitMode, orderId, payMethod, !!billQrUrl]) // eslint-disable-line
+
+  // Escape-to-close for this file's hand-rolled overlays (Billing/Covers/Recent Bills) — none of
+  // them use the shared Modal.js component, so each needs the same listener Modal.js itself gets.
+  // Only one of these is ever open at a time in practice; closing() guards the Billing modal the
+  // same way its own backdrop-click handler already does, so Escape can't abandon an in-flight close.
+  useEffect(() => {
+    function onKeyDown(e) {
+      if (e.key !== 'Escape') return
+      if (billingOpen && !closing) setBillingOpen(false)
+      else if (coversModal) { setCoversModal(false); setPendingTable(null) }
+      else if (recentBillsOpen) setRecentBillsOpen(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [billingOpen, closing, coversModal, recentBillsOpen])
 
   if (!hasPosAccess('staff')) return <Navigate to="/pos" replace />
 
@@ -1723,7 +1747,7 @@ export default function PosOrders() {
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
           {msg && (
-            <span style={{ fontSize: 12, color: msg.startsWith('error:') ? 'var(--theme-red)' : 'var(--theme-green)' }}>
+            <span role="alert" style={{ fontSize: 12, color: msg.startsWith('error:') ? 'var(--theme-red)' : 'var(--theme-green)' }}>
               {msg.replace(/^(error|ok):/, '')}
             </span>
           )}
@@ -1823,7 +1847,7 @@ export default function PosOrders() {
                       {inOrd && (
                         <span style={{
                           position: 'absolute', top: 6, right: 8,
-                          background: 'var(--theme-accent)', color: 'var(--theme-bg)',
+                          background: 'var(--theme-accent)', color: 'var(--theme-accent-text)',
                           borderRadius: 10, fontSize: 11, fontWeight: 700, padding: '1px 7px',
                         }}>{inOrd.qty}</span>
                       )}
@@ -1878,7 +1902,7 @@ export default function PosOrders() {
                         <Tip text="Ticket already sent to the station — press KOT/BOT again only if you add more of this item">
                           <span style={{
                             fontSize: 9, fontWeight: 700, flexShrink: 0,
-                            background: 'var(--theme-green)', color: '#fff',
+                            background: 'var(--theme-green)', color: greenBadgeText,
                             borderRadius: 4, padding: '1px 5px', cursor: 'default',
                           }}>
                             ✓ {botCategories.has(item.category || 'Other') ? 'BOT' : 'KOT'}
@@ -2038,7 +2062,7 @@ export default function PosOrders() {
                       className="btn"
                       style={{
                         width: '100%', padding: '12px 0', fontSize: 16, justifyContent: 'center', display: 'flex',
-                        background: 'var(--theme-green)', color: '#fff', fontWeight: 700, border: 'none',
+                        background: 'var(--theme-green)', color: greenBadgeText, fontWeight: 700, border: 'none',
                         // Same disabled treatment as the KOT/BOT ticket-btn class (opacity 0.5) — this
                         // button uses inline styles instead of that class, so it needs its own dimming.
                         opacity: payDisabled ? 0.5 : 1,
@@ -2068,7 +2092,7 @@ export default function PosOrders() {
                     {kotCount > 0 && (
                       <span style={{
                         position: 'absolute', top: -6, right: -4,
-                        background: 'var(--theme-red)', color: '#fff',
+                        background: 'var(--theme-red)', color: redBadgeText,
                         borderRadius: 10, fontSize: 10, fontWeight: 700,
                         padding: '1px 5px', lineHeight: 1.4, pointerEvents: 'none',
                       }}>{kotCount}</span>
@@ -2089,7 +2113,7 @@ export default function PosOrders() {
                     {botCount > 0 && (
                       <span style={{
                         position: 'absolute', top: -6, right: -4,
-                        background: 'var(--theme-red)', color: '#fff',
+                        background: 'var(--theme-red)', color: redBadgeText,
                         borderRadius: 10, fontSize: 10, fontWeight: 700,
                         padding: '1px 5px', lineHeight: 1.4, pointerEvents: 'none',
                       }}>{botCount}</span>
@@ -2145,7 +2169,7 @@ export default function PosOrders() {
             </div>
 
             {(kotCount + botCount) > 0 && (
-              <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--theme-amber)', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 6, padding: '8px 10px' }}>
+              <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--theme-amber)', background: 'color-mix(in srgb, var(--theme-amber) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--theme-amber) 30%, transparent)', borderRadius: 6, padding: '8px 10px' }}>
                 ⚠ {kotCount + botCount} item{kotCount + botCount !== 1 ? 's' : ''} not yet sent to the kitchen/bar.
               </p>
             )}
@@ -2162,26 +2186,40 @@ export default function PosOrders() {
 
             {billingTab === 'pay' && (
               <div style={{ marginBottom: 16 }}>
-                <p style={{ fontSize: 11, color: 'var(--theme-text3)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 8px' }}>
-                  Buyer details {requireBuyerId ? (
-                    <span style={{ color: 'var(--theme-red)', textTransform: 'none', letterSpacing: 'normal' }}>
+                {requireBuyerId ? (
+                  <p style={{ fontSize: 11, color: 'var(--theme-text3)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 8px' }}>
+                    Buyer details <span style={{ color: 'var(--theme-red)', textTransform: 'none', letterSpacing: 'normal' }}>
                       <Tip text="Name and Phone are required whenever a discount is applied or the bill goes on Credit, so there's an identifiable record.">
                         {payMethod === 'Credit' ? '(Name + Phone required for Credit)' : '(Name + Phone required for this discount)'}
                       </Tip>
                     </span>
-                  ) : (
-                    <Tip text="Optional for transactions ≤ NPR 10,000 (IRD abbreviated-invoice exemption). Fill in if the customer requests a full invoice with their own PAN.">(optional)</Tip>
-                  )}
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-                  <input placeholder="Name" value={buyerName} onChange={e => setBuyerName(e.target.value)}
-                    style={{ ...billInput, borderColor: requireBuyerId && !buyerName.trim() ? 'var(--theme-red)' : 'var(--theme-border)' }} />
-                  <input placeholder="PAN No." value={buyerPan} onChange={e => setBuyerPan(e.target.value)} style={billInput} />
-                  <input placeholder="Address" value={buyerAddress} onChange={e => setBuyerAddress(e.target.value)} style={billInput} />
-                  <input placeholder="Phone" value={buyerPhone} onChange={e => setBuyerPhone(e.target.value)}
-                    style={{ ...billInput, borderColor: requireBuyerId && !buyerPhone.trim() ? 'var(--theme-red)' : 'var(--theme-border)' }} />
-                </div>
-                <input placeholder="Remarks" value={billRemarks} onChange={e => setBillRemarks(e.target.value)} style={{ ...billInput, width: '100%' }} />
+                  </p>
+                ) : (
+                  // Collapsed by default — same disclosure treatment as Items below. Buyer details
+                  // are only mandatory for a discount/Credit bill; a plain Cash sale doesn't need 4
+                  // fields surfaced before the payment-method choice a cashier actually taps every time.
+                  <button type="button" onClick={() => setBuyerExpanded(v => !v)} style={{
+                    display: 'flex', alignItems: 'center', gap: 6, width: '100%', background: 'none', border: 'none',
+                    padding: 0, marginBottom: buyerExpanded ? 8 : 0, cursor: 'pointer', textAlign: 'left',
+                  }}>
+                    <span style={{ fontSize: 11, color: 'var(--theme-text3)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                      {buyerExpanded ? '▾' : '▸'} Buyer details <Tip text="Optional for transactions ≤ NPR 10,000 (IRD abbreviated-invoice exemption). Fill in if the customer requests a full invoice with their own PAN.">(optional)</Tip>
+                    </span>
+                  </button>
+                )}
+                {(requireBuyerId || buyerExpanded) && (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+                      <input placeholder="Name" value={buyerName} onChange={e => setBuyerName(e.target.value)}
+                        style={{ ...billInput, borderColor: requireBuyerId && !buyerName.trim() ? 'var(--theme-red)' : 'var(--theme-border)' }} />
+                      <input placeholder="PAN No." value={buyerPan} onChange={e => setBuyerPan(e.target.value)} style={billInput} />
+                      <input placeholder="Address" value={buyerAddress} onChange={e => setBuyerAddress(e.target.value)} style={billInput} />
+                      <input placeholder="Phone" value={buyerPhone} onChange={e => setBuyerPhone(e.target.value)}
+                        style={{ ...billInput, borderColor: requireBuyerId && !buyerPhone.trim() ? 'var(--theme-red)' : 'var(--theme-border)' }} />
+                    </div>
+                    <input placeholder="Remarks" value={billRemarks} onChange={e => setBillRemarks(e.target.value)} style={{ ...billInput, width: '100%' }} />
+                  </>
+                )}
               </div>
             )}
 
@@ -2205,7 +2243,7 @@ export default function PosOrders() {
                   )}
                 </button>
                 {allItemsComped && (
-                  <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--theme-amber)', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 6, padding: '8px 10px' }}>
+                  <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--theme-amber)', background: 'color-mix(in srgb, var(--theme-amber) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--theme-amber) 30%, transparent)', borderRadius: 6, padding: '8px 10px' }}>
                     ⚠ Every item is comped — nothing left to bill. Switch to the Complimentary tab to close this table instead of issuing a ₨0 Tax Invoice/PAN Bill.
                   </p>
                 )}
@@ -2312,6 +2350,11 @@ export default function PosOrders() {
                   </div>
                 )}
 
+                {/* A visual break between the core payment choice above (method/tender — what a
+                    cashier taps on every single bill) and the adjustment fields below (discount —
+                    only relevant on some bills), so the fast path doesn't visually run together
+                    with the exception-handling path. */}
+                <div style={{ borderTop: '1px solid var(--theme-border-lt)', paddingTop: 14, marginTop: 2 }}>
                 <p style={{ fontSize: 11, color: 'var(--theme-text3)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 8px' }}>
                   Discount <Tip text="Reduces the pre-VAT taxable amount — VAT is recalculated on the discounted base, matching standard invoice practice. Leave at 0 for no discount.">(optional)</Tip>
                 </p>
@@ -2346,6 +2389,7 @@ export default function PosOrders() {
                     </select>
                   </div>
                 )}
+                </div>
 
                 {!splitMode ? (
                   <>
@@ -2480,7 +2524,7 @@ export default function PosOrders() {
           {/* Sticky footer — primary action + Cancel always reachable, independent of how tall the
               scrollable content above gets (e.g. a long list of split-payment tenders). */}
           <div style={{ flexShrink: 0, padding: '14px 28px 20px', borderTop: '1px solid var(--theme-border)' }}>
-            {closeMsg && <p style={{ margin: '0 0 10px', fontSize: 12, color: closeMsg.startsWith('error:') ? 'var(--theme-red)' : 'var(--theme-green)' }}>{closeMsg.replace(/^(error|ok):/, '')}</p>}
+            {closeMsg && <p role="alert" style={{ margin: '0 0 10px', fontSize: 12, color: closeMsg.startsWith('error:') ? 'var(--theme-red)' : 'var(--theme-green)' }}>{closeMsg.replace(/^(error|ok):/, '')}</p>}
             {billingTab === 'pay' && (
               <button className="btn btn-primary" style={{ width: '100%', padding: '11px 0', justifyContent: 'center' }}
                 onClick={() => closeOrder('paid')}
@@ -2491,7 +2535,7 @@ export default function PosOrders() {
               </button>
             )}
             {billingTab === 'void' && (
-              <button className="btn" style={{ width: '100%', padding: '11px 0', justifyContent: 'center', background: 'var(--theme-red)', color: '#fff', borderColor: 'var(--theme-red)' }}
+              <button className="btn" style={{ width: '100%', padding: '11px 0', justifyContent: 'center', background: 'var(--theme-red)', color: redBadgeText, borderColor: 'var(--theme-red)' }}
                 onClick={() => closeOrder('void')} disabled={closing || !closeReason}>
                 {closing ? 'Processing…' : 'Void Order'}
               </button>

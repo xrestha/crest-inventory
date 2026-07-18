@@ -21,7 +21,7 @@ export default function Tip({ text, children, width = 220, style }) {
   return (
     <span
       ref={ref}
-      style={{ position: 'relative', cursor: 'help', borderBottom: '1px dashed #4b5563', display: 'inline', ...style }}
+      style={{ position: 'relative', cursor: 'help', borderBottom: '1px dashed var(--theme-border)', display: 'inline', ...style }}
       onMouseEnter={handleEnter}
       onMouseLeave={() => setPos(null)}
     >

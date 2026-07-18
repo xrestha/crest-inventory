@@ -290,6 +290,13 @@ export default function PosShifts() {
   const [outletName,     setOutletName]     = useState('')
   const [propertyAddress, setPropertyAddress] = useState('')
 
+  // Escape-to-close — this modal doesn't use the shared Modal.js component.
+  useEffect(() => {
+    function onKeyDown(e) { if (e.key === 'Escape' && modal && !saving) setModal(null) }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [modal, saving])
+
   useEffect(() => {
     if (!clientId) return
     loadOpenShift()
@@ -486,7 +493,7 @@ export default function PosShifts() {
                     Opened by {staffNames[openShift.opened_by] || '—'} · {fmtSpan(openShift.opened_at)} ago
                   </span>
                 </div>
-                <button className="btn" style={{ background: 'var(--theme-red)', color: '#fff', borderColor: 'var(--theme-red)' }}
+                <button className="btn btn-danger"
                   onClick={() => openModal('close')}>Close Shift (Z-Report)</button>
               </div>
 
@@ -598,7 +605,7 @@ export default function PosShifts() {
 
             <DenomGrid counts={denomCounts} onChange={setDenomCounts} />
 
-            {msg && <p style={{ margin: '14px 0 0', fontSize: 12, color: msg.startsWith('error:') ? 'var(--theme-red)' : 'var(--theme-green)' }}>{msg.replace(/^(error|ok):/, '')}</p>}
+            {msg && <p role="alert" style={{ margin: '14px 0 0', fontSize: 12, color: msg.startsWith('error:') ? 'var(--theme-red)' : 'var(--theme-green)' }}>{msg.replace(/^(error|ok):/, '')}</p>}
 
             <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
               <button className="btn btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setModal(null)} disabled={saving}>Cancel</button>

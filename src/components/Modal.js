@@ -1,7 +1,15 @@
+import { useEffect } from 'react'
+
 // Centered modal overlay — hosts a create/edit form so it pops up in front of the
 // user instead of rendering at the top of the page (no scrolling to reach it).
 // Backdrop click and the × button both call onClose; the panel itself stops propagation.
 export default function Modal({ onClose, title, children, maxWidth = 960 }) {
+  useEffect(() => {
+    const onKeyDown = e => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
   return (
     <div
       onClick={onClose}

@@ -346,8 +346,12 @@ export default function GuestMenu() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--theme-bg)', color: 'var(--theme-text1)' }}>
       <div style={{ maxWidth: 640, margin: '0 auto', padding: '28px 20px 100px', '--guest-menu-nav-h': '52px' }}>
-        <div style={{ textAlign: 'center', marginBottom: 20 }}>
-          <h1 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 700 }}>{outletName}</h1>
+        {/* This is the one page PRODUCT.md names as the deliberate brand-facing exception — a
+            guest's own leisurely browsing moment, not an ops screen — so the outlet name gets the
+            same Georgia serif signature the sidebar wordmark and login screen use, rather than
+            reading identically to every staff tool in the app. */}
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+          <h1 style={{ margin: '0 0 6px', fontSize: 30, fontWeight: 700, fontFamily: 'Georgia, serif', letterSpacing: '0.01em' }}>{outletName}</h1>
           <p style={{ margin: 0, fontSize: 13, color: 'var(--theme-text3)' }}>{tableName}</p>
         </div>
 
@@ -466,7 +470,7 @@ export default function GuestMenu() {
                     color: 'var(--theme-text1)', padding: '8px 10px', fontSize: 13, boxSizing: 'border-box',
                   }}
                 />
-                {submitError && <p style={{ color: 'var(--theme-red)', fontSize: 12.5, margin: 0 }}>{submitError}</p>}
+                {submitError && <p role="alert" style={{ color: 'var(--theme-red)', fontSize: 12.5, margin: 0 }}>{submitError}</p>}
                 <button
                   className="btn btn-primary" disabled={submitting} onClick={placeOrder}
                   style={{ marginTop: 4 }}
