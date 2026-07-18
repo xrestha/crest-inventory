@@ -292,6 +292,7 @@ export default function LeaveManagement() {
                     <th>Employee</th>
                     <th>Type</th>
                     <th>Dates (BS)</th>
+                    <th>Reason</th>
                     <th style={{ textAlign: 'right' }}>
                       <Tip text="Days in the range — every calendar day counts, half-day requests show 0.5." width={240}>Days</Tip>
                     </th>
@@ -304,7 +305,7 @@ export default function LeaveManagement() {
                 </thead>
                 <tbody>
                   {filteredRequests.length === 0 ? (
-                    <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--theme-text2)', padding: 28 }}>No requests for BS {bsYear} yet.</td></tr>
+                    <tr><td colSpan={8} style={{ textAlign: 'center', color: 'var(--theme-text2)', padding: 28 }}>No requests for BS {bsYear} yet.</td></tr>
                   ) : filteredRequests.map(req => {
                     const e = empMap[req.employee_id] || {}
                     const t = typeMap[req.leave_type_id]
@@ -324,6 +325,9 @@ export default function LeaveManagement() {
                         </td>
                         <td style={{ fontSize: 12, color: 'var(--theme-text3)', whiteSpace: 'nowrap' }}>
                           {bsLabel(req.start_date)} → {bsLabel(req.end_date)}
+                        </td>
+                        <td style={{ fontSize: 12, color: 'var(--theme-text3)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={req.reason || ''}>
+                          {req.reason || '—'}
                         </td>
                         <td style={{ textAlign: 'right', color: 'var(--theme-text1)', fontWeight: 600 }}>{fmt(req.days)}</td>
                         <td style={{ textAlign: 'right', color: remaining == null ? 'var(--theme-text2)' : remaining < 0 ? 'var(--theme-red)' : 'var(--theme-text3)' }}>
