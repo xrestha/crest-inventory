@@ -65,7 +65,7 @@ export default function HrDashboard() {
   const [loadError, setLoadError] = useState('')
 
   useEffect(() => {
-    if (!clientId) return
+    if (!clientId) { setLoading(false); return }
     load(++loadIdRef.current)
   }, [clientId]) // eslint-disable-line
 
@@ -191,7 +191,7 @@ export default function HrDashboard() {
   // "Loading…" text block — consistent with the per-KPI skeleton pattern used elsewhere on the
   // client and owner dashboards.
   if (loading) return (
-    <div className="page-container">
+    <div>
       {/* Screen-reader-only announcement — the visible loading state is a shimmering skeleton,
           which on its own gives no indication to a screen reader that the page is still loading. */}
       <div role="status" aria-live="polite" className="sr-only">Loading dashboard data…</div>
@@ -219,7 +219,7 @@ export default function HrDashboard() {
   const pendingTotal = pendingLeave + pendingOt + pendingTada + pendingSwap
 
   return (
-    <div className="page-container">
+    <div>
       <div role="status" aria-live="polite" className="sr-only">Dashboard data loaded</div>
       <div style={{ marginBottom: 20 }}>
         <h1 className="page-title">HR Dashboard</h1>

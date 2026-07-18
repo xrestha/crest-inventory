@@ -6,16 +6,9 @@ import Tip from '../../../components/Tip'
 import Fab from '../../../components/Fab'
 import EmployeeForm from './EmployeeForm'
 import EmployeeJoiningForm from './EmployeeJoiningForm'
+import { EMPLOYEE_STATUS_COLORS as STATUS_COLORS } from '../payrollConstants'
 
 function pinValid(pin) { return /^\d{4,6}$/.test(pin) }
-
-const STATUS_COLORS = {
-  active:      { color: 'var(--theme-green)', bg: 'rgba(52,211,153,0.1)',  border: 'rgba(52,211,153,0.2)'  },
-  probation:   { color: 'var(--theme-accent)', bg: 'rgba(201,168,76,0.1)', border: 'rgba(201,168,76,0.2)'  },
-  resigned:    { color: 'var(--theme-red)', bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.2)' },
-  terminated:  { color: 'var(--theme-red)', bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.2)' },
-  inactive:    { color: 'var(--theme-text2)', bg: 'rgba(107,114,128,0.1)', border: 'rgba(107,114,128,0.2)' },
-}
 
 const EMP_TYPES = {
   permanent:  'Permanent',
@@ -66,6 +59,7 @@ export default function EmployeeList() {
 
   useEffect(() => {
     if (effectiveClientId) { fetchEmployees(); fetchSelfServiceStatus() }
+    else setLoading(false)
   }, [effectiveClientId]) // eslint-disable-line
 
   async function fetchEmployees() {
@@ -141,7 +135,7 @@ export default function EmployeeList() {
     (e.status === 'active' || e.status === 'probation') && retireInfo(e.retirement_date)?.soon).length
 
   return (
-    <div className="page-container">
+    <div>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 className="page-title">Employees</h1>

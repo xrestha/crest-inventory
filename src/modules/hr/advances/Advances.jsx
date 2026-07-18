@@ -155,11 +155,11 @@ export default function Advances() {
   if (loading) return <div style={{ padding: 32, color: 'var(--theme-text3)' }}>Loading…</div>
 
   return (
-    <div style={{ padding: '24px 28px', maxWidth: 1100 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+    <div>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--theme-text1)' }}>Advances &amp; Loans</h2>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--theme-text3)' }}>Track salary advances and employee loans</p>
+          <h1 className="page-title">Advances &amp; Loans</h1>
+          <p className="page-subtitle">Track salary advances and employee loans</p>
         </div>
         <button className="btn btn-primary" onClick={() => { setAddForm(EMPTY_ADD); setError(''); setShowAdd(true) }}>
           + Issue Advance / Loan
@@ -228,7 +228,7 @@ export default function Advances() {
               return (
                 <tr key={a.id}
                   onClick={() => setSelected(isSel ? null : a.id)}
-                  style={{ cursor: 'pointer', background: isSel ? 'rgba(201,168,76,0.07)' : undefined }}
+                  style={{ cursor: 'pointer', background: isSel ? 'color-mix(in srgb, var(--theme-accent) 7%, transparent)' : undefined }}
                 >
                   <td>
                     <div style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{emp.full_name || '—'}</div>
@@ -307,10 +307,11 @@ export default function Advances() {
             </div>
             <div style={{ height: 6, borderRadius: 3, background: 'var(--theme-border)', overflow: 'hidden' }}>
               <div style={{
-                height: '100%', borderRadius: 3,
-                width: `${Math.min(100, (selectedRepaid / parseFloat(selectedAdv.amount)) * 100)}%`,
+                width: '100%', height: '100%', borderRadius: 3,
+                transform: `scaleX(${Math.min(100, (selectedRepaid / parseFloat(selectedAdv.amount)) * 100) / 100})`,
+                transformOrigin: 'left',
                 background: selectedOutstanding === 0 ? 'var(--theme-green)' : 'var(--theme-accent)',
-                transition: 'width 0.3s',
+                transition: 'transform 0.3s',
               }} />
             </div>
           </div>

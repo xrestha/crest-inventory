@@ -340,7 +340,7 @@ export default function PayrollRun() {
             <h1 className="page-title">Payroll</h1>
             <p className="page-subtitle">
               Monthly payroll run — {periodLabel}
-              {run && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: finalized ? 'var(--theme-green)' : 'var(--theme-accent)', background: finalized ? 'rgba(52,211,153,0.1)' : 'rgba(201,168,76,0.1)', border: `1px solid ${finalized ? 'rgba(52,211,153,0.2)' : 'rgba(201,168,76,0.2)'}`, padding: '2px 8px', borderRadius: 10 }}>{finalized ? 'Finalized' : 'Draft'}</span>}
+              {run && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: finalized ? 'var(--theme-green)' : 'var(--theme-accent)', background: `color-mix(in srgb, ${finalized ? 'var(--theme-green)' : 'var(--theme-accent)'} 10%, transparent)`, border: `1px solid color-mix(in srgb, ${finalized ? 'var(--theme-green)' : 'var(--theme-accent)'} 20%, transparent)`, padding: '2px 8px', borderRadius: 10 }}>{finalized ? 'Finalized' : 'Draft'}</span>}
             </p>
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -369,7 +369,7 @@ export default function PayrollRun() {
         ) : (
           <>
             {/* Stat cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
+            <div className="stat-grid">
               {[
                 { label: 'Total Gross',  value: totals.gross, color: 'var(--theme-accent)', tip: 'Sum of gross earnings (basic + allowances, or earned wage) across all payslips.' },
                 { label: 'Deductions',   value: totals.ded + totals.ssfEmp + totals.advDed, color: 'var(--theme-red)', tip: 'SSF employee + absence deductions + other deductions + advance recovery + TDS.' },
@@ -421,11 +421,11 @@ export default function PayrollRun() {
                             <div style={{ fontWeight: 600, color: 'var(--theme-text1)', fontSize: 13 }}>{emp.full_name || '—'}</div>
                             <div style={{ display: 'flex', gap: 6, marginTop: 2, alignItems: 'center' }}>
                               {emp.employee_code && <span style={{ fontSize: 10, color: 'var(--theme-text2)' }}>{emp.employee_code}</span>}
-                              {!isMonthly && <span style={{ fontSize: 10, fontWeight: 700, color: '#60a5fa', background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.2)', borderRadius: 8, padding: '1px 6px' }}>{s.pay_basis}</span>}
+                              {!isMonthly && <span className="badge badge-gray" style={{ fontSize: 10, fontWeight: 700 }}>{s.pay_basis}</span>}
                               {!emp.ssf_enrolled && <span style={{ fontSize: 10, color: 'var(--theme-text2)' }}>no SSF</span>}
                               {otBothSources && (
                                 <Tip text={`OT recorded in TWO places for this employee — ${attOtHrs.toFixed(1)} hr in the attendance sheet's OT column AND approved Overtime entries. Both are paid, so the same hours may be paid twice. Zero out one source and Regenerate.`} width={290}>
-                                  <span style={{ fontSize: 10, fontWeight: 700, color: '#f59e0b', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 8, padding: '1px 6px', cursor: 'help' }}>⚠ OT ×2?</span>
+                                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--theme-amber)', background: 'color-mix(in srgb, var(--theme-amber) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--theme-amber) 30%, transparent)', borderRadius: 8, padding: '1px 6px', cursor: 'help' }}>⚠ OT ×2?</span>
                                 </Tip>
                               )}
                             </div>
@@ -435,7 +435,7 @@ export default function PayrollRun() {
                           <td style={{ textAlign: 'right', color: s.absence_deduction > 0 ? 'var(--theme-red)' : 'var(--theme-text2)' }}>{s.absence_deduction > 0 ? `−${fmt(s.absence_deduction)}` : '—'}</td>
                           <td style={{ textAlign: 'right', color: s.ssf_employee > 0 ? 'var(--theme-red)' : 'var(--theme-text2)' }}>{s.ssf_employee > 0 ? `−${fmt(s.ssf_employee)}` : '—'}</td>
                           <td style={{ textAlign: 'right', color: s.other_deductions > 0 ? 'var(--theme-red)' : 'var(--theme-text2)' }}>{s.other_deductions > 0 ? `−${fmt(s.other_deductions)}` : '—'}</td>
-                          <td style={{ textAlign: 'right', color: advDed > 0 ? '#fb923c' : 'var(--theme-text2)' }}>{advDed > 0 ? `−${fmt(advDed)}` : '—'}</td>
+                          <td style={{ textAlign: 'right', color: advDed > 0 ? 'var(--theme-purple)' : 'var(--theme-text2)' }}>{advDed > 0 ? `−${fmt(advDed)}` : '—'}</td>
                           <td style={{ textAlign: 'right' }}>
                             {finalized
                               ? <span style={{ color: s.tds > 0 ? 'var(--theme-red)' : 'var(--theme-text2)' }}>{s.tds > 0 ? `−${fmt(s.tds)}` : '—'}</span>

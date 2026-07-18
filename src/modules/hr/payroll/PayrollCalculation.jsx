@@ -324,7 +324,7 @@ export default function PayrollCalculation() {
         <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--theme-text2)' }}>No active employees. Add employees in HR → Employees first.</div>
       ) : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
+          <div className="stat-grid">
             {[
               { label: 'Total Gross',       value: `NPR ${fmt(totalGross)}`, color: 'var(--theme-accent)', tip: 'Sum of live-computed gross across all employees this period.' },
               { label: 'Total Net Pay',     value: `NPR ${fmt(totalNet)}`,   color: 'var(--theme-green)',  tip: 'Sum of live-computed net pay — compare against Payroll Run\'s Net Payable.' },
@@ -372,12 +372,12 @@ export default function PayrollCalculation() {
                               {emp.employee_code && <span style={{ fontSize: 10, color: 'var(--theme-text2)' }}>{emp.employee_code}</span>}
                               {slip.breakdown.otDoubleCountRisk && (
                                 <Tip text="OT recorded in TWO places for this employee — attendance sheet AND approved Overtime entries. Both are paid." width={280}>
-                                  <span style={{ fontSize: 10, fontWeight: 700, color: '#f59e0b', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 8, padding: '1px 6px', cursor: 'help' }}>⚠ OT ×2?</span>
+                                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--theme-amber)', background: 'color-mix(in srgb, var(--theme-amber) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--theme-amber) 30%, transparent)', borderRadius: 8, padding: '1px 6px', cursor: 'help' }}>⚠ OT ×2?</span>
                                 </Tip>
                               )}
                               {stale && (
                                 <Tip text={`Payroll's stored net pay (NPR ${fmt(stored.net_pay)}) no longer matches this live calculation (NPR ${fmt(netPay)}) — something changed since the run was last Generated/Regenerated.`} width={290}>
-                                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--theme-red)', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '1px 6px', cursor: 'help' }}>⚠ Stale</span>
+                                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--theme-red)', background: 'color-mix(in srgb, var(--theme-red) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--theme-red) 30%, transparent)', borderRadius: 8, padding: '1px 6px', cursor: 'help' }}>⚠ Stale</span>
                                 </Tip>
                               )}
                             </div>
@@ -387,7 +387,7 @@ export default function PayrollCalculation() {
                           <td style={{ textAlign: 'right', color: slip.absence_deduction > 0 ? 'var(--theme-red)' : 'var(--theme-text2)' }}>{slip.absence_deduction > 0 ? `−${fmt(slip.absence_deduction)}` : '—'}</td>
                           <td style={{ textAlign: 'right', color: slip.ssf_employee > 0 ? 'var(--theme-red)' : 'var(--theme-text2)' }}>{slip.ssf_employee > 0 ? `−${fmt(slip.ssf_employee)}` : '—'}</td>
                           <td style={{ textAlign: 'right', color: tdsBreakdown.tds > 0 ? 'var(--theme-red)' : 'var(--theme-text2)' }}>{tdsBreakdown.tds > 0 ? `−${fmt(tdsBreakdown.tds)}` : '—'}</td>
-                          <td style={{ textAlign: 'right', color: advDed > 0 ? '#fb923c' : 'var(--theme-text2)' }}>{advDed > 0 ? `−${fmt(advDed)}` : '—'}</td>
+                          <td style={{ textAlign: 'right', color: advDed > 0 ? 'var(--theme-purple)' : 'var(--theme-text2)' }}>{advDed > 0 ? `−${fmt(advDed)}` : '—'}</td>
                           <td style={{ textAlign: 'right', color: tadaAmount > 0 ? 'var(--theme-green)' : 'var(--theme-text2)' }}>{tadaAmount > 0 ? `+${fmt(tadaAmount)}` : '—'}</td>
                           <td style={{ textAlign: 'right', color: 'var(--theme-accent)', fontWeight: 700 }}>{fmt(netPay)}</td>
                           <td style={{ fontSize: 11, color: stored ? 'var(--theme-text2)' : 'var(--theme-text3)' }}>{stored ? `NPR ${fmt(stored.net_pay)}` : 'not generated'}</td>

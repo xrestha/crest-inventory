@@ -367,7 +367,7 @@ export default function PayForm({ employee, onSave, onClose }) {
                       form.ssf_enrolled && { label: `SSF Employee (11%${basic > SSF_CAP ? ' · capped' : ''})`, value: -ssf_employee, indent: true, color: 'var(--theme-red)' },
                       ...deductions.map(c => ({ label: c.name || 'Deduction', value: -calcAmount(c, basic), indent: true, color: 'var(--theme-red)' })),
                       { label: 'Net (Cash in Hand)',      value: net,            indent: false, color: 'var(--theme-accent)', bold: true, big: true, separator: true },
-                      { label: 'Cost to Company (CTC)',  value: ctc,            indent: false, color: '#60a5fa', bold: true, big: true, separator: true, bg: 'rgba(96,165,250,0.05)' },
+                      { label: 'Cost to Company (CTC)',  value: ctc,            indent: false, color: 'var(--theme-text1)', bold: true, big: true, separator: true, bg: 'color-mix(in srgb, var(--theme-text1) 5%, transparent)' },
                       form.ssf_enrolled && { label: 'Employer SSF (20%)', value: ssf_employer, indent: true,  color: 'var(--theme-text2)', note: 'paid by company' },
                     ].filter(Boolean).map((r, i) => (
                       <div key={i} style={{
@@ -441,7 +441,7 @@ export default function PayForm({ employee, onSave, onClose }) {
                 <p style={{ fontSize: 11, color: 'var(--theme-text2)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 12px' }}>SSF Details</p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
                   {/* Toggle switch */}
-                  <div onClick={() => set('ssf_enrolled', !form.ssf_enrolled)} style={{ position: 'relative', width: 42, height: 24, borderRadius: 12, cursor: 'pointer', flexShrink: 0, background: form.ssf_enrolled ? 'var(--theme-accent)' : '#374151', transition: 'background 0.2s' }}>
+                  <div onClick={() => set('ssf_enrolled', !form.ssf_enrolled)} style={{ position: 'relative', width: 42, height: 24, borderRadius: 12, cursor: 'pointer', flexShrink: 0, background: form.ssf_enrolled ? 'var(--theme-accent)' : 'var(--theme-border)', transition: 'background 0.2s' }}>
                     <div style={{ position: 'absolute', top: 3, left: form.ssf_enrolled ? 21 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.4)' }} />
                   </div>
                   <span style={{ fontSize: 13, color: 'var(--theme-text1)', cursor: 'pointer' }} onClick={() => set('ssf_enrolled', !form.ssf_enrolled)}>

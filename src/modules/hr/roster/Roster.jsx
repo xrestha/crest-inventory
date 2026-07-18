@@ -781,6 +781,24 @@ export default function Roster() {
                                         anchorRef.current = e.currentTarget
                                         setSelection(prev => prev ? { ...prev, curR: ri, curC: ci } : prev)
                                       }}
+                                      onClick={e => {
+                                        // e.detail is 0 for a keyboard-triggered click (Enter/Space) and >=1 for a
+                                        // real mouse click — mouse clicks are already handled by the mousedown +
+                                        // global mouseup drag-select pair above, so only act here for keyboard.
+                                        if (e.detail !== 0) return
+                                        const alreadyOpenSameCell = pickerOpen && selection &&
+                                          selection.chunkIdx === chunkIdx &&
+                                          selection.anchorR === ri && selection.anchorC === ci &&
+                                          selection.curR === ri && selection.curC === ci
+                                        if (alreadyOpenSameCell) {
+                                          setSelection(null)
+                                          setPickerOpen(false)
+                                        } else {
+                                          anchorRef.current = e.currentTarget
+                                          setSelection({ chunkIdx, anchorR: ri, anchorC: ci, curR: ri, curC: ci })
+                                          setPickerOpen(true)
+                                        }
+                                      }}
                                       style={{
                                         width: '100%',
                                         minHeight: viewMode === 'weekly' ? 56 : 30,

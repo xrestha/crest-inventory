@@ -5,6 +5,28 @@
 // research pass — only the income-tax slabs changed this FY, see SLABS_2083_84 in tds.js).
 // Update these when the government revises rates. See memory: nepal-payroll-law.
 
+// Shared status-badge tint per semantic color, derived from the active theme via color-mix()
+// rather than a hardcoded rgba literal — EmployeeList.jsx, Overtime.jsx, and PaySetup.jsx each
+// used to keep their own copy of this table with the Dark preset's exact rgb values baked in,
+// so a badge kept the Dark preset's tint on all 9 other theme presets regardless of which was
+// actually active. One shared source fixes all three at once and stops a 4th copy from forming.
+export const STATUS_TINT = {
+  green:  { color: 'var(--theme-green)',  bg: 'color-mix(in srgb, var(--theme-green) 10%, transparent)',  border: 'color-mix(in srgb, var(--theme-green) 20%, transparent)' },
+  accent: { color: 'var(--theme-accent)', bg: 'color-mix(in srgb, var(--theme-accent) 10%, transparent)', border: 'color-mix(in srgb, var(--theme-accent) 20%, transparent)' },
+  red:    { color: 'var(--theme-red)',    bg: 'color-mix(in srgb, var(--theme-red) 10%, transparent)',    border: 'color-mix(in srgb, var(--theme-red) 20%, transparent)' },
+  gray:   { color: 'var(--theme-text2)',  bg: 'color-mix(in srgb, var(--theme-text2) 10%, transparent)',  border: 'color-mix(in srgb, var(--theme-text2) 20%, transparent)' },
+}
+
+// hr_employees.status → tint. Shared by EmployeeList.jsx and PaySetup.jsx, which previously
+// each defined an identical copy of this exact mapping independently.
+export const EMPLOYEE_STATUS_COLORS = {
+  active:     STATUS_TINT.green,
+  probation:  STATUS_TINT.accent,
+  resigned:   STATUS_TINT.red,
+  terminated: STATUS_TINT.red,
+  inactive:   STATUS_TINT.gray,
+}
+
 // SSF: 11% employee + 20% employer, computed on basic salary capped at NPR 100,000/month.
 export const SSF_CAP          = 100000
 export const SSF_EMPLOYEE_PCT = 0.11

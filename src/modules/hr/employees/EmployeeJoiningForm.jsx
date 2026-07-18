@@ -99,13 +99,13 @@ export default function EmployeeJoiningForm({ onClose }) {
       <div className="empform-chrome" style={{ display: 'flex', gap: 10, marginBottom: 16, alignItems: 'center' }}>
         <button
           onClick={() => printWithTitle(`${clientName} - Employee Joining Form`)}
-          style={{ background: 'var(--theme-accent)', color: '#0a0c10', border: 'none', borderRadius: 8, padding: '10px 28px', fontWeight: 700, fontSize: 14, cursor: 'pointer', letterSpacing: '0.03em' }}
+          style={{ background: 'var(--theme-accent)', color: 'var(--theme-accent-text)', border: 'none', borderRadius: 8, padding: '10px 28px', fontWeight: 700, fontSize: 14, cursor: 'pointer', letterSpacing: '0.03em' }}
         >
           Print / Save PDF
         </button>
         <button
           onClick={onClose}
-          style={{ background: 'transparent', color: 'var(--theme-text3)', border: '1px solid #374151', borderRadius: 8, padding: '10px 20px', fontSize: 13, cursor: 'pointer' }}
+          style={{ background: 'transparent', color: 'var(--theme-text3)', border: '1px solid var(--theme-border)', borderRadius: 8, padding: '10px 20px', fontSize: 13, cursor: 'pointer' }}
         >
           Close
         </button>

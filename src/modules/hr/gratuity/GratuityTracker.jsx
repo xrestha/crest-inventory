@@ -165,13 +165,13 @@ export default function GratuityTracker() {
               <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 <Tip text="Amount already funded through the SSF employer gratuity contribution (3.33% of capped basic per month). Reduces the additional cash liability for SSF-enrolled employees." width={300}>SSF Fund (est.)</Tip>
               </div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: '#60a5fa' }}>NPR {fmt(totalSsf)}</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--theme-purple)' }}>NPR {fmt(totalSsf)}</div>
               <div style={{ fontSize: 11, color: 'var(--theme-text2)', marginTop: 2 }}>3.33% employer SSF → gratuity fund</div>
             </div>
           </div>
 
           {nonMonthly > 0 && (
-            <div className="card" style={{ marginBottom: 14, padding: '10px 16px', borderLeft: '3px solid var(--theme-accent)', fontSize: 12, color: 'var(--theme-text3)' }}>
+            <div className="card" style={{ marginBottom: 14, padding: '10px 16px', border: '1px solid color-mix(in srgb, var(--theme-accent) 30%, transparent)', background: 'color-mix(in srgb, var(--theme-accent) 6%, transparent)', fontSize: 12, color: 'var(--theme-text3)' }}>
               ⚠ {nonMonthly} daily/hourly staff excluded — gratuity for wage workers is computed at settlement based on actual days/hours worked.
             </div>
           )}
@@ -239,7 +239,7 @@ export default function GratuityTracker() {
                       </td>
                       <td style={{ textAlign: 'right', color: 'var(--theme-text3)' }}>{fmt(r.g.monthlyAccrual)}</td>
                       <td style={{ textAlign: 'right', color: 'var(--theme-text1)', fontWeight: 600 }}>{fmt(r.g.totalAccrued)}</td>
-                      <td style={{ textAlign: 'right', color: '#60a5fa' }}>
+                      <td style={{ textAlign: 'right', color: 'var(--theme-purple)' }}>
                         {r.ssf_enrolled ? fmt(r.g.ssfCovered) : <span style={{ color: 'var(--theme-text2)', fontSize: 11 }}>Not enrolled</span>}
                       </td>
                       <td style={{ textAlign: 'right', color: 'var(--theme-red)', fontWeight: 700 }}>{fmt(r.g.netLiability)}</td>
@@ -251,7 +251,7 @@ export default function GratuityTracker() {
                     <td colSpan={4} style={{ color: 'var(--theme-text2)' }}>Total — {rows.length} employees</td>
                     <td style={{ textAlign: 'right', color: 'var(--theme-text3)' }}>{fmt(totalMonthly)}</td>
                     <td style={{ textAlign: 'right', color: 'var(--theme-text1)' }}>{fmt(totalAccrued)}</td>
-                    <td style={{ textAlign: 'right', color: '#60a5fa' }}>{fmt(totalSsf)}</td>
+                    <td style={{ textAlign: 'right', color: 'var(--theme-purple)' }}>{fmt(totalSsf)}</td>
                     <td style={{ textAlign: 'right', color: 'var(--theme-red)', fontSize: 15 }}>{fmt(totalNet)}</td>
                   </tr>
                 </tfoot>

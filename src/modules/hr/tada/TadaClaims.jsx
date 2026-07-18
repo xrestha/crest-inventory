@@ -204,11 +204,11 @@ export default function TadaClaims() {
   if (loading) return <div style={{ padding: 32, color: 'var(--theme-text3)' }}>Loading…</div>
 
   return (
-    <div style={{ padding: '24px 28px', maxWidth: 1100 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+    <div>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--theme-text1)' }}>TADA Claims</h2>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--theme-text3)' }}>Travel &amp; Daily Allowance expense reimbursement</p>
+          <h1 className="page-title">TADA Claims</h1>
+          <p className="page-subtitle">Travel &amp; Daily Allowance expense reimbursement</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {canManageSettings && (
@@ -261,7 +261,7 @@ export default function TadaClaims() {
               const isSel = selected === c.id
               return (
                 <tr key={c.id} onClick={() => setSelected(isSel ? null : c.id)}
-                  style={{ cursor: 'pointer', background: isSel ? 'rgba(201,168,76,0.07)' : undefined }}>
+                  style={{ cursor: 'pointer', background: isSel ? 'color-mix(in srgb, var(--theme-accent) 7%, transparent)' : undefined }}>
                   <td>
                     <div style={{ fontWeight: 600, color: 'var(--theme-text1)' }}>{emp.full_name || '—'}</div>
                     {emp.employee_code && <div style={{ fontSize: 11, color: 'var(--theme-text3)' }}>{emp.employee_code}</div>}

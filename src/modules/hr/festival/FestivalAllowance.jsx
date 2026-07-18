@@ -208,7 +208,7 @@ export default function FestivalAllowance() {
           <p className="page-subtitle">
             Annual festival bonus (Dashain / पर्व खर्च) — {festival} {bsYear}
             {rows.length > 0 && (
-              <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: finalized ? 'var(--theme-green)' : 'var(--theme-accent)', background: finalized ? 'rgba(52,211,153,0.1)' : 'rgba(201,168,76,0.1)', border: `1px solid ${finalized ? 'rgba(52,211,153,0.2)' : 'rgba(201,168,76,0.2)'}`, padding: '2px 8px', borderRadius: 10 }}>
+              <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: finalized ? 'var(--theme-green)' : 'var(--theme-accent)', background: `color-mix(in srgb, ${finalized ? 'var(--theme-green)' : 'var(--theme-accent)'} 10%, transparent)`, border: `1px solid color-mix(in srgb, ${finalized ? 'var(--theme-green)' : 'var(--theme-accent)'} 20%, transparent)`, padding: '2px 8px', borderRadius: 10 }}>
                 {finalized ? 'Finalized' : 'Draft'}
               </span>
             )}
@@ -237,7 +237,7 @@ export default function FestivalAllowance() {
       ) : (
         <>
           {/* KPI cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 20 }}>
+          <div className="stat-grid">
             {[
               { label: 'Gross Payout',  value: fmt(total),                              color: 'var(--theme-accent)', tip: 'Total gross festival bonus before TDS withholding.' },
               { label: 'TDS Withheld',  value: fmt(totalTds),                            color: 'var(--theme-red)', ytd: true, tip: hasYtd ? 'Income tax (TDS) withheld from festival bonuses. Computed at each employee\'s marginal rate using actual YTD payroll data from this fiscal year.' : 'Income tax (TDS) withheld. Based on projected annual salary — finalize earlier payroll months for YTD-accurate figures.' },
@@ -308,7 +308,7 @@ export default function FestivalAllowance() {
                           <div style={{ fontWeight: 600, color: 'var(--theme-text1)', fontSize: 13 }}>{e.full_name || '—'}</div>
                           <div style={{ display: 'flex', gap: 6, marginTop: 2, alignItems: 'center' }}>
                             {e.employee_code && <span style={{ fontSize: 10, color: 'var(--theme-text2)' }}>{e.employee_code}</span>}
-                            {!isMonthly && <span style={{ fontSize: 10, fontWeight: 700, color: '#60a5fa', background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.2)', borderRadius: 8, padding: '1px 6px' }}>{r.pay_basis}</span>}
+                            {!isMonthly && <span className="badge badge-gray" style={{ fontSize: 10, fontWeight: 700 }}>{r.pay_basis}</span>}
                             {missingBank && <span style={{ fontSize: 10, color: 'var(--theme-accent)' }}>⚠ no bank</span>}
                           </div>
                         </td>

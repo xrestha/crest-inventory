@@ -296,7 +296,7 @@ export default function SelfServiceHome() {
 
         <div className="tab-bar" style={{ marginBottom: 20 }}>
           {[
-            ['roster', 'Roster'], ['tada', 'TADA'], ['leave', 'Leave'], ['payslip', 'Payslip'],
+            ['payslip', 'Payslip'], ['roster', 'Roster'], ['tada', 'TADA'], ['leave', 'Leave'],
           ].map(([val, label]) => (
             <button
               key={val}
@@ -399,9 +399,10 @@ export default function SelfServiceHome() {
 
         {tab === 'tada' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <div className="card" style={{ padding: 16 }}>
+            <div className="card" style={{ padding: 16, paddingBottom: 0 }}>
               <h3 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 700, color: 'var(--theme-text1)' }}>Submit TADA Claim</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--theme-text3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Trip Details</div>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <div style={{ flex: 1 }}>
                     <label style={lbl} htmlFor="ss-tada-startpoint">Start Point</label>
@@ -466,9 +467,9 @@ export default function SelfServiceHome() {
                   </div>
                 </div>
 
-                <div>
+                <div style={{ borderTop: '1px solid var(--theme-border-lt)', paddingTop: 10 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <label style={{ ...lbl, marginBottom: 0 }}>Expenses</label>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--theme-text3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Expenses</span>
                     <button className="btn btn-ghost" style={{ fontSize: 12, padding: '8px 14px' }} onClick={addTadaItemRow}>+ Add line</button>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -506,13 +507,21 @@ export default function SelfServiceHome() {
                   </div>
                 </div>
 
-                <div>
+                <div style={{ borderTop: '1px solid var(--theme-border-lt)', paddingTop: 10 }}>
                   <label style={lbl} htmlFor="ss-tada-notes">Notes</label>
                   <textarea id="ss-tada-notes" style={{ ...inp, height: 50, resize: 'vertical' }} placeholder="Optional" value={tadaForm.notes} onChange={e => setTada('notes', e.target.value)} />
                 </div>
+              </div>
 
+              {/* Sticky submit bar — keeps the primary action in thumb reach on a phone instead of
+                  requiring a scroll back up past the whole form to submit. */}
+              <div style={{
+                position: 'sticky', bottom: 0, marginTop: 14, marginLeft: -16, marginRight: -16, marginBottom: 0,
+                padding: '10px 16px', display: 'flex', flexDirection: 'column', gap: 6,
+                background: 'var(--theme-card)', borderTop: '1px solid var(--theme-border)',
+              }}>
                 {tadaMsg && <div style={{ fontSize: 12, color: tadaMsg.startsWith('ok') ? 'var(--theme-green)' : 'var(--theme-red)' }}>{tadaMsg.replace(/^(ok|error):/, '')}</div>}
-                <button className="btn btn-primary" onClick={submitTada} disabled={tadaSubmitting} style={{ alignSelf: 'flex-end' }}>
+                <button className="btn btn-primary" onClick={submitTada} disabled={tadaSubmitting} style={{ width: '100%' }}>
                   {tadaSubmitting ? 'Submitting…' : 'Submit Claim'}
                 </button>
               </div>

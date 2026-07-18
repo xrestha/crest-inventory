@@ -141,7 +141,7 @@ export default function HolidayCalendar() {
   const optionalCount = fyHolidays.filter(h => h.holiday_type === 'optional').length
 
   return (
-    <div className="page-container">
+    <div>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>

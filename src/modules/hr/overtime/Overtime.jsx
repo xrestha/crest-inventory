@@ -4,12 +4,12 @@ import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
 import Fab from '../../../components/Fab'
 import { BS_MONTHS, getBsToday, daysInBsMonth } from '../../../utils/bsCalendar'
-import { OT_MULTIPLIER, OT_HOLIDAY_MULTIPLIER } from '../payrollConstants'
+import { OT_MULTIPLIER, OT_HOLIDAY_MULTIPLIER, STATUS_TINT } from '../payrollConstants'
 
 const STATUS_COLORS = {
-  pending:  { color: 'var(--theme-accent)', bg: 'rgba(201,168,76,0.1)',  border: 'rgba(201,168,76,0.2)'  },
-  approved: { color: 'var(--theme-green)', bg: 'rgba(52,211,153,0.1)',  border: 'rgba(52,211,153,0.2)'  },
-  rejected: { color: 'var(--theme-red)', bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.2)' },
+  pending:  STATUS_TINT.accent,
+  approved: STATUS_TINT.green,
+  rejected: STATUS_TINT.red,
 }
 
 const lbl = {
@@ -195,7 +195,7 @@ export default function Overtime() {
     .reduce((s, e) => { const a = otAmt(e, empMap[e.employee_id]); return a !== null ? s + a : s }, 0)
 
   return (
-    <div className="page-container">
+    <div>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
