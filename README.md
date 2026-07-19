@@ -150,6 +150,22 @@ Annual = 25% off monthly, applied uniformly everywhere annual pricing appears.
 
 ## Session Log
 
+### S418 — 2026-07-19 — IMS Guide gets a print button, an `/impeccable audit` pass, and a print-pagination fix
+
+Follow-on to S417's new Guides tab, in three steps within the same session.
+
+1. **Print button.** Added a **🖨 Print full guide** button to `ImsGuideTab.jsx`'s sidebar — the tab only renders one active section at a time, so printing needed a separate path: `printGuide()` opens a standalone window, writes a self-contained HTML document covering every group/section (`buildGuidePrintHtml()`), and fires the browser's print dialog. Deliberately kept as its own window-based pipeline rather than folding into the app's other print convention (`.no-print`/`.print-only` + `printWithTitle()`, used by Stock/Sales/MonthlySummary etc.) — that pattern only prints what's already in the DOM, and the guide's DOM only ever holds one section.
+2. **`/impeccable audit` on the new file** surfaced 8 findings (1 P1, 5 P2, 2 P3), all fixed:
+   - **P1** — the sidebar's active-nav-item text hardcoded `#000` instead of `var(--theme-accent-text)`, violating DESIGN.md's Accent-Text Pairing Rule; verified as an actual WCAG AA failure (~3.88:1) against the Latte preset's purple accent. This bug predates today's session — S417 shipped it, this session caught and fixed it.
+   - **P2** — the new print window didn't null `window.opener`, unlike every other `window.open()+document.write` print flow in the app (`creditNoteHtml.js`, `parkingSlipHtml.js`, `PosOrders.jsx`); added `w.opener = null` to match.
+   - **P2** — the print builder had its own local HTML-escaping function instead of the shared `escapeHtml.js` util every sibling print template uses; swapped to the import.
+   - **P2** — two literal colors inside the print document's own inline stylesheet (`#b8860b` group heading, `#888` block label) measured below 4.5:1 against white; darkened to `#96700a` / `#666`.
+   - **P2** — the guide search input had no visible label or `aria-label`, relying on placeholder text alone (WCAG 3.3.2, and a direct violation of DESIGN.md's own "labels above fields, never placeholder-only" rule); added `aria-label="Search guide pages"`.
+   - **P3** — sidebar group labels ("Overview", "Operations", ...) were plain `<div>`s with no heading semantics; changed to `<h2>`. Also dropped a stray one-off `fontSize: 12.5` on the print button.
+3. **Print-pagination fix**, found by actually printing the guide to PDF and reading it: every group header (OPERATIONS, COSTING, SUMMARY REPORTS, STOCK REPORTS, FINANCE REPORTS, MENU & VENDORS, IMS SETTINGS) printed stranded alone at the bottom of a page with its content pushed to the next page, and `section { page-break-inside: avoid }` forced each entire section onto one page — since most sections run 40–70% of a page tall, two rarely fit together, so the browser left the back half of nearly every page blank rather than packing sections in. A 28-page document for what should print far shorter. Replaced the blanket per-section rule with targeted CSS: `break-after: avoid` on `h1`/`h2`/`.metas`/`.block-h` (a heading is now always glued to what follows it, never orphaned), `break-inside: avoid` kept only on the small atomic pieces (`.summary`, `li`, `pre`) so they don't split mid-content, and sections/blocks are otherwise free to flow across a page boundary between items instead of jumping wholesale to the next page.
+
+**Files:** `src/pages/settings/ImsGuideTab.jsx`
+
 ### S417 — 2026-07-19 — Admin Settings gets a full in-depth Crest IMS user guide (new "Guides" tab)
 
 Built a comprehensive, admin-only reference doc covering all ~37 Crest IMS pages (every Operations, Costing, and report page across Summary/Stock/Finance/Menu & Vendor categories, plus the 5 IMS-relevant Settings tabs) as a new **Guides** tab in Admin Settings, separate from Help.js's existing client-facing "Module Guide" (which stays a short feature-tier catalog, untouched).
