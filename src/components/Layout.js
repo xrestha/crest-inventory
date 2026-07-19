@@ -382,13 +382,14 @@ export default function Layout() {
       { to: '/owner-dashboard', label: 'Owner Dashboard', icon: Crown },
       ...NAV.slice(1),
       ...REPORTS,
+      ...IMS_GROUPS.find(g => g.key === 'ims-admin').items,
       ...(hrVisible ? [HR_DASHBOARD, ...HR_GROUPS.flatMap(g => g.items)] : []),
       ...(posVisible ? POS_GROUPS.flatMap(g => g.items) : []),
       ...(isAdmin ? [
         { to: '/admin/clients', label: 'Clients', icon: Building2 },
         { to: '/admin/audit', label: 'Audit Log', icon: History },
       ] : []),
-      { to: '/settings', label: 'Settings', icon: Settings },
+      { to: '/settings', label: 'Settings', icon: Settings, minImsRole: 'manager' },
     ]
     const seen = new Set()
     return all.filter(item => isItemVisible(item) && !seen.has(item.to) && seen.add(item.to))
@@ -729,7 +730,7 @@ export default function Layout() {
 
               {renderUpgradeTeaser()}
 
-              {!isAdmin && hasFeature('settings') && (
+              {!isAdmin && hasFeature('settings') && hasImsAccess('manager') && (
                 <div style={{ marginTop: 8 }}>
                   {renderNavItem({ to: '/settings', label: 'Settings', icon: Settings })}
                 </div>
