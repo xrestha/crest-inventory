@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { supabase } from '../../../supabaseClient'
 import BsCalendarPicker from '../../../components/BsCalendarPicker'
-import { getBsToday, BS_MONTHS, adToBs, formatAd } from '../../../utils/bsCalendar'
+import { getBsToday, BS_MONTHS, adToBs, bsToAd, formatAd } from '../../../utils/bsCalendar'
 import { workingDaysInRange, DAY_TYPES } from '../leave/leaveConstants'
 import { isOffDay } from '../payrollConstants'
 import { subscribeToPush, isPushSubscribed } from '../../../utils/webPush'
 import { CATEGORIES, VEHICLE_TYPES, DEFAULT_PURPOSE_OPTIONS, DEFAULT_START_POINTS, OTHER_PURPOSE, PURCHASE_PURPOSE, EMPTY_TADA_ITEM, recomputeTadaAmount } from '../tada/tadaShared'
 import SearchableSelect from '../../../components/SearchableSelect'
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 const fmt = n => Math.round(n || 0).toLocaleString('en-NP')
 const fmtD = iso => {
@@ -568,10 +570,11 @@ export default function SelfServiceHome() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
                   {roster.map((r, i) => {
                     const off = isOffDay(r.shift_type_name)
+                    const weekday = WEEKDAYS[bsToAd(rosterYear, rosterMonth, r.bs_day).getDay()]
                     return (
                     <div key={i} className="card" style={{ padding: 12, background: off ? 'rgba(107,114,128,0.12)' : undefined, border: off ? '1px solid rgba(107,114,128,0.3)' : undefined }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: 13, color: 'var(--theme-text1)', fontWeight: 600 }}>Day {r.bs_day}</span>
+                        <span style={{ fontSize: 13, color: 'var(--theme-text1)', fontWeight: 600 }}>{weekday}, Day {r.bs_day}</span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <span style={{ fontSize: 13, color: off ? 'var(--theme-text3)' : 'var(--theme-text2)', fontWeight: off ? 600 : 400 }}>
                             {r.shift_type_name || '—'}{r.shift_start && ` (${r.shift_start}–${r.shift_end})`}

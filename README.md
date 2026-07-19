@@ -150,6 +150,15 @@ Annual = 25% off monthly, applied uniformly everywhere annual pricing appears.
 
 ## Session Log
 
+### S415 — 2026-07-18 — Leave Requests gets a Reason column; Self-Service Roster shows the day of the week
+
+Two small, unrelated user-requested tweaks in the same session.
+
+- **HR → Leave → Requests**: the `reason` field was already captured on submission (`hr_leave_requests.reason`) but never surfaced in the requests table. Added a **Reason** column between Dates (BS) and Days — truncates with an ellipsis and a full-text `title` tooltip for long entries, shows `—` when empty.
+- **HR Self-Service → Roster tab**: each day only showed "Day N", with no day-of-week context. Added a `WEEKDAYS` array (matching the one already used in `Roster.jsx`) and converts each row's BS date to AD via the existing `bsToAd()` utility to resolve the weekday — now reads "Tue, Day 1" etc.
+
+**Files:** `src/modules/hr/leave/LeaveManagement.jsx`, `src/modules/hr/selfservice/SelfServiceHome.jsx`
+
 ### S414 — 2026-07-18 — `/impeccable critique` on the POS module + all findings fixed
 
 User ran `/impeccable critique pos module`, then asked to fix everything found, this time with an explicit "ask me for decisions" instruction for anywhere a judgment call was needed rather than picking silently like the two prior critiques. Dual-agent critique (isolated design-review + detector sub-agents, Assessment B using real admin credentials to walk all three POS surfaces — admin-authenticated, PIN staff login, and the public guest menu) scored the module 27/40, the strongest of the three modules critiqued this week — genuine operational maturity (the KOT/BOT delta system, shift-close reconciliation, offline-first order queue), undercut by the same color-token drift IMS and HR each had, this time reaching into a shared cross-module component.
