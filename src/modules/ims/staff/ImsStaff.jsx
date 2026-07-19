@@ -21,7 +21,7 @@ const DEFAULT_ROLES = [
   { label: 'Manager',    level: 'manager' },
 ]
 const LEVEL_BADGE = { staff: 'badge-green', supervisor: 'badge-amber', manager: 'badge-gold' }
-const EMPTY_ADD   = { full_name: '', email: '', password: '', job_title: '', employee_id: '' }
+const EMPTY_ADD   = { full_name: '', email: '', password: '', job_title: '', employee_id: '', existing_user_id: '' }
 const EMPTY_ROLE  = { label: '', level: 'staff' }
 
 function emailValid(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) }
@@ -30,8 +30,9 @@ function passwordValid(pw) { return pw.length >= 8 }
 export default function ImsStaff() {
   const { clientId, hasImsAccess, hrEnabled } = useAuth()
   const { scopedFrom } = useScopedDb()
-  const [staff,       setStaff]       = useState([])
-  const [employees,   setEmployees]   = useState([]) // hr_employees, only fetched when hrEnabled
+  const [staff,         setStaff]         = useState([])
+  const [employees,     setEmployees]     = useState([]) // hr_employees, only fetched when hrEnabled
+  const [eligibleUsers, setEligibleUsers] = useState([]) // existing client accounts with no pos_role/hr_self_service/ims_role yet
   const [loading,     setLoading]     = useState(true)
   const [saving,      setSaving]      = useState({})
   const [msg,         setMsg]         = useState('')
@@ -46,7 +47,7 @@ export default function ImsStaff() {
   // Add staff modal
   const [addModal,    setAddModal]    = useState(false)
   const [addForm,     setAddForm]     = useState(EMPTY_ADD)
-  const [addMode,     setAddMode]     = useState('hr') // 'hr' | 'manual' — only relevant when hrEnabled
+  const [addMode,     setAddMode]     = useState('hr') // 'hr' | 'existing' | 'manual'
   const [adding,      setAdding]      = useState(false)
   const [addMsg,      setAddMsg]      = useState('')
 
@@ -77,18 +78,20 @@ export default function ImsStaff() {
 
   async function init() {
     setLoading(true)
-    const [{ data: staffData }, { data: settingsData }, { data: empData }] = await Promise.all([
+    const [{ data: staffData }, { data: settingsData }, { data: empData }, { data: eligibleData }] = await Promise.all([
       supabase.rpc('get_ims_staff_list', { p_client_id: clientId }),
       supabase.from('settings').select('ims_custom_roles').eq('client_id', clientId).single(),
       hrEnabled
         ? scopedFrom('hr_employees', 'id, full_name, employee_code, status').in('status', ['active', 'probation']).order('full_name')
         : Promise.resolve({ data: [] }),
+      supabase.rpc('get_ims_eligible_users', { p_client_id: clientId }),
     ])
     const roles = settingsData?.ims_custom_roles?.length ? settingsData.ims_custom_roles : DEFAULT_ROLES
     if (settingsData?.ims_custom_roles?.length) setCustomRoles(settingsData.ims_custom_roles)
     const staffList = staffData || []
     setStaff(staffList)
     setEmployees(empData || [])
+    setEligibleUsers(eligibleData || [])
     setLoading(false)
 
     // Silently fix any ims_role values that don't match the job title's configured level
@@ -107,8 +110,12 @@ export default function ImsStaff() {
   }
 
   async function load() {
-    const { data } = await supabase.rpc('get_ims_staff_list', { p_client_id: clientId })
+    const [{ data }, { data: eligibleData }] = await Promise.all([
+      supabase.rpc('get_ims_staff_list', { p_client_id: clientId }),
+      supabase.rpc('get_ims_eligible_users', { p_client_id: clientId }),
+    ])
     setStaff(data || [])
+    setEligibleUsers(eligibleData || [])
   }
 
   async function saveRoles(roles) {
@@ -158,18 +165,46 @@ export default function ImsStaff() {
   // ── Add staff ──────────────────────────────────────────────────────────────
   function openAdd() {
     setAddForm({ ...EMPTY_ADD, job_title: effectiveRoles[0]?.label || '' })
-    setAddMode(hrEnabled && unlinkedEmployees.length > 0 ? 'hr' : 'manual')
+    setAddMode(
+      hrEnabled && unlinkedEmployees.length > 0 ? 'hr'
+      : eligibleUsers.length > 0 ? 'existing'
+      : 'manual'
+    )
     setAddMsg(''); setAddModal(true)
   }
 
   async function addStaff() {
+    const role = effectiveRoles.find(r => r.label === addForm.job_title)
+    if (!role) { setAddMsg('Select a role.'); return }
+
+    // 'existing' assigns an ims_role to an account that already exists for this client (e.g.
+    // created via Admin → Clients → Manage → Users) — no new login is created, so it skips the
+    // email/password validation entirely and calls update_ims_role, not create_ims_staff.
+    if (addMode === 'existing') {
+      if (!addForm.existing_user_id) { setAddMsg('Select a user.'); return }
+      setAdding(true); setAddMsg('')
+      const { data, error } = await supabase.functions.invoke('admin-user-ops', {
+        body: {
+          action:        'update_ims_role',
+          userId:        addForm.existing_user_id,
+          ims_role:      role.level,
+          ims_job_title: addForm.job_title,
+        },
+      })
+      if (error || data?.error) {
+        let detail = data?.error || error?.message || 'Failed to assign role'
+        try { const b = await error?.context?.json(); detail = b?.error || detail } catch (_) {}
+        setAddMsg('Error: ' + detail); setAdding(false); return
+      }
+      setAddModal(false); setAdding(false); load()
+      return
+    }
+
     if (addMode === 'hr') {
       if (!addForm.employee_id) { setAddMsg('Select an employee.'); return }
     } else if (!addForm.full_name.trim()) { setAddMsg('Name is required.'); return }
     if (!emailValid(addForm.email))       { setAddMsg('Enter a valid email.'); return }
     if (!passwordValid(addForm.password)) { setAddMsg('Password must be at least 8 characters.'); return }
-    const role = effectiveRoles.find(r => r.label === addForm.job_title)
-    if (!role) { setAddMsg('Select a role.'); return }
     setAdding(true); setAddMsg('')
     const { data, error } = await supabase.functions.invoke('admin-user-ops', {
       body: {
@@ -479,21 +514,26 @@ export default function ImsStaff() {
           <div className="card" style={{ width: 380, padding: 28 }}>
             <h3 style={{ margin: '0 0 6px', fontSize: 16, color: 'var(--theme-text1)' }}>Add Staff Member</h3>
 
-            {hrEnabled && (
+            {(hrEnabled || eligibleUsers.length > 0) && (
               <div className="tab-bar" style={{ marginBottom: 16 }}>
-                <button className={`tab-btn${addMode === 'hr' ? ' tab-btn--active' : ''}`} onClick={() => setAddMode('hr')}>HR Employee</button>
+                {hrEnabled && (
+                  <button className={`tab-btn${addMode === 'hr' ? ' tab-btn--active' : ''}`} onClick={() => setAddMode('hr')}>HR Employee</button>
+                )}
+                {eligibleUsers.length > 0 && (
+                  <button className={`tab-btn${addMode === 'existing' ? ' tab-btn--active' : ''}`} onClick={() => setAddMode('existing')}>Existing User</button>
+                )}
                 <button className={`tab-btn${addMode === 'manual' ? ' tab-btn--active' : ''}`} onClick={() => setAddMode('manual')}>IMS-only Staff</button>
               </div>
             )}
 
-            {addMode === 'hr' ? (
+            {addMode === 'hr' && (
               <div style={{ marginBottom: 14 }}>
                 <label style={labelStyle}>
                   <Tip text="Links this IMS login to an existing HR employee record — their name stays in sync with HR, and payroll/attendance can be matched to the same person.">HR Employee</Tip>
                 </label>
                 {unlinkedEmployees.length === 0 ? (
                   <p style={{ fontSize: 12, color: 'var(--theme-text3)', margin: 0 }}>
-                    Every active HR employee already has IMS access — add one in HR → Employees first, or switch to IMS-only Staff.
+                    Every active HR employee already has IMS access — add one in HR → Employees first, or switch to another tab.
                   </p>
                 ) : (
                   <SearchableSelect
@@ -503,7 +543,28 @@ export default function ImsStaff() {
                   />
                 )}
               </div>
-            ) : (
+            )}
+
+            {addMode === 'existing' && (
+              <div style={{ marginBottom: 14 }}>
+                <label style={labelStyle}>
+                  <Tip text="Assigns an IMS role to a login that already exists for this client (e.g. one created from Admin → Clients → Manage → Users) instead of creating a new one. Only accounts with no POS/HR/IMS role already set are shown.">Existing User</Tip>
+                </label>
+                {eligibleUsers.length === 0 ? (
+                  <p style={{ fontSize: 12, color: 'var(--theme-text3)', margin: 0 }}>
+                    No eligible existing accounts — every account for this client already has a POS, HR, or IMS role.
+                  </p>
+                ) : (
+                  <SearchableSelect
+                    options={eligibleUsers.map(u => ({ value: u.id, label: `${u.full_name || '—'} (${u.email})` }))}
+                    value={addForm.existing_user_id} onChange={v => setAddForm(f => ({ ...f, existing_user_id: v }))}
+                    placeholder="Select user…"
+                  />
+                )}
+              </div>
+            )}
+
+            {addMode === 'manual' && (
               <div style={{ marginBottom: 14 }}>
                 <label style={labelStyle}>Full Name</label>
                 <input
@@ -516,31 +577,35 @@ export default function ImsStaff() {
               </div>
             )}
 
-            <div style={{ marginBottom: 14 }}>
-              <label style={labelStyle}>
-                <Tip text="Staff log in with this email and password — same login mechanism as your own account.">Email</Tip>
-              </label>
-              <input
-                style={inputStyle}
-                type="email"
-                autoComplete="new-password"
-                placeholder="staff@example.com"
-                value={addForm.email}
-                onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))}
-              />
-            </div>
+            {addMode !== 'existing' && (
+              <>
+                <div style={{ marginBottom: 14 }}>
+                  <label style={labelStyle}>
+                    <Tip text="Staff log in with this email and password — same login mechanism as your own account.">Email</Tip>
+                  </label>
+                  <input
+                    style={inputStyle}
+                    type="email"
+                    autoComplete="new-password"
+                    placeholder="staff@example.com"
+                    value={addForm.email}
+                    onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))}
+                  />
+                </div>
 
-            <div style={{ marginBottom: 14 }}>
-              <label style={labelStyle}>Initial Password (8+ characters)</label>
-              <input
-                style={inputStyle}
-                type="password"
-                autoComplete="new-password"
-                placeholder="Set an initial password"
-                value={addForm.password}
-                onChange={e => setAddForm(f => ({ ...f, password: e.target.value }))}
-              />
-            </div>
+                <div style={{ marginBottom: 14 }}>
+                  <label style={labelStyle}>Initial Password (8+ characters)</label>
+                  <input
+                    style={inputStyle}
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder="Set an initial password"
+                    value={addForm.password}
+                    onChange={e => setAddForm(f => ({ ...f, password: e.target.value }))}
+                  />
+                </div>
+              </>
+            )}
 
             <div style={{ marginBottom: 20 }}>
               <label style={labelStyle}>

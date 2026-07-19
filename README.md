@@ -150,6 +150,16 @@ Annual = 25% off monthly, applied uniformly everywhere annual pricing appears.
 
 ## Session Log
 
+### S421 — 2026-07-19 — IMS Staff can now assign a role to an already-existing client login
+
+User feedback on S419/S420: the "+ Add Staff" modal on `/ims/staff` could only create brand-new logins — either a fresh email+password, or one linked to an HR employee record. There was no way to take an account that already exists for the client (e.g. one created via Admin → Clients → Manage → Users, `ClientDrawer.js`'s generic "Add User" flow, shown as an "Existing Users" list there) and just assign it an IMS role.
+
+Added a third **"Existing User"** mode to the Add Staff modal, alongside HR Employee and IMS-only Staff — picks from a `get_ims_eligible_users(p_client_id)` RPC and calls the already-existing `update_ims_role` action (no new login created, no email/password fields shown for this mode).
+
+**Eligibility is deliberately narrow — a real architectural constraint, not just a UI nicety:** only accounts with none of the three staff-account markers (`pos_role`, `hr_self_service`, `ims_role`) already set are offered. Assigning `ims_role` to an account that's already POS PIN staff or HR self-service would look like it worked in the UI while every actual table read/write kept silently failing — `no_pos_pin_staff` and `no_self_service_accounts` (the S316 RESTRICTIVE isolation policies) key off `pos_email IS NOT NULL` / `hr_self_service = true` directly, completely independent of `ims_role`, so a POS PIN account would still be blocked from every pure-IMS table (`items`, `purchase_entries`, etc.) no matter what `ims_role` says. `update_ims_role` in `admin-user-ops` is now hardened with the identical check server-side (not just a UI-only filter), rejecting the assignment with a clear error if the target already has `pos_role` or `hr_self_service` set — covers the case where the action is ever called directly, not just through this modal.
+
+**Files:** `supabase/migrations/20260719140000_ims_assign_existing_user.sql` (new), `supabase/functions/admin-user-ops/index.ts`, `src/modules/ims/staff/ImsStaff.jsx`
+
 ### S420 — 2026-07-19 — S419 live-tested end-to-end on the Casa Acai Cafe pilot; 5 real bugs found and fixed
 
 Ran the IMS staff role system live against production (browser automation, real Owner login, a disposable test Staff account created and deleted afterward) rather than trusting the build pass alone — this is auth/RLS-adjacent code, and it paid off: nothing in this list showed up in `CI=true npx react-scripts build`.

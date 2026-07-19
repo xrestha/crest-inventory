@@ -359,10 +359,19 @@ Deno.serve(async (req) => {
       const validRoles = ['staff', 'supervisor', 'manager']
       if (ims_role && !validRoles.includes(ims_role)) return json({ error: 'Invalid ims_role' }, 400)
 
-      if (!isCallerAdmin) {
-        const { data: targetProfile } = await admin
-          .from('profiles').select('client_id').eq('id', userId).single()
-        if (targetProfile?.client_id !== profile?.client_id) return json({ error: 'Forbidden' }, 403)
+      const { data: targetProfile } = await admin
+        .from('profiles').select('client_id, pos_role, hr_self_service').eq('id', userId).single()
+
+      if (!isCallerAdmin && targetProfile?.client_id !== profile?.client_id) {
+        return json({ error: 'Forbidden' }, 403)
+      }
+      // An account already marked POS PIN staff or HR self-service is RLS-blocked from every
+      // pure-IMS / IMS+POS table regardless of ims_role (no_pos_pin_staff / no_self_service_accounts
+      // don't check ims_role at all) — granting ims_role here would look like it worked in the UI
+      // while every real read/write still silently failed. Only reject when actually setting a
+      // role; clearing one (ims_role: null) is always safe.
+      if (ims_role && (targetProfile?.pos_role || targetProfile?.hr_self_service)) {
+        return json({ error: 'This account already has POS or HR self-service access and cannot also be an IMS staff account' }, 400)
       }
 
       const { error: updateErr } = await admin.from('profiles')
