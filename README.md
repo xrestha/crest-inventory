@@ -150,6 +150,23 @@ Annual = 25% off monthly, applied uniformly everywhere annual pricing appears.
 
 ## Session Log
 
+### S420 — 2026-07-19 — S419 live-tested end-to-end on the Casa Acai Cafe pilot; 5 real bugs found and fixed
+
+Ran the IMS staff role system live against production (browser automation, real Owner login, a disposable test Staff account created and deleted afterward) rather than trusting the build pass alone — this is auth/RLS-adjacent code, and it paid off: nothing in this list showed up in `CI=true npx react-scripts build`.
+
+**Deploy-order gap (not a code bug, a process one):** the DB migration and Edge Function were applied/deployed first, but the frontend commit itself was never pushed — Vercel was still serving the pre-S419 bundle, so `/ims/staff` 404'd with "No routes matched location." Lesson: for a feature spanning DB + Edge Function + frontend, all three need to actually ship before "done" means anything; committing and pushing is not optional cleanup at the end, it's part of the feature.
+
+**Two backend bugs**, found by intercepting the actual failed requests (console only showed generic 400s — had to monkeypatch `window.fetch` in the live page to capture the real Postgres error bodies):
+
+- `settings.ims_custom_roles` column was never created — `ImsStaff.jsx`'s custom-role-mapping feature (copied from `PosStaff.jsx`, which reads `settings.pos_custom_roles`) 400'd on every load with "column does not exist." Missed because nothing in the original migration review caught the omission — the column just wasn't there.
+- `get_ims_staff_list()` 400'd with Postgres error 42804 ("structure of query does not match function result type") — `auth.users.email` is actually `character varying(255)`, not `text`, so the function's `RETURNS TABLE(... email text ...)` didn't match what the query produced. Fixed with an explicit `u.email::text` cast rather than changing the declared return type. `client_user_emails()` (the only other function in this codebase joining `auth.users`) happens to only ever be called for its `id`/`email` pair without this exact type declaration pattern, which is presumably why this particular mismatch hadn't been hit before.
+
+**One frontend bug**, found only by actually logging in as a Staff-tier test account and checking what the sidebar/command-palette showed, not just what the route guard did: the `Settings` nav link is rendered directly in `Layout.js` (outside `IMS_GROUPS`, alongside `Dashboard`/`Owner`), so it was never passed through `isItemVisible()` and had no `minImsRole` tag — a Staff account still saw a clickable "Settings" link in the sidebar and could find it via ⌘K, even though the page itself correctly bounced them to `/dashboard` on click. Not a security hole (the page guard held), but a real UX/trust problem — a restricted-looking link that dead-ends. Fixed by gating that render site the same way and adding `minImsRole: 'manager'` to the palette's `/settings` entry too. Confirmed with the actual repro: Staff-tier ⌘K search for "settings" now returns "No pages match."
+
+**Verified live, end-to-end, with a real (disposable) account:** created a Staff-tier IMS account via `/ims/staff`, logged in as it, confirmed the sidebar showed exactly Purchases/Gate Passes/Sales Entry/Stock Count/Requisitions and nothing else (no Costing/Reports/Admin groups), confirmed direct navigation to `/items` (Supervisor-tier) and `/settings` (Manager-tier) both redirected to `/dashboard`, confirmed `/purchases` loaded and functioned normally, then logged back in as Owner and deleted the test account — final state left clean.
+
+**Files:** `supabase/migrations/20260719130000_ims_staff_roles_fix.sql` (new), `src/components/Layout.js`
+
 ### S419 — 2026-07-19 — Crest IMS gets a staff/supervisor/manager role system (mirrors POS roles)
 
 Until now, Crest IMS had zero role granularity — any client login for a property (the "Owner") got full read/write access to every IMS page the plan included, unlike Crest POS which already has a real `pos_role` tier system. Built the IMS equivalent, following the POS role system's exact shape end-to-end rather than inventing a new mechanism — same DB column pattern, same RLS isolation approach, same Edge Function action style, same `hasXAccess(minLevel)` helper, same page-side early-return gating, same nav `minXRole` filtering.
