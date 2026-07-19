@@ -150,6 +150,13 @@ Annual = 25% off monthly, applied uniformly everywhere annual pricing appears.
 
 ## Session Log
 
+### S416 — 2026-07-19 — Purchase Bill Qty field: unit label no longer mistaken for an entered value
+
+Client screenshot: a purchase-bill line showed Rate 0.83, Total 25, and a Qty box reading "GM" — client thought the calculation was wrong. Actual cause: the Qty box's *placeholder* was the item's unit (`inputUnit || '0'`), so an empty Qty field rendered as bare "GM" text that looked like a typed value at a glance, especially on a dark theme screenshot. Qty was genuinely empty, so `Amount = Qty × Rate` was 0 and save correctly blocked with "Add at least one item with item, qty and rate filled" — not a calculation bug, but a confusing empty state.
+
+- `PurchaseBillModal.jsx` Qty cell: placeholder is now always `0`; the unit (e.g. "GM") is shown as a persistent dimmed label pinned inside the left edge of the box instead, via a wrapper `div` + absolutely-positioned `span` (`pointer-events: none`), with the input's `paddingLeft` extended to make room. The unit label now stays visible even after a real quantity is typed, instead of disappearing once the placeholder is replaced.
+- **Files:** `src/modules/ims/purchases/PurchaseBillModal.jsx`
+
 ### S415 — 2026-07-18 — Leave Requests gets a Reason column; Self-Service Roster shows the day of the week
 
 Two small, unrelated user-requested tweaks in the same session.
