@@ -150,6 +150,26 @@ Annual = 25% off monthly, applied uniformly everywhere annual pricing appears.
 
 ## Session Log
 
+### S425 — 2026-07-20 — IMS Guide brought current: the role system was missing entirely
+
+The in-depth Crest IMS guide (Admin → Settings → Guides) hadn't been touched since S417 wrote it. Seven commits had landed in IMS since, and the guide's most serious gap wasn't a missing detail — it was that **the entire staff/supervisor/manager role system (S419–S421) had no coverage at all**, one incidental keyword match across 1,033 lines. A guide that silently omits who-can-see-what is worse than one that's merely stale: it describes a module that only an Owner ever actually sees.
+
+**New "Admin" group → "IMS Staff & the role system"** (42 sections now, up from 41; the group mirrors the sidebar's own `ims-admin`). Rather than transcribe the README entries, the tier lists were derived from the code — `IMS_RANK`/`hasImsAccess` in `AuthContext.js` and every `minImsRole` tag in `Layout.js` — so the guide states what actually gates rather than what was intended:
+
+- **Staff** (no gate): Dashboard, Purchases, Gate Passes, Sales Entry, Stock Count, Requisitions — enough to run a shift, no rates or margins.
+- **Supervisor**: adds Periods, Item Master, Vendors, Purchase Orders, Recipe Costing, and the Stock/Summary reports. Item Master and Vendors sit here specifically because they expose purchase rates.
+- **Manager**: adds this page, Settings, Overheads, the Menu pages, and every Finance and Menu & Vendor report. The dividing line is money.
+
+Also documented, because each has bitten already: the Owner test is *negative* (an account is Owner only when it has none of `pos_role` / `hr_self_service` / `ims_role`, so granting an IMS role deliberately demotes someone out of Owner access); "Existing User" eligibility is an architectural constraint rather than a UI nicety (the S316 RESTRICTIVE policies key off `pos_email` / `hr_self_service` independently of `ims_role`, so a POS PIN account given an IMS role would look fine and silently fail every read/write); and route guards vs. nav visibility are two separate concerns that both matter.
+
+**Stock Count** gained the "↩ Pull from last month" button (S422) and — importantly — the *reason* it exists, as a gotcha: the automatic carry-forward is a one-time snapshot at close, not a live link, so closing the month before finishing the count leaves Opening Stock blank with nothing to re-trigger it. That's the likeliest cause of a "my opening stock is empty" support call, so it's written to be findable by that symptom. The stale workflow line claiming carry-forward is automatic-and-done was corrected.
+
+**Purchases and Stock Count** both document the S423 inline arithmetic, with the one non-obvious interaction spelled out: the expression is evaluated *before* the base-unit conversion, so `stored_qty = evaluated_qty × conversion_factor`. **Overview** gained the role system as a cross-cutting concern (two people can describe "the IMS module" completely differently depending on tier) and the calculator as a module-wide utility.
+
+Verified by parsing the exported structure directly — 9 groups / 42 sections, no duplicate section ids — plus a clean production build. Both the on-screen guide and its print builder map over `IMS_GUIDE_GROUPS` generically, so the new group needed no registration anywhere.
+
+**Files:** `src/pages/settings/imsGuideData.js`
+
 ### S424 — 2026-07-20 — Design-token drift pass: 60 `/impeccable` findings → 2, three real contrast bugs fixed
 
 S423's hook runs kept reporting findings on files that session only incidentally touched, and they were left unaddressed at the time. Ran the detector properly across the four files: **60 findings**, not the ~13 the hook's truncated per-file summary suggested.

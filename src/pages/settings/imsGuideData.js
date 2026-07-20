@@ -20,6 +20,7 @@ export const IMS_GUIDE_GROUPS = [
           'Day to day, purchases are logged in Purchases and sales in Sales Entry (or synced automatically from POS if the client also runs Crest POS).',
           'At month end, a physical Closing Stock count is taken in Stock Count. Closing this period auto-carries that physical count forward as next month\'s Opening Stock — opening stock is never re-derived, it is always last month\'s real count.',
           'Reports (Monthly Summary, Variance, Stock Report, and everything under Stock/Finance/Menu & Vendor Reports) are all read-only views built by combining the tables above for the selected period — they store nothing new themselves except a few cached fields (e.g. Menu Engineering\'s me_class, Demand Forecast\'s stored run).',
+          'Cutting across all of the above: a three-tier role system (Staff / Supervisor / Manager) decides which of these pages a given login can reach at all. Two people can therefore describe "the IMS module" completely differently depending on their tier — worth establishing before troubleshooting a "the page isn\'t there" report. See IMS Staff under Admin for the full tier-by-tier breakdown.',
         ],
         fields: [],
         formulas: [
@@ -30,6 +31,7 @@ export const IMS_GUIDE_GROUPS = [
           'Different reports compute "food cost" slightly differently on purpose — Overheads.js uses pure purchase spend (no opening/closing adjustment), Monthly/Annual Summary and Period Comparison use the full COGS formula above, and these can legitimately show different percentages for the same month. This is the single most common source of "why don\'t these two pages match" support questions — see the callout on Overheads and Monthly Summary below.',
           'purchase_entries.qty and .rate are always stored in BASE units (grams, ml, single pieces), never in the purchase unit the user typed (cartons, packs, KG) — see the Purchases section for the exact conversion math. Every report that reads purchase_entries directly relies on this convention.',
           'A recipe tagged with category = "Sub-Recipe" automatically mirrors itself into the items table (is_sub_recipe = true) so it can be used as an ingredient in other recipes. These mirror rows are deliberately filtered out of Item Master, Purchases, Purchase Orders, Requisitions, Reorder Report, and Price Tracker (.eq(\'is_sub_recipe\', false)) — if a "missing" item is actually a sub-recipe, that\'s expected.',
+          'Every quantity and rate box in Purchases and Stock Count accepts arithmetic, not just a plain number — "3*24+7" commits 79. Alt+C opens a standalone Quick Calculator over any page. Worth mentioning to anyone still counting stock with a phone calculator in the other hand, since re-typing a total is where transcription errors get in.',
         ],
         connections:
           'Everything downstream of Periods, Purchases, Stock Count, Sales Entry, and Recipe Costing — which is effectively the entire rest of this guide.',
@@ -172,6 +174,7 @@ export const IMS_GUIDE_GROUPS = [
           { label: 'Discount (NPR)', desc: 'A bill-level, pre-VAT discount spread proportionally across the taxable base before VAT is computed.' },
           { label: 'Total (NPR) per line', desc: 'Type a line total instead of a rate; Rate is reverse-computed as amount ÷ qty ÷ (1.13 if VAT else 1).' },
           { label: 'Shelf Life (days)', desc: 'Auto-computes Expiry Date from the bill\'s day + N days; changing the bill Day recomputes expiry for every line with a shelf-life set.' },
+          { label: 'Arithmetic in Qty / Rate', desc: 'Both fields accept an expression as well as a plain number — "12*4" in Qty, or "450/12" to work a per-unit rate back out of a case price. The result previews above the field and commits on Enter or blur. The expression is evaluated before the base-unit conversion above, so what gets stored is still entered_qty × conversion_factor with the evaluated number as entered_qty. Same behaviour as Stock Count\'s qty boxes; Alt+C opens a standalone Quick Calculator anywhere in the app.' },
         ],
         formulas: [
           'Bill totals: taxableBase = Σ(qty×rate) of VAT lines; nonTaxableBase = Σ(qty×rate) of non-VAT lines; subTotal = taxableBase + nonTaxableBase; vatTaxable = subTotal>0 ? taxableBase × (1 − discount/subTotal) : 0 (discount spread proportionally); vatTotal = vatTaxable × 0.13; grandTotal = subTotal − discount + vatTotal.',
@@ -270,15 +273,18 @@ export const IMS_GUIDE_GROUPS = [
         summary:
           'The physical inventory workflow: opening stock, month-end physical closing count, wastage (a monthly catch-all plus a dated/reasoned daily log), staff meals, and the Summary/Print Sheet views that tie it all together. This is where the real, physically-counted numbers that everything else compares against come from.',
         workflow: [
-          'Opening Stock: per-item qty at start of month — manual only for a client\'s very first-ever period; every period after that is auto-carried-forward from the prior period\'s closing count.',
+          'Opening Stock: per-item qty at start of month — manual only for a client\'s very first-ever period; every period after that is auto-carried-forward from the prior period\'s closing count when that period is closed. A "↩ Pull from last month" button on this tab re-runs that same carry-forward on demand, for when the automatic one had nothing to copy (see gotchas).',
           'Closing Stock: the physical count taken at month-end, entered per item.',
           'Wastage tab: a single quick monthly total per item, no reason/day. Daily Wastage tab: dated, reason-tagged log (Spoilage/Expiry/Over-prep/Breakage/Spillage/Customer return/Other) — both roll into the same period total.',
           'Staff Meals tab (feature-gated): staff/complimentary consumption, tracked separately from wastage.',
           'Summary tab: full per-category and per-item picture in both qty and NPR value. Print Sheet: a blank physical-count sheet grouped by category, showing a System Ref Qty hint (not the answer) and starring (★) high-value/fast-moving items to count first.',
           'Every field auto-saves on blur; "Save All" forces a save of every visible row; "Clear All" zeroes them.',
+          'Every quantity box accepts arithmetic as well as a plain number — typing "3*24+7" (3 cartons of 24, plus 7 loose) commits 79. The running result previews above the box while typing; Enter or clicking away applies it, Esc cancels.',
         ],
         fields: [
           { label: 'System Ref Qty', desc: 'Opening + Purchases − Returns. An estimate/reference for the counter, not the correct answer — real physical counts should and will differ due to actual usage and shrinkage.' },
+          { label: '↩ Pull from last month', desc: 'Opening Stock tab only. Finds the chronologically-previous BS period, reads its counted closing_stock.physical_qty, and upserts those into this period\'s opening_stock — the same "closing IS next opening" rule the period-close path uses, but re-runnable at any time. Confirms before overwriting, only carries items actually counted (qty > 0), and needs to be online. Disabled on a locked period.' },
+          { label: 'Arithmetic in qty fields', desc: 'Supports + − × ÷ and brackets, e.g. "(12+8)*2.5". Commas are ignored so "1,200/16" works. An incomplete expression ("3*", "2+(4") reverts to the previous value rather than saving a partial reading of it. Also available on the Purchase Bill qty and rate fields, and as a standalone Quick Calculator on Alt+C from anywhere in the app.' },
           { label: '★ High-value flag', desc: 'An item is starred if its stock value is in the top 25% by value AND it was purchased ≥3 times this period — the fast-moving, high-value combination where a counting error costs the most.' },
           { label: 'Requisitioned column', desc: 'Total qty issued via issued-status Requisitions for the period — shown for cross-checking against Used, but is NOT itself part of the Used/COGS formula.' },
         ],
@@ -291,6 +297,8 @@ export const IMS_GUIDE_GROUPS = [
           'A closing_stock row can exist with a NULL physical_qty (an aborted save) — always treat this as 0, never NaN, or the item silently drops out of Reorder/Variance math.',
           'The Summary tab\'s header text for the COGS formula omits "− Returns," but the actual calculation does subtract returns — the label is slightly out of sync with the real math; trust the formula above, not the on-screen wording.',
           'Offline mode queues edits locally and replays them on reconnect — a "N pending" badge shows queued writes that haven\'t synced yet.',
+          'The automatic carry-forward is a one-time snapshot taken at the instant the period is closed — it is not a live link. If the closing count was not fully saved at that moment (the common real-world case: the month gets closed first and physically counted afterwards), the new period\'s Opening Stock is left blank and nothing re-triggers it on its own. This is the single most likely cause of a "my opening stock is empty even though I counted last month" report; the fix is the "↩ Pull from last month" button on the Opening Stock tab, which is safe to run at any point.',
+          'Only items with a counted closing quantity carry forward. An item with no closing_stock row is not carried at all — identical to never having entered it manually, not a zero.',
         ],
         connections: 'Feeds Variance Report, Dashboard\'s Reorder/Variance panels, Wastage Report, Stock Report, Reorder Report, Dead Stock, and Periods\' carry-forward logic when the period closes.',
       },
@@ -999,6 +1007,43 @@ export const IMS_GUIDE_GROUPS = [
           'The Discounts tab\'s Grand Total includes VAT, while the Vendor Summary tab\'s Net Spend figures are all ex-VAT — not directly comparable line-for-line without adjusting for VAT.',
         ],
         connections: 'Overlaps conceptually with Outstanding Payables (bill status/aging) and VAT Report (discount-VAT proration), both independently implemented here rather than shared — a good report to present first when introducing vendor analytics, with Payment Summary, Outstanding Payables, and VAT/Non-VAT as narrower cuts of the same underlying data.',
+      },
+    ],
+  },
+
+  // ───────────────────────────── Admin ─────────────────────────────
+  {
+    key: 'ims-admin',
+    label: 'Admin',
+    sections: [
+      {
+        id: 'ims-staff',
+        title: 'IMS Staff & the role system',
+        route: '/ims/staff',
+        plan: 'All plans · Manager-tier only',
+        summary:
+          'Crest IMS has a three-tier role system (Staff / Supervisor / Manager) that decides which IMS pages a login can reach. It mirrors the POS role system deliberately — same shape, same rank comparison — but is a completely separate axis: ims_role on the profiles row, independent of pos_role. This page is where an Owner or Manager creates IMS logins and assigns those roles.',
+        workflow: [
+          'Roles rank Staff (1) < Supervisor (2) < Manager (3). Every gated page declares a minimum, and access is a simple rank comparison — hasImsAccess(min) in AuthContext, plus a matching minImsRole tag on the sidebar/command-palette entry so a page a user cannot open is never shown as a link.',
+          'The Owner login and any platform admin both resolve to Manager automatically — they never need an ims_role set. Note the Owner test is negative: an account counts as Owner only when it has none of pos_role, hr_self_service, or ims_role set, so giving someone an ims_role deliberately demotes them out of Owner-level access.',
+          '"+ Add Staff" has three modes. HR Employee links the new login to an existing hr_employees record so the name never drifts between modules. IMS-only Staff creates a fresh email + password login. Existing User (added later, see below) assigns a role to a login that already exists rather than creating anything.',
+          'Reset Password sets a new password immediately — there is no email or reset-link flow, so the new password has to be handed to the person directly.',
+        ],
+        fields: [
+          { label: 'Staff (no gate)', desc: 'The day-to-day data-entry tier: Dashboard, Purchases, Gate Passes, Sales Entry, Stock Count, Requisitions. Enough to run a shift and record what physically happened, with no access to rates, margins, or configuration.' },
+          { label: 'Supervisor', desc: 'Everything Staff has, plus Periods, Item Master, Vendors, Purchase Orders, Recipe Costing, and the Stock and Summary reports (Monthly/Annual Summary, Period Comparison, Budget vs Actual, Stock Report, Reorder, Stock Movements, Demand Forecast, Wastage, Dead Stock, Variance, FIFO, Theoretical Variance, Shrinkage). Item Master and Vendors sit at this tier specifically because they expose purchase rates — Staff can still log purchases normally, since the item/vendor picker inside Purchases does not require visiting those pages.' },
+          { label: 'Manager', desc: 'Everything above, plus this page, Settings, Overheads, Menu Pricing, Menu Engineering, Menu Repricing, every Finance report (VAT, Non-VAT, Payment Summary, Outstanding Payables, Purchase 1L+), and every Menu & Vendor report (Best & Worst Sellers, Recipe Margin, Combo Builder, Price Tracker, Vendor Report). The dividing line is money: this tier is what exposes margin, payables, and supplier pricing.' },
+          { label: '"Existing User" mode', desc: 'Assigns an IMS role to a login the client already has (e.g. one created through Admin → Clients → Manage → Users) rather than creating a second account for the same person. Picks from the get_ims_eligible_users RPC and calls update_ims_role — no new login, and no email/password fields are shown.' },
+        ],
+        formulas: [],
+        gotchas: [
+          'A staff account with no ims_role at all cannot see any IMS page — the whole IMS section disappears from their sidebar rather than showing locked entries. That is the intended state for, say, an HR-only or POS-only login, not a misconfiguration.',
+          '"Existing User" eligibility is deliberately narrow, and it is an architectural constraint rather than a UI nicety: only accounts with none of pos_role, hr_self_service, or ims_role already set are offered. Assigning ims_role to an account that is already POS PIN staff or HR self-service would appear to work in the UI while every actual table read and write kept silently failing — the S316 RESTRICTIVE isolation policies (no_pos_pin_staff, no_self_service_accounts) key off pos_email IS NOT NULL / hr_self_service = true directly, entirely independent of ims_role. The same check is enforced server-side in update_ims_role, not just in the picker, so calling the action directly cannot bypass it.',
+          'Role changes take effect on the affected user\'s next profile load — an already-signed-in session keeps its old menu until it refreshes. When in doubt, have them sign out and back in rather than assuming the change failed.',
+          'Route guards and nav visibility are two separate things and both matter. A page whose route guard bounces an under-privileged user is secure but still a trust problem if its link stays visible and dead-ends — every gated entry therefore carries minImsRole so the sidebar and ⌘K palette hide it too. This was a real bug once: the Settings link is rendered directly in Layout.js outside the nav groups, so it initially skipped the visibility filter and Staff accounts saw a clickable link to a page that bounced them.',
+        ],
+        connections:
+          'Gates every page in this guide — see the tier lists above for exactly which. Reads and writes profiles.ims_role through the admin-user-ops Edge Function; overlaps with POS Staff and HR Self-Service only in that all three write staff-account markers onto the same profiles row, which is why the eligibility rule above exists.',
       },
     ],
   },
