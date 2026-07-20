@@ -22,6 +22,7 @@ export default function QtyInput({
   onCommit,
   wrapperStyle,
   disabled,
+  style,
   ...rest
 }) {
   const [draft, setDraft] = useState(null) // non-null only while focused
@@ -31,6 +32,14 @@ export default function QtyInput({
 
   const isExpr = draft !== null && looksLikeExpression(draft)
   const preview = isExpr ? evaluate(draft) : null
+
+  // Callers right-align these boxes to sit flush with a numeric column at rest. But a native
+  // input scrolled to keep the caret visible clips from the LEFT under text-align:right — once
+  // an expression like "760*2" outgrows the box, the leading digit gets sliced mid-glyph
+  // instead of just scrolling off, reading as garbled ("i0*2" for what was actually typed as
+  // "760*2"). Left-align only while actively editing, so typing is always readable from the
+  // start; revert to the caller's alignment once committed and showing the resting value.
+  const inputStyle = draft !== null ? { ...style, textAlign: 'left' } : style
 
   function handleChange(e) {
     const raw = e.target.value
@@ -86,6 +95,7 @@ export default function QtyInput({
         onFocus={() => setDraft(asText)}
         onBlur={commit}
         onKeyDown={handleKeyDown}
+        style={inputStyle}
         {...rest}
       />
       {isExpr && (
