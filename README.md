@@ -150,6 +150,14 @@ Annual = 25% off monthly, applied uniformly everywhere annual pricing appears.
 
 ## Session Log
 
+### S422 — 2026-07-20 — Stock Count: re-runnable "Pull from last month" opening-stock button
+
+Founder closed Ashadh 2083 → opened Shrawan 2083 but Shrawan's Opening Stock was empty despite Ashadh having a full Closing Stock count. Root cause: the S409 carry-forward (`Periods.js`'s `carryForwardOpeningStock`) is a **one-time snapshot taken at the instant of close** — if the closing count wasn't fully saved at that moment (e.g. the month was closed first and counted afterward), or the close ran on a pre-S409 / service-worker-cached bundle, the new period's opening stays blank and there was no way to re-trigger it.
+
+Added a re-runnable **`pullFromLastMonthClosing()`** to `Stock.js`: on the Opening Stock tab, "↩ Pull from last month" finds the chronologically-previous BS period, reads its counted `closing_stock.physical_qty`, and upserts those into the current period's `opening_stock` (same "closing IS next opening" rule as the close-time path, but callable any time). Confirms before overwriting, only carries items actually counted (>0), and requires being online. Button appears on the desktop toolbar (next to Clear All / Save All) and the mobile save bar, opening-tab only, disabled on a locked period.
+
+**Files:** `src/modules/ims/stockcount/Stock.js`, `src/pages/Help.js`
+
 ### S421 — 2026-07-19 — IMS Staff can now assign a role to an already-existing client login
 
 User feedback on S419/S420: the "+ Add Staff" modal on `/ims/staff` could only create brand-new logins — either a fresh email+password, or one linked to an HR employee record. There was no way to take an account that already exists for the client (e.g. one created via Admin → Clients → Manage → Users, `ClientDrawer.js`'s generic "Add User" flow, shown as an "Existing Users" list there) and just assign it an IMS role.

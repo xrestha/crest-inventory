@@ -357,6 +357,43 @@ export default function Stock() {
     setTimeout(() => setSaved(false), 2500)
   }
 
+  // Re-runnable version of Periods.js's close-time carry-forward: copies the chronologically
+  // previous period's counted closing_stock into THIS period's opening_stock. Unlike the one-shot
+  // snapshot at close time, this can be run whenever — after a late/edited closing count, or to
+  // repair a period that was closed before the carry-forward feature existed (pre-2026-07-17).
+  async function pullFromLastMonthClosing() {
+    if (!selectedPeriod || isLocked) return
+    if (!navigator.onLine) { alert('You need to be online to pull last month’s closing stock.'); return }
+    const prevPeriod = periods
+      .filter(p => p.bs_year < selectedPeriod.bs_year || (p.bs_year === selectedPeriod.bs_year && p.bs_month < selectedPeriod.bs_month))
+      .sort((a, b) => (b.bs_year - a.bs_year) || (b.bs_month - a.bs_month))[0]
+    if (!prevPeriod) { alert('No earlier period found to pull closing stock from.'); return }
+    const prevLabel = `${BS_MONTHS[prevPeriod.bs_month - 1]} ${prevPeriod.bs_year}`
+    setSaveAllLoading(true)
+    const { data: closingRows } = await supabase.from('closing_stock')
+      .select('item_id, physical_qty').eq('period_id', prevPeriod.id)
+    const counted = (closingRows || []).filter(r => r.physical_qty != null && parseFloat(r.physical_qty) > 0)
+    if (counted.length === 0) {
+      setSaveAllLoading(false)
+      alert(`${prevLabel} has no saved closing counts to pull.`)
+      return
+    }
+    if (!window.confirm(`Copy ${counted.length} item closing count(s) from ${prevLabel} into ${periodLabel}'s Opening Stock?\n\nExisting opening entries for those items will be overwritten.`)) {
+      setSaveAllLoading(false)
+      return
+    }
+    const rows = counted.map(r => ({ period_id: selectedPeriod.id, item_id: r.item_id, qty: r.physical_qty }))
+    await supabase.from('opening_stock').upsert(rows, { onConflict: 'period_id,item_id' })
+    setStockData(prev => {
+      const next = { ...prev }
+      counted.forEach(r => { next[r.item_id] = { ...next[r.item_id], opening: r.physical_qty } })
+      return next
+    })
+    setSaveAllLoading(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2500)
+  }
+
   function filteredItems() {
     return items.filter(item => {
       const matchCat = filterCat === 'all' || item.category_id === filterCat
@@ -923,6 +960,17 @@ export default function Stock() {
                   </select>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
+                  {activeTab === 'opening' && (
+                    <button
+                      className="btn btn-ghost"
+                      title="Copies last month's counted closing stock into this period's opening — 'this month's closing IS next month's opening'. Existing opening entries for those items are overwritten."
+                      style={{ color: 'var(--theme-accent)', borderColor: 'rgba(201,168,76,0.35)' }}
+                      onClick={pullFromLastMonthClosing}
+                      disabled={saveAllLoading || isLocked}
+                    >
+                      ↩ Pull from last month
+                    </button>
+                  )}
                   <button className="btn btn-ghost" style={{ color: 'var(--theme-red)', borderColor: 'rgba(248,113,113,0.3)' }} onClick={clearAll} disabled={saveAllLoading || isLocked}>Clear All</button>
                   <button className="btn btn-primary" onClick={saveAll} disabled={saveAllLoading || isLocked}>
                     {saveAllLoading ? 'Saving…' : saved ? '✓ Saved' : 'Save All'}
@@ -1084,6 +1132,11 @@ export default function Stock() {
 
             {isMobile && (
               <div className="mobile-save-bar">
+                {activeTab === 'opening' && (
+                  <button className="btn btn-ghost" style={{ flex: 1, color: 'var(--theme-accent)', borderColor: 'rgba(201,168,76,0.35)' }} onClick={pullFromLastMonthClosing} disabled={saveAllLoading || isLocked}>
+                    ↩ Last month
+                  </button>
+                )}
                 <button className="btn btn-primary" style={{ flex: 1 }} onClick={saveAll} disabled={saveAllLoading || isLocked}>
                   {saveAllLoading ? 'Saving…' : saved ? '✓ Saved' : 'Save All'}
                 </button>

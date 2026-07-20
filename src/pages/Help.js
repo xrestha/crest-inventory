@@ -48,7 +48,7 @@ const IMS_FEATURE_TIERS = [
       {
         icon: '⊞', name: 'Stock Count',
         guide: 'Tabs: Opening Stock (start of month), Closing Stock (physical count at month end), Wastage (a quick monthly catch-all total per item), Daily Wastage (log spoilage by day with a reason — Spoilage, Expiry, Over-prep, etc.), and Staff Meals (internal consumption by staff). The Summary tab computes Used = Opening + Net Purchases − Wastage − Staff Meals − Closing, where Wastage = the monthly catch-all + all daily entries. Export to Excel.',
-        tips: ['Use the Daily Wastage tab to log spoilage by day and reason as it happens — these roll into the period total and COGS', 'The Wastage tab is the monthly catch-all: a single quick figure per item, on top of any daily entries', 'Enter opening stock before any purchases for accurate COGS', 'The Wastage Report now groups by item and includes a By-Reason breakdown']
+        tips: ['On the Opening Stock tab, use "↩ Pull from last month" to copy the previous period\'s counted closing stock into this period\'s opening — run it any time, e.g. if you finished the closing count after already closing the month', 'Use the Daily Wastage tab to log spoilage by day and reason as it happens — these roll into the period total and COGS', 'The Wastage tab is the monthly catch-all: a single quick figure per item, on top of any daily entries', 'Enter opening stock before any purchases for accurate COGS', 'The Wastage Report now groups by item and includes a By-Reason breakdown']
       },
       {
         icon: '◉', name: 'Mobile App',
