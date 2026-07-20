@@ -150,6 +150,16 @@ Annual = 25% off monthly, applied uniformly everywhere annual pricing appears.
 
 ## Session Log
 
+### S429 — 2026-07-20 — Totals row on Payroll Calculation; category filter on Sales Period Summary
+
+Two small, independent UI additions, both matching an existing convention elsewhere in the app rather than inventing a new one.
+
+**Payroll Calculation** (`src/modules/hr/payroll/PayrollCalculation.jsx`) — the employee table had no totals row, unlike Payroll Run's own table. Added a `<tfoot>` summing Gross/OT/Absence/SSF/TDS/Advance/TADA/Net Pay (live), same styling (bold, `2px` top border, per-column coloring matching each row's own convention) as `PayrollRun.jsx`'s existing footer. The "Payroll Page" column's total only renders if every employee has a stored payslip — summing a partial run (some employees "not generated") would silently read as a complete total instead of a warning sign.
+
+**Sales Entry → Period Summary** (`src/modules/ims/sales/Sales.js`) — added a category filter dropdown next to the tab's existing sort-order dropdown, populated from whatever categories the client's recipes actually use. Filtering narrows both the visible rows and the Total row at the bottom, so a filtered view's totals reflect just that category, not the whole menu diluted by a filter.
+
+**Files:** `src/modules/hr/payroll/PayrollCalculation.jsx`, `src/modules/ims/sales/Sales.js`
+
 ### S428 — 2026-07-20 — Self-service payslip was silently broken since launch; found it led to a DB-wide grants audit
 
 Started from "Jeevan's payslip doesn't show even though Ashadh payroll is finalized." First theory (iOS PWA freeze not refetching) was wrong — disproven by a live reload that still showed nothing. Direct DB queries (`supabase db query --linked`, which this session leaned on heavily as a read/write path to the live project without going through the Dashboard for every check) found the real bug: `get_my_hr_payslips`, `get_my_client_vendors`, and `get_my_swap_requests` all declare `RETURNS TABLE(id uuid, ...)`. That OUT parameter shadows `profiles.id` inside the function body, so `WHERE id = auth.uid()` in the caller-lookup line resolved ambiguously (`42702`) and **all three had thrown on every single call since they shipped** — no employee had ever seen a payslip, a TADA vendor list, or a shift-swap request. Invisible because `SelfServiceHome.jsx`'s `load*` callbacks did `setPayslips(data || [])` and dropped `error`, so a hard RPC failure rendered identically to "you have no data."
