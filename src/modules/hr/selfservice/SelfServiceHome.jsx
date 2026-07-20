@@ -9,6 +9,8 @@ import { isOffDay } from '../payrollConstants'
 import { subscribeToPush, isPushSubscribed } from '../../../utils/webPush'
 import { CATEGORIES, VEHICLE_TYPES, DEFAULT_PURPOSE_OPTIONS, DEFAULT_START_POINTS, OTHER_PURPOSE, PURCHASE_PURPOSE, EMPTY_TADA_ITEM, recomputeTadaAmount } from '../tada/tadaShared'
 import SearchableSelect from '../../../components/SearchableSelect'
+import Modal from '../../../components/Modal'
+import PayslipBody from '../payroll/PayslipBody'
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -48,6 +50,12 @@ export default function SelfServiceHome() {
 
   const [tab, setTab] = useState('payslip') // payslip | leave | tada | roster
   const [payslips, setPayslips] = useState(null)
+  const [viewSlip, setViewSlip] = useState(null)
+  const [bizInfo, setBizInfo] = useState({ name: '', address: '', vatNumber: '' })
+  // Every load* below used to drop the RPC's `error` on the floor and render `data || []`, so a
+  // hard failure was indistinguishable from "you have no payslips". That's exactly how three
+  // RPCs stayed broken since launch (migration 20260720120000) — surface it instead.
+  const [dataError, setDataError] = useState('')
   const [leaveTypes, setLeaveTypes] = useState([])
   const [leaveRequests, setLeaveRequests] = useState(null)
   const [rosterYear, setRosterYear] = useState(today.year)
@@ -100,13 +108,20 @@ export default function SelfServiceHome() {
   // can read it directly rather than needing a dedicated RPC.
   useEffect(() => {
     if (!profile?.client_id) return
-    supabase.from('settings').select('tada_vehicle_rates, tada_purpose_options, tada_start_points').eq('client_id', profile.client_id).maybeSingle()
+    supabase.from('settings').select('tada_vehicle_rates, tada_purpose_options, tada_start_points, property_address, vat_number').eq('client_id', profile.client_id).maybeSingle()
       .then(({ data }) => {
         setTadaVehicleRates({ '2w': null, '4w': null, ev: null, ...(data?.tada_vehicle_rates || {}) })
         setTadaPurposeOptions(data?.tada_purpose_options?.length ? data.tada_purpose_options : DEFAULT_PURPOSE_OPTIONS)
         setTadaStartPoints(data?.tada_start_points?.length ? data.tada_start_points : DEFAULT_START_POINTS)
+        // Letterhead for the employee's own payslip — same source the owner's copy uses
+        // (clients.name + settings.property_address/vat_number, Nepal's PAN reused as-is).
+        setBizInfo({
+          name: profile.clients?.name || '',
+          address: data?.property_address || '',
+          vatNumber: data?.vat_number || '',
+        })
       })
-  }, [profile?.client_id])
+  }, [profile?.client_id, profile?.clients?.name])
 
   async function enableNotifications() {
     setPushBusy(true); setPushMsg('')
@@ -122,25 +137,28 @@ export default function SelfServiceHome() {
   }
 
   const loadPayslips = useCallback(async () => {
-    const { data } = await supabase.rpc('get_my_hr_payslips')
+    const { data, error } = await supabase.rpc('get_my_hr_payslips')
+    setDataError(error ? 'Could not load your payslips. Please try again, or contact your manager if it keeps happening.' : '')
     setPayslips(data || [])
   }, [])
 
   const loadLeave = useCallback(async () => {
-    const [{ data: types }, { data: reqs }] = await Promise.all([
+    const [{ data: types, error: tErr }, { data: reqs, error: rErr }] = await Promise.all([
       supabase.rpc('get_my_leave_types'),
       supabase.rpc('get_my_leave_requests'),
     ])
+    setDataError(tErr || rErr ? 'Could not load your leave data. Please try again, or contact your manager if it keeps happening.' : '')
     setLeaveTypes(types || [])
     setLeaveRequests(reqs || [])
     if (!leaveTypeId && types?.length > 0) setLeaveTypeId(types[0].id)
   }, [leaveTypeId])
 
   const loadRoster = useCallback(async () => {
-    const [{ data }, { data: published }] = await Promise.all([
+    const [{ data, error }, { data: published }] = await Promise.all([
       supabase.rpc('get_my_roster', { p_bs_year: rosterYear, p_bs_month: rosterMonth }),
       supabase.rpc('get_my_roster_publish_status', { p_bs_year: rosterYear, p_bs_month: rosterMonth }),
     ])
+    setDataError(error ? 'Could not load your roster. Please try again, or contact your manager if it keeps happening.' : '')
     setRoster(data || [])
     setRosterPublished(!!published)
   }, [rosterYear, rosterMonth])
@@ -151,10 +169,11 @@ export default function SelfServiceHome() {
   }, [])
 
   const loadTada = useCallback(async () => {
-    const [{ data }, { data: vends }] = await Promise.all([
+    const [{ data, error }, { data: vends }] = await Promise.all([
       supabase.rpc('get_my_tada_claims'),
       supabase.rpc('get_my_client_vendors'),
     ])
+    setDataError(error ? 'Could not load your TADA claims. Please try again, or contact your manager if it keeps happening.' : '')
     setTadaClaims(data || [])
     setTadaVendors(vends || [])
   }, [])
@@ -318,6 +337,21 @@ export default function SelfServiceHome() {
           </p>
         )}
 
+        {/* Tint + full-opacity signal text per DESIGN.md — --theme-red has no paired foreground
+            token and ranges light-to-dark across presets, so a solid fill can't contrast on all. */}
+        {dataError && (
+          <div
+            role="alert"
+            style={{
+              marginBottom: 16, padding: '10px 12px', borderRadius: 8, fontSize: 12, lineHeight: 1.5,
+              background: 'rgba(248,113,113,0.12)', border: '1px solid rgba(248,113,113,0.35)',
+              color: 'var(--theme-red)',
+            }}
+          >
+            {dataError}
+          </div>
+        )}
+
         <div className="tab-bar" style={{ marginBottom: 20 }}>
           {[
             ['payslip', 'Payslip'], ['roster', 'Roster'], ['tada', 'TADA'], ['leave', 'Leave'],
@@ -338,22 +372,26 @@ export default function SelfServiceHome() {
           payslips === null ? <p style={{ color: 'var(--theme-text3)' }}>Loading…</p>
           : payslips.length === 0 ? <p style={{ color: 'var(--theme-text3)' }}>No finalized payslips yet.</p>
           : (
+            // Month rows open the full payslip rather than showing a partial breakdown inline:
+            // a summary that lists some lines but not all is what made the old card unreadable
+            // (Net Pay didn't follow from anything shown). Net Pay alone is honest at this level.
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {payslips.map(p => (
-                <div key={p.id} className="card" style={{ padding: 16 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <button
+                  key={p.id}
+                  className="card"
+                  onClick={() => setViewSlip(p)}
+                  style={{
+                    padding: 16, width: '100%', textAlign: 'left', cursor: 'pointer',
+                    font: 'inherit', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
+                  }}
+                >
+                  <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <span style={{ fontWeight: 700, color: 'var(--theme-text1)' }}>{BS_MONTHS[p.bs_month - 1]} {p.bs_year}</span>
-                    <span style={{ fontWeight: 700, color: 'var(--theme-green)' }}>NPR {fmt(p.net_pay)}</span>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, fontSize: 12, color: 'var(--theme-text2)' }}>
-                    <span>Basic</span><span style={{ textAlign: 'right' }}>{fmt(p.basic)}</span>
-                    <span>Allowances</span><span style={{ textAlign: 'right' }}>{fmt(p.allowances)}</span>
-                    <span>Gross</span><span style={{ textAlign: 'right' }}>{fmt(p.gross)}</span>
-                    <span>SSF (Employee)</span><span style={{ textAlign: 'right' }}>−{fmt(p.ssf_employee)}</span>
-                    {p.advance_deduction > 0 && (<><span>Advance</span><span style={{ textAlign: 'right' }}>−{fmt(p.advance_deduction)}</span></>)}
-                    {p.tds > 0 && (<><span>TDS</span><span style={{ textAlign: 'right' }}>−{fmt(p.tds)}</span></>)}
-                  </div>
-                </div>
+                    <span style={{ fontSize: 11, color: 'var(--theme-text3)' }}>Tap to view full payslip</span>
+                  </span>
+                  <span style={{ fontWeight: 700, color: 'var(--theme-green)', whiteSpace: 'nowrap' }}>NPR {fmt(p.net_pay)}</span>
+                </button>
               ))}
             </div>
           )
@@ -674,6 +712,23 @@ export default function SelfServiceHome() {
           </div>
         )}
       </div>
+
+      {/* The employee's own copy of the exact document the owner sees — same PayslipBody, so the
+          two can't drift. No Print button: this is a phone-first screen and the owner's copy is
+          the one that gets printed; the employee needs to be able to *read and check* theirs.
+          slip and emp are the same object here: get_my_hr_payslips returns the payslip columns
+          and the employee identity columns flattened into one row, since self-service accounts
+          can't read hr_employees directly (S316 restrictive policies). */}
+      {viewSlip && (
+        <Modal onClose={() => setViewSlip(null)} title="Payslip" maxWidth={520}>
+          <PayslipBody
+            slip={viewSlip}
+            emp={viewSlip}
+            periodLabel={`${BS_MONTHS[viewSlip.bs_month - 1]} ${viewSlip.bs_year}`}
+            bizInfo={bizInfo}
+          />
+        </Modal>
+      )}
     </div>
   )
 }
