@@ -18,7 +18,7 @@ import { explodeRecipeIngredients } from '../../utils/recipeCost'
 const CHART_COLORS = ['#c9a84c', '#34d399', '#60a5fa', '#f87171', '#a78bfa', '#fb923c', '#22d3ee', '#f472b6']
 
 export default function ClientDashboard() {
-  const { profile, clientId, isAdmin, clientModules, hasFeature, loading: authLoading, adminViewClientName } = useAuth()
+  const { profile, clientId, isAdmin, clientModules, hasFeature, hasImsAccess, loading: authLoading, adminViewClientName } = useAuth()
   const { colors, themeKey } = useTheme()
   const effectiveClientId = clientId || profile?.client_id
   const { scopedFrom, scopedInsert, scopedUpdate } = useScopedDb()
@@ -646,7 +646,10 @@ export default function ClientDashboard() {
   // Module-composable: show a section header per module only when 2+ modules are active.
   // Dashboard sections reflect the displayed client's actual subscription (clientModules),
   // not the admin route-access bypass — so admin "view as client" previews accurately.
-  const showIms = clientModules.ims
+  // Also requires the viewer's own ims_role grant (hasImsAccess) — every IMS page redirects
+  // an ims_role-less staffer (POS-only/HR-only login) here on denial, so this fallback must not
+  // itself leak the Food Cost%/margin/spend data those pages are gated to protect.
+  const showIms = clientModules.ims && hasImsAccess('staff')
   const showHr  = clientModules.hr
   const showPos = clientModules.pos
   const moduleCount = [showIms, showHr, showPos].filter(Boolean).length
@@ -726,7 +729,7 @@ export default function ClientDashboard() {
         )
       })()}
 
-      {clientModules.ims && !activePeriod && !loading && (
+      {showIms && !activePeriod && !loading && (
         <div
           className="card interactive-card" style={{ marginBottom: 20, cursor: 'pointer', borderColor: 'color-mix(in srgb, var(--theme-accent) 30%, transparent)' }}
           onClick={() => navigate('/periods')} role="button" tabIndex={0}
