@@ -294,6 +294,20 @@ export default function PayrollCalculation() {
   const flaggedCount = rows.filter(r => r.slip.breakdown.otDoubleCountRisk || r.stale).length
   const totalGross = rows.reduce((s, r) => s + r.slip.gross, 0)
   const totalNet   = rows.reduce((s, r) => s + r.netPay, 0)
+  const totals = rows.reduce((a, r) => {
+    a.ot       += r.slip.ot_amount
+    a.absence  += r.slip.absence_deduction
+    a.ssf      += r.slip.ssf_employee
+    a.tds      += r.tdsBreakdown.tds
+    a.advance  += r.advDed
+    a.tada     += r.tadaAmount
+    return a
+  }, { ot: 0, absence: 0, ssf: 0, tds: 0, advance: 0, tada: 0 })
+  // Only meaningful if every row has a stored payslip to sum — a partial sum (some employees
+  // "not generated") would silently read as a total, not a warning that the run is incomplete.
+  const totalStored = rows.length > 0 && rows.every(r => r.stored)
+    ? rows.reduce((s, r) => s + r.stored.net_pay, 0)
+    : null
   const runStatusLabel = !run ? 'No Payroll run yet' : run.status === 'finalized' ? 'Finalized' : (flaggedCount > 0 ? `Draft — review before finalizing` : 'Draft — matches this calculation')
 
   function handlePrint(row) {
@@ -406,6 +420,21 @@ export default function PayrollCalculation() {
                     )
                   })}
                 </tbody>
+                <tfoot>
+                  <tr style={{ fontWeight: 700, borderTop: '2px solid var(--theme-border)' }}>
+                    <td />
+                    <td style={{ color: 'var(--theme-text2)', fontSize: 12 }}>Total — {rows.length}</td>
+                    <td style={{ textAlign: 'right', color: 'var(--theme-text1)' }}>{fmt(totalGross)}</td>
+                    <td style={{ textAlign: 'right', color: totals.ot > 0 ? 'var(--theme-green)' : 'var(--theme-text2)' }}>{totals.ot > 0 ? `+${fmt(totals.ot)}` : '—'}</td>
+                    <td style={{ textAlign: 'right', color: totals.absence > 0 ? 'var(--theme-red)' : 'var(--theme-text2)' }}>{totals.absence > 0 ? `−${fmt(totals.absence)}` : '—'}</td>
+                    <td style={{ textAlign: 'right', color: totals.ssf > 0 ? 'var(--theme-red)' : 'var(--theme-text2)' }}>{totals.ssf > 0 ? `−${fmt(totals.ssf)}` : '—'}</td>
+                    <td style={{ textAlign: 'right', color: totals.tds > 0 ? 'var(--theme-red)' : 'var(--theme-text2)' }}>{totals.tds > 0 ? `−${fmt(totals.tds)}` : '—'}</td>
+                    <td style={{ textAlign: 'right', color: totals.advance > 0 ? 'var(--theme-purple)' : 'var(--theme-text2)' }}>{totals.advance > 0 ? `−${fmt(totals.advance)}` : '—'}</td>
+                    <td style={{ textAlign: 'right', color: totals.tada > 0 ? 'var(--theme-green)' : 'var(--theme-text2)' }}>{totals.tada > 0 ? `+${fmt(totals.tada)}` : '—'}</td>
+                    <td style={{ textAlign: 'right', color: 'var(--theme-accent)', fontSize: 15 }}>{fmt(totalNet)}</td>
+                    <td style={{ fontSize: 11, color: 'var(--theme-text2)' }}>{totalStored !== null ? `NPR ${fmt(totalStored)}` : '—'}</td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </div>

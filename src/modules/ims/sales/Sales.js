@@ -25,6 +25,7 @@ export default function Sales() {
   const [bulkSaved, setBulkSaved]   = useState(false)
   const [viewMode, setViewMode]     = useState('bulk') // bulk | summary
   const [sortBy, setSortBy]         = useState('rev_desc')
+  const [categoryFilter, setCategoryFilter] = useState('all')
   const [selectedDay, setSelectedDay] = useState(1)
   const [dailySales, setDailySales] = useState({})
   const [dailyForm, setDailyForm]   = useState({})
@@ -246,6 +247,8 @@ export default function Sales() {
     }
   })
 
+  const categories = [...new Set(recipes.map(r => r.category).filter(Boolean))].sort()
+
   const periodLabel = selectedPeriod
     ? `${BS_MONTHS[selectedPeriod.bs_month - 1]} ${selectedPeriod.bs_year}`
     : '—'
@@ -320,18 +323,28 @@ export default function Sales() {
           ))}
         </div>
         {viewMode === 'summary' && (
-          <select
-            value={sortBy}
-            onChange={e => setSortBy(e.target.value)}
-            style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '6px 10px', fontSize: 12, color: 'var(--theme-text1)', outline: 'none', marginBottom: 6 }}
-          >
-            <option value="rev_desc">Highest Revenue</option>
-            <option value="rev_asc">Lowest Revenue</option>
-            <option value="qty_desc">Highest Qty Sold</option>
-            <option value="qty_asc">Lowest Qty Sold</option>
-            <option value="price_desc">Highest Selling Price</option>
-            <option value="price_asc">Lowest Selling Price</option>
-          </select>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <select
+              value={categoryFilter}
+              onChange={e => setCategoryFilter(e.target.value)}
+              style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '6px 10px', fontSize: 12, color: 'var(--theme-text1)', outline: 'none', marginBottom: 6 }}
+            >
+              <option value="all">All Categories</option>
+              {categories.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <select
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value)}
+              style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '6px 10px', fontSize: 12, color: 'var(--theme-text1)', outline: 'none', marginBottom: 6 }}
+            >
+              <option value="rev_desc">Highest Revenue</option>
+              <option value="rev_asc">Lowest Revenue</option>
+              <option value="qty_desc">Highest Qty Sold</option>
+              <option value="qty_asc">Lowest Qty Sold</option>
+              <option value="price_desc">Highest Selling Price</option>
+              <option value="price_asc">Lowest Selling Price</option>
+            </select>
+          </div>
         )}
       </div>
 
@@ -695,21 +708,23 @@ export default function Sales() {
 
           {/* PERIOD SUMMARY */}
           {viewMode === 'summary' && (() => {
-            const summaryRecipes = [...recipes].sort((a, b) => {
-              const aqty = allDaySums[a.id] || 0
-              const bqty = allDaySums[b.id] || 0
-              const arev = aqty * (parseFloat(a.selling_price) || 0)
-              const brev = bqty * (parseFloat(b.selling_price) || 0)
-              switch (sortBy) {
-                case 'rev_desc':   return brev - arev
-                case 'rev_asc':    return arev - brev
-                case 'qty_desc':   return bqty - aqty
-                case 'qty_asc':    return aqty - bqty
-                case 'price_desc': return (parseFloat(b.selling_price) || 0) - (parseFloat(a.selling_price) || 0)
-                case 'price_asc':  return (parseFloat(a.selling_price) || 0) - (parseFloat(b.selling_price) || 0)
-                default:           return 0
-              }
-            })
+            const summaryRecipes = recipes
+              .filter(r => categoryFilter === 'all' || r.category === categoryFilter)
+              .sort((a, b) => {
+                const aqty = allDaySums[a.id] || 0
+                const bqty = allDaySums[b.id] || 0
+                const arev = aqty * (parseFloat(a.selling_price) || 0)
+                const brev = bqty * (parseFloat(b.selling_price) || 0)
+                switch (sortBy) {
+                  case 'rev_desc':   return brev - arev
+                  case 'rev_asc':    return arev - brev
+                  case 'qty_desc':   return bqty - aqty
+                  case 'qty_asc':    return aqty - bqty
+                  case 'price_desc': return (parseFloat(b.selling_price) || 0) - (parseFloat(a.selling_price) || 0)
+                  case 'price_asc':  return (parseFloat(a.selling_price) || 0) - (parseFloat(b.selling_price) || 0)
+                  default:           return 0
+                }
+              })
             const sumTotalQty = summaryRecipes.reduce((s, r) => s + (allDaySums[r.id] || 0), 0)
             const sumTotalRev = summaryRecipes.reduce((s, r) => s + (allDaySums[r.id] || 0) * (parseFloat(r.selling_price) || 0), 0)
             return (
