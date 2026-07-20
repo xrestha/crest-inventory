@@ -160,6 +160,10 @@ All colors must use CSS variables, not hardcoded hex. The full token set:
 
 **Exception:** Recharts SVG props (`fill`, `stroke`, `tick`) must stay as literal hex — CSS `var()` does not resolve inside SVG presentation attributes.
 
+Shape and type have their own token sets at the top of `Layout.css`: `--radius-sm|md|lg|xl|full` (8/12/18/24/999px) and `--font-size-rail-icon|brand|nav-icon|nav-item|group-label|micro|chevron`. Both scales are **closed sets** — DESIGN.md's frontmatter is the source of truth for which steps exist, and the `/impeccable` hook flags any literal off those scales. If a genuinely new step is needed, add it to DESIGN.md first, then use it.
+
+**Alpha tints must be an rgba() of a documented color, not a near-miss.** The codebase's convention is a literal `rgba(201,168,76,0.35)`-style tint rather than `color-mix()`; the hook resolves those back to the palette, so `rgba(248,113,113,…)` (signal-danger) passes while `rgba(220,38,38,…)` (a second, undocumented red) is flagged as drift. Two named traps, both of which shipped as real bugs and were fixed in S424: **a solid signal-color fill needs a paired foreground token, and only `--theme-accent` has one** (`--theme-accent-text`). `--theme-red` ranges from light (`#f87171` Dark) to dark (`#dc2626` Bright) across the ten presets, so no single foreground contrasts on all of them — use DESIGN.md's tint pattern (alpha fill + full-opacity signal text) for red/amber/green instead of a solid fill. And **`rgba(255,255,255,…)` as a "slightly brighter border" is invisible on the five light presets** — step the border to the accent at low alpha instead.
+
 ### Component library (reusable)
 
 | Component | File | Notes |
@@ -169,6 +173,8 @@ All colors must use CSS variables, not hardcoded hex. The full token set:
 | `Fab` | `src/components/Fab.js` | Fixed bottom-right `+ Add` button |
 | `Modal` | `src/components/Modal.js` | Centered overlay with backdrop-click close |
 | `BsCalendarPicker` | `src/components/BsCalendarPicker.js` | BS year/month/day picker, calendar-grid UI |
+| `QtyInput` | `src/components/QtyInput.js` | Numeric field that also accepts arithmetic (`3*24+7` → `79`). Use for any qty/rate box. Takes `onChange` (fires live for plain numbers) + `onCommit` (fires on blur/Enter with the evaluated number), and a `wrapperStyle` for the positioning span the result badge anchors to. **The raw expression never leaves the component** — the parent only ever receives a number or `''`. |
+| `Calculator` | `src/components/Calculator.js` | App-wide Quick Calculator modal (Alt+C), mounted once in `Layout.js`. Import it aliased — `Calculator` is also a lucide icon name. |
 | `ModuleGate` | `src/components/ModuleGate.js` | Module-level route guard |
 | `PremiumGate` | `src/components/PremiumGate.js` | Plan/feature-level route guard |
 
@@ -188,6 +194,10 @@ Use these global classes from `Layout.css` — don't repeat inline styles:
 ### Every `type="password"` input needs an explicit `autoComplete`
 
 Without one, Chrome guesses from `type` + surrounding context — and any `type="password"` field anywhere on the page makes it treat the nearest preceding text input as a login username, which has bled a saved login into unrelated fields (a `SearchableSelect` search box, a signup form) more than once (S329). Use `autoComplete="new-password"` on every PIN/account-creation field (POS Staff Add/Reset PIN, Enable Self-Service, trial signup), and `autoComplete="username"` / `"current-password"` on an actual sign-in form's email/password. PIN-pad login screens (POS/HR Self-Service) build their own keypad UI rather than a text input, so they're unaffected.
+
+### Arithmetic in input fields
+
+`src/utils/evalMath.js` is the single evaluator behind both `QtyInput` and the Quick Calculator. It is a hand-written recursive-descent parser, **never `eval()` / `new Function()`** — these are inputs where a pasted string reaches the evaluator directly, and the grammar (`expr → term → factor`, supporting `+ - * / ( )`, unary minus, `×`/`÷` glyphs and comma separators) can only ever produce a number. It also keeps working under a strict CSP. `evaluate()` returns `null` for anything malformed — including division by zero, so `Infinity` can never reach a saved quantity — and every caller reads `null` as "not an expression, leave the user's input alone" rather than as an error to surface. `looksLikeExpression()` gates the whole deferred-commit path: a plain `146` or a leading-minus `-5` is not an expression and must keep behaving exactly as a bare `<input type="number">` did.
 
 ### Purchases: qty/rate storage convention
 

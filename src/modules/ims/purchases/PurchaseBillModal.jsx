@@ -5,6 +5,7 @@ import BsCalendarPicker from '../../../components/BsCalendarPicker'
 import Tip from '../../../components/Tip'
 import Modal from '../../../components/Modal'
 import SearchableSelect from '../../../components/SearchableSelect'
+import QtyInput from '../../../components/QtyInput'
 import { getCf, calcBillTotals } from './purchasesHelpers'
 
 const EMPTY_HEADER = { vendor_id: '', bs_day: '', invoice_ref: '', payment_method: 'Cash', discount: '', vat_inclusive: false }
@@ -265,16 +266,18 @@ export default function PurchaseBillModal({ period, items, itemOptions, vendors,
                             {inputUnit}
                           </span>
                         )}
-                        <input type="number" min="0" step="any" value={line.qty} placeholder="0"
-                          onChange={e => updateBillLine(line._key, 'qty', e.target.value)}
-                          style={{ ...cellInput, paddingLeft: inputUnit ? 34 : cellInput.padding.split(' ')[1] }} />
+                        <QtyInput value={line.qty} placeholder="0"
+                          onChange={v => updateBillLine(line._key, 'qty', v)}
+                          wrapperStyle={{ width: '100%' }}
+                          style={{ ...cellInput, boxSizing: 'border-box', fontFamily: 'inherit', paddingLeft: inputUnit ? 34 : cellInput.padding.split(' ')[1] }} />
                       </div>
                       {cf > 1 && line.qty && <div style={{ fontSize: 10, color: 'var(--theme-text3)', textAlign: 'right', marginTop: 2 }}>= {(parseFloat(line.qty) * cf).toLocaleString()} {selItem?.uom}</div>}
                     </td>
                     <td style={{ padding: '6px 8px 4px', verticalAlign: 'middle' }}>
-                      <input type="number" min="0" step="any" value={line.rate} placeholder="0"
-                        onChange={e => updateBillLine(line._key, 'rate', e.target.value)}
-                        style={cellInput} />
+                      <QtyInput value={line.rate} placeholder="0"
+                        onChange={v => updateBillLine(line._key, 'rate', v)}
+                        wrapperStyle={{ width: '100%' }}
+                        style={{ ...cellInput, boxSizing: 'border-box', fontFamily: 'inherit' }} />
                     </td>
                     <td style={{ padding: '6px 4px 4px', verticalAlign: 'middle', textAlign: 'center' }}>
                       <input

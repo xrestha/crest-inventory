@@ -16,6 +16,12 @@ colors:
   signal-danger: "#f87171"
   signal-warning: "#fbbf24"
   signal-categorical: "#a78bfa"
+  # Print-only, documented 2026-07-20. Print is a real surface here (stock count sheets,
+  # payslips, purchase bills, KOTs), but the palette above is all theme-token driven and none
+  # of it survives onto paper — @media print forces white bg / black text. These two neutral
+  # rules are the only non-black print values. Valid ONLY inside a print block.
+  print-rule: "#cccccc"
+  print-rule-strong: "#999999"
 typography:
   wordmark:
     fontFamily: "Georgia, serif"
@@ -35,11 +41,54 @@ typography:
     fontWeight: 500
     lineHeight: 1.4
     letterSpacing: "0.08em"
+  # The three roles above are the system's semantic anchors. The steps below complete the ramp
+  # the product actually ships (added 2026-07-20) — previously the frontmatter captured only
+  # 16/13/11px while the prose already described a 14-15px title tier and a 16-20px display
+  # tier, so every other real size read as undocumented drift. The named sidebar sizes mirror
+  # the --font-size-* custom properties defined at the top of Layout.css; page-level sizes are
+  # inline. Sizes are a closed set: if a new one is genuinely needed, add it here first.
+  stat-value-lg:
+    fontSize: "32px"
+    fontWeight: 700
+  stat-value:
+    fontSize: "24px"
+    fontWeight: 700
+  numeral:
+    fontSize: "22px"
+    fontWeight: 700
+  page-title:
+    fontSize: "20px"
+    fontWeight: 700
+  section-heading:
+    fontSize: "18px"
+    fontWeight: 700
+  rail-icon:
+    fontSize: "17px"
+  card-heading:
+    fontSize: "15px"
+    fontWeight: 600
+  title:
+    fontSize: "14px"
+    fontWeight: 600
+  meta:
+    fontSize: "12px"
+    fontWeight: 400
+  micro:
+    fontSize: "10px"
+    fontWeight: 700
+    letterSpacing: "0.08em"
+  chevron:
+    fontSize: "9px"
 rounded:
   sm: "8px"
   md: "12px"
   lg: "18px"
   xl: "24px"
+  # Fully-rounded. Documented 2026-07-20 — the sidebar module switcher's pill signature (see
+  # Navigation) already shipped this shape, it just wasn't in the scale. Reserved for that
+  # switcher and for shapes whose radius is simply half their own height (the 6px scrollbar
+  # thumb). Not a general-purpose step: see the Tabs note on why .tab-btn stays at md.
+  full: "999px"
 spacing:
   xs: "4px"
   sm: "8px"

@@ -14,7 +14,7 @@
   flex-shrink: 0;
   background: var(--theme-card);
   border: 1px solid var(--theme-border);
-  border-radius: 20px;
+  border-radius: var(--radius-md);
   color: var(--theme-text3);
   font-size: 12px;
   padding: 6px 14px;
@@ -34,7 +34,7 @@
   height: 28px;
   background: var(--theme-card);
   border: 1px solid var(--theme-border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   margin-bottom: 12px;
 }
@@ -66,7 +66,7 @@
 .mobile-stock-card {
   background: var(--theme-card);
   border: 1px solid var(--theme-border);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 14px;
 }
 .mobile-stock-card.has-value {
@@ -107,7 +107,10 @@
   gap: 8px;
 }
 .mobile-stock-input {
-  flex: 1;
+  /* flex sizing lives on QtyInput's positioning wrapper now (it needs to be the flex child so
+     the "= 79" result badge can anchor to the input); the input just fills that wrapper. */
+  width: 100%;
+  box-sizing: border-box;
   min-width: 0;
   background: var(--theme-input-bg);
   border: 1px solid var(--theme-border);

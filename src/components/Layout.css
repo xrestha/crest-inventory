@@ -21,7 +21,7 @@
 
 ::-webkit-scrollbar-thumb {
   background: var(--theme-border);
-  border-radius: 3px;
+  border-radius: var(--radius-full);
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -75,6 +75,9 @@
   --radius-md: 12px;
   --radius-lg: 18px;
   --radius-xl: 24px;
+  /* Fully-rounded. The sidebar module switcher's pill signature (see DESIGN.md → Navigation)
+     and the 6px scrollbar thumb, whose "3px" was really just half its own width. */
+  --radius-full: 999px;
 }
 
 @keyframes rail-tip-in {
@@ -210,6 +213,11 @@
 }
 .sidebar-search-label {
   font-size: var(--font-size-micro);
+}
+/* Icon-only sibling of the search trigger — square rather than inheriting the label-sized
+   horizontal padding it no longer has text to balance. */
+.sidebar-calc-btn {
+  padding: 5px 6px;
 }
 
 /* Module switcher — horizontal pill row expanded, icon column collapsed (same buttons/data,
@@ -759,11 +767,11 @@ tr.interactive-row:focus-visible {
 .btn-danger {
   background: var(--theme-input-bg);
   color: var(--theme-red);
-  border: 1px solid rgba(220,38,38,0.45);
+  border: 1px solid rgba(248,113,113,0.45);
 }
 
 .btn-danger:hover {
-  background: rgba(220,38,38,0.12);
+  background: rgba(248,113,113,0.12);
   border-color: var(--theme-red);
 }
 
@@ -881,7 +889,7 @@ input[type="number"] {
 }
 
 .badge-gray {
-  background: rgba(120,113,108,0.10);
+  background: rgba(138,146,163,0.10);
   color: var(--theme-text2);
 }
 
@@ -992,9 +1000,11 @@ input[type="number"] {
   font-family: inherit;
 }
 
+/* Accent at 25% — quieter than --active's 50%, so hover→active reads as a progression.
+   The previous rgba(255,255,255,0.2) was invisible on the five light presets. */
 .tab-btn:hover {
   color: var(--theme-text1);
-  border-color: rgba(255,255,255,0.2);
+  border-color: rgba(201,168,76,0.25);
 }
 
 .tab-btn--active {
@@ -1047,17 +1057,23 @@ input[type="number"] {
   border-color: var(--theme-text2);
 }
 
+/* accent-text, not a hardcoded #000 — the Accent-Text Pairing Rule. Five presets pair their
+   accent with #ffffff, where black failed contrast outright. */
 .pay-method-btn:hover,
 .pay-method-btn:active {
   background: var(--theme-accent);
-  color: #000;
+  color: var(--theme-accent-text);
   border-color: var(--theme-accent);
 }
 
+/* Red tint rather than a solid red fill (DESIGN.md's Danger-button spec). There is no paired
+   red-text token, and --theme-red ranges from light (#f87171 Dark, #ff5555 Dracula) to dark
+   (#dc2626 Bright/Light, #d20f39 Latte) across the presets, so NO single foreground contrasts
+   on all ten — the previous #fff failed on four. A tint sidesteps the pairing problem entirely. */
 .pay-method-btn--credit:hover,
 .pay-method-btn--credit:active {
-  background: var(--theme-red);
-  color: #fff;
+  background: rgba(248,113,113,0.15);
+  color: var(--theme-red);
   border-color: var(--theme-red);
 }
 

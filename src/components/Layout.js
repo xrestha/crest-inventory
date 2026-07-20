@@ -6,6 +6,9 @@ import { supabase } from '../supabaseClient'
 import { getSubStatus } from '../utils/subscription'
 import RailTip from './RailTip'
 import CommandPalette from './CommandPalette'
+// Aliased — `Calculator` is already taken in this file by the lucide icon used for the HR
+// Calculation nav entry.
+import QuickCalculator from './Calculator'
 import { useNavBadgeCounts } from '../shared/hooks/useNavBadgeCounts'
 import {
   LayoutDashboard, CalendarRange, Package, Truck, ShoppingCart, ClipboardList, ClipboardCheck,
@@ -396,11 +399,18 @@ export default function Layout() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hrVisible, posVisible, isAdmin, plan, dashLabel])
 
+  const [calcOpen, setCalcOpen] = useState(false)
+
   useEffect(() => {
     function onKeyDown(e) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
         setPaletteOpen(o => !o)
+      }
+      // Alt+C rather than Ctrl+Shift+C — the latter is Chrome's devtools element picker.
+      if (e.altKey && !e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'c') {
+        e.preventDefault()
+        setCalcOpen(o => !o)
       }
     }
     window.addEventListener('keydown', onKeyDown)
@@ -453,15 +463,15 @@ export default function Layout() {
       <div style={{ margin: '4px 8px 2px', border: `1px solid ${tierColor}25`, borderRadius: 'var(--radius-lg)', padding: '10px 12px', background: `${tierColor}07` }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
           <span style={{ fontSize: 9, fontWeight: 800, color: tierColor, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{tierLabel} Plan</span>
-          <span style={{ fontSize: 9, color: '#4b5563' }}>{locked.length} features</span>
+          <span style={{ fontSize: 9, color: 'var(--theme-text3)' }}>{locked.length} features</span>
         </div>
         {shown.map(item => (
-          <div key={item.to} style={{ fontSize: 11, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+          <div key={item.to} style={{ fontSize: 11, color: 'var(--theme-text3)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
             <span style={{ color: tierColor, fontSize: 10, fontWeight: 700 }}>+</span>
             <span>{item.label}</span>
           </div>
         ))}
-        {more > 0 && <div style={{ fontSize: 11, color: '#4b5563', marginTop: 2, paddingLeft: 16 }}>and {more} more…</div>}
+        {more > 0 && <div style={{ fontSize: 11, color: 'var(--theme-text3)', marginTop: 2, paddingLeft: 16 }}>and {more} more…</div>}
         <button
           onClick={() => navigate('/pricing')}
           style={{ marginTop: 10, width: '100%', fontSize: 10, fontWeight: 700, color: tierColor, background: `${tierColor}15`, border: `1px solid ${tierColor}35`, borderRadius: 5, padding: '5px 0', cursor: 'pointer', letterSpacing: '0.04em' }}
@@ -551,6 +561,16 @@ export default function Layout() {
             <button className="sidebar-search-btn" onClick={() => setPaletteOpen(true)} title="Search pages (Ctrl+K)" aria-label="Search pages">
               <Search size={13} strokeWidth={2} aria-hidden="true" />
               <span className="sidebar-search-label">Ctrl K</span>
+            </button>
+            {/* Icon-only (no shortcut label) — the brand row can't fit a second "Alt C" chip
+                without squeezing the wordmark; the shortcut lives in the title tooltip. */}
+            <button
+              className="sidebar-search-btn sidebar-calc-btn"
+              onClick={() => setCalcOpen(true)}
+              title="Quick calculator (Alt+C)"
+              aria-label="Open quick calculator"
+            >
+              <Calculator size={13} strokeWidth={2} aria-hidden="true" />
             </button>
           </div>
 
@@ -657,7 +677,7 @@ export default function Layout() {
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <span className="sidebar-client-label">
                     Property ·{' '}
-                    <span style={{ color: plan === 'pro' ? '#c9a84c' : plan === 'growth' ? '#34d399' : '#6b7280', fontWeight: 700 }}>
+                    <span style={{ color: plan === 'pro' ? 'var(--theme-accent)' : plan === 'growth' ? 'var(--theme-green)' : 'var(--theme-text3)', fontWeight: 700 }}>
                       {plan === 'pro' ? 'Pro' : plan === 'growth' ? 'Growth' : 'Starter'}
                     </span>
                   </span>
@@ -694,21 +714,24 @@ export default function Layout() {
               <NavLink to="/admin/clients"
                 className={({ isActive }) => `sidebar-link${isActive ? ' sidebar-link--active' : ''}`}
                 style={newTrialCount > 0 && pendingTrialCount === 0 ? {
-                  background: 'rgba(245,158,11,0.10)',
-                  boxShadow: 'inset 0 0 0 1px rgba(245,158,11,0.35)',
+                  background: 'rgba(251,191,36,0.10)',
+                  boxShadow: 'inset 0 0 0 1px rgba(251,191,36,0.35)',
                 } : {}}
                 onClick={() => setMobileSidebarOpen(false)}>
                 <span className="sidebar-icon"><Building2 size={16} strokeWidth={1.75} /></span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
                   Clients
+                  {/* Both count badges use an alpha-tint fill + full-opacity signal text, per
+                      DESIGN.md's badge spec — the previous solid fills paired hardcoded #fff /
+                      #000 foregrounds that failed contrast on several presets. */}
                   {pendingTrialCount > 0 && (
-                    <span style={{ fontSize: 11, fontWeight: 800, background: '#f87171', color: '#fff', borderRadius: 10, padding: '2px 8px', lineHeight: 1.4 }}
+                    <span style={{ fontSize: 11, fontWeight: 800, background: 'rgba(248,113,113,0.15)', color: 'var(--theme-red)', border: '1px solid rgba(248,113,113,0.35)', borderRadius: 10, padding: '2px 8px', lineHeight: 1.4 }}
                       title="Clients requesting to subscribe">
                       {pendingTrialCount} want to sub
                     </span>
                   )}
                   {newTrialCount > 0 && (
-                    <span style={{ fontSize: 11, fontWeight: 800, background: '#f59e0b', color: '#000', borderRadius: 10, padding: '2px 8px', lineHeight: 1.4 }}
+                    <span style={{ fontSize: 11, fontWeight: 800, background: 'rgba(251,191,36,0.15)', color: 'var(--theme-amber)', border: '1px solid rgba(251,191,36,0.35)', borderRadius: 10, padding: '2px 8px', lineHeight: 1.4 }}
                       title="New trial signups in the last 7 days">
                       {newTrialCount} NEW
                     </span>
@@ -802,12 +825,12 @@ export default function Layout() {
         {/* Trial banners — shown from day 4 onwards and after expiry */}
         {isTrial && !trialExpired && trialDaysLeft <= 4 && (
           <div style={{
-            background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.35)',
+            background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.35)',
             borderRadius: 8, padding: '12px 16px', marginBottom: 20,
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
           }}>
             <div>
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#f59e0b' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--theme-amber)' }}>
                 ⏳ {trialDaysLeft} day{trialDaysLeft !== 1 ? 's' : ''} left in your free trial
               </span>
               <span style={{ fontSize: 12, color: 'var(--theme-text2)', marginLeft: 10 }}>
@@ -818,11 +841,11 @@ export default function Layout() {
               <button
                 onClick={async () => { setSubscribing(true); await requestSubscription(); setSubscribing(false) }}
                 disabled={subscribing}
-                style={{ background: '#f59e0b', border: 'none', color: '#0f1117', padding: '7px 18px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap' }}>
+                style={{ background: 'var(--theme-accent)', border: 'none', color: 'var(--theme-accent-text)', padding: '7px 18px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap' }}>
                 {subscribing ? 'Sending…' : 'I Want to Subscribe →'}
               </button>
             ) : (
-              <span style={{ fontSize: 12, color: '#f59e0b', fontWeight: 600 }}>✓ Request sent — we'll be in touch</span>
+              <span style={{ fontSize: 12, color: 'var(--theme-amber)', fontWeight: 600 }}>✓ Request sent — we'll be in touch</span>
             )}
           </div>
         )}
@@ -845,7 +868,7 @@ export default function Layout() {
               <button
                 onClick={async () => { setSubscribing(true); await requestSubscription(); setSubscribing(false) }}
                 disabled={subscribing}
-                style={{ background: '#f87171', border: 'none', color: '#fff', padding: '7px 18px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap' }}>
+                style={{ background: 'var(--theme-accent)', border: 'none', color: 'var(--theme-accent-text)', padding: '7px 18px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap' }}>
                 {subscribing ? 'Sending…' : 'Subscribe Now →'}
               </button>
             ) : (
@@ -878,6 +901,8 @@ export default function Layout() {
         items={paletteItems}
         onSelect={handlePaletteSelect}
       />
+
+      <QuickCalculator open={calcOpen} onClose={() => setCalcOpen(false)} />
     </div>
   )
 }

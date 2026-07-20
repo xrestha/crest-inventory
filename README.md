@@ -150,6 +150,50 @@ Annual = 25% off monthly, applied uniformly everywhere annual pricing appears.
 
 ## Session Log
 
+### S424 — 2026-07-20 — Design-token drift pass: 60 `/impeccable` findings → 2, three real contrast bugs fixed
+
+S423's hook runs kept reporting findings on files that session only incidentally touched, and they were left unaddressed at the time. Ran the detector properly across the four files: **60 findings**, not the ~13 the hook's truncated per-file summary suggested.
+
+**Three were real bugs, not stylistic drift** — all in the same class: a hardcoded foreground on a themed background, which only works by coincidence on the preset it was authored against.
+
+1. `.pay-method-btn--credit:hover` used `color:#fff` on `background: var(--theme-red)`. The presets' reds run from light (`#f87171` Dark, `#ff5555` Dracula) to dark (`#dc2626` Bright/Light, `#d20f39` Latte), so white failed WCAG AA on four of ten (~2.6:1). **There is no foreground that works on a solid red fill across all ten**, and no paired `--theme-red-text` token exists — so it moved to DESIGN.md's documented Danger pattern (alpha tint + full-opacity red text), which sidesteps pairing entirely.
+2. `.pay-method-btn:hover` used `color:#000` on `var(--theme-accent)` — the Accent-Text Pairing Rule DESIGN.md names explicitly. Five presets pair their accent with `#ffffff`, where black failed outright. Fixed to `var(--theme-accent-text)`; this one keeps its solid fill because the paired token does exist.
+3. `.tab-btn:hover` used `rgba(255,255,255,0.2)` as a "slightly brighter" border — invisible on all five light presets. Now steps to the accent at 25%, below `--active`'s 50%, so hover→active reads as a progression.
+
+**The rest was genuine token drift:** a second amber (`#f59e0b`) alongside signal-warning `#fbbf24`; a second red (`#dc2626`) alongside `#f87171`; hardcoded greys (`#4b5563`/`#6b7280`) that were also low-contrast on dark presets; and `#60a5fa` across Help.js's whole HR section — which is `MODULE_COLORS.ims`, i.e. the *IMS* blue, while the IMS and POS accordions both correctly use the accent. HR was the odd one out; it now matches. Two sidebar count badges also carried solid fills with `#fff`/`#000` against DESIGN.md's badge spec, and both trial-CTA buttons moved to the standard primary spec.
+
+**Two findings were the design system's own gaps, not code defects,** and were fixed by documenting reality rather than rewriting working code — the path the detector itself recommends:
+
+- DESIGN.md's frontmatter `typography` captured only 16/13/11px, while its *prose* already described a 14–15px title tier and a 16–20px display tier. Since the detector builds its allowed ramp from the frontmatter roles, every other real size read as drift. The ramp now documents all twelve steps the product ships (9–32px), mirroring Layout.css's existing `--font-size-*` properties.
+- `rounded` gained `full: 999px`, plus a matching `--radius-full`. The sidebar module switcher's pill signature already shipped that shape (DESIGN.md → Navigation says so in prose) — it was just never in the scale. The 6px scrollbar thumb's "3px" was only ever half its own width, so it now says what it means.
+- Print colors are newly documented at all: print is a real surface here (count sheets, payslips, bills, KOTs) but nothing in the theme palette survives `@media print`, which forces white/black. The two neutral rules (`#cccccc`, `#999999`) are now named as print-only.
+
+**Left unfixed, deliberately: 2 `layout-transition` warnings** on `.sidebar-shell`'s `width` and `.main-content`'s `margin-left`. DESIGN.md already ratifies these as an Accepted exception with the reasoning intact — `.sidebar-wrap` is `position: fixed`, so real space must be reserved for its current width; a transform-only fix means restructuring sidebar positioning app-wide, and the animation only fires on a rare manual toggle. Not silenced with an ignore rule, so they stay visible if that reasoning ever stops holding.
+
+Net: **60 → 2**, Layout.js and Help.js and Stock.css each to zero. No visual regression intended anywhere except the two trial CTAs (now brass primary rather than solid amber/red) and the credit pay-method hover (now a tint) — both of which were the contrast fixes.
+
+**Note:** `.impeccable/design.json` is still the 2026-07-12 sidecar and predates the rebrand (its title is "Crest Inventory"). Regenerating it means `/impeccable document`, which rewrites DESIGN.md *from code* and would discard the hand-written named rules and history notes — left alone deliberately; worth a manual reconcile if the sidecar's tonal ramps ever matter.
+
+**Files:** `src/components/Layout.js`, `src/components/Layout.css`, `src/modules/ims/stockcount/Stock.css`, `src/pages/Help.js`, `DESIGN.md`, `CLAUDE.md`
+
+### S423 — 2026-07-20 — Inline arithmetic in qty/rate fields + an app-wide Quick Calculator
+
+Founder asked for "a calculator in the IMS module". Clarified into two complementary pieces, both shipped:
+
+**1. Inline math in quantity fields.** Counting stock is full of arithmetic ("3 cartons of 24 plus 7 loose") and doing it elsewhere then typing the answer back is where transcription errors get in. New **`QtyInput`** (`src/components/QtyInput.js`) accepts an expression — type `3*24+7`, it commits `79`. The running result previews in a small badge above the box; Enter or blur applies, Esc cancels, and an incomplete expression (`3*`, `2+(4`) reverts to the previous value rather than saving a partial reading of it.
+
+The key design invariant: **the raw expression lives only in the component's local `draft` state** — the parent is only ever handed a number (or `''`). So live row totals, COGS math, the offline IndexedDB queue and DB writes can never see a half-typed `3*24` and `parseFloat` it down to `3`. Plain numeric typing is still passed through on every keystroke exactly as the old `<input type="number">` did; the deferred-commit path only engages once the text actually contains an operator, so the normal case is behaviourally unchanged.
+
+Wired into: Stock Count (all four entry tabs, desktop table + mobile cards + the Daily Wastage qty box) and the Purchase Bill modal (qty + rate). Renders `type="text"` — `type="number"` refuses to hold `3*24` at all — with `inputMode="decimal"` preserving the mobile numeric keypad.
+
+**2. Quick Calculator** (`src/components/Calculator.js`) — a small portalled modal over any page, opened with **Alt+C** (chosen over Ctrl+Shift+C, which is Chrome's devtools element picker) or the `⌗` button beside the sidebar search. Keypad + keyboard entry, a session tape of the last 50 calculations (click a row to reuse the expression, click a result to copy), and a sum-of-tape footer. The tape deliberately survives close/reopen; only the expression box resets.
+
+**Shared evaluator** `src/utils/evalMath.js` — a hand-written recursive-descent parser (`expr → term → factor`), deliberately **not** `eval()`/`new Function()`: those execute arbitrary JS and these are inputs where a pasted string reaches the evaluator directly. This grammar can only ever produce a number, and it keeps working under a strict CSP. Handles precedence, associativity, brackets, unary minus, `×`/`÷` glyphs, and comma thousands-separators; returns `null` (→ "leave the input alone") for anything malformed, including division by zero, so `Infinity` can never reach a saved quantity. Verified against 32 cases covering precedence, float cleanup (`0.1+0.2` → `0.3`), and injection-shaped inputs (`alert(1)`, `1+1;console.log(9)` → `null`).
+
+One near-miss worth noting: `Calculator` was already imported in `Layout.js` as a lucide icon (HR → Calculation nav entry), so the component import had to be aliased `QuickCalculator` — duplicate top-level identifiers are a hard compile error, not a shadow.
+
+**Files:** `src/utils/evalMath.js` (new), `src/components/QtyInput.js` (new), `src/components/Calculator.js` (new), `src/components/Layout.js`, `src/components/Layout.css`, `src/modules/ims/stockcount/Stock.js`, `src/modules/ims/stockcount/Stock.css`, `src/modules/ims/purchases/PurchaseBillModal.jsx`, `src/pages/Help.js`
+
 ### S422 — 2026-07-20 — Stock Count: re-runnable "Pull from last month" opening-stock button
 
 Founder closed Ashadh 2083 → opened Shrawan 2083 but Shrawan's Opening Stock was empty despite Ashadh having a full Closing Stock count. Root cause: the S409 carry-forward (`Periods.js`'s `carryForwardOpeningStock`) is a **one-time snapshot taken at the instant of close** — if the closing count wasn't fully saved at that moment (e.g. the month was closed first and counted afterward), or the close ran on a pre-S409 / service-worker-cached bundle, the new period's opening stays blank and there was no way to re-trigger it.

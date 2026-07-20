@@ -5,6 +5,7 @@ import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
 import Tip from '../../../components/Tip'
 import SearchableSelect from '../../../components/SearchableSelect'
+import QtyInput from '../../../components/QtyInput'
 import './Stock.css'
 import { cacheItems, getCachedItems, cacheCategories, getCachedCategories, cachePeriods, getCachedPeriods, cacheStockData, getCachedStockData, enqueue, getQueue, dequeue } from '../../../utils/offlineQueue'
 import { getBsToday } from '../../../utils/bsCalendar'
@@ -299,11 +300,14 @@ export default function Stock() {
 
   flushRef.current = flushQueue
 
-  async function saveRow(itemId) {
+  // `overrideQty` exists for QtyInput's commit path: it hands us the evaluated number in the
+  // same tick it calls updateField, so `stockData` read here would still hold the pre-commit
+  // value. Save All passes nothing and reads state, which is correct for it.
+  async function saveRow(itemId, overrideQty) {
     setSaving(prev => ({ ...prev, [itemId]: true }))
-    const row = stockData[itemId] || {}
     const fieldKey = activeTab === 'opening' ? 'opening' : activeTab === 'closing' ? 'closing' : activeTab === 'staff_meal' ? 'staff_meal' : 'wastage'
-    const qty = parseFloat(row[fieldKey]) || 0
+    const source = overrideQty !== undefined ? overrideQty : (stockData[itemId] || {})[fieldKey]
+    const qty = parseFloat(source) || 0
     await persistValue(itemId, fieldKey, qty)
     setSaving(prev => ({ ...prev, [itemId]: false }))
   }
@@ -840,7 +844,13 @@ export default function Stock() {
                 </div>
                 <div style={{ flex: '0 1 110px' }}>
                   <label style={{ display: 'block', fontSize: 11, color: 'var(--theme-text2)', marginBottom: 5 }}>Qty</label>
-                  <input type="number" min="0" step="any" style={{ ...winp, width: '100%', textAlign: 'right' }} value={wEntry.qty} onChange={e => setWEntry(w => ({ ...w, qty: e.target.value }))} placeholder="0" />
+                  <QtyInput
+                    value={wEntry.qty}
+                    onChange={v => setWEntry(w => ({ ...w, qty: v }))}
+                    placeholder="0"
+                    wrapperStyle={{ width: '100%' }}
+                    style={{ ...winp, width: '100%', textAlign: 'right', boxSizing: 'border-box' }}
+                  />
                 </div>
                 <div style={{ flex: '1 1 150px' }}>
                   <label style={{ display: 'block', fontSize: 11, color: 'var(--theme-text2)', marginBottom: 5 }}>
@@ -1012,14 +1022,14 @@ export default function Stock() {
                         )}
                       </div>
                       <div className="mobile-stock-card-input-row">
-                        <input
-                          type="number" min="0"
-                          value={val === '' ? '' : val}
-                          onChange={e => updateField(item.id, fieldKey, e.target.value)}
-                          onBlur={() => saveRow(item.id)}
+                        <QtyInput
+                          value={val}
+                          onChange={v => updateField(item.id, fieldKey, v)}
+                          onCommit={v => saveRow(item.id, v)}
                           placeholder="0"
                           disabled={isLocked}
                           className="mobile-stock-input"
+                          wrapperStyle={{ flex: 1, minWidth: 0 }}
                         />
                         <span className="mobile-stock-unit">{item.uom}</span>
                         {lineValue != null && (
@@ -1077,18 +1087,18 @@ export default function Stock() {
                               <td><span className="badge badge-yellow">{item.categories?.name}</span></td>
                               <td style={{ textAlign: 'right', color: 'var(--theme-text2)' }}>{item.uom}</td>
                               <td style={{ textAlign: 'right', width: 140 }}>
-                                <input
-                                  type="number" min="0"
-                                  value={val === '' ? '' : val}
-                                  onChange={e => updateField(item.id, fieldKey, e.target.value)}
-                                  onBlur={() => saveRow(item.id)}
+                                <QtyInput
+                                  value={val}
+                                  onChange={v => updateField(item.id, fieldKey, v)}
+                                  onCommit={v => saveRow(item.id, v)}
                                   placeholder="0"
                                   disabled={isLocked}
+                                  wrapperStyle={{ width: 110 }}
                                   style={{
                                     background: 'var(--theme-bg)', border: '1px solid var(--theme-border)',
                                     borderRadius: 5, padding: '6px 10px', fontSize: 13,
-                                    color: 'var(--theme-text1)', outline: 'none', width: 110,
-                                    textAlign: 'right',
+                                    color: 'var(--theme-text1)', outline: 'none', width: '100%',
+                                    textAlign: 'right', fontFamily: 'inherit', boxSizing: 'border-box',
                                     borderColor: val > 0 ? 'rgba(201,168,76,0.4)' : 'var(--theme-border)'
                                   }}
                                 />

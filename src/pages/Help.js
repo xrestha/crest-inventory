@@ -48,7 +48,12 @@ const IMS_FEATURE_TIERS = [
       {
         icon: '⊞', name: 'Stock Count',
         guide: 'Tabs: Opening Stock (start of month), Closing Stock (physical count at month end), Wastage (a quick monthly catch-all total per item), Daily Wastage (log spoilage by day with a reason — Spoilage, Expiry, Over-prep, etc.), and Staff Meals (internal consumption by staff). The Summary tab computes Used = Opening + Net Purchases − Wastage − Staff Meals − Closing, where Wastage = the monthly catch-all + all daily entries. Export to Excel.',
-        tips: ['On the Opening Stock tab, use "↩ Pull from last month" to copy the previous period\'s counted closing stock into this period\'s opening — run it any time, e.g. if you finished the closing count after already closing the month', 'Use the Daily Wastage tab to log spoilage by day and reason as it happens — these roll into the period total and COGS', 'The Wastage tab is the monthly catch-all: a single quick figure per item, on top of any daily entries', 'Enter opening stock before any purchases for accurate COGS', 'The Wastage Report now groups by item and includes a By-Reason breakdown']
+        tips: ['On the Opening Stock tab, use "↩ Pull from last month" to copy the previous period\'s counted closing stock into this period\'s opening — run it any time, e.g. if you finished the closing count after already closing the month', 'Any quantity box accepts arithmetic — type "3*24+7" for 3 cartons of 24 plus 7 loose and it commits 79. The running result shows above the box as you type; press Enter or click away to apply, Esc to cancel', 'Use the Daily Wastage tab to log spoilage by day and reason as it happens — these roll into the period total and COGS', 'The Wastage tab is the monthly catch-all: a single quick figure per item, on top of any daily entries', 'Enter opening stock before any purchases for accurate COGS', 'The Wastage Report now groups by item and includes a By-Reason breakdown']
+      },
+      {
+        icon: '⌗', name: 'Quick Calculator & Inline Math',
+        guide: 'Two ways to do arithmetic without leaving what you are working on. (1) Inline math: every quantity and rate box in Stock Count and Purchases accepts an expression — type "3*24+7" and it commits 79. The result previews above the box as you type; Enter or clicking away applies it, Esc cancels. (2) Quick Calculator: press Alt+C (or the ⌗ button beside the search box in the sidebar) for a small calculator that floats over any page, with a tape of your recent calculations. Click any result to copy it.',
+        tips: ['Supports + − × ÷ and brackets, e.g. "(12+8)*2.5". Commas are ignored, so "1,200/16" works', 'The calculator tape keeps your last 50 calculations for the session — click a row to reuse that expression, or click its result to copy', 'An incomplete expression like "3*" reverts to the previous value instead of saving a partial number', 'Alt+C is a toggle — press it again to close']
       },
       {
         icon: '◉', name: 'Mobile App',
@@ -653,7 +658,7 @@ export default function Help() {
                       Crest tracks your ingredient purchases, stock levels, and food cost in real time. The core idea is simple:
                     </p>
                     <div style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', borderRadius: 6, padding: '10px 16px', display: 'inline-block', marginBottom: 8 }}>
-                      <span style={{ fontSize: 13, color: '#60a5fa', fontWeight: 600 }}>Opening Stock + Purchases − Wastage − Closing Stock = COGS (what you actually used)</span>
+                      <span style={{ fontSize: 13, color: 'var(--theme-accent)', fontWeight: 600 }}>Opening Stock + Purchases − Wastage − Closing Stock = COGS (what you actually used)</span>
                     </div>
                     <p style={{ margin: 0, fontSize: 13, color: 'var(--theme-text2)', lineHeight: 1.75 }}>
                       Follow the steps below to get set up. First-time setup takes about 30–60 minutes. After that, the monthly routine takes 15–20 minutes of admin at month end.
@@ -742,7 +747,7 @@ export default function Help() {
 
           {hrEnabled && (
           <div>
-            <div className="card" style={{ marginBottom: 16, background: 'rgba(96,165,250,0.03)', borderColor: 'rgba(96,165,250,0.2)' }}>
+            <div className="card" style={{ marginBottom: 16, background: 'rgba(201,168,76,0.03)', borderColor: 'rgba(201,168,76,0.2)' }}>
               <div onClick={() => toggleGS('hr')} style={{ display: 'flex', gap: 16, alignItems: 'flex-start', cursor: 'pointer' }}>
                 <span style={{ fontSize: 32, lineHeight: 1, flexShrink: 0 }}>👤</span>
                 <div style={{ flex: 1 }}>
@@ -774,12 +779,12 @@ export default function Help() {
               <p style={{ margin: '0 0 20px', fontSize: 12, color: 'var(--theme-text2)' }}>Do this once when you first turn on Crest HR.</p>
               {HR_SETUP_STEPS.map((s, i, arr) => (
                 <div key={s.step} style={{ display: 'flex', gap: 16, marginBottom: 16, paddingBottom: 16, borderBottom: i < arr.length - 1 ? '1px solid var(--theme-border)' : 'none' }}>
-                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(96,165,250,0.12)', border: '1px solid rgba(96,165,250,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#60a5fa', flexShrink: 0 }}>{s.step}</div>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: 'var(--theme-accent)', flexShrink: 0 }}>{s.step}</div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--theme-text1)', marginBottom: 4 }}>{s.title}</div>
                     <div style={{ fontSize: 13, color: 'var(--theme-text3)', marginBottom: 6 }}>{s.desc}</div>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-                      <span style={{ color: '#60a5fa', fontSize: 11, marginTop: 1, flexShrink: 0 }}>Why:</span>
+                      <span style={{ color: 'var(--theme-accent)', fontSize: 11, marginTop: 1, flexShrink: 0 }}>Why:</span>
                       <span style={{ fontSize: 12, color: 'var(--theme-text2)' }}>{s.why}</span>
                     </div>
                   </div>
@@ -792,7 +797,7 @@ export default function Help() {
               <p style={{ margin: '0 0 20px', fontSize: 12, color: 'var(--theme-text2)' }}>Repeat this every BS month.</p>
               {HR_WORKFLOW_STEPS.map((s, i, arr) => (
                 <div key={s.step} style={{ display: 'flex', gap: 14, marginBottom: 12, paddingBottom: 12, borderBottom: i < arr.length - 1 ? '1px solid var(--theme-border-lt)' : 'none' }}>
-                  <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#60a5fa', flexShrink: 0 }}>{s.step}</div>
+                  <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'var(--theme-accent)', flexShrink: 0 }}>{s.step}</div>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--theme-text1)', marginBottom: 3 }}>{s.title}</div>
                     <div style={{ fontSize: 12, color: 'var(--theme-text2)' }}>{s.desc}</div>
@@ -966,9 +971,9 @@ export default function Help() {
             <div style={{ marginBottom: 32 }}>
               <div
                 onClick={() => toggleModule('hr')}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 12, borderBottom: '2px solid rgba(96,165,250,0.2)', cursor: 'pointer' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 12, borderBottom: '2px solid rgba(201,168,76,0.2)', cursor: 'pointer' }}
               >
-                <span style={{ fontSize: 18, color: '#60a5fa' }}>👤</span>
+                <span style={{ fontSize: 18, color: 'var(--theme-accent)' }}>👤</span>
                 <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--theme-text1)', fontFamily: 'Georgia, serif' }}>Crest HR</span>
                 <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--theme-green)', background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.2)', padding: '2px 8px', borderRadius: 10 }}>Active</span>
                 <span style={{ marginLeft: 'auto', color: 'var(--theme-text3)', fontSize: 13 }}>{moduleOpen('hr') ? '▲' : '▼'}</span>
@@ -976,7 +981,7 @@ export default function Help() {
               {moduleOpen('hr') && (
                 <>
                   <div style={{ marginBottom: 8 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Human Resources</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--theme-accent)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Human Resources</span>
                   </div>
                   {HR_FEATURES.map(feat => (
                     <FeatureCard key={feat.name} feat={feat} moduleKey="hr" />
@@ -1268,7 +1273,7 @@ export default function Help() {
 
           {/* Neither module active */}
           {!imsEnabled && !hrEnabled && !posEnabled && (
-            <div className="card" style={{ textAlign: 'center', padding: '40px 24px', borderColor: 'rgba(107,114,128,0.2)' }}>
+            <div className="card" style={{ textAlign: 'center', padding: '40px 24px', borderColor: 'var(--theme-border)' }}>
               <div style={{ fontSize: 28, marginBottom: 12 }}>⊘</div>
               <div style={{ fontSize: 14, color: 'var(--theme-text2)', marginBottom: 6 }}>No modules are currently active</div>
               <div style={{ fontSize: 12, color: 'var(--theme-text3)' }}>Contact your Crest consultant to activate your subscription.</div>
