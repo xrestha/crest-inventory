@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
@@ -46,7 +47,7 @@ const inp = {
 }
 
 export default function HolidayCalendar() {
-  const { clientId } = useAuth()
+  const { clientId, hasHrAccess } = useAuth()
   const { scopedFrom, scopedInsert, scopedUpdate, scopedDelete } = useScopedDb()
   const [holidays, setHolidays] = useState([])
   const [loading,  setLoading]  = useState(true)
@@ -139,6 +140,8 @@ export default function HolidayCalendar() {
 
   const publicCount   = fyHolidays.filter(h => h.holiday_type === 'public').length
   const optionalCount = fyHolidays.filter(h => h.holiday_type === 'optional').length
+
+  if (!hasHrAccess('staff')) return <Navigate to="/dashboard" replace />
 
   return (
     <div>

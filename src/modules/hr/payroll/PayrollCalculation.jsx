@@ -1,4 +1,5 @@
 import { useState, useEffect, Fragment } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
@@ -180,7 +181,7 @@ function CalcDetail({ row, monthDays, advances }) {
 }
 
 export default function PayrollCalculation() {
-  const { clientId } = useAuth()
+  const { clientId, hasHrAccess } = useAuth()
   const { scopedFrom } = useScopedDb()
   const [periods,    setPeriods]    = useState([])
   const [period,     setPeriod]     = useState(null)
@@ -314,6 +315,8 @@ export default function PayrollCalculation() {
     setPrintRow(row)
     setTimeout(() => { printWithTitle(`Payroll Calculation - ${row.emp.full_name} - ${periodLabel}`); setPrintRow(null) }, 60)
   }
+
+  if (!hasHrAccess('manager')) return <Navigate to="/dashboard" replace />
 
   return (
     <div>

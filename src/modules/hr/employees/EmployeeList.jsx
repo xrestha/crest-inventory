@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
@@ -35,7 +36,7 @@ function fmtDate(dateStr) {
 }
 
 export default function EmployeeList() {
-  const { clientId, profile } = useAuth()
+  const { clientId, profile, hasHrAccess } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
   const { scopedFrom } = useScopedDb()
 
@@ -133,6 +134,8 @@ export default function EmployeeList() {
   // Active/probation employees retiring within the next 180 days.
   const retiringSoon = employees.filter(e =>
     (e.status === 'active' || e.status === 'probation') && retireInfo(e.retirement_date)?.soon).length
+
+  if (!hasHrAccess('manager')) return <Navigate to="/dashboard" replace />
 
   return (
     <div>

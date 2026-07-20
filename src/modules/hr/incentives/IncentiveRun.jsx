@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
@@ -46,7 +47,7 @@ function calcIncentiveTds({ emp, amount, ytd, fyStart }) {
 }
 
 export default function IncentiveRun() {
-  const { clientId, isAdmin } = useAuth()
+  const { clientId, isAdmin, hasHrAccess } = useAuth()
   const { scopedFrom, scopedUpsert, scopedUpdate } = useScopedDb()
   const today = getBsToday()
 
@@ -194,6 +195,8 @@ export default function IncentiveRun() {
       }
     }), 'Incentive Bank Transfer', ext)
   }
+
+  if (!hasHrAccess('manager')) return <Navigate to="/dashboard" replace />
 
   return (
     <div>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
@@ -50,7 +51,7 @@ function calcGratuity(emp) {
 }
 
 export default function GratuityTracker() {
-  const { clientId } = useAuth()
+  const { clientId, hasHrAccess } = useAuth()
   const { scopedFrom } = useScopedDb()
   const [employees, setEmployees] = useState([])
   const [loading,   setLoading]   = useState(true)
@@ -114,6 +115,8 @@ export default function GratuityTracker() {
   const allRows = employees.filter(e => (e.pay_basis || 'monthly') === 'monthly')
     .filter(r => dept === 'all' || r.department === dept)
     .map(e => ({ ...e, g: calcGratuity(e) }))
+
+  if (!hasHrAccess('manager')) return <Navigate to="/dashboard" replace />
 
   return (
     <div>

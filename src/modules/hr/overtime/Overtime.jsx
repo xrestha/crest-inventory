@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
@@ -32,7 +33,7 @@ const BLANK = {
 }
 
 export default function Overtime() {
-  const { clientId } = useAuth()
+  const { clientId, hasHrAccess } = useAuth()
   const { scopedFrom, scopedInsert, scopedUpdate, scopedDelete } = useScopedDb()
 
   const [periods,   setPeriods]   = useState([])
@@ -193,6 +194,8 @@ export default function Overtime() {
   const approvedAmt = entries
     .filter(e => e.status === 'approved')
     .reduce((s, e) => { const a = otAmt(e, empMap[e.employee_id]); return a !== null ? s + a : s }, 0)
+
+  if (!hasHrAccess('supervisor')) return <Navigate to="/dashboard" replace />
 
   return (
     <div>

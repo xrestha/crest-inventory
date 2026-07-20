@@ -150,6 +150,22 @@ Annual = 25% off monthly, applied uniformly everywhere annual pricing appears.
 
 ## Session Log
 
+### S430 — 2026-07-20 — Crest HR gets a staff/supervisor/manager role system (mirrors POS/IMS); dashboard IMS/HR leak fixed
+
+Started from a screenshot question — why does a POS Supervisor login see the Inventory dashboard's Food Cost %/margin/spend data? Root cause: `ClientDashboard.jsx`'s Inventory section (`showIms`) was gated only on `clientModules.ims` (does the client subscribe to IMS), never on the viewer's own `ims_role` — every other IMS page redirects an `ims_role`-less staffer here via `hasImsAccess(...)`, so the one page meant to be the safe fallback was the actual leak. Fixed with `showIms = clientModules.ims && hasImsAccess('staff')` (also applied to the "no open period" nag banner, which had the same raw `clientModules.ims` check).
+
+Follow-up question surfaced the same pattern one layer up: an HR headcount/payroll card was also showing to that same POS account, because `showHr` had an identical gap. But HR had no `hr_role` concept at all to gate by — `Layout.js`'s `hrVisible` was hard-coded `isAdmin || isOwner`, a deliberate "HR is Owner/Admin-only" design (documented in its own comment) rather than a bug. So this wasn't a one-line fix like IMS's — it meant building the missing role tier from scratch:
+
+**Database** (`20260720170000_hr_staff_roles.sql`): `profiles.hr_role` (+ `hr_job_title`), same `CHECK (staff/supervisor/manager)` shape as `pos_role`/`ims_role`. `is_hr_role_staff()` + RESTRICTIVE policies block HR staff accounts from every IMS + POS business table (36 tables — wider than IMS/POS's own mutual carve-outs, since HR has no legitimate reason to touch recipes/sales_entries/stock_movements the way POS billing does). `get_hr_role_staff_list()` / `get_hr_role_eligible_users()` RPCs mirror the IMS ones exactly, this time using `REVOKE ... FROM PUBLIC; GRANT ... TO authenticated, service_role` from the start instead of the plain `REVOKE FROM anon` that turned out to be an ineffective no-op in S293 (see the Postgres PUBLIC-grant/revoke gotcha below). `get_ims_eligible_users` also updated (`CREATE OR REPLACE`) to exclude accounts that already have `hr_role` set, closing the same cross-contamination gap S419 already closed for `pos_role`/`hr_self_service`.
+
+**Edge Function** (`admin-user-ops/index.ts`): 4 new actions — `create_hr_staff`, `update_hr_role`, `delete_hr_staff`, `reset_hr_password` — structural mirrors of the IMS staff actions. `isCallerOwner` (here and in `AuthContext.js`) now excludes all four staff-account markers (`pos_role`, `ims_role`, `hr_self_service`, `hr_role`), and `update_ims_role`'s existing cross-contamination guard now also checks the target's `hr_role`.
+
+**Frontend**: new `hasHrAccess(minLevel)`/`hrRole` on `AuthContext.js`, mirroring `hasImsAccess`/`imsRole`. New `src/modules/hr/staff/HrStaff.jsx` admin page (`/hr/staff`, Manager-only) — structural mirror of `ImsStaff.jsx`, including the custom Job-Title → Role mapping (`settings.hr_custom_roles`). All 17 `/hr/*` page components got a page-side guard (`if (!hasHrAccess(minLevel)) return <Navigate to="/dashboard" replace />`) at a tier chosen per page (Holiday Calendar: staff; HR Dashboard/Attendance/Leave/Overtime/Roster/TADA: supervisor; Employees/Pay Setup/Payroll/Calculation/Reports/Festival/Incentives/Advances/Gratuity/Settlement: manager). `Layout.js`'s `hrVisible` now checks `isAdmin || hrRole || isOwner` (was `isAdmin || isOwner`), every `HR_GROUPS`/`HR_DASHBOARD` nav item gained a `minHrRole` tag feeding the same shared `isItemVisible()` check IMS/POS already use, and a new "HR Staff" nav entry was added under HR → Admin.
+
+**Help.js**: added an "HR Staff" entry alongside the existing "IMS Staff"/"Employee Self-Service" entries, same tips-list pattern.
+
+Not done in this pass (deliberately out of scope): live end-to-end testing against a real client with HR staff assigned (S420 did this for IMS the day after S419 shipped and found 5 real bugs — the same pass is worth doing here before relying on this in production).
+
 ### S429 — 2026-07-20 — Totals row on Payroll Calculation; category filter on Sales Period Summary
 
 Two small, independent UI additions, both matching an existing convention elsewhere in the app rather than inventing a new one.

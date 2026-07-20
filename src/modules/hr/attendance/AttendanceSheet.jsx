@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
@@ -53,7 +54,7 @@ function isValidTimeStr(s, lenient) {
 }
 
 export default function AttendanceSheet() {
-  const { clientId } = useAuth()
+  const { clientId, hasHrAccess } = useAuth()
   const { scopedFrom, scopedUpsert, scopedDelete } = useScopedDb()
   const [periods,   setPeriods]   = useState([])
   const [period,    setPeriod]    = useState(null)
@@ -555,6 +556,8 @@ export default function AttendanceSheet() {
   }
 
   const periodLabel = period ? `${BS_MONTHS[period.bs_month - 1]} ${period.bs_year}` : '—'
+
+  if (!hasHrAccess('supervisor')) return <Navigate to="/dashboard" replace />
 
   return (
     <div>

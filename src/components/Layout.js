@@ -27,6 +27,7 @@ import {
 import './Layout.css'
 
 // minPlan: 'growth' | 'pro' — used for lock icon and tier badge
+// minHrRole: 'staff' | 'supervisor' | 'manager' — HR staff-role gate (S430), same shape as IMS's
 // minImsRole: 'staff' | 'supervisor' | 'manager' — IMS staff-role gate (S417), same shape as POS's
 // minPosRole. Absent = floor tier (Staff), reachable by everyone with any IMS access.
 const NAV = [
@@ -92,7 +93,7 @@ const IMS_GROUPS = [
     { to: '/ims/staff', label: 'IMS Staff', icon: Users2, minImsRole: 'manager' },
   ]},
 ]
-const HR_DASHBOARD = { to: '/hr/dashboard', label: 'HR Dashboard', icon: LayoutDashboard }
+const HR_DASHBOARD = { to: '/hr/dashboard', label: 'HR Dashboard', icon: LayoutDashboard, minHrRole: 'supervisor' }
 
 const POS_GROUPS = [
   { key: 'pos-setup', label: null, items: [
@@ -123,35 +124,38 @@ const POS_GROUPS = [
 
 const HR_GROUPS = [
   { key: 'hr-people', label: 'People', items: [
-    { to: '/hr/employees',  label: 'Employees',        icon: Users },
-    { to: '/hr/pay-setup',  label: 'Pay Setup',        icon: Settings2  },
-    { to: '/hr/holidays',   label: 'Holiday Calendar', icon: CalendarDays },
+    { to: '/hr/employees',  label: 'Employees',        icon: Users, minHrRole: 'manager' },
+    { to: '/hr/pay-setup',  label: 'Pay Setup',        icon: Settings2, minHrRole: 'manager' },
+    { to: '/hr/holidays',   label: 'Holiday Calendar', icon: CalendarDays, minHrRole: 'staff' },
   ]},
   { key: 'hr-attendance', label: 'Attendance', items: [
-    { to: '/hr/roster',     label: 'Staff Roster',     icon: CalendarClock },
-    { to: '/hr/attendance', label: 'Attendance',       icon: ClipboardCheck },
-    { to: '/hr/leave',      label: 'Leave',            icon: Palmtree },
-    { to: '/hr/overtime',   label: 'Overtime',         icon: Clock  },
+    { to: '/hr/roster',     label: 'Staff Roster',     icon: CalendarClock, minHrRole: 'supervisor' },
+    { to: '/hr/attendance', label: 'Attendance',       icon: ClipboardCheck, minHrRole: 'supervisor' },
+    { to: '/hr/leave',      label: 'Leave',            icon: Palmtree, minHrRole: 'supervisor' },
+    { to: '/hr/overtime',   label: 'Overtime',         icon: Clock, minHrRole: 'supervisor' },
   ]},
   { key: 'hr-payroll', label: 'Payroll', items: [
-    { to: '/hr/calculation', label: 'Calculation',       icon: Calculator },
-    { to: '/hr/payroll',    label: 'Payroll',            icon: Banknote },
-    { to: '/hr/festival',   label: 'Festival Allowance', icon: PartyPopper },
-    { to: '/hr/incentives', label: 'Incentives / Bonus', icon: Gift },
-    { to: '/hr/advances',   label: 'Advances & Loans',   icon: CreditCard },
-    { to: '/hr/tada',       label: 'TADA Claims',        icon: Briefcase },
+    { to: '/hr/calculation', label: 'Calculation',       icon: Calculator, minHrRole: 'manager' },
+    { to: '/hr/payroll',    label: 'Payroll',            icon: Banknote, minHrRole: 'manager' },
+    { to: '/hr/festival',   label: 'Festival Allowance', icon: PartyPopper, minHrRole: 'manager' },
+    { to: '/hr/incentives', label: 'Incentives / Bonus', icon: Gift, minHrRole: 'manager' },
+    { to: '/hr/advances',   label: 'Advances & Loans',   icon: CreditCard, minHrRole: 'manager' },
+    { to: '/hr/tada',       label: 'TADA Claims',        icon: Briefcase, minHrRole: 'supervisor' },
   ]},
   { key: 'hr-reports', label: 'Reports', items: [
-    { to: '/hr/reports',    label: 'HR Reports',       icon: BarChart3 },
-    { to: '/hr/gratuity',   label: 'Gratuity',         icon: Coins },
-    { to: '/hr/settlement', label: 'Final Settlement', icon: FileCheck2 },
+    { to: '/hr/reports',    label: 'HR Reports',       icon: BarChart3, minHrRole: 'manager' },
+    { to: '/hr/gratuity',   label: 'Gratuity',         icon: Coins, minHrRole: 'manager' },
+    { to: '/hr/settlement', label: 'Final Settlement', icon: FileCheck2, minHrRole: 'manager' },
+  ]},
+  { key: 'hr-admin', label: 'Admin', items: [
+    { to: '/hr/staff', label: 'HR Staff', icon: Users2, minHrRole: 'manager' },
   ]},
 ]
 
 export default function Layout() {
   const { profile, isAdmin, plan, hasFeature, clientModules, signOut, adminViewClientId, switchAdminClient,
           isTrial, trialExpired, trialDaysLeft, trialPurgeInDays, subscribeRequested, requestSubscription,
-          hasPosAccess, posRole, hasImsAccess, imsRole, isOwner } = useAuth()
+          hasPosAccess, posRole, hasImsAccess, imsRole, hasHrAccess, hrRole, isOwner } = useAuth()
   const { settings } = useSettings()
   const navigate = useNavigate()
   const clientName = profile?.clients?.name
@@ -242,6 +246,7 @@ export default function Layout() {
     if (item.featureKey && !hasFeature(item.featureKey)) return false
     if (item.minPosRole && !hasPosAccess(item.minPosRole)) return false
     if (item.minImsRole && !hasImsAccess(item.minImsRole)) return false
+    if (item.minHrRole && !hasHrAccess(item.minHrRole)) return false
     return true
   }
 
@@ -343,11 +348,11 @@ export default function Layout() {
   // Which module panels exist for this user, and which one is showing.
   // activePanel (route-synced) is resolved against visibility — if it points at a module this
   // user can't see (or nothing is selected yet), fall back to the first available panel.
-  // IMS and HR are owner/admin-only panels — a POS PIN staff login (posRole set, not owner)
-  // works the floor, and RLS blocks it from the IMS/HR tables anyway; don't show nav to pages
-  // that would render empty.
+  // IMS, HR, and POS are owner/admin-only panels unless the viewer has an explicit staff-role
+  // grant on that module — a POS PIN staff login (posRole set, not owner) works the floor, and
+  // RLS blocks it from the IMS/HR tables anyway; don't show nav to pages that would render empty.
   const imsVisible = clientModules.ims && (!isAdmin || adminViewClientId) && (isAdmin || imsRole || isOwner)
-  const hrVisible  = clientModules.hr  && (!isAdmin || adminViewClientId) && (isAdmin || isOwner)
+  const hrVisible  = clientModules.hr  && (!isAdmin || adminViewClientId) && (isAdmin || hrRole || isOwner)
   const posVisible = clientModules.pos && (!isAdmin || adminViewClientId) && (isAdmin || posRole || isOwner)
   const panelOrder = [
     isAdmin && 'admin',
@@ -765,7 +770,7 @@ export default function Layout() {
             <>
               {renderDashboardRow()}
               {renderPinnedGroup()}
-              {renderNavItem(HR_DASHBOARD)}
+              {isItemVisible(HR_DASHBOARD) && renderNavItem(HR_DASHBOARD)}
               {HR_GROUPS.map(renderGroup)}
             </>
           )}

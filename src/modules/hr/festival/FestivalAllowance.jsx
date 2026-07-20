@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
@@ -52,7 +53,7 @@ function calcFestivalTds({ emp, amount, ytd, fyStart }) {
 }
 
 export default function FestivalAllowance() {
-  const { clientId, isAdmin } = useAuth()
+  const { clientId, isAdmin, hasHrAccess } = useAuth()
   const { scopedFrom, scopedUpsert, scopedUpdate } = useScopedDb()
   const today = getBsToday()
   const [bsYear,    setBsYear]    = useState(today.year)
@@ -199,6 +200,8 @@ export default function FestivalAllowance() {
       }
     }), 'Festival Bank Transfer', ext)
   }
+
+  if (!hasHrAccess('manager')) return <Navigate to="/dashboard" replace />
 
   return (
     <div>

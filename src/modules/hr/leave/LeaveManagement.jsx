@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
@@ -23,7 +24,7 @@ function bsLabel(iso) {
 }
 
 export default function LeaveManagement() {
-  const { clientId } = useAuth()
+  const { clientId, hasHrAccess } = useAuth()
   const { scopedFrom, scopedInsert, scopedUpsert, scopedUpdate, scopedDelete } = useScopedDb()
   const today = adToBs(new Date())
   const [bsYear,    setBsYear]    = useState(today.year)
@@ -207,6 +208,8 @@ export default function LeaveManagement() {
   }
 
   const filteredRequests = requests.filter(r => adToBs(new Date(r.start_date)).year === bsYear)
+
+  if (!hasHrAccess('supervisor')) return <Navigate to="/dashboard" replace />
 
   return (
     <div>

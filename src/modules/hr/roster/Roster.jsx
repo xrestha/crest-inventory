@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { Navigate } from 'react-router-dom'
 import { supabase } from '../../../supabaseClient'
 import { useAuth } from '../../../context/AuthContext'
 import { useScopedDb } from '../../../shared/hooks/useScopedDb'
@@ -63,7 +64,7 @@ const STICKY_CLS = 'roster-sticky'
 // ── Main Roster ───────────────────────────────────────────────────────────────
 
 export default function Roster() {
-  const { clientId, profile } = useAuth()
+  const { clientId, profile, hasHrAccess } = useAuth()
   const { scopedFrom, scopedInsert, scopedUpsert, scopedDelete } = useScopedDb()
   const today = getBsToday()
 
@@ -490,6 +491,8 @@ export default function Roster() {
     return { col, scheduledHrs, plannedCost, scheduledCount, recommended, costPct, forecastRevenue: f?.revenue ?? null, forecastCovers: f?.covers ?? null, holiday: f?.holiday ?? null }
   })
   const forecastRowByKey = Object.fromEntries(laborForecastRows.map(r => [`${r.col.bsYear}:${r.col.bsMonth}:${r.col.bsDay}`, r]))
+
+  if (!hasHrAccess('supervisor')) return <Navigate to="/dashboard" replace />
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (

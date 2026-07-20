@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { Navigate } from 'react-router-dom'
 import { supabase } from '../../../supabaseClient'
 import { useAuth } from '../../../context/AuthContext'
 import { useScopedDb } from '../../../shared/hooks/useScopedDb'
@@ -25,7 +26,7 @@ function retireInfo(dateStr) {
 }
 
 export default function HrReports() {
-  const { clientId } = useAuth()
+  const { clientId, hasHrAccess } = useAuth()
   const { scopedFrom } = useScopedDb()
   const [periods,   setPeriods]   = useState([])
   const [period,    setPeriod]    = useState(null)
@@ -202,6 +203,8 @@ export default function HrReports() {
     : employees)
   const retiringCount = employees.filter(e =>
     (e.status === 'active' || e.status === 'probation') && retireInfo(e.retirement_date)?.soon).length
+
+  if (!hasHrAccess('manager')) return <Navigate to="/dashboard" replace />
 
   return (
     <div>

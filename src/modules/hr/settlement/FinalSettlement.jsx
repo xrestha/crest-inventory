@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
@@ -60,7 +61,7 @@ function BsDateSelect({ label, year, month, day, onChange, tip }) {
 const today = getBsToday()
 
 export default function FinalSettlement() {
-  const { clientId } = useAuth()
+  const { clientId, hasHrAccess } = useAuth()
   const { scopedFrom } = useScopedDb()
 
   const [employees,  setEmployees]  = useState([])
@@ -173,6 +174,8 @@ export default function FinalSettlement() {
   }, [emp, lastDate, leaveDays, festPaid, noticeServed, noticeDays, advances])
 
   function handlePrint() { printWithTitle(`Final Settlement - ${emp.full_name}`) }
+
+  if (!hasHrAccess('manager')) return <Navigate to="/dashboard" replace />
 
   return (
     <div>

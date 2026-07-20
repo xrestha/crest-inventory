@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import { supabase } from '../../../supabaseClient'
@@ -19,7 +20,7 @@ const inp = {
 }
 
 export default function PayrollRun() {
-  const { clientId, isAdmin } = useAuth()
+  const { clientId, isAdmin, hasHrAccess } = useAuth()
   const { scopedFrom, scopedInsert, scopedUpdate, scopedDelete } = useScopedDb()
   const [periods,    setPeriods]    = useState([])
   const [period,     setPeriod]     = useState(null)
@@ -332,6 +333,8 @@ export default function PayrollRun() {
     a.net    += s.net_pay
     return a
   }, { gross: 0, ot: 0, ssfEmp: 0, ssfEmpr: 0, ded: 0, advDed: 0, tds: 0, tada: 0, net: 0 })
+
+  if (!hasHrAccess('manager')) return <Navigate to="/dashboard" replace />
 
   return (
     <div>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Navigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
@@ -39,7 +39,7 @@ function KCard({ label, value, sub, color = 'var(--theme-text1)', tip, onClick, 
 }
 
 export default function HrDashboard() {
-  const { clientId } = useAuth()
+  const { clientId, hasHrAccess } = useAuth()
   const { scopedFrom } = useScopedDb()
   const navigate     = useNavigate()
   const [loading, setLoading] = useState(true)
@@ -217,6 +217,8 @@ export default function HrDashboard() {
   const pendingTada  = pendingCounts.tada
   const pendingSwap  = pendingCounts.swap
   const pendingTotal = pendingLeave + pendingOt + pendingTada + pendingSwap
+
+  if (!hasHrAccess('supervisor')) return <Navigate to="/dashboard" replace />
 
   return (
     <div>

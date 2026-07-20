@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
@@ -16,7 +17,7 @@ function calcAmount(comp, basic) {
 }
 
 export default function PaySetup() {
-  const { clientId, profile } = useAuth()
+  const { clientId, profile, hasHrAccess } = useAuth()
   const effectiveClientId = clientId || profile?.client_id
   const { scopedFrom } = useScopedDb()
   const [employees, setEmployees]   = useState([])
@@ -105,6 +106,8 @@ export default function PaySetup() {
     { key: 'all',      label: 'All' },
     { key: 'inactive', label: 'Inactive' },
   ]
+
+  if (!hasHrAccess('manager')) return <Navigate to="/dashboard" replace />
 
   return (
     <div>

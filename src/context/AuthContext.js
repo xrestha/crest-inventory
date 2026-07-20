@@ -70,7 +70,7 @@ export function AuthProvider({ children }) {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, role, client_id, pos_role, hr_employee_id, hr_self_service, ims_role, ims_job_title')
+        .select('id, full_name, role, client_id, pos_role, hr_employee_id, hr_self_service, ims_role, ims_job_title, hr_role, hr_job_title')
         .eq('id', userId)
         .single()
 
@@ -134,14 +134,16 @@ export function AuthProvider({ children }) {
 
   const posEnabled = isAdmin || (profile?.clients?.pos_enabled ?? false)
   const imsEnabled = isAdmin || (profile?.clients?.ims_enabled ?? true)
-  // Admin gets 'manager'; owner (client with no pos_role/ims_role) gets 'manager' on the
-  // corresponding module when it's enabled; staff use their explicit pos_role/ims_role. An HR
-  // self-service account also has role 'client' with neither set — without excluding all three
-  // staff-account markers here, any one of them would incorrectly count as Owner and inherit
-  // manager-level access to a module it has no business in.
-  const isOwner = !isAdmin && profile?.role === 'client' && !profile?.pos_role && !profile?.hr_self_service && !profile?.ims_role
+  const hrEnabled  = isAdmin || (profile?.clients?.hr_enabled ?? false)
+  // Admin gets 'manager'; owner (client with no pos_role/ims_role/hr_role) gets 'manager' on the
+  // corresponding module when it's enabled; staff use their explicit pos_role/ims_role/hr_role. An
+  // HR self-service account also has role 'client' with none of the four set — without excluding
+  // all four staff-account markers here, any one of them would incorrectly count as Owner and
+  // inherit manager-level access to a module it has no business in.
+  const isOwner = !isAdmin && profile?.role === 'client' && !profile?.pos_role && !profile?.hr_self_service && !profile?.ims_role && !profile?.hr_role
   const posRole = isAdmin || isOwner ? 'manager' : (profile?.pos_role || null)
   const imsRole = isAdmin || isOwner ? 'manager' : (profile?.ims_role || null)
+  const hrRole  = isAdmin || isOwner ? 'manager' : (profile?.hr_role || null)
 
   const POS_RANK = { staff: 1, supervisor: 2, manager: 3 }
   function hasPosAccess(minLevel) {
@@ -155,6 +157,15 @@ export function AuthProvider({ children }) {
     if (isAdmin) return true
     if (!imsEnabled) return false
     return (IMS_RANK[imsRole] || 0) >= (IMS_RANK[minLevel] || 0)
+  }
+
+  // Mirrors POS_RANK/IMS_RANK exactly (S430) — an HR staff account (hr_role, real email+password
+  // login, distinct from an hr_self_service employee PIN portal) is gated the same shape as IMS.
+  const HR_RANK = { staff: 1, supervisor: 2, manager: 3 }
+  function hasHrAccess(minLevel) {
+    if (isAdmin) return true
+    if (!hrEnabled) return false
+    return (HR_RANK[hrRole] || 0) >= (HR_RANK[minLevel] || 0)
   }
 
   function switchAdminClient(id, name) {
@@ -264,13 +275,15 @@ export function AuthProvider({ children }) {
       isTrial, trialExpired, trialDaysLeft, trialPurgeInDays, subscribeRequested, requestSubscription,
       featureFlags, hasFeature,
       imsEnabled,
-      hrEnabled: isAdmin || (profile?.clients?.hr_enabled ?? false),
+      hrEnabled,
       posEnabled,
       posRole,
       imsRole,
+      hrRole,
       isOwner,
       hasPosAccess,
       hasImsAccess,
+      hasHrAccess,
       clientModules, // displayed client's actual subscription (nav + dashboard sections)
       hrPlan: isAdmin ? 'pro' : (profile?.clients?.hr_plan || null),
       posPlan: isAdmin ? 'pro' : (profile?.clients?.pos_plan || null),

@@ -53,6 +53,7 @@ import AnnualSummary from './modules/ims/reports/AnnualSummary'
 import OutstandingPayables from './modules/ims/reports/OutstandingPayables'
 import ShrinkageReport from './modules/ims/variance/ShrinkageReport'
 import ImsStaff from './modules/ims/staff/ImsStaff'
+import HrStaff from './modules/hr/staff/HrStaff'
 import EmployeeList from './modules/hr/employees/EmployeeList'
 import PaySetup from './modules/hr/pay/PaySetup'
 import AttendanceSheet from './modules/hr/attendance/AttendanceSheet'
@@ -215,6 +216,7 @@ export default function App() {
               <Route path="/hr/roster"     element={<ModuleGate module="hr"><Roster /></ModuleGate>} />
               <Route path="/hr/holidays"   element={<ModuleGate module="hr"><HolidayCalendar /></ModuleGate>} />
               <Route path="/hr/overtime"   element={<ModuleGate module="hr"><Overtime /></ModuleGate>} />
+              <Route path="/hr/staff"      element={<ModuleGate module="hr"><HrStaff /></ModuleGate>} />
 
               {/* Crest POS — gated on pos_enabled */}
               <Route path="/pos"        element={<ModuleGate module="pos"><Pos /></ModuleGate>} />

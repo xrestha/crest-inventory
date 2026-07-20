@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { useScopedDb } from '../../../shared/hooks/useScopedDb'
 import Tip from '../../../components/Tip'
@@ -26,7 +27,7 @@ const EMPTY_ADD = {
 const EMPTY_REPAY = { repaid_date: '', amount: '', notes: '' }
 
 export default function Advances() {
-  const { clientId } = useAuth()
+  const { clientId, hasHrAccess } = useAuth()
   const { scopedFrom, scopedInsert, scopedUpdate, scopedDelete } = useScopedDb()
   const [employees,  setEmployees]  = useState([])
   const [advances,   setAdvances]   = useState([])
@@ -153,6 +154,7 @@ export default function Advances() {
   )
 
   if (loading) return <div style={{ padding: 32, color: 'var(--theme-text3)' }}>Loading…</div>
+  if (!hasHrAccess('manager')) return <Navigate to="/dashboard" replace />
 
   return (
     <div>

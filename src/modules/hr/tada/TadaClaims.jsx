@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { supabase } from '../../../supabaseClient'
 import { useScopedDb } from '../../../shared/hooks/useScopedDb'
@@ -33,8 +34,8 @@ function emptyAddForm() {
 const PAID_METHODS = ['Cash', 'Bank Transfer', 'Cheque']
 
 export default function TadaClaims() {
-  const { clientId, profile, isAdmin, isOwner } = useAuth()
-  const canManageSettings = isAdmin || isOwner
+  const { clientId, profile, isAdmin, isOwner, hasHrAccess } = useAuth()
+  const canManageSettings = isAdmin || isOwner || hasHrAccess('manager')
   const { scopedFrom, scopedInsert, scopedUpdate, scopedDelete } = useScopedDb()
 
   const [employees, setEmployees] = useState([])
@@ -202,6 +203,7 @@ export default function TadaClaims() {
   )
 
   if (loading) return <div style={{ padding: 32, color: 'var(--theme-text3)' }}>Loading…</div>
+  if (!hasHrAccess('supervisor')) return <Navigate to="/dashboard" replace />
 
   return (
     <div>
