@@ -35,6 +35,26 @@ export default function Calculator({ open, onClose }) {
     }
   }, [open])
 
+  // Document-level, not just the input's onKeyDown: this can now be nested inside a Modal (see
+  // PurchaseBillModal), which has its own document keydown listener that closes IT on Escape.
+  // Both listeners sit directly on `document`, so stopPropagation() is a no-op between them —
+  // propagation only matters between ancestor/descendant elements, and there's only one target
+  // here. stopImmediatePropagation() is what actually stops Modal's listener from also firing.
+  // React runs child effects before parent effects, so this one is registered first and fires
+  // first on Escape — without this, Escape would close the calculator AND silently discard
+  // whatever form the parent Modal was holding.
+  useEffect(() => {
+    if (!open) return
+    function onKeyDown(e) {
+      if (e.key !== 'Escape') return
+      e.preventDefault()
+      e.stopImmediatePropagation()
+      onClose()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [open, onClose])
+
   function commit() {
     const result = evaluate(expr)
     if (result === null) return
@@ -59,8 +79,9 @@ export default function Calculator({ open, onClose }) {
     }
   }
 
+  // Escape is handled by the document-level listener above (needs stopImmediatePropagation to
+  // beat a parent Modal's own Escape handler); this only needs Enter.
   function handleKeyDown(e) {
-    if (e.key === 'Escape') { e.preventDefault(); onClose(); return }
     if (e.key === 'Enter') { e.preventDefault(); commit() }
   }
 

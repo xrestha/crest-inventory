@@ -175,6 +175,7 @@ export const IMS_GUIDE_GROUPS = [
           { label: 'Total (NPR) per line', desc: 'Type a line total instead of a rate; Rate is reverse-computed as amount ÷ qty ÷ (1.13 if VAT else 1).' },
           { label: 'Shelf Life (days)', desc: 'Auto-computes Expiry Date from the bill\'s day + N days; changing the bill Day recomputes expiry for every line with a shelf-life set.' },
           { label: 'Arithmetic in Qty / Rate', desc: 'Both fields accept an expression as well as a plain number — "12*4" in Qty, or "450/12" to work a per-unit rate back out of a case price. The result previews above the field and commits on Enter or blur. The expression is evaluated before the base-unit conversion above, so what gets stored is still entered_qty × conversion_factor with the evaluated number as entered_qty. Same behaviour as Stock Count\'s qty boxes; Alt+C opens a standalone Quick Calculator anywhere in the app.' },
+          { label: '⌗ button (modal header)', desc: 'The Add/Edit Purchase Bill modal has its own Quick Calculator button next to its close (×) button — the same calculator as Alt+C, opened without leaving the bill. Pressing Esc closes only the calculator, never the bill underneath.' },
         ],
         formulas: [
           'Bill totals: taxableBase = Σ(qty×rate) of VAT lines; nonTaxableBase = Σ(qty×rate) of non-VAT lines; subTotal = taxableBase + nonTaxableBase; vatTaxable = subTotal>0 ? taxableBase × (1 − discount/subTotal) : 0 (discount spread proportionally); vatTotal = vatTaxable × 0.13; grandTotal = subTotal − discount + vatTotal.',

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Calculator as CalculatorIcon } from 'lucide-react'
 import { supabase } from '../../../supabaseClient'
 import { bsToAd, formatAd, daysInBsMonth } from '../../../utils/bsCalendar'
 import BsCalendarPicker from '../../../components/BsCalendarPicker'
@@ -6,6 +7,7 @@ import Tip from '../../../components/Tip'
 import Modal from '../../../components/Modal'
 import SearchableSelect from '../../../components/SearchableSelect'
 import QtyInput from '../../../components/QtyInput'
+import QuickCalculator from '../../../components/Calculator'
 import { getCf, calcBillTotals } from './purchasesHelpers'
 
 const EMPTY_HEADER = { vendor_id: '', bs_day: '', invoice_ref: '', payment_method: 'Cash', discount: '', vat_inclusive: false }
@@ -52,6 +54,7 @@ export default function PurchaseBillModal({ period, items, itemOptions, vendors,
   const [billLines, setBillLines]   = useState(initial.lines)
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState('')
+  const [calcOpen, setCalcOpen] = useState(false)
 
   function handleHeaderDayChange(day) {
     setBillHeader(h => ({ ...h, bs_day: day }))
@@ -151,7 +154,23 @@ export default function PurchaseBillModal({ period, items, itemOptions, vendors,
   }
 
   return (
-    <Modal onClose={onClose} title={editingGroupId ? 'Edit Purchase Bill' : 'Add Purchase Bill'} maxWidth={1160}>
+    <Modal
+      onClose={onClose}
+      title={editingGroupId ? 'Edit Purchase Bill' : 'Add Purchase Bill'}
+      maxWidth={1160}
+      headerExtra={
+        <button
+          className="btn btn-ghost"
+          onClick={() => setCalcOpen(true)}
+          title="Quick calculator (Alt+C)"
+          aria-label="Open quick calculator"
+          style={{ display: 'flex', alignItems: 'center', padding: '5px 8px' }}
+        >
+          <CalculatorIcon size={15} strokeWidth={2} aria-hidden="true" />
+        </button>
+      }
+    >
+      <QuickCalculator open={calcOpen} onClose={() => setCalcOpen(false)} />
       {/* Header row */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1.4fr auto 90px 1fr', gap: 14, marginBottom: 20, alignItems: 'end' }}>
         <div className="form-field">

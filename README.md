@@ -150,6 +150,18 @@ Annual = 25% off monthly, applied uniformly everywhere annual pricing appears.
 
 ## Session Log
 
+### S426 — 2026-07-20 — Quick Calculator button in Add Purchase Bill; a real Escape-key bug found and fixed along the way
+
+Follow-on to S423/S424: Add Purchase Bill was the obvious next spot for the Quick Calculator — working out a per-carton rate or a pack conversion mid-bill previously meant Alt+C anyway, so making it a visible, discoverable button in the modal itself was a small change. `Modal.js` gained an optional `headerExtra` slot (next to the × close button, backward compatible — all 13 existing `<Modal>` call sites pass nothing and render unchanged) and `PurchaseBillModal.jsx` now mounts its own `QuickCalculator` instance, toggled by a ⌗ button there.
+
+**Nesting it inside a `Modal` surfaced a real, pre-existing bug, not a new one this change introduced.** `Calculator.js`'s Escape handling lived only on its own input's `onKeyDown`, with no `stopPropagation` — harmless while the calculator was only ever mounted once, globally, in `Layout.js`. But `Modal.js` has its own `document`-level Escape listener that unconditionally closes itself, and `stopPropagation()` is a no-op between two listeners registered directly on the same target (`document`) — propagation only matters between ancestor/descendant elements, and there's only one target here. Once the calculator can be nested inside a `Modal`, pressing Escape inside it would close the calculator *and* the modal underneath, silently discarding an in-progress purchase bill. Fixed by moving Escape to its own `document`-level listener with `stopImmediatePropagation()` — the one call that actually stops a second listener on the same element from firing — registered only while `open`. Enter (commit) stays local to the input, unaffected.
+
+Because the fix lives in `Calculator.js` itself, it also silently fixes the identical latent risk for the *global* instance: Alt+C opened inside any existing `Modal`-based dialog elsewhere in the app, followed by Escape, had this exact double-close risk before today — nothing had exercised that path yet, but nothing needed to for the bug to exist.
+
+Verified with a clean production build; the same 32-case `evalMath.js` test suite from S423 is unaffected since the parser itself wasn't touched.
+
+**Files:** `src/components/Modal.js`, `src/components/Calculator.js`, `src/modules/ims/purchases/PurchaseBillModal.jsx`, `src/pages/Help.js`, `src/pages/settings/imsGuideData.js`
+
 ### S425 — 2026-07-20 — IMS Guide brought current: the role system was missing entirely
 
 The in-depth Crest IMS guide (Admin → Settings → Guides) hadn't been touched since S417 wrote it. Seven commits had landed in IMS since, and the guide's most serious gap wasn't a missing detail — it was that **the entire staff/supervisor/manager role system (S419–S421) had no coverage at all**, one incidental keyword match across 1,033 lines. A guide that silently omits who-can-see-what is worse than one that's merely stale: it describes a module that only an Owner ever actually sees.
