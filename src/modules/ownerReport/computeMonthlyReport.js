@@ -11,6 +11,8 @@ import { explodeRecipeIngredients, computeRecipeCosts } from '../../utils/recipe
 import { computeOrderAmounts, computeCategoryAmounts } from '../../utils/posBillingMath'
 import { computeMenuEngineeringSection } from './computeMenuEngineeringSection'
 import { computeLaborAnalyticsSection } from './computeLaborAnalyticsSection'
+import { computeVendorPurchasingSection } from './computeVendorPurchasingSection'
+import { computeInventoryDepthSection } from './computeInventoryDepthSection'
 
 // ── IMS section ──────────────────────────────────────────────────────────────
 // Same tables/formulas as OwnerDashboard.jsx's loadImsFigures/loadReorderStats. Revenue excludes
@@ -477,17 +479,20 @@ export async function computeMonthlyReport({ clientId, period, modulesIncluded }
   ])
   const combined = computeCombinedMetrics({ ims, hr })
 
-  const [trend, menuEngineering, laborAnalytics] = await Promise.all([
+  const generatedAt = new Date()
+  const [trend, menuEngineering, laborAnalytics, vendorPurchasing, inventoryDepth] = await Promise.all([
     runSection('trend', () => computeTrendSection(clientId, period, { ims, hr, pos, combined }), sectionErrors),
     modulesIncluded.ims ? runSection('menuEngineering', () => computeMenuEngineeringSection(clientId, period), sectionErrors) : null,
     modulesIncluded.hr  ? runSection('laborAnalytics', () => computeLaborAnalyticsSection(clientId, period, { hr, ims }), sectionErrors) : null,
+    modulesIncluded.ims ? runSection('vendorPurchasing', () => computeVendorPurchasingSection(clientId, period, generatedAt), sectionErrors) : null,
+    modulesIncluded.ims ? runSection('inventoryDepth', () => computeInventoryDepthSection(clientId, period, { ims }), sectionErrors) : null,
   ])
 
   return {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     period: { id: period.id, bs_year: period.bs_year, bs_month: period.bs_month },
     modulesIncluded,
-    ims, hr, pos, trend, menuEngineering, laborAnalytics,
+    ims, hr, pos, trend, menuEngineering, laborAnalytics, vendorPurchasing, inventoryDepth,
     combined,
     sectionErrors: Object.keys(sectionErrors).length > 0 ? sectionErrors : null,
   }

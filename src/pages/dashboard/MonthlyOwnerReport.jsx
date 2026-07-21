@@ -481,6 +481,121 @@ export default function MonthlyOwnerReport() {
               </div>
             )}
 
+            {snapshot.inventoryDepth && (() => {
+              const inv = snapshot.inventoryDepth
+              return (
+                <div className="owner-report-section owner-report-page-break">
+                  <h3 style={sectionTitleStyle}>Inventory Depth</h3>
+
+                  {inv.turnover && (
+                    <div className="table-wrap" style={{ marginBottom: 8 }}>
+                      <table className="data-table owner-report-table"><tbody>
+                        <Row label="Inventory Turnover Ratio (this period)" value={inv.turnover.turnoverRatio != null ? inv.turnover.turnoverRatio.toFixed(2) : '—'}
+                          tip="Value used ÷ average inventory value this period. Higher means stock is moving faster." />
+                        <Row label="Days on Hand" value={inv.turnover.daysOnHand != null ? `${inv.turnover.daysOnHand.toFixed(1)} days` : '—'} />
+                        <Row label="Average Inventory Value" value={fmt(inv.turnover.avgInventoryValue)} />
+                      </tbody></table>
+                    </div>
+                  )}
+
+                  {inv.deadSlowStock && (
+                    <>
+                      <div className="table-wrap" style={{ marginBottom: 8 }}>
+                        <table className="data-table owner-report-table"><tbody>
+                          <Row label="Dead Stock Items" value={num(inv.deadSlowStock.deadCount)} color={inv.deadSlowStock.deadCount > 0 ? 'var(--theme-red)' : undefined}
+                            tip="Zero usage this period despite stock on hand." />
+                          <Row label="Slow Stock Items" value={num(inv.deadSlowStock.slowCount)} color={inv.deadSlowStock.slowCount > 0 ? 'var(--theme-amber)' : undefined}
+                            tip="Used less than 20% of available stock this period." />
+                          <Row label="Total Value at Risk" value={fmt(inv.deadSlowStock.totalValueAtRisk)} color={inv.deadSlowStock.totalValueAtRisk > 0 ? 'var(--theme-red)' : undefined} />
+                        </tbody></table>
+                      </div>
+                      {inv.deadSlowStock.items?.length > 0 && (
+                        <div className="table-wrap" style={{ marginBottom: 8 }}>
+                          <table className="data-table owner-report-table">
+                            <thead><tr><th>Dead/Slow Item</th><th style={{ textAlign: 'right' }}>Status</th><th style={{ textAlign: 'right' }}>Value at Risk</th></tr></thead>
+                            <tbody>
+                              {inv.deadSlowStock.items.slice(0, 10).map(i => (
+                                <tr key={i.itemId}><td>{i.name}</td><td style={{ textAlign: 'right', color: i.status === 'Dead' ? 'var(--theme-red)' : 'var(--theme-amber)' }}>{i.status}</td><td style={{ textAlign: 'right' }}>{fmt(i.valueAtRisk)}</td></tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {inv.variance && (
+                    <>
+                      <div className="table-wrap" style={{ marginBottom: 8 }}>
+                        <table className="data-table owner-report-table"><tbody>
+                          <Row label="Items Flagged (Theoretical vs Actual, ±10%)" value={num(inv.variance.flaggedCount)}
+                            tip="Items where actual usage differed from recipe-theoretical usage by more than 10%." />
+                          <Row label="Total Variance Value" value={fmt(inv.variance.totalVarianceValue)} color={Math.abs(inv.variance.totalVarianceValue) > 0 ? 'var(--theme-amber)' : undefined} />
+                        </tbody></table>
+                      </div>
+                      {inv.variance.items?.filter(i => i.flag !== 'ok').length > 0 && (
+                        <div className="table-wrap" style={{ marginBottom: 8 }}>
+                          <table className="data-table owner-report-table">
+                            <thead><tr><th>Item</th><th style={{ textAlign: 'right' }}>Actual</th><th style={{ textAlign: 'right' }}>Theoretical</th><th style={{ textAlign: 'right' }}>Variance %</th><th style={{ textAlign: 'right' }}>Value</th></tr></thead>
+                            <tbody>
+                              {inv.variance.items.filter(i => i.flag !== 'ok').slice(0, 10).map(i => (
+                                <tr key={i.itemId}>
+                                  <td>{i.name}</td><td style={{ textAlign: 'right' }}>{i.actualUsed.toFixed(1)}</td><td style={{ textAlign: 'right' }}>{i.theoreticalUsed.toFixed(1)}</td>
+                                  <td style={{ textAlign: 'right', color: i.flag === 'over' ? 'var(--theme-red)' : 'var(--theme-accent)' }}>{i.variancePct >= 0 ? '+' : ''}{i.variancePct.toFixed(1)}%</td>
+                                  <td style={{ textAlign: 'right' }}>{fmt(i.value)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {inv.shrinkageTrend ? (
+                    <div className="table-wrap">
+                      <table className="data-table owner-report-table"><tbody>
+                        <Row label={`Shrinkage Trend (${inv.shrinkageTrend.periodsAnalyzed}-period window)`} value={`${num(inv.shrinkageTrend.consistentCount)} consistent, ${num(inv.shrinkageTrend.anyFlaggedCount)} flagged`}
+                          tip="Items with unexplained over-consumption across multiple closed periods ending at this one — distinct from a single period's Variance above." />
+                        <Row label="Total Shrinkage Loss Value" value={fmt(inv.shrinkageTrend.totalLossValue)} color={inv.shrinkageTrend.totalLossValue > 0 ? 'var(--theme-red)' : undefined} />
+                      </tbody></table>
+                    </div>
+                  ) : (
+                    <p style={{ fontSize: 11, color: 'var(--theme-text3)', margin: 0 }}>Not enough closed period history yet for a shrinkage trend.</p>
+                  )}
+                </div>
+              )
+            })()}
+
+            {snapshot.vendorPurchasing && (() => {
+              const vp = snapshot.vendorPurchasing
+              return (
+                <div className="owner-report-section">
+                  <h3 style={sectionTitleStyle}>Vendor &amp; Purchasing</h3>
+                  <div className="table-wrap" style={{ marginBottom: 8 }}>
+                    <table className="data-table owner-report-table">
+                      <thead><tr><th>Vendor</th><th style={{ textAlign: 'right' }}>Net Spend</th><th style={{ textAlign: 'right' }}>Cash</th><th style={{ textAlign: 'right' }}>Credit</th></tr></thead>
+                      <tbody>
+                        {vp.vendors.slice(0, 12).map(v => (
+                          <tr key={v.vendorId}><td>{v.name}</td><td style={{ textAlign: 'right' }}>{fmt(v.net)}</td><td style={{ textAlign: 'right' }}>{fmt(v.cash)}</td><td style={{ textAlign: 'right' }}>{fmt(v.credit)}</td></tr>
+                        ))}
+                        <tr><td style={{ fontWeight: 700 }}>Total</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{fmt(vp.grandNet)}</td><td /><td /></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="table-wrap">
+                    <table className="data-table owner-report-table"><tbody>
+                      <Row label="Unpaid Credit — Current (≤30d)" value={fmt(vp.billAging.current)} />
+                      <Row label="Unpaid Credit — 31–60 days" value={fmt(vp.billAging.d31_60)} color={vp.billAging.d31_60 > 0 ? 'var(--theme-amber)' : undefined} />
+                      <Row label="Unpaid Credit — 61–90 days" value={fmt(vp.billAging.d61_90)} color={vp.billAging.d61_90 > 0 ? 'var(--theme-amber)' : undefined} />
+                      <Row label="Unpaid Credit — 90+ days" value={fmt(vp.billAging.d90plus)} color={vp.billAging.d90plus > 0 ? 'var(--theme-red)' : undefined}
+                        tip="Bill-age since purchase date, pinned to when this report was generated — not a live count. No vendor payment-terms field exists in this system, so this is not a true SLA measure." />
+                    </tbody></table>
+                  </div>
+                </div>
+              )
+            })()}
+
             {snapshot.trend && (
               <div className="owner-report-section owner-report-page-break">
                 <h3 style={sectionTitleStyle}>Trend</h3>

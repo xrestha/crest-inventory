@@ -108,6 +108,42 @@ export function exportMonthlyReportExcel(report, bizInfo) {
     XLSX.utils.book_append_sheet(wb, withLetterhead('Monthly Owner Report - Labor Analytics', bizInfo, periodLabel, laRows), 'Labor Analytics')
   }
 
+  if (snapshot.vendorPurchasing) {
+    const vp = snapshot.vendorPurchasing
+    const vendorRows = (vp.vendors || []).map(v => ({
+      Vendor: v.name, 'Gross (NPR)': round2(v.gross), 'Discount (NPR)': round2(v.discount), 'Returned (NPR)': round2(v.returned),
+      'Net Spend (NPR)': round2(v.net), 'Cash (NPR)': round2(v.cash), 'Credit (NPR)': round2(v.credit), 'FonePay (NPR)': round2(v.fonepay), Bills: v.billCount,
+    }))
+    if (vendorRows.length > 0) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(vendorRows), 'Vendor Summary')
+    const agingRows = (vp.agingBills || []).map(b => ({
+      Vendor: b.vendorName, Invoice: b.invoiceRef || '', 'BS Day': b.bsDay, 'Remaining (NPR)': round2(b.remaining), 'Days Old (at generation)': b.daysOld, Bucket: b.bucket,
+    }))
+    if (agingRows.length > 0) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(agingRows), 'Vendor Aging')
+  }
+
+  if (snapshot.inventoryDepth) {
+    const inv = snapshot.inventoryDepth
+    const invSummaryRows = [{
+      'Turnover Ratio': inv.turnover?.turnoverRatio != null ? round2(inv.turnover.turnoverRatio) : 'N/A',
+      'Days on Hand': inv.turnover?.daysOnHand != null ? round2(inv.turnover.daysOnHand) : 'N/A',
+      'Avg Inventory Value (NPR)': round2(inv.turnover?.avgInventoryValue),
+      'Dead Stock Items': inv.deadSlowStock?.deadCount ?? 0, 'Slow Stock Items': inv.deadSlowStock?.slowCount ?? 0,
+      'Value at Risk (NPR)': round2(inv.deadSlowStock?.totalValueAtRisk),
+      'Variance Flagged Items': inv.variance?.flaggedCount ?? 0, 'Total Variance Value (NPR)': round2(inv.variance?.totalVarianceValue),
+      'Shrinkage Window (periods)': inv.shrinkageTrend?.periodsAnalyzed ?? 'N/A', 'Shrinkage Loss Value (NPR)': inv.shrinkageTrend ? round2(inv.shrinkageTrend.totalLossValue) : 'N/A',
+    }]
+    XLSX.utils.book_append_sheet(wb, withLetterhead('Monthly Owner Report - Inventory Depth', bizInfo, periodLabel, invSummaryRows), 'Inventory Summary')
+
+    const deadSlowRows = (inv.deadSlowStock?.items || []).map(i => ({ Item: i.name, Status: i.status, 'Value at Risk (NPR)': round2(i.valueAtRisk), Used: round2(i.used), Closing: round2(i.closing) }))
+    if (deadSlowRows.length > 0) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(deadSlowRows), 'Inventory - Dead-Slow')
+
+    const varianceRows = (inv.variance?.items || []).filter(i => i.flag !== 'ok').map(i => ({ Item: i.name, 'Actual Used': round2(i.actualUsed), 'Theoretical Used': round2(i.theoreticalUsed), 'Variance %': pct(i.variancePct), 'Value (NPR)': round2(i.value), Flag: i.flag }))
+    if (varianceRows.length > 0) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(varianceRows), 'Inventory - Variance')
+
+    const shrinkageRows = (inv.shrinkageTrend?.items || []).map(i => ({ Item: i.name, Status: i.status, 'Shrink Count': i.shrinkCount, 'Covered Periods': i.coveredPeriods, 'Total Shrink Value (NPR)': round2(i.totalShrinkValue) }))
+    if (shrinkageRows.length > 0) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(shrinkageRows), 'Inventory - Shrinkage')
+  }
+
   if (snapshot.trend) {
     const trendRows = []
     ;['vsLastPeriod', 'vsSameMonthLastYear'].forEach(key => {
