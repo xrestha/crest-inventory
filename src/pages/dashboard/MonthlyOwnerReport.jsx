@@ -21,7 +21,8 @@ const num = n => (n == null ? '—' : Math.round(n).toLocaleString('en-NP'))
 // not live clientModules — a historical report never grows a section retroactively just because
 // a module got enabled later. See CLAUDE.md's Monthly Owner/Manager Report section.
 export default function MonthlyOwnerReport() {
-  const { clientId, profile, isAdmin, isOwner } = useAuth()
+  const { clientId, profile, isAdmin, isOwner, hasFeature } = useAuth()
+  const canOverheads = hasFeature('overheads')
   const { scopedFrom } = useScopedDb()
 
   const [periods, setPeriods] = useState([])
@@ -206,30 +207,54 @@ export default function MonthlyOwnerReport() {
                 <div className="stat-label">Revenue</div>
                 <div className="stat-value" style={{ color: 'var(--theme-green)' }}>{fmt(snapshot.combined?.revenueTotal)}</div>
               </div>
-              {snapshot.ims && (
-                <div className="stat-card">
-                  <div className="stat-label"><Tip text="Net purchases ÷ revenue × 100. Healthy range: 28–35% for Nepal F&B." width={240}>Food Cost %</Tip></div>
-                  <div className="stat-value">{pct(snapshot.combined?.foodCostPct)}</div>
-                </div>
-              )}
-              {snapshot.hr && (
-                <div className="stat-card">
-                  <div className="stat-label"><Tip text="Gross + overtime + employer SSF, as a % of revenue. A closed period is fully elapsed, so this is the actual figure, not a proration." width={280}>Labor Cost %</Tip></div>
-                  <div className="stat-value">{pct(snapshot.combined?.laborCostPct)}</div>
-                </div>
-              )}
-              {snapshot.ims && snapshot.hr && (
-                <div className="stat-card">
-                  <div className="stat-label"><Tip text="Food Cost % + Labor Cost % — the number operators benchmark against. Industry standard: 60–65% of revenue." width={280}>Prime Cost %</Tip></div>
-                  <div className="stat-value">{pct(snapshot.combined?.primeCostPct)}</div>
-                </div>
-              )}
-              {snapshot.ims && snapshot.hr && (
-                <div className="stat-card">
-                  <div className="stat-label"><Tip text="Revenue minus food cost, labor cost, and overheads, as a % of revenue." width={260}>Net Margin %</Tip></div>
-                  <div className="stat-value">{pct(snapshot.combined?.netMarginPct)}</div>
-                </div>
-              )}
+              {snapshot.ims && (() => {
+                const v = snapshot.combined?.foodCostPct
+                const color = v == null ? undefined : v <= 35 ? 'var(--theme-green)' : v <= 45 ? 'var(--theme-accent)' : 'var(--theme-red)'
+                return (
+                  <div className="stat-card">
+                    <div className="stat-label"><Tip text="Net purchases ÷ revenue × 100. Healthy range: 28–35% for Nepal F&B." width={240}>Food Cost %</Tip></div>
+                    <div className="stat-value" style={{ color }}>{pct(v)}</div>
+                    <div className="stat-sub">Target 28–35%</div>
+                  </div>
+                )
+              })()}
+              {snapshot.hr && (() => {
+                // Same 37/45 thresholds as Owner Dashboard's Labor Cost % card — kept identical
+                // deliberately, even though this figure is the actual final number (not a
+                // proration): a client flipping between the live dashboard and this report
+                // should never see the same rough magnitude read as a different color band.
+                const v = snapshot.combined?.laborCostPct
+                const color = v == null ? undefined : v <= 37 ? 'var(--theme-green)' : v <= 45 ? 'var(--theme-accent)' : 'var(--theme-red)'
+                return (
+                  <div className="stat-card">
+                    <div className="stat-label"><Tip text="Gross + overtime + employer SSF, as a % of revenue. A closed period is fully elapsed, so this is the actual final figure, not a proration." width={280}>Labor Cost %</Tip></div>
+                    <div className="stat-value" style={{ color }}>{pct(v)}</div>
+                    <div className="stat-sub">Target 25–30%</div>
+                  </div>
+                )
+              })()}
+              {snapshot.ims && snapshot.hr && (() => {
+                const v = snapshot.combined?.primeCostPct
+                const color = v == null ? undefined : v <= 60 ? 'var(--theme-green)' : v <= 65 ? 'var(--theme-accent)' : 'var(--theme-red)'
+                return (
+                  <div className="stat-card">
+                    <div className="stat-label"><Tip text="Food Cost % + Labor Cost % — the number operators benchmark against. Industry standard: 60–65% of revenue." width={280}>Prime Cost %</Tip></div>
+                    <div className="stat-value" style={{ color }}>{pct(v)}</div>
+                    <div className="stat-sub">Target ≤60–65%</div>
+                  </div>
+                )
+              })()}
+              {snapshot.ims && snapshot.hr && (() => {
+                const v = snapshot.combined?.netMarginPct
+                const color = !canOverheads || v == null ? undefined : v >= 20 ? 'var(--theme-green)' : v >= 10 ? 'var(--theme-accent)' : 'var(--theme-red)'
+                return (
+                  <div className="stat-card">
+                    <div className="stat-label"><Tip text="Revenue minus food cost, labor cost, and overheads, as a % of revenue. This is what the business actually keeps." width={260}>Net Margin %</Tip></div>
+                    <div className="stat-value" style={{ color }}>{!canOverheads ? '—' : pct(v)}</div>
+                    <div className="stat-sub">{!canOverheads ? 'Requires Overheads (Pro)' : 'After food, labor & overhead'}</div>
+                  </div>
+                )
+              })()}
             </div>
 
             {snapshot.ims && (
