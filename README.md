@@ -150,6 +150,16 @@ Annual = 25% off monthly, applied uniformly everywhere annual pricing appears.
 
 ## Session Log
 
+### S433 — 2026-07-21 — Kitchen Display's Exit button sent kitchen/bar teams to the wrong page
+
+Found live while walking the user through testing S431: Exit was hardcoded to `navigate('/pos/orders')` from before kitchen/bar staff teams existed, when Orders was every POS staffer's home. A locked-team account doesn't have Orders in its sidebar at all, so exiting there dropped them onto a page that wasn't theirs. `KitchenDisplay.jsx` now routes by team — `isTeamLocked ? '/dashboard' : '/pos/orders'` — since Dashboard is the one destination every team always has. One-line fix, `src/modules/pos/kds/KitchenDisplay.jsx`.
+
+### S432 — 2026-07-21 — Periods "Reopen" silently failed; added a no-reopen correction path instead
+
+User found a data-entry mistake in a closed period (Ashadh 2083) and asked how to fix it as admin. First answer was wrong — clicking Reopen genuinely did nothing, with no error shown. Root cause: `monthly_periods_one_open_per_client` (a partial unique index added 2026-07-13, `WHERE status='open'`) blocks a client from ever having two open periods, and `reopenPeriod()` in `Periods.js` never checked the update's error before calling `loadPeriods()`. Since the only realistic reason to reopen a *past* period is to fix a mistake discovered after the client already moved into the *current* one, Reopen was non-functional for its actual use case, silently, every time.
+
+Two fixes. (1) `reopenPeriod()` now surfaces the constraint violation with an explanation instead of swallowing it. (2) Realized mid-investigation that reopening was never actually necessary in the first place — `Stock.js`'s `isLocked = !isAdmin && status==='closed'` already lets an admin edit a closed period's Closing Stock directly, inputs and save button both, with zero extra steps. The one genuinely missing piece was propagating a correction *forward*: the closed period's closing stock had already been carried into the next (open) period's opening stock at original close time, and fixing the old period alone doesn't retroactively fix that copy. Added `resyncOpeningStock(period)` — finds the chronologically-next period and re-runs the existing `carryForwardOpeningStock()` (already an idempotent upsert) into it, with a new **Resync Opening Stock →** button next to Reopen. No schema change; `src/pages/Periods.js` only.
+
 ### S431 — 2026-07-21 — POS gets a `pos_team` axis (front-of-house / kitchen / bar), orthogonal to `pos_role`
 
 Follow-up to S430's Tables-visibility fix. Two related questions in the same conversation: (1) does kitchen staff need the front-of-house sidebar (Orders, Parking Slips, Customers, Shifts) at all, and (2) Kitchen Display's KOT/BOT toggle is just a manually-remembered `localStorage` value (`pos_kds_station`) with nothing preventing a kitchen account from being left on the bar tab (or vice versa) and missing its own pending tickets. Rather than two separate patches, built one new axis that answers both.
