@@ -379,6 +379,14 @@ allow_dynamic_registration = false
 [functions.pos-payment-webhook]
 verify_jwt = false
 
+# billing-export is called by HSS Suite's own it-crest-sync Edge Function, which has no crest-suite
+# Supabase session and so can never send a Supabase JWT — leaving verify_jwt at its default (true)
+# would make the Edge gateway reject every real HSS call with 401 before this function's own shared-
+# secret check (supabase/functions/billing-export/index.ts) ever runs. That shared-secret check is
+# what actually authenticates the caller here.
+[functions.billing-export]
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.
