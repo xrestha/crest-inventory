@@ -150,6 +150,14 @@ Annual = 25% off monthly, applied uniformly everywhere annual pricing appears.
 
 ## Session Log
 
+### S443 — 2026-07-23 — Reorder Report: printable blank par-level sheet for staff
+
+Added a "🖨 Print Par Sheet" button to Reorder Report, for clients rolling out par levels for the first time. Prints a category-grouped sheet (mirrors Stock Count's existing physical-count print pattern in `Stock.js`) listing every item with a blank fill-in cell instead of a value, respecting the page's current Category/Search filters — floor staff who don't have IMS access can fill it in by hand, and it gets typed back into the Par Level column afterward. Deliberately ignores the Reorder/All status filter (unlike the on-screen table) since a first-time rollout needs every item, not just ones currently below par. Uses the existing `printWithTitle`/`.print-only`/`.print-sheet-*` conventions — no new CSS needed.
+
+### S442 — 2026-07-22 — Fab button was covering the last table row's action buttons, on every page that pairs a table with one
+
+User reported the Edit button on HR Employees' bottom row (client "unikue") was hidden behind the fixed "+ Add Employee" button. Root cause: `Fab` (`src/components/Fab.js`) is `position: fixed; bottom: 28px` with nothing in the page layout ever reserving space for it — it just floats on top of whatever content is scrolled to the bottom. Checked whether this was isolated to Employees or systemic: `Fab` is used on 12 pages, 11 of which also render a `.table-wrap` table (the 12th, `PosTableManagement.jsx`, is a floor-plan tile grid with no table rows, so out of scope). Same latent overlap risk existed identically on all 11. Fixed once, everywhere: added a shared `.table-wrap--fab-clear` modifier (`Layout.css`, 88px bottom padding — Fab's 28px offset + ~44px height + buffer) and applied it alongside `table-wrap` on all 17 table containers across `EmployeeList.jsx`, `Overtime.jsx`, `Vendors.js`, `Items.js`, `GatePasses.jsx`, `PosParkingSlips.jsx`, `ReturnsTab.jsx`, `Recipes.js` (4 tabs), `PurchaseOrders.js` (3), `Purchases.js` (2), `Requisitions.js` (4). Pure CSS/className change, no JS logic touched. `CI=true` build clean.
+
 ### S441 — 2026-07-22 — Public-surface design pass: Pricing/Login/GuestMenu audit via taste-skill + impeccable, real bugs fixed on both
 
 Two design-focused passes back to back on the app's public/marketing surfaces (`/pricing`, `/login`, the guest QR menu) — the only surfaces that fit `taste-skill`'s landing/portfolio/marketing scope, since everything else is internal product UI covered by `impeccable` per this repo's own convention.

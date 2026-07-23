@@ -212,7 +212,7 @@ Shape and type have their own token sets at the top of `Layout.css`: `--radius-s
 Use these global classes from `Layout.css` — don't repeat inline styles:
 
 - `data-table` — styled table
-- `table-wrap` — horizontal scroll wrapper (required on all wide tables)
+- `table-wrap` — horizontal scroll wrapper (required on all wide tables). **Add `table-wrap--fab-clear` alongside it on any page that also renders a `Fab`** — `Fab` is `position: fixed` with no space reserved for it, so without this modifier the last table row's action buttons sit underneath it (found live, S442, on HR Employees — fixed there and on the other 10 pages with the same pairing). A new page combining a table with `Fab` should include this modifier from the start.
 - `tab-btn` / `tab-btn--active` / `tab-bar` — pill filter/sort buttons
 - `form-select` — styled `<select>`
 - `stat-grid` — horizontal KPI card row
